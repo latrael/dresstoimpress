@@ -28,10 +28,10 @@ for _sub in ("uploads", "tryon"):
 # Shared key for a public tunnel (the repo is public, so a leaked URL could spend AI credits).
 # Set API_SHARED_KEY in .env; clients send it as the X-DTI-Key header. Images and /health stay open
 # because image widgets can't send headers (file names are random).
-OPEN_PREFIXES = ("/health", "/static/", "/img")
+OPEN_PREFIXES = ("/health", "/static/")
 # Public QR page for guests, gated by its own FITCHECK_EVENT_CODE. Matched exactly (or "/fit/...")
 # so it never opens /fitcheck/*.
-OPEN_EXACT = ("/fit",)
+OPEN_EXACT = ("/fit", "/img")  # exact: a prefix would also open any future /img* or /fitcheck* route
 OPEN_SUBTREES = ("/fit/",)
 
 

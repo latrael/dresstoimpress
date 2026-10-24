@@ -45,3 +45,9 @@ def test_rejects_redirect_off_allowlist_and_non_images(client, monkeypatch):
 
 def test_other_routes_still_need_the_key(client):
     assert client.get("/closet/u_demo").status_code == 401
+
+
+def test_img_is_matched_exactly():
+    from app.main import _is_open
+
+    assert _is_open("/img") and not _is_open("/images") and not _is_open("/imgfoo")

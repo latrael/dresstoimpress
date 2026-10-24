@@ -34,6 +34,20 @@ class Api {
   /// Absolute URL for an image the server returns ("/static/..." paths get the base URL).
   String imageUrl(String url) => url.startsWith('/') ? '${settings.base}$url' : url;
 
+  /// Retailer image hosts the backend's `GET /img?url=` will re-serve (same list as backend/app/main.py).
+  static const imageProxyHosts = {
+    'image.hm.com', 'lp2.hm.com', 'image.uniqlo.com', 'picsum.photos', 'fastly.picsum.photos', 'images.unsplash.com',
+  };
+
+  /// Image URL that loads in a web build: "/static/..." gets the base URL; retailer images go through
+  /// `GET /img?url=` (no key; retailer servers refuse direct loads from a web app); anything else as-is.
+  String imageProxyUrl(String url) {
+    if (url.startsWith('/')) return '${settings.base}$url';
+    final u = Uri.tryParse(url);
+    if (u == null || u.scheme != 'https' || !imageProxyHosts.contains(u.host)) return url;
+    return Uri.parse('${settings.base}/img').replace(queryParameters: {'url': url}).toString();
+  }
+
   // ------------------------------------------------------------ health / browse
 
   Future<bool> health() async => (await _send('GET', '/health', auth: false))['ok'] == true;
@@ -44,6 +58,15 @@ class Api {
       RankedProduct.fromJson);
 
   Future<Product> product(String id) async => Product.fromJson(await _send('GET', '/products/${_seg(id)}'));
+
+  /// GET /products: catalog search + paging (Nabil). Every word of [q] must match; `nextOffset` is null
+  /// on the last page. [sort]: relevance | price_asc | price_desc.
+  Future<ProductPage> searchProducts({String q = '', String? category, String? retailer, bool inStock = true,
+          String sort = 'relevance', int limit = 24, int offset = 0}) async =>
+      ProductPage.fromJson(await _send('GET', '/products', query: {
+        'q': q, 'category': category, 'retailer': retailer, 'in_stock': '$inStock', 'sort': sort,
+        'limit': '$limit', 'offset': '$offset',
+      }));
 
   // ------------------------------------------------------------ wishlist (hearts; never dismisses from the feed)
 
@@ -114,6 +137,39 @@ class Api {
       RankedProduct.fromJson);
 
   Future<StyleProfile> style() async => StyleProfile.fromJson(await _send('GET', '/users/${_seg(_user)}/style'));
+
+  /// POST /users/{id}/style/apply: saves the learned price ranges on the user (the feed ranks in-budget
+  /// items first) and the headline as style_text if empty. 409 (ApiError) with fewer than 5 liked items.
+  Future<StyleApplyResult> applyStyle() async =>
+      StyleApplyResult.fromJson(await _send('POST', '/users/${_seg(_user)}/style/apply'));
+
+  // ------------------------------------------------------------ users / onboarding (Nabil)
+
+  /// POST /users. 409 if [id] exists. Without [priceRanges], budgets are parsed from [styleText].
+  Future<AppUser> createUser({required String displayName, String? id, String styleText = '',
+          Map<String, List<double>>? priceRanges, List<String> friends = const []}) async =>
+      AppUser.fromJson(await _send('POST', '/users', body: {
+        'id': id, 'display_name': displayName, 'style_text': styleText, 'price_ranges': priceRanges,
+        'friends': friends,
+      }));
+
+  /// GET /users/{id} (defaults to the current user). 404 if unknown.
+  Future<AppUser> getUser([String? userId]) async =>
+      AppUser.fromJson(await _send('GET', '/users/${_seg(userId ?? _user)}'));
+
+  /// PATCH /users/{id} (current user). Only the fields you pass change; new [styleText] without
+  /// [priceRanges] re-parses budgets and merges them over the old ones.
+  Future<AppUser> updateUser({String? displayName, String? styleText, Map<String, List<double>>? priceRanges,
+          List<String>? friends}) async =>
+      AppUser.fromJson(await _send('PATCH', '/users/${_seg(_user)}', body: {
+        'display_name': displayName, 'style_text': styleText, 'price_ranges': priceRanges, 'friends': friends,
+      }));
+
+  /// POST /onboarding: create or update a user from free text ("Y2K, tops under $40") and return what
+  /// was understood. [userId] defaults to the current user; pass null-able [displayName] for new users.
+  Future<OnboardingResult> onboarding(String text, {String? displayName, String? userId}) async =>
+      OnboardingResult.fromJson(await _send('POST', '/onboarding',
+          body: {'user_id': userId ?? _user, 'display_name': displayName, 'text': text}));
 
   // ------------------------------------------------------------ closet / body photo
 

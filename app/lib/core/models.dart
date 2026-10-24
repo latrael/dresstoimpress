@@ -430,6 +430,82 @@ class StyleProfile {
   }
 }
 
+Map<String, List<double>> _ranges(dynamic v) =>
+    _obj(v).map((k, r) => MapEntry(k, r is List ? r.map((e) => _dbl(e)).toList() : <double>[]));
+
+/// GET /products (search + paging).
+class ProductPage {
+  const ProductPage({required this.items, required this.total, required this.limit, required this.offset,
+      this.nextOffset});
+
+  final List<Product> items;
+  final int total;
+  final int limit;
+  final int offset;
+  final int? nextOffset; // null on the last page
+
+  factory ProductPage.fromJson(Json j) => ProductPage(
+        items: _list(j['items'], Product.fromJson),
+        total: _int(j['total']),
+        limit: _int(j['limit']),
+        offset: _int(j['offset']),
+        nextOffset: _intN(j['next_offset']),
+      );
+}
+
+/// A user (backend `User`): /users, /users/{id}, /onboarding, /style/apply.
+class AppUser {
+  const AppUser({required this.id, required this.displayName, this.styleText = '', this.priceRanges = const {},
+      this.bodyPhotoUrl, this.friends = const []});
+
+  final String id;
+  final String displayName;
+  final String styleText;
+  final Map<String, List<double>> priceRanges; // category -> [min, max]
+  final String? bodyPhotoUrl;
+  final List<String> friends;
+
+  factory AppUser.fromJson(Json j) => AppUser(
+        id: _str(j['id']),
+        displayName: _str(j['display_name']),
+        styleText: _str(j['style_text']),
+        priceRanges: _ranges(j['price_ranges']),
+        bodyPhotoUrl: _strN(j['body_photo_url']),
+        friends: _strs(j['friends']),
+      );
+}
+
+/// POST /onboarding: the saved user plus what the rules parser understood.
+class OnboardingResult {
+  const OnboardingResult({required this.user, required this.styles, required this.budgets, required this.unmatched});
+
+  final AppUser user;
+  final List<String> styles; // style tags found in the text
+  final Map<String, List<double>> budgets; // category -> [min, max] found in the text
+  final String unmatched; // words it didn't understand
+
+  factory OnboardingResult.fromJson(Json j) {
+    final parsed = _obj(j['parsed']);
+    return OnboardingResult(
+      user: AppUser.fromJson(_obj(j['user'])),
+      styles: _strs(parsed['styles']),
+      budgets: _ranges(parsed['budgets']),
+      unmatched: _str(parsed['unmatched']),
+    );
+  }
+}
+
+/// POST /users/{id}/style/apply.
+class StyleApplyResult {
+  const StyleApplyResult({required this.user, required this.profile});
+
+  final AppUser user;
+  final StyleProfile profile;
+
+  factory StyleApplyResult.fromJson(Json j) =>
+      StyleApplyResult(user: AppUser.fromJson(_obj(j['user'])), profile: StyleProfile.fromJson(_obj(j['profile'])));
+}
+
 // ---------------------------------------------------------------- closet
 
 class ClosetItem {

@@ -214,3 +214,31 @@ def test_shop_for_patch_round_trip_and_onboarding_keeps_it(client):
     assert client.patch("/users/u_old", json={"shop_for": "both"}).json()["shop_for"] == "both"
     new = client.post("/onboarding", json={"display_name": "New", "text": ""}).json()["user"]
     assert new["shop_for"] == "both"
+
+
+def test_onboarding_and_create_accept_shop_for(client):
+    u = client.post("/onboarding", json={"user_id": "u_b", "text": "y2k", "shop_for": "women"}).json()["user"]
+    assert u["shop_for"] == "women"
+    new = client.post("/onboarding", json={"display_name": "Ana", "text": "", "shop_for": "men"}).json()["user"]
+    assert new["shop_for"] == "men"
+    assert client.post("/users", json={"display_name": "Kai", "shop_for": "women"}).json()["shop_for"] == "women"
+    assert client.post("/users", json={"display_name": "Lee"}).json()["shop_for"] == "both"
+    assert client.post("/onboarding", json={"text": "", "shop_for": "kids"}).status_code == 422
+
+
+def test_shop_this_fit_respects_shop_for(client, monkeypatch):
+    from app.ai import service
+    from app.store import store
+    store.put("fitcheck_posts", "fc_x", {"id": "fc_x", "user_id": "u_w", "photo_url": "https://x/p.jpg",
+                                         "caption": "", "tagged": [{"label": "tee"}], "visibility": "public",
+                                         "created_at": "2026-10-24T00:00:00+00:00", "likes": [], "comments": []})
+    monkeypatch.setattr(service, "shop_fit", lambda uid, tags: [
+        {"id": pid, "reason": "r"} for pid in ("w-tee", "m-tee", "u-tee", "live:1")])
+
+    def ids(uid):
+        r = client.get("/fitcheck/fc_x/shop", params={"user_id": uid})
+        assert r.status_code == 200, r.text
+        return [p["id"] for p in r.json()]
+    assert ids("u_m") == ["m-tee", "u-tee", "live:1"]  # live results (no department) are kept
+    assert ids("u_w") == ["w-tee", "u-tee", "live:1"]
+    assert ids("u_b") == ["w-tee", "m-tee", "u-tee", "live:1"]

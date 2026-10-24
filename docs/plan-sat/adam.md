@@ -43,4 +43,4 @@
 - [ ] **Credits:** check Anthropic (console → Billing; top up $10 if under $5) and Gemini billing.
 
 ## After 10:00
-12:00 checkpoint A on your iPhone · 15:30 B · 17:00 freeze + rebuild · 17:30 dry run (you present the AI parts: closet → reasons → try-on → complete the look + Fit Score → shop a friend's fit; record the phone screen as the backup video) · 19:00 `staging` → `main`. Run `python -m scripts.reset_demo` before each dry run.
+12:00 checkpoint A on your iPhone · 15:30 B · 17:00 freeze + rebuild · 17:30 dry run (you present the AI parts: closet → reasons → try-on → complete the look + Fit Score → shop a friend's fit; record the phone screen as the backup video) · 19:00 `staging` → `main`. Before each dry run: `python -m scripts.reset_demo && python -m scripts.warm_demo` (resets u_demo, then warms the feed, Fit Check shops and 10 try-ons; ~1–2 min, a few cents).

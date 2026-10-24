@@ -33,6 +33,7 @@ Tagging our 418-product catalog cost about **$0.07**. A hard $5 budget cap, cach
 **Keeping it cheap and reliable**
 - **Cheapest models:** Haiku by default, with extended thinking off for JSON tasks.
 - **Caching:** tags per image + hint, feed ranking for 10 min, every try-on, and live searches. A repeat costs $0.
+- **Swipes stay instant:** Claude's reasons go into a per-user reason bank (1 h). After a swipe the next feed is served from the bank right away while Claude re-ranks in the background with the new swipe history, so the feed still learns without a ~6 s wait.
 - **Hard caps:** a $5 AI budget (endpoints switch to rules when it's hit) and 150 fresh try-ons.
 - **Layered fallbacks:** Claude → Gemini → rules for text. AI try-on → an outfit-board collage. Whatever happens, the demo never shows an error screen.
 - **Measured spend** for the whole build, including tagging 418 products and all testing: **about $0.50**.

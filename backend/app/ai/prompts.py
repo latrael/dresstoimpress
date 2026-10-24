@@ -47,8 +47,15 @@ Candidates: {products_json}
 Pick the {k} candidates that best complete outfits with items already in the closet
 and fit the style and price ranges.
 Return only a JSON array of objects:
-{{"product_id": str, "score": number 0-1, "reason": at most 8 words, casual second person, naming the closet item by its label, e.g. "goes with your black cargo pants", "pairs_with": [closet item ids]}}
-Use only product ids from the candidates. Only mention closet items that are in the closet list, by their label; never invent closet items."""
+{{"product_id": str, "score": number 0-1, "reason": at most 8 words, casual second person, naming the closet item by its label, "pairs_with": [closet item ids]}}
+Use only product ids from the candidates. Only mention closet items that are in the closet list, by their label; never invent closet items.
+Make every reason sound different, like a friend reacting to each piece:
+- spread the picks across different closet items instead of naming the same one every time;
+- vary the angle: color contrast, silhouette or fit, the style it pushes, layering, the occasion, or the price;
+- never start two reasons with the same words.
+Shapes to vary between (fill in real labels): "<color> on <color> with your <item>", "layer it over your <item>",
+"gives your <item> a <style> edge", "only $<price> and it works with your <item>"."""
+PAIR_VERSION = "v2"  # bump when PAIR changes so cached rankings and the reason bank start fresh
 
 FIT_TAGGER = """You are a fashion cataloguer. The image is an outfit photo (mirror selfie, street photo, or flat-lay).
 List every clothing item and accessory you can clearly see that someone could buy.

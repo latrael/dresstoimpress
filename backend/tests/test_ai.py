@@ -352,7 +352,7 @@ def test_fallback_uses_outfit_rules(client, monkeypatch):
     monkeypatch.setattr(service, "text_mock", lambda: True)  # force the no-AI path
     got = service.pair("u_demo", ["hm-demo-1", "zara-demo-1", "mango-demo-1"])
     assert got[-1].product_id == "mango-demo-1"  # over budget goes last
-    assert got[0].reason.startswith("goes with your")  # names a closet item now
+    assert got[0].reason.lower().startswith("goes with your")  # names a closet item now
 
 
 def test_to_canonical_unifies_both_shapes():

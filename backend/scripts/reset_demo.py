@@ -61,6 +61,7 @@ def main(argv: list[str] | None = None) -> None:
     a = ap.parse_args(argv)
     counts = reset(a.user, a.orders)
     print(f"reset {a.user}: " + ", ".join(f"{k} {v}" for k, v in counts.items()) + "; feed cache cleared")
+    print("next: python -m scripts.warm_demo  (so the first feed / try-on on stage is instant)")
 
 
 if __name__ == "__main__":

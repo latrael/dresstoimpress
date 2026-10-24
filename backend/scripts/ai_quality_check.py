@@ -36,6 +36,29 @@ def warn(msg: str) -> None:
     print("  warn", msg)
 
 
+def variety_warnings(reasons: list[str], closet_labels: list[str]) -> list[str]:
+    """Feed reasons that all sound the same read like a template. Flags an opening (first 3 words)
+    used by over a quarter of the reasons, and one closet item named in over 60% of them when the
+    closet has 3+ items to choose from."""
+    out: list[str] = []
+    reasons = [r.lower() for r in reasons if r]
+    if len(reasons) < 4:
+        return out
+    openings: dict[str, int] = {}
+    for r in reasons:
+        key = " ".join(r.split()[:3])
+        openings[key] = openings.get(key, 0) + 1
+    top, n = max(openings.items(), key=lambda kv: kv[1])
+    if n > len(reasons) / 4:
+        out.append(f"{n}/{len(reasons)} reasons start with {top!r}")
+    if len(closet_labels) >= 3:
+        for lbl in closet_labels:
+            hits = sum(1 for r in reasons if lbl.lower() in r)
+            if hits > 0.6 * len(reasons):
+                out.append(f"{hits}/{len(reasons)} reasons name the same closet item ({lbl!r})")
+    return out
+
+
 def check_feed(user_id: str) -> None:
     print("\n== feed reasons ==")
     user = store.get("users", user_id) or {}
@@ -65,6 +88,8 @@ def check_feed(user_id: str) -> None:
             fail(f"pairs_with has ids not in closet: {bad_ref}")
         if closet and not mentions and not r.pairs_with:
             warn(f"reason doesn't name a closet item: {r.product_id}: {r.reason!r}")
+    for msg in variety_warnings([r.reason for r in ranked], [lbl for lbl in labels.values() if lbl]):
+        warn(msg)
     if ranges:
         flags = []
         for r in ranked:

@@ -14,15 +14,29 @@ from .colors import find_duplicate
 from .compat import get_product, list_products
 from ..store import DATA_DIR, store
 from . import prompts
+import logging
+import threading
 import time
 
 from .llm import (CLAUDE_PAIR_MODEL, CLAUDE_TAG_MODEL, BadModelOutput, ai_json, gemini_image,
                   mock_mode, text_mock)
 from .memory import style_memory
+from .reason_polish import polish_reason
+
+log = logging.getLogger(__name__)
 
 TRYON_DIR = DATA_DIR / "tryon"
 PUBLIC_BASE = os.getenv("PUBLIC_BASE", "http://localhost:8000")
 PAIR_TTL = int(os.getenv("PAIR_CACHE_SECONDS", "600"))
+# Reason bank: every Claude ranking for a user (same closet, style text and budgets) is kept for an
+# hour, keyed by product. A swipe changes the candidate list, which used to mean a fresh ~6 s Claude
+# call on the next /feed. Now /feed answers at once from the bank while Claude re-ranks in the
+# background, so the next load picks up what the swipes taught it. PAIR_REUSE=0 turns this off.
+PAIR_REUSE = os.getenv("PAIR_REUSE", "1") != "0"
+PAIR_BANK_TTL = int(os.getenv("PAIR_BANK_SECONDS", "3600"))
+PAIR_BANK_MAX = 120
+_refreshing: set[str] = set()
+_refresh_lock = threading.Lock()
 CATEGORIES = {"top", "bottom", "outerwear", "shoes", "dress", "accessory"}
 STYLE_VOCAB = set(get_args(StyleTag))
 
@@ -208,7 +222,63 @@ def _fallback(cands: list[dict], ranges: dict, k: int, closet: list[dict] | None
     over = [p for p in cands if not _in_budget(p, ranges)]
     ranked = rank(in_budget, closet or [], style_text, k) + rank(over, closet or [], style_text, k)
     return [PairResult(product_id=r["product_id"], id=r["product_id"], score=r["score"],
-                       reason=r["reason"], pairs_with=r["pairs_with"]) for r in ranked[:k]]
+                       reason=polish_reason(r["reason"]) or r["reason"], pairs_with=r["pairs_with"])
+            for r in ranked[:k]]
+
+
+def _bank_key(user_id: str, closet: list[dict], user: dict) -> str:
+    """The reason bank is valid while the closet, style text and budgets stay the same."""
+    state = (f"bank|{prompts.PAIR_VERSION}|{user_id}|{','.join(sorted(c['id'] for c in closet))}|{user.get('style_text', '')}|"
+             f"{json.dumps(user.get('price_ranges', {}), sort_keys=True)}")
+    return "bank_" + hashlib.sha256(state.encode()).hexdigest()[:20]
+
+
+def _from_bank(bkey: str, valid_ids: set[str], want: int) -> list[dict] | None:
+    """Banked rankings for the current candidates, if they still cover at least half a page."""
+    if not PAIR_REUSE:
+        return None
+    bank = store.get("pair_cache", bkey)
+    if not bank or time.time() - bank.get("at", 0) >= PAIR_BANK_TTL:
+        return None
+    kept = [r for r in bank.get("raw") or [] if isinstance(r, dict) and r.get("product_id") in valid_ids]
+    return kept if len(kept) >= max(1, want // 2) else None
+
+
+def _remember(ckey: str, bkey: str, raw, user_id: str) -> None:
+    """Store an exact-match cache entry and merge the ranking into the user's reason bank.
+    Newest ranking first; older entries keep their reason with a slightly lower score."""
+    now = time.time()
+    store.put("pair_cache", ckey, {"at": now, "raw": raw, "user_id": user_id})
+    fresh = [r for r in raw if isinstance(r, dict) and r.get("product_id")] if isinstance(raw, list) else []
+    have = {r["product_id"] for r in fresh}
+    old = (store.get("pair_cache", bkey) or {}).get("raw") or []
+    aged = [{**r, "score": round(float(r.get("score", 0.5)) * 0.9, 4)}
+            for r in old if isinstance(r, dict) and r.get("product_id") not in have]
+    store.put("pair_cache", bkey, {"at": now, "raw": (fresh + aged)[:PAIR_BANK_MAX], "user_id": user_id})
+
+
+def _spawn(fn) -> None:
+    """Run fn off the request thread (tests swap this to run inline or not at all)."""
+    threading.Thread(target=fn, daemon=True).start()
+
+
+def _refresh_later(ckey: str, bkey: str, prompt: str, user_id: str) -> None:
+    """Re-rank with Claude in the background, at most one refresh per bank at a time."""
+    with _refresh_lock:
+        if bkey in _refreshing:
+            return
+        _refreshing.add(bkey)
+
+    def run():
+        try:
+            _remember(ckey, bkey, ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL), user_id)
+        except Exception as e:  # noqa: BLE001 - a failed refresh just leaves the bank as it was
+            log.warning("background pair refresh failed: %s", e)
+        finally:
+            with _refresh_lock:
+                _refreshing.discard(bkey)
+
+    _spawn(run)
 
 
 def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult]:
@@ -246,20 +316,24 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
     )
     # Cache: same user, same candidates, same closet/swipe state -> reuse for 10 min.
     # The feed and shop-the-fit can hit this on every scroll; this keeps that free.
-    state = (f"{user_id}|{','.join(sorted(p['id'] for p in cands))}|{len(closet)}|{len(swiped)}|{k}|"
+    state = (f"{prompts.PAIR_VERSION}|{user_id}|{','.join(sorted(p['id'] for p in cands))}|{len(closet)}|{len(swiped)}|{k}|"
              f"{user.get('style_text', '')}|{json.dumps(ranges, sort_keys=True)}")
     ckey = hashlib.sha256(state.encode()).hexdigest()[:24]
+    bkey = _bank_key(user_id, closet, user)
+    valid_ids = {p["id"] for p in cands}
     hit = store.get("pair_cache", ckey)
     if hit and time.time() - hit["at"] < PAIR_TTL:
         raw = hit["raw"]
+    elif (banked := _from_bank(bkey, valid_ids, min(k, len(cands)))) is not None:
+        raw = banked  # instant; Claude re-ranks with the new swipes for the next call
+        _refresh_later(ckey, bkey, prompt, user_id)
     else:
         try:
             raw = ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL)
         except BadModelOutput:
             return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
-        store.put("pair_cache", ckey, {"at": time.time(), "raw": raw})
+        _remember(ckey, bkey, raw, user_id)
 
-    valid_ids = {p["id"] for p in cands}
     closet_ids = {c["id"] for c in closet}
     out: list[PairResult] = []
     for r in raw if isinstance(raw, list) else []:
@@ -269,7 +343,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             product_id=r["product_id"],
             id=r["product_id"],
             score=min(1.0, max(0.0, float(r.get("score", 0.5)))),
-            reason=" ".join(str(r.get("reason", "")).split()[:12]).rstrip(".") or "pairs with your closet",
+            reason=polish_reason(r.get("reason", "")) or "Pairs with your closet",
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     by_id = {p["id"]: p for p in cands}
@@ -286,6 +360,8 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         for r in _fallback(rest, ranges, k - len(out), closet, user.get("style_text", "")):
             out.append(r.model_copy(update={"score": round(min(r.score, floor) * 0.99, 4)}))
     # budget-first: anything in the user's price range ranks above anything outside it
+    # one consistent voice on every card (capitalized, no dangling "...with your", <= 12 words)
+    out = [r.model_copy(update={"reason": polish_reason(r.reason) or r.reason}) for r in out]
     out.sort(key=lambda r: (not _in_budget(by_id.get(r.product_id) or get_product(r.product_id), ranges), -r.score))
     return out
 

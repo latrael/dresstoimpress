@@ -27,7 +27,8 @@ backend through device settings. No credentials or private server URL are in Git
   - Sends the `X-DTI-Key` header on everything except `/health`, `/static`, `/img`.
   - `ApiError` carries the `detail` text, plus the `unavailable` list on a checkout 409.
   - Multipart upload that sends the image's real Content-Type.
-  - An `/img?url=` image-URL helper: retailer image hosts refuse direct loads from a web app.
+  - `imageProxyUrl(url)`: retailer images (H&M, Uniqlo, …) → `GET /img?url=` on our backend, which web builds need because those hosts refuse direct loads; `/static/...` → base URL; anything else unchanged. (`imageUrl(url)` only resolves `/static/...`; kept as-is.)
+  - Search + paging (`searchProducts`), users (`createUser`, `getUser`, `updateUser`), `onboarding(text)` and Style DNA (`style`, `applyStyle`).
 - `lib/core/models.dart`: `fromJson` for every response shape. It reads snake_case keys, and optional fields are nullable. Checked against the live backend: 13/13 routes decode.
 - `lib/core/config.dart`, `settings.dart`: server URL + key saved on the device (shared_preferences). **Never commit the URL or key**; the repo is public.
 

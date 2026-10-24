@@ -212,10 +212,29 @@ def ai_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
             raise BadModelOutput(f"gemini: {e}") from e
     try:
         return claude_json(prompt, image_url=image_url, max_tokens=max_tokens, model=model)
-    except BadModelOutput:
-        raise
-    except Exception as e:  # noqa: BLE001
-        raise BadModelOutput(f"claude: {e}") from e
+    except Exception as e:  # noqa: BLE001 — no credits, auth, network, budget, bad JSON
+        claude_err = e
+    # Claude failed: try Gemini before giving up, so the app keeps working
+    # (e.g. Anthropic account out of credits mid-demo). Logged for /ai/usage.
+    _note_fallback(str(claude_err))
+    if os.getenv("GEMINI_API_KEY") and os.getenv("AI_TEXT_PROVIDER") != "claude":
+        try:
+            return gemini_json(prompt, image_url=image_url, max_tokens=max_tokens)
+        except Exception as e:  # noqa: BLE001
+            raise BadModelOutput(f"claude: {claude_err}; gemini: {e}") from e
+    raise BadModelOutput(f"claude: {claude_err}") from claude_err
+
+
+def _note_fallback(err: str) -> None:
+    from ..store import store
+
+    try:
+        u = usage()
+        u["claude_fallbacks"] = u.get("claude_fallbacks", 0) + 1
+        u["last_claude_error"] = err[:200]
+        store.put("ai_usage", "total", u)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 CLAUDE_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}

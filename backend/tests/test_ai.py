@@ -175,3 +175,18 @@ def test_text_provider_routing(monkeypatch):
     assert llm.text_provider() == "gemini"
     monkeypatch.setenv("MOCK_AI", "1")
     assert llm.text_provider() == "mock"
+
+
+def test_claude_failure_falls_back_to_gemini(client, monkeypatch):
+    from app.ai import llm
+    monkeypatch.delenv("MOCK_AI", raising=False)
+    monkeypatch.delenv("AI_TEXT_PROVIDER", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "a")
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+
+    def broke(*a, **k):
+        raise RuntimeError("Your credit balance is too low")
+    monkeypatch.setattr(llm, "claude_json", broke)
+    monkeypatch.setattr(llm, "gemini_json", lambda *a, **k: {"category": "top"})
+    assert llm.ai_json("x") == {"category": "top"}
+    assert "credit balance" in llm.usage()["last_claude_error"]

@@ -75,7 +75,8 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
 # ---------- /tryon ----------
 
 def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str]) -> str:
-    raw = user_id + "|" + ",".join(sorted(product_ids)) + "|" + ",".join(sorted(closet_ids))
+    raw = (prompts.TRYON_VERSION + "|" + user_id + "|" + ",".join(sorted(product_ids)) + "|"
+           + ",".join(sorted(closet_ids)))
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
@@ -94,8 +95,10 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     user = store.get("users", user_id) or {}
     body = user.get("body_photo_url")
 
-    garments = [p["image_url"] for pid in product_ids if (p := get_product(pid))]
-    garments += [c["image_url"] for cid in closet_item_ids if (c := store.get("closet_items", cid))]
+    pieces = [p for pid in product_ids if (p := get_product(pid))]
+    pieces += [c for cid in closet_item_ids if (c := store.get("closet_items", cid))]
+    garments = [g["image_url"] for g in pieces]
+    slots = [g.get("category") or "garment" for g in pieces]
     if not garments:
         raise ValueError("no garment images found for given ids")
 
@@ -109,7 +112,7 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     img = None
     if body and not mock_mode("GEMINI_API_KEY"):
         try:
-            img = gemini_image(prompts.TRYON, [body, *garments])
+            img = gemini_image(prompts.tryon_prompt(slots), [body, *garments])
         except BadModelOutput:
             img = None  # quota, billing, budget cap, no image returned
     if img is None:

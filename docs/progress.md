@@ -1,6 +1,6 @@
 # dresstoimpress — progress and direction
 
-Last updated: Fri Oct 23, 7:30 PM PT. Branch: `adam/ai-pipeline` (Adam's AI lane). `main` has only the README so far.
+Last updated: Fri Oct 23, 8:00 PM PT. Branch: `adam/ai-pipeline` (Adam's AI lane). `main` has only the README so far.
 
 ## Where we are
 
@@ -17,8 +17,30 @@ The backend skeleton and the whole AI pipeline are built, tested (22 tests) and 
 | Try-on (`/tryon`) | Done, live | Gemini Flash Lite image, ~5 s, keeps body and pose; outfit-board fallback if images fail |
 | Cost controls | Done | Haiku default, caching, $5 cap, `GET /ai/usage`; real cost so far < $0.01 |
 | Gemini fallback | Done | If Claude fails (credits, network), tagging/pairing use Gemini automatically |
-| Commerce: Apify feed, cart, Nessie checkout, Fit Check backend | Not started | Nabil |
+| Commerce: ingest, `/feed`, `/swipe`, `/cart`, `/wishlist`, `/checkout` | Done (merged to `staging`) | Nabil. 370 real H&M + Uniqlo products on his machine; Nessie pending key |
+| Fit Check posts + `/fitcheck/{id}/shop` | Next | Nabil |
+| Demo person photo | Done | AI-generated fictional person, `backend/assets/demo_body.jpg`, set by `seed_demo` |
 | iPhone app (FlutterFlow) | Not started in repo | Ryan |
+
+## Handoffs (Fri 8 PM): what to do next, on `staging`
+
+Everything below is already merged on `staging` and passes `cd backend && pytest -q` (99 tests). Branch off `staging`, PR back into `staging`.
+
+### Adam → Nabil
+1. **Fit Check backend:** store posts (`POST /fitcheck`, `GET /fitcheck/feed`) and make `GET /fitcheck/{post_id}/shop?user_id=` return `ai.service.shop_fit(user_id, post["tagged"])`. To pre-fill a post's tags from its photo: `ai.service.tag_fit(photo_url)`.
+2. **Run the shared demo backend** on your machine (you have the 370 products): `python -m scripts.seed_demo` (adds the demo user and their photo), then a public URL (ngrok or cloudflared), set `PUBLIC_BASE` to it in `.env`, restart, and send the URL to Ryan.
+3. **Tag the catalog once:** re-run ingest without `--no-tag` so products get `style_tags`/`label`/`pattern` (better pairing; about $0.07 for 370 on Haiku).
+4. **Add shoes** to ingest (e.g. H&M `"sneakers, boots"`); there are none yet, so complete-the-look can only fill shoes from the closet.
+5. **Keys in the shared `.env`:** `APIFY_TOKEN` (also powers Fit Check live search), `NESSIE_API_KEY` when you have it. Adam can send the Anthropic and Gemini keys.
+
+### Adam → Ryan
+1. **Point FlutterFlow's API group at the shared URL** from Nabil (until then: run the backend locally with `MOCK_AI=1`, or use `seed_demo` data). Demo user: `u_demo`.
+2. **Onboarding:** body photo → `POST /users/{id}/body-photo` (multipart); closet photos → `POST /closet/upload` (returns the item with a `label` like "black cargo pants" — show it).
+3. **Swipe feed:** `GET /feed?user_id=` (cards include `reason`, e.g. "goes with your baggy jeans" — show it under the price); swipes → `POST /swipe {user_id, product_id, action: like|save|discard, size?}`.
+4. **Product sheet:** `POST /size` → highlight the suggested size in the picker, grey out `in_stock: false`; "Try it on" → `POST /tryon` (≈5 s, show a spinner; if `mode` is `collage` it's an outfit board, not AI); "Complete the look" → `POST /complete-look {user_id, product_id, budget_usd?}`.
+5. **Cart + checkout:** `GET /cart/{user_id}` (grouped by retailer), `POST /checkout/{user_id}`.
+6. **Fit Check:** after taking the photo, `POST /ai/tag-fit {image_url}` to pre-fill tags; "Shop this fit" → Nabil's `/fitcheck/{post_id}/shop` (or `POST /ai/shop-fit {viewer_id, photo_url}` until it exists).
+7. Push a `RYAN.md` (screens done, what you need) like `NABIL.md` / `ADAM.md`, and your Figma/Notability links, to a `ryan` branch → PR into `staging`.
 
 ## Who owns what (no overlap)
 

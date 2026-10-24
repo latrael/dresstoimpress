@@ -4,14 +4,25 @@ endpoints work before Nabil's Apify ingest lands. Safe to re-run.
     python -m scripts.seed_demo
 Replace the placeholder image URLs with real photos before the demo.
 """
+from pathlib import Path
+
 from app.store import store
 
 IMG = "https://picsum.photos/seed/{}/600/800"
 
+# AI-generated fictional person (Gemini), neutral outfit so try-on swaps are obvious
+import os, shutil  # noqa: E401,E402
+from app.store import DATA_DIR  # noqa: E402
+
+_src = Path(__file__).resolve().parent.parent / "assets" / "demo_body.jpg"
+(DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
+shutil.copy(_src, DATA_DIR / "uploads" / "demo_body.jpg")
+BODY = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/") + "/static/uploads/demo_body.jpg"
+
 store.put("users", "u_demo", {
     "id": "u_demo", "display_name": "Demo", "style_text": "Y2K, baggy jeans",
     "price_ranges": {"top": [10, 40], "bottom": [20, 60], "outerwear": [30, 90]},
-    "body_photo_url": IMG.format("body"), "friends": ["u_adam", "u_nabil", "u_ryan"],
+    "body_photo_url": BODY, "friends": ["u_adam", "u_nabil", "u_ryan"],
 })
 
 closet = [

@@ -16,6 +16,22 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
+TRYON_VERSION = "v2"  # bump to invalidate cached try-ons when the prompt changes
+
+
+def tryon_prompt(slots: list[str]) -> str:
+    """slots[i] = category of garment image i+2 (image 1 is the person), e.g. ["top", "shoes"]."""
+    lines = [f"Image {i + 2} shows a {cat}: put it on the person, replacing only their current {cat}."
+             for i, cat in enumerate(slots)]
+    return (
+        "Image 1 is the person. " + " ".join(lines) + " "
+        "Keep everything else from image 1 exactly the same: their other clothing, shoes, face, skin tone, hair, "
+        "body shape, proportions, pose and background. "
+        "The garment images are references only: if they show a model, a logo, a size label, text or a watermark, "
+        "ignore all of it and use only the garment's color, fabric, fit and details. "
+        "Output one photorealistic full-body photo of the person from image 1, with no text, logos or borders."
+    )
+
 PAIR = """You are a stylist.
 User style: {style_text}
 Price ranges (USD, per category): {price_ranges}

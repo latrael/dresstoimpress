@@ -17,8 +17,11 @@ Earlier FlutterFlow-specific implementation notes are superseded.
 6. Product-provided sizes, unavailable choices disabled, then Add to Cart.
 7. Description, sizes, cart button, search and navigation stay outside the photo
    carousel. Horizontal drags there do not change photos.
-8. Vertical browsing changes products; details scroll on shorter screens and
-   continue to the next product at the scroll boundary. Reset new-product state.
+8. Scroll product details to the bottom first. A fresh upward gesture past that
+   boundary reveals an up-arrow/progress cue before the next product. A deliberate
+   touch drag confirms on release; trackpad/wheel confirms after the burst settles.
+   Small edge movements and momentum from reading details do not change products.
+   One gesture advances at most one item. Reset new-product state.
 9. Double-tap a photo saves; explicit heart remains. Save uses independent wishlist
    PUT/DELETE. Photo changes and passive product browsing NEVER call `/swipe`.
 10. Failed images stay bounded and leave controls usable.
@@ -43,7 +46,7 @@ The older JSON fixture remains an explicitly mock historical design asset.
 
 ## Verification
 
-Thirty-one Flutter tests cover original gestures/cart and the overnight feature flows.
+Thirty-eight Flutter tests cover original gestures/cart and the overnight feature flows.
 Connected mode uses paged catalog search; explicit demo mode stays local. Run `cd app && flutter analyze && flutter test`. Backend health/feed
 and image proxy were also verified with private runtime settings. The app loads
 live photos. Phone and live checkout verification remain separate checks.
@@ -58,6 +61,6 @@ owned/catalog suggestions and Fit Score. These controls stay outside horizontal
 photo swipes; product details scroll to expose controls on smaller screens.
 No model measurements, real descriptions or personal photos are invented.
 
-31 tests pass and a release web build succeeds. Overnight backend checks used
+38 tests pass and Flutter analysis is clean. The overnight release web build succeeded. Overnight backend checks used
 mock AI and synthetic local fixtures. Shared live / phone / personal-photo quality
 acceptance remains pending; see RYAN.md and the staging morning report.

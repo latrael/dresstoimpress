@@ -146,6 +146,16 @@ def edit_tags(post_id: str, req: TagsEdit):
     return _view(post, req.user_id)
 
 
+@router.delete("/fitcheck/{post_id}")
+def delete_post(post_id: str, user_id: str):
+    """Owner removes their post (e.g. swapping seed posts for real fits)."""
+    post = _post(post_id, user_id)
+    if post["user_id"] != user_id:
+        raise HTTPException(403, "only the author can delete a post")
+    store.delete(COL, post_id)
+    return {"post_id": post_id, "deleted": True}
+
+
 @router.get("/fitcheck/{post_id}/shop")
 def shop(post_id: str, user_id: str):
     """Products for the post's tags, ranked against the viewer's closet (ai.service.shop_fit as-is)."""

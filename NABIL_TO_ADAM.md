@@ -2,7 +2,53 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~1:05 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~8:05 AM PT (morning report below is **final**). Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## ☀️ Morning report (Nabil's agent, overnight Sat Oct 24, final at 8:05): **Plan confirmed**, with 2 changes
+
+**Final checks at 7:35:** PR #14 shows MERGEABLE, staging + #15 + #14 merges clean with **275 tests passing**, and the backup server has been up all night on localhost. Staging and the handoffs were checked every 15 minutes, and no new asks for Nabil came in after 2:05 AM.
+
+**Plan confirmed.** Changes:
+1. The backup server runs on Nabil's laptop **on localhost only**. The agent wasn't allowed to open a public tunnel, and it doesn't have your `API_SHARED_KEY` (it's secret and was never shared). So Nabil starts the tunnel and swaps in your key at 9:15; it's one command, below.
+2. The checkout evidence ran on the **backup** server, not the shared one, for the same reason (no shared URL or key overnight). It's the same code and the real Nessie API, so the evidence is equally real.
+
+Everything is in **PR #14** (`nabil` → `staging`). Not merged; that's for 9:15.
+
+### Done
+| Item | Result |
+| --- | --- |
+| Backup server | Installed, seeded (`seed_demo` → `load_products --replace` → `seed_fitcheck`) into an **isolated data dir outside the repo**, running on `127.0.0.1:8000` with a temporary key. **`smoke_e2e`: 10/10** (feed 8/8 with reasons, size, try-on collage, complete the look, cart, checkout `paid`, Fit Check tag + shop). Without the key: 401. |
+| Checkout evidence for Capital One | 3 checkouts as `u_test_checkout` (H&M only, Uniqlo only, mixed). **4/4 purchases `paid`, and all 4 appear in Nessie's `GET /accounts/{id}/purchases`.** The cart was emptied afterwards. The ids are in `docs/devpost.md` (sandbox ids, not secrets). |
+| `docs/devpost.md` | Full draft: inspiration · what it does · how we built it (with your `ai-writeup.md` short version folded in) · challenges · accomplishments · learned · next. Sponsor-track table with evidence, plus the Nessie id table. **[confirm]** marks app-dependent claims. |
+| `docs/demo-script.md` | A 3-minute script: hook, then the flow (who talks, what's on screen, which route), a fallback per step, the close, and a judge Q&A crib. |
+| `scripts/post_real_fits.py` | Posts a photo folder over HTTP (`--base/--key`) as u_adam/u_nabil/u_ryan in turn, through multipart `POST /fitcheck` (AI pre-fills the tags). It then deletes `fc_seed_1..3`, **only if every photo posted**. Supports `--dry-run`, `--keep-seeds` and an optional `captions.txt`. |
+| New route (my lane) | **`DELETE /fitcheck/{post_id}?user_id=`**, owner-only (403 otherwise, 404 if gone). The script needs it to remove the seeds over HTTP. **254 tests pass** (248 + 6 new). |
+
+### Not done / needs a person
+- **Public URL for the backup:** blocked for the agent by design. Nabil does it at 9:15.
+- **Sponsor tracks to tick:** the team's call. The evidence for each is in `docs/devpost.md`. **Moss: not live** (Adam confirmed at 2:15 AM), so `devpost.md` now says don't tick it. Notability / Figma: Ryan to confirm. **Visa: never.**
+- **Ryan's retry question** (`nessie_failed`): not built. The proposal is `POST /orders/{order_id}/retry`, which retries only that order's failed stores and is safe to repeat. It needs the team's OK; I didn't build it unasked.
+- **`/fit`:** still off. Ryan hasn't approved it.
+
+### Adam: after you merge #14
+Restart the shared server (it adds `DELETE /fitcheck/{id}`). No reseed needed.
+
+### Nabil at 9:15 (in order)
+> The shared tunnel has been down since ~1:25 AM (Adam restarts it at 8:45, with a new URL). That makes step 2, your backup going public, the real fallback if 8:45 goes wrong.
+
+1. **Merge order (agreed with Adam at 8:10): #15 → #14 → #13** (#13 needs Ryan's OK). **Merge PR #14** after review (its tests pass: 254). **Checked together with Adam's #15:** staging + #15 + #14 merges with no conflicts, and **275 tests pass** (re-checked at ~2:00 against the latest #15). Either order works.
+2. **Backup server goes public** (it's already running on localhost):
+   - Put Adam's `API_SHARED_KEY` in `backend/.env`.
+   - Restart: `cd backend && pkill -f "uvicorn app.main"; DATA_DIR=~/dti-backup/data .venv/bin/uvicorn app.main:app --port 8000`
+   - Tunnel: `cloudflared tunnel --no-autoupdate --url http://localhost:8000` (cloudflared is installed now).
+   - Set `PUBLIC_BASE` to that URL, restart, and run `.venv/bin/python -m scripts.smoke_e2e --base <url> --key <key>`. DM the URL to Adam.
+3. **9:30 real fits:** take 3 photos as JPEGs into a folder, then:
+   - `python -m scripts.post_real_fits <folder> --dry-run --base <shared> --key <key>`
+   - then run it again without `--dry-run`.
+   - Fix tags with `PATCH /fitcheck/{id}/tags`, and check that "shop this fit" makes sense.
+4. Read `docs/devpost.md` and `docs/demo-script.md`, and resolve the **[confirm]** marks with Ryan.
 
 ---
 

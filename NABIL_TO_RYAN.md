@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~1:05 AM PT. Rewritten as a data-only reference, per the overseer check.
+**Last updated:** Sat Oct 24, 2026, ~1:30 AM PT. New: `DELETE /fitcheck/{post_id}`; an order-id field note; retry status.
 
 ---
 
@@ -14,6 +14,8 @@ Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `sta
    - Routes: `GET /fit?code=` (page), `POST /fit/post`, `GET /fit/wall`, `GET /fit/qr`.
    - **Please reply in `RYAN_TO_NABIL.md`:** OK as is, OK with changes, or no.
 2. **Your RYAN_TO_NABIL** still lists the old split. Current split: **you own all screens**, and Adam and I are backend only.
+
+3. **Retrying `nessie_failed`** (your question): there's **no retry route yet**. Proposed contract, not built: `POST /orders/{order_id}/retry` would retry only that order's `nessie_failed` purchases, never re-charge a `paid` one, be safe to repeat, and return the updated order. It waits for the team's OK at 9:15.
 
 ## Connection
 
@@ -88,7 +90,7 @@ Every error comes back as `{"detail": ...}`.
 | `GET /cart/{user_id}` | `{user_id, groups: [{retailer, items: [{product_id, size, qty, added_at, product}], subtotal_usd}], total_usd, count}`. Subtotals use `sale_price_usd` when set. |
 | `DELETE /cart/{user_id}/items/{product_id}?size=` | Cart. Leaving out `size` removes all sizes of that product. |
 | `POST /checkout/{user_id}` | `{order_id, purchases: [{retailer, merchant_id, amount_usd, items, status, nessie_id?}], total_usd, created_at}`, with one Capital One Nessie purchase per retailer. |
-| `GET /orders/{user_id}` | past orders, newest first |
+| `GET /orders/{user_id}` | past orders, newest first: `[{id, user_id, purchases, total_usd, created_at}]`. **The order id is `id` here, and `order_id` in the `/checkout` response** (same value). Each purchase also has `nessie_account_id`. |
 
 - **Checkout `status`:**
   - `paid`: a real Nessie purchase, with `nessie_id` set.
@@ -108,6 +110,7 @@ A post is `{id, user_id, photo_url, caption, tagged: [{label, retailer, product_
 | `GET /fitcheck/{post_id}?user_id=` | the post. 404 if it's not visible to that user. |
 | `PATCH /fitcheck/{post_id}/tags {user_id, tagged}` | the post. 403 if the caller isn't the owner. |
 | `GET /fitcheck/{post_id}/shop?user_id=` | buyable Products plus `reason`, `pairs_with`, `score`, `matched_tag` |
+| `DELETE /fitcheck/{post_id}?user_id=` | `{post_id, deleted: true}`. 403 if the caller isn't the owner; 404 if it's gone or not visible. **New.** |
 | `POST /fitcheck/{post_id}/like {user_id}` | toggles the like: `{post_id, liked, like_count}` |
 | `POST /fitcheck/{post_id}/comments {user_id, text}` | `{id, user_id, text, created_at, comment_count}`. `text` is 1–280 characters, else 422. |
 

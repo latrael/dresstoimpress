@@ -49,6 +49,7 @@ Claude (Anthropic) tags every product and closet photo and writes the pairings; 
 3. The cart is grouped by retailer, and each store gets one `POST /accounts/{id}/purchases`.
 4. Each store's purchase comes back `paid` with its `nessie_id`, or `nessie_failed` with the error. Without `NESSIE_API_KEY` it's `pending_nessie`.
 5. `GET /orders/{user_id}` lists past orders with their purchases.
+6. `POST /orders/{order_id}/retry?user_id=` re-attempts only that order's unpaid store purchases. A `paid` purchase is never charged twice, so it's safe to call repeatedly.
 
 **Quirks:** the API only answers over https (http hangs), and amounts are stored as integers (cents are dropped).
 

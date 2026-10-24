@@ -115,3 +115,104 @@ def test_orders_newest_first(env):
     buy("u_f", "hm-2")
     assert [o["id"] for o in c.get("/orders/u_e").json()] == [second, first]
     assert c.get("/orders/nobody").json() == []
+
+
+# ---------- POST /orders/{order_id}/retry ----------
+
+def test_retry_paid_order_is_noop(env):
+    c, calls, _, buy, _ = env
+    r = buy("u_r1", "hm-1", "uq-1").json()
+    calls.clear()
+    for _ in range(2):  # safe to repeat
+        again = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r1"})
+        assert again.status_code == 200 and again.json() == r
+    assert calls == []  # no new Nessie call
+
+
+def test_retry_failed_purchase_becomes_paid_and_leaves_paid_store_alone(env):
+    c, calls, fail, buy, store = env
+    buy("u_r2", "uq-1")  # caches the uniqlo merchant, so only hm can fail below
+    fail["on"] = "/merchants"  # hm's merchant creation fails; uniqlo pays
+    r = buy("u_r2", "hm-1", "uq-1").json()
+    ps = {p["retailer"]: p for p in r["purchases"]}
+    assert ps["hm"]["status"] == "nessie_failed" and ps["uniqlo"]["status"] == "paid"
+    uq_paid = ps["uniqlo"]
+
+    fail["on"] = None
+    calls.clear()
+    out = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r2"})
+    assert out.status_code == 200
+    ps = {p["retailer"]: p for p in out.json()["purchases"]}
+    assert ps["hm"]["status"] == "paid" and ps["hm"]["nessie_id"] and "error" not in ps["hm"]
+    assert ps["uniqlo"] == uq_paid  # the already-paid store is untouched
+    assert _n(calls, "/purchases") == 1  # only hm was charged
+    hm_body = next(b for m, p, b in calls if p.endswith("/purchases"))
+    assert hm_body["merchant_id"] == ps["hm"]["merchant_id"] and hm_body["amount"] == 13
+    stored = {p["retailer"]: p for p in store.get("orders", r["order_id"])["purchases"]}
+    assert stored["hm"]["status"] == "paid"
+
+    calls.clear()  # everything is paid now: retry is a no-op
+    assert c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r2"}).json() == out.json()
+    assert calls == []
+
+
+def test_retry_fails_again_stays_failed(env):
+    c, _, fail, buy, store = env
+    fail["on"] = "/purchases"
+    r = buy("u_r3", "hm-1").json()
+    out = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r3"})
+    assert out.status_code == 200
+    p = out.json()["purchases"][0]
+    assert p["status"] == "nessie_failed" and "400" in p["error"] and "test-key" not in p["error"]
+    assert p["retried_at"]
+    assert store.get("orders", r["order_id"])["purchases"][0]["status"] == "nessie_failed"
+
+
+def test_retry_one_retailer_only(env):
+    c, calls, fail, buy, _ = env
+    fail["on"] = "/purchases"
+    r = buy("u_r4", "hm-1", "uq-1").json()
+    fail["on"] = None
+    calls.clear()
+    out = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r4", "retailer": "uniqlo"}).json()
+    ps = {p["retailer"]: p for p in out["purchases"]}
+    assert ps["uniqlo"]["status"] == "paid" and ps["hm"]["status"] == "nessie_failed"
+    assert _n(calls, "/purchases") == 1
+    assert c.post(f"/orders/{r['order_id']}/retry",
+                  params={"user_id": "u_r4", "retailer": "zara"}).status_code == 404
+
+
+def test_retry_pending_needs_key(env, monkeypatch):
+    c, calls, _, buy, _ = env
+    monkeypatch.setenv("NESSIE_API_KEY", "")
+    r = buy("u_r5", "hm-1").json()
+    out = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r5"})
+    assert out.status_code == 503 and calls == []
+    monkeypatch.setenv("NESSIE_API_KEY", "test-key")
+    out = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "u_r5"}).json()
+    assert out["purchases"][0]["status"] == "paid"
+
+
+def test_retry_does_not_touch_other_orders(env):
+    c, _, fail, buy, store = env
+    fail["on"] = "/purchases"
+    first = buy("u_r6", "hm-1").json()
+    second = buy("u_r6", "hm-2").json()
+    fail["on"] = None
+    c.post(f"/orders/{first['order_id']}/retry", params={"user_id": "u_r6"})
+    assert store.get("orders", first["order_id"])["purchases"][0]["status"] == "paid"
+    assert store.get("orders", second["order_id"])["purchases"][0]["status"] == "nessie_failed"
+
+
+def test_retry_404_and_403(env):
+    c, calls, fail, buy, store = env
+    fail["on"] = "/purchases"
+    r = buy("u_r7", "hm-1").json()
+    fail["on"] = None
+    calls.clear()
+    assert c.post("/orders/nope/retry", params={"user_id": "u_r7"}).status_code == 404
+    bad = c.post(f"/orders/{r['order_id']}/retry", params={"user_id": "someone_else"})
+    assert bad.status_code == 403 and bad.json() == {"detail": "not your order"}
+    assert c.post(f"/orders/{r['order_id']}/retry").status_code == 422  # user_id is required
+    assert calls == []
+    assert store.get("orders", r["order_id"])["purchases"][0]["status"] == "nessie_failed"

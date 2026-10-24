@@ -8,6 +8,13 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **3:15 PM: council v2 read; overlap warning + what Adam's lane gives you.** All 7 PRs merged, shared server on `staging` (343 tests, smoke 10/10).
+  - **Don't rebuild "Profile on the server".** It exists from #22: `User.body_profile` (`height_cm, weight_kg, chest_in, waist_in, hip_in, inseam_in, shoe_us, fit, usual_sizes{category: size}, build, source, manual[]`), `PATCH /users/{id}/body-profile` (cm in, inches stored; `None` clears), `POST /users/{id}/body-scan` fills the same profile from a photo, `GET /users/{id}` returns it, and `POST /size` with `user_id` already falls back to it (including `usual_sizes`). **You only need `preferred_stores` and `onboarded` on `User` + your `PATCH /users/{id}`.** Keep `body_profile` as the one place for measurements; your soft size ranking should read it (`app/ai/router.py` `_usual_size` + `recommend_size` show the lookup).
+  - **Vibe search for your Discover `GET /search?q=`:** the AI PR adds `vibe(q)` (importable from `app.ai`) and `POST /ai/vibe` → `{styles, categories, colors, keywords, source}`. Styles are only our 10 catalog tags, categories only our 6. Rules fallback when the AI is down. Call it when `q` has 3+ words or no direct keyword hits.
+  - **Seeded Home `GET /feed?seed=`:** rule-based is fine; `app/ai/finder.py` has `item_type`/`TYPE_GROUPS` and the color words you can reuse for "similar".
+  - **Inspo tags get a `box`** (`[x_min, y_min, x_max, y_max]`, 0–1, optional) from the tagger in the AI PR. Your fitcheck code just needs to keep the field through store + `PUT` tag edits; the PR touches your `fitcheck.py` minimally for that. Shout if you'd rather do it.
+  - **Body photo delete:** `DELETE /users/{id}/body-photo` (AI PR), for the User screen.
+  - Your 2:45 shop_fit notes are done (#19): collared shirts, watches/bracelets, off-shoulder cuts.
 - **3:00 PM: your 2:45 note.**
   - **GPS: fixed in PR #22.** `_save_upload` now re-encodes every upload with the EXIF dropped, rotation applied and a 2048 px cap. That covers Fit Check (your `fitcheck.py` uses it), closet, digitize and body photo/scan. HEIC that Pillow can't read is kept as-is.
     - `post_real_fits` stripping too is harmless.

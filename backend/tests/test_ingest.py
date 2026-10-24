@@ -8,8 +8,8 @@ from pathlib import Path
 
 os.environ["MOCK_AI"] = "1"
 
-from app.commerce.ingest import (guess_category, hm_category, normalize_hm,  # noqa: E402
-                                 normalize_uniqlo, process)
+from app.commerce.ingest import (gallery, guess_category, hm_category, normalize_hm,  # noqa: E402
+                                 normalize_uniqlo, plain_text, process)
 from app.models import Product  # noqa: E402
 
 FIX = Path(__file__).parent / "fixtures"
@@ -76,6 +76,50 @@ def test_uniqlo_sold_out_colors_last_and_sale_price():
     assert all(p["sale_price_usd"] is None for p in out)  # promo == base is not a sale
     mini = normalize_uniqlo([next(r for r in UQ if r["productId"] == "E465760-000")])
     assert mini[0]["price_usd"] == 19.9 and mini[0]["sale_price_usd"] == 14.9
+
+
+def test_hm_gallery_same_colour_deduped():
+    raw = next(r for r in HM if r["id"] == "1361447006")
+    p = next(p for p in normalize_hm(HM) if p["id"] == "hm:1361447006:burgundy-striped")
+    urls = [i["url"] for i in p["images"]]
+    assert urls[0] == p["image_url"] and len(urls) == len(set(urls)) == 5  # model_image repeated in images[]
+    assert urls == [f"{u}?imwidth=657" for u in [raw["model_image"], *raw["images"][:4]]]
+    assert {i["kind"] for i in p["images"]} == {"retailer_model"}
+    other = {f"{w['image']}?imwidth=657" for w in raw["swatches"]}
+    assert not other & set(urls)  # swatches (incl. other colours) never used
+    single = next(p for p in normalize_hm(HM) if p["id"].startswith("hm:1360320001"))
+    assert single["images"] == [{"url": single["image_url"], "kind": "retailer_model"}]
+    assert all(p["description"] is None for p in normalize_hm(HM))  # the H&M actor has no description
+
+
+def test_uniqlo_gallery_is_own_colour_photo_only():
+    out = normalize_uniqlo(UQ)
+    for p in out:
+        assert p["images"] == [{"url": p["image_url"], "kind": "product"}]  # subImages aren't per colour
+    sub = {u for r in UQ for u in r["subImages"]}
+    assert not sub & {i["url"] for p in out for i in p["images"]}
+
+
+def test_uniqlo_description_plain_text():
+    by = {p["id"].split(":")[1]: p for p in normalize_uniqlo(UQ)}
+    assert by["E488230-000"]["description"] == "- Ribbed binding at the collar helps the neckline keep its shape."
+    mini = by["E465760-000"]["description"]
+    assert mini.startswith("A sleek, cropped women’s Mini T-Shirt") and mini.endswith("\nCropped length.\nFitted.")
+    assert "<" not in mini and "&" not in mini
+    assert by["E470143-000"]["description"] is None  # fixture has none
+
+
+def test_gallery_and_plain_text_helpers():
+    assert gallery(("a", "retailer_model"), ("b", "product"), ("a", "product"), (None, "product")) == \
+        [{"url": "b", "kind": "product"}, {"url": "a", "kind": "retailer_model"}]
+    assert plain_text("<p>Soft&nbsp;&amp;  warm.</p><ul><li>One</li><li> Two </li></ul>") == "Soft & warm.\nOne\nTwo"
+    assert plain_text("  ") is None and plain_text(None) is None and plain_text(3) is None
+
+
+def test_product_without_images_or_description_validates():
+    p = Product(id="hm:1:black", retailer="hm", name="Tee", brand="H&M", category="top", price_usd=9.99,
+                image_url="https://x/1.jpg", product_url="https://x/1")
+    assert p.images == [] and p.description is None
 
 
 def test_ids_stable():

@@ -1,7 +1,7 @@
 [
  {
   "productId": "E488230-000",
-  "name": "SUPIMA\u00ae Cotton T-Shirt | Long Sleeve",
+  "name": "SUPIMA® Cotton T-Shirt | Long Sleeve",
   "price": 19.9,
   "promoPrice": 19.9,
   "basePrice": 19.9,
@@ -475,7 +475,23 @@
     "stockQuantity": 0,
     "inStock": false
    }
-  ]
+  ],
+  "subImages": [
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/488230/sub/goods_488230_sub11_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/488230/sub/goods_488230_sub12_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/488230/sub/goods_488230_sub14_3x4.jpg"
+  ],
+  "images": [
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488230/item/usgoods_35_488230_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488230/item/usgoods_04_488230_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488230/item/usgoods_09_488230_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488230/item/usgoods_15_488230_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/488230/sub/goods_488230_sub11_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/488230/sub/goods_488230_sub12_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/488230/sub/goods_488230_sub14_3x4.jpg"
+  ],
+  "description": "- Ribbed binding at the collar helps the neckline keep its shape.",
+  "descriptionLong": "- Ribbed binding at the collar helps the neckline keep its shape."
  },
  {
   "productId": "E465760-000",
@@ -1292,7 +1308,31 @@
     "stockQuantity": 11,
     "inStock": true
    }
-  ]
+  ],
+  "subImages": [
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/sub/usgoods_465760_sub1_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/sub/usgoods_465760_sub3_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/sub/usgoods_465760_sub4_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/465760/sub/goods_465760_sub11_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/465760/sub/goods_465760_sub14_3x4.jpg"
+  ],
+  "images": [
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_18_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_00_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_03_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_09_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_34_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_37_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_41_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_66_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/item/usgoods_69_465760_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/sub/usgoods_465760_sub1_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/sub/usgoods_465760_sub3_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/465760/sub/usgoods_465760_sub4_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/465760/sub/goods_465760_sub11_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/465760/sub/goods_465760_sub14_3x4.jpg"
+  ],
+  "descriptionLong": "<p>A sleek, cropped women&rsquo;s Mini T-Shirt designed for a modern, very fitted silhouette with clean lines that style easily from day to night. This baby tee–inspired design features a mini length and close-to-body shape for a streamlined look, while the cotton-blend fabric offers a smooth, natural texture. Matching fabric trim at the crew neckline keeps the finish neat, making it easy to wear on its own or layer under jackets, cardigans, or an oversized shirt for everyday styling.\n- Cropped mini length creates a modern silhouette that pairs well with high-rise straight-leg jeans, skirts, or wide-leg pants.\n- Very fitted shape delivers a sleek profile compared to a standard-length T-shirt.\n- Cotton blend fabric provides a smooth, natural texture suitable for year-round wear and seasonal layering.\n- Classic crew neck with matching fabric trim offers a clean neckline finish for polished casual outfits.\n- Short sleeves support versatile styling in warm weather and layer smoothly under lightweight jackets or mid-weight fleece pieces.\n- The 01 Off White color is slightly sheer depending on lighting and layering.\n- Minimalist design transitions easily from casual denim looks to more styled outfits with tailored layers.</p>\n<ul><li>Cropped   length.</li><li>Fitted.</li></ul>"
  },
  {
   "productId": "E470143-000",
@@ -2287,6 +2327,29 @@
     "stockQuantity": 11,
     "inStock": true
    }
+  ],
+  "subImages": [
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/sub/usgoods_470143_sub3_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470143/sub/goods_470143_sub11_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470143/sub/goods_470143_sub12_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470143/sub/goods_470143_sub17_3x4.jpg"
+  ],
+  "images": [
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_15_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_01_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_03_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_08_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_09_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_10_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_12_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_32_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_39_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_61_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/item/usgoods_79_470143_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/470143/sub/usgoods_470143_sub3_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470143/sub/goods_470143_sub11_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470143/sub/goods_470143_sub12_3x4.jpg",
+   "https://image.uniqlo.com/UQ/ST3/WesternCommon/imagesgoods/470143/sub/goods_470143_sub17_3x4.jpg"
   ]
  }
 ]

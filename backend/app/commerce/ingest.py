@@ -11,6 +11,7 @@ Normalizers are pure (no network) so they run on saved raw pulls too (scripts/in
 """
 from __future__ import annotations
 
+import html
 import logging
 import os
 import re
@@ -90,6 +91,34 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _hm_url(u: str) -> str:
+    return f"{u}?imwidth=657" if "?" not in u else u
+
+
+def gallery(*imgs: tuple[str | None, str]) -> list[dict]:
+    """(url, kind) pairs -> ProductImage dicts: de-duped, garment-only ("product") first, else in order."""
+    seen, out = set(), []
+    for url, kind in imgs:
+        if url and url not in seen:
+            seen.add(url)
+            out.append({"url": url, "kind": kind})
+    return sorted(out, key=lambda i: i["kind"] != "product")  # stable
+
+
+_BREAK = re.compile(r"<br\s*/?>|</(?:p|li|div|h\d)>", re.I)
+_TAG = re.compile(r"<[^>]+>")
+
+
+def plain_text(s) -> str | None:
+    """Retailer text/HTML -> plain text: tags stripped, entities decoded, spaces collapsed, one line per
+    paragraph/bullet. None if empty."""
+    if not isinstance(s, str):
+        return None
+    s = html.unescape(_TAG.sub(" ", _BREAK.sub("\n", s)))
+    lines = (" ".join(line.split()) for line in s.splitlines())
+    return "\n".join(line for line in lines if line) or None
+
+
 def _valid(p: dict) -> dict | None:
     try:
         return Product(**p).model_dump()
@@ -153,8 +182,12 @@ def normalize_hm(raw: list[dict], drops: Counter | None = None) -> list[dict]:
             "colors": [color] if color else [],
             "sizes": sizes,
             "in_stock": any(s["in_stock"] for s in sizes) if sizes else True,
-            "image_url": f"{img}?imwidth=657" if "?" not in img else img,
+            "image_url": _hm_url(img),
             "product_url": it.get("url") or "",
+            # model_image + images[] are this article (= this colour) only; swatches[] are other
+            # colours, so never used. No flag says which shots are garment-only: all retailer_model.
+            "images": gallery(*((_hm_url(u), "retailer_model") for u in [img, *(it.get("images") or [])] if u)),
+            "description": plain_text(it.get("description")),  # the H&M actor doesn't return one
             "scraped_at": now,
             "source": "ingest",
         })
@@ -229,6 +262,10 @@ def normalize_uniqlo(raw: list[dict], drops: Counter | None = None,
                 "in_stock": any(s["in_stock"] for s in sizes) if sizes else True,
                 "image_url": c["imageUrl"],
                 "product_url": f"{url}?colorDisplayCode={code}" if url and code else url,
+                # subImages aren't keyed by colour (may show another one), so only this colour's photo
+                "images": gallery((c["imageUrl"], "product")),
+                "description": plain_text(it.get("descriptionLong") or it.get("description")
+                                          or it.get("descriptionShort")),
                 "scraped_at": now,
                 "source": "ingest",
             })

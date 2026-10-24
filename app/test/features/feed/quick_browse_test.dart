@@ -5,21 +5,21 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../lib/features/feed/quick_browse.dart';
 
 Map<String, dynamic> product(String id, {int photos = 2}) => {
-  'id': id,
-  'name': 'Piece $id',
-  'brand': 'H&M',
-  'price_usd': 20,
-  'description': 'Description for $id',
-  'in_stock': true,
-  'images': List.generate(
-    photos,
-    (i) => {'url': 'https://example.com/$id/$i.jpg'},
-  ),
-  'sizes': [
-    {'name': 'S', 'in_stock': true},
-    {'name': 'M', 'in_stock': false},
-  ],
-};
+      'id': id,
+      'name': 'Piece $id',
+      'brand': 'H&M',
+      'price_usd': 20,
+      'description': 'Description for $id',
+      'in_stock': true,
+      'images': List.generate(
+        photos,
+        (i) => {'url': 'https://example.com/$id/$i.jpg'},
+      ),
+      'sizes': [
+        {'name': 'S', 'in_stock': true},
+        {'name': 'M', 'in_stock': false},
+      ],
+    };
 
 void main() {
   Future<void> mount(
@@ -109,6 +109,16 @@ void main() {
         tester.widget<FilledButton>(find.byType(FilledButton).first).onPressed,
         isNull,
       );
+      await tester.drag(
+          find.byKey(const ValueKey('details-b')), const Offset(0, 1000));
+      await tester.pumpAndSettle();
+      final returnedPhotos = find.byKey(const ValueKey('photos-a'));
+      expect(tester.widget<PageView>(returnedPhotos).controller!.page, 0);
+      expect(
+          tester
+              .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'S').first)
+              .selected,
+          isFalse);
     },
   );
 

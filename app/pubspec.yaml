@@ -1,5 +1,5 @@
 name: dress_to_impress
-description: Optional reference Dart API client + models for the dresstoimpress backend (not the app).
+description: Niche clothing discovery app.
 publish_to: none
 version: 0.1.0
 
@@ -19,3 +19,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/demo-products.json

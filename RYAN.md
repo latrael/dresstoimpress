@@ -1,102 +1,83 @@
-# Ryan: frontend status and integration notes
+# Ryan: Flutter app status
 
-Last reviewed: October 23, 2026 (Pacific).
-Working branch: `RyanFrontendking` (use this exact name).
+Reviewed October 23, 2026 (Pacific). Branch: `RyanFrontendking`.
 
-## Scope and stack
+## Current ownership and references
 
-Ryan owns the FlutterFlow iPhone app, Notability wireframes, optional Figma design,
-demo recording, and pitch slides. Keep the implementation within the tools named
-in the Notion playbook. The initial prototype uses mock data inside FlutterFlow;
-Firebase and the shared FastAPI service are later integration points.
-FlutterFlow generated project `Niche` (`niche-4k1al0`) with Home, Discover, Social,
-and Cart. The first draft is visible in the editor; gestures have not been
-verified. Ryan requested a closer match to the wireframe. See
-`frontend/QUICK_BROWSE.md` and `frontend/quick-browse.mock.json` for the pending
-revision and its sample data. UI edits are blocked by unreliable desktop input
-and browser automation timeouts; do not report this revision as implemented.
+Ryan explicitly approved plain Flutter and owns every app screen and all design.
+Adam maintains AI/backend hosting and the shared `app/lib/core`; Nabil maintains
+commerce. Earlier FlutterFlow and split-screen assignments are superseded.
 
-## Coordination before implementation and integration
+Design references: `WireframeSketch.pdf` (both pages), Ryan's accepted Quick Browse
+mock-up, and `frontend/QUICK_BROWSE.md`. Preserve the ivory/burgundy layout, bounded
+photo carousel, dots, price overlay, details, sizes and Add to Cart. Home has a
+suggested grid and persistent search; Home / Discover / Social navigation stays
+outside the product carousel. Do not invent retailer descriptions or model stats.
 
-Refresh remote references and read the latest Markdown on `origin/staging`,
-`origin/adam/ai-pipeline`, and `origin/nabil` before changes that affect integration.
-Read `backend/app/models.py` on staging to verify the actual shared types.
-Record conflicts here rather than silently choosing a new backend contract.
-Do not edit Adam's AI layer or Nabil's commerce layer as part of frontend work.
-Shared docs specify PRs into `staging`, followed by end-to-end integration before
-`staging` goes to `main`. Do not merge other branches just to inspect their files.
+## Team review and branch integration
 
-Reviewed snapshots:
+Read all distinct Markdown file versions on staging, adam/ai-pipeline, nabil,
+flutter-starter and Ryan's branch. Full review includes progress, app plan, schema,
+backend README, both backend lanes' status and directional handoffs, old requests,
+and local frontend specifications. Newer staging/Adam ownership notes supersede
+old SwiftUI / FlutterFlow / optional-reference-only plans.
 
-- `origin/staging`: `2bada98`; shared schema, models and schema changes.
-- `origin/adam/ai-pipeline`: `2bada98`; `ADAM.md`, `docs/schema.md`,
-  `docs/progress.md`, and previously reviewed backend instructions.
-- `origin/nabil`: `27f8fdf`; updated `NABIL.md`, ingest normalization and fixtures.
+Reviewed staging 5c320be, Adam e27baa9, Nabil e2ea844 and starter 1b4aff2.
+Merged staging and flutter-starter into RyanFrontendking. The only conflict was
+an older NABIL_TO_RYAN.md added on Ryan's branch; kept staging's newer handoff.
+No backend or core implementation was edited.
 
-## Product contract for frontend mocks
+## Implemented
 
-Use staging's `Product` names: `id`, `retailer`, `name`, `brand`, `category`,
-`price_usd`, `sale_price_usd`, `currency`, `colors`, `sizes`, `in_stock`,
-`image_url`, `product_url`, `style_tags`, `pattern`, `formality`, `label`,
-`scraped_at`, and `source`. Follow model defaults for optional fields.
+The real project now runs from `app/`, rather than a temporary preview:
+- Home suggested grid opens the selected product in Quick Browse.
+- Persistent search filters the currently loaded suggestions; it is not full
+  catalog search or natural-language onboarding yet.
+- Photo-only horizontal paging and active dots; vertical product paging and
+  detail scrolling; mouse, touch and trackpad input supported.
+- Retailer/name/description fallback, optional pairing reason, correct sale price,
+  actual size labels and stock. Save/double-tap uses wishlist PUT; unsave DELETE.
+- Shared core Feed/wishlist/cart adapters and image proxy routing. Browsing never
+  calls `/swipe`. Failed account reads preserve the visible feed and block writes
+  until retry, so unknown saved/cart state isn't silently overwritten.
+- Cart grouped by retailer, removal, subtotals, total, explicit sandbox checkout,
+  receipts, payment-status distinctions and order history. Stock-change 409 errors
+  retain the cart and identify unavailable items.
+- Device-local connection settings. Explicit demo mode uses 12 catalog snapshot
+  products with local cart/wishlist and a receipt labeled as no payment processed.
+- Initial Social feed and Shop this fit entry use the shared routes; posting,
+  comments and full social interactions remain pending.
 
-- Sizes are objects with `name` and `in_stock`. Grey out unavailable sizes and
-  require an available size before adding to cart.
-- Categories are singular: `top`, `bottom`, `outerwear`, `shoes`, `dress`, `accessory`.
-- Retailers: `zara`, `hm`, `asos`, `uniqlo`, `mango`. Do not promise live inventory
-  for all five: Nabil reports ingest/size availability risks.
-- Keep stable product IDs when saving or adding items to cart.
-- Pairing results are separate from Product: `product_id`, `id`, `score`, `reason`,
-  `pairs_with`. Associate them by product ID.
-- Cart adds use `{product_id, size, qty}`. Confirmation groups purchases by
-  retailer. Nabil reports commerce implemented; this chat has not tested it live.
+## Verification
 
-Nabil's updated notes explicitly retire his earlier draft. Both lanes now agree
-on staging's schema. Nabil reports 370 H&M/Uniqlo products loaded; no shoes or
-accessories yet. His newer notes supersede the older commerce status in
-`docs/progress.md`. Verify actual feed responses before wiring the app.
+Flutter 3.47.6 / Dart 3.13.5. `flutter analyze` clean and eight tests pass, including
+original gesture checks plus shared API/cart flow, checkout 409, partial account
+failure and image-proxy URL preservation.
 
-## First prototype: Quick Browse
+Private backend details entered only into device-local connection settings, never
+Git or handoffs. Live checks: unauthenticated health 200/ok, authenticated feed with
+limit 5 returned five products with galleries/sizes, image proxy 200 image/jpeg.
+The actual browser app connects, loads the live feed and shows retailer photos.
+Mouse-driven gallery paging and the description gesture boundary were verified in the live browser. Live wishlist save also succeeded. Live size-M cart add and removal also succeeded, and the test wishlist membership was restored. Vertical paging reached a single-photo Uniqlo item with its real description and disabled unavailable sizes. No live checkout has been executed.
 
-Build a small mock catalog that users can browse without API credentials:
+## Core gaps to Adam
 
-- Horizontal movement inside a product image carousel changes images.
-- Vertical movement between product cards changes products.
-- Double-tap saves a product; an explicit button adds the selected size to cart.
-- Display image, price, retailer, product description, sizes, and a mock pairing
-  reason. Position dots track the photo index. Restrict horizontal swipes to the
-  bounded photo area; description and controls are outside the carousel.
-- Handle empty results, missing images, unavailable sizes, and the last product.
+The published starter at 1b4aff2 differs from its README: imageUrl only resolves
+relative paths and doesn't proxy retailer images. The app currently wraps the
+already documented `/img?url=` route in StoreController; please provide the core
+helper later. Core also lacks Nabil's newer users/onboarding/search routes and
+Style DNA apply. pubspec currently has http/shared_preferences, without image_picker.
+No speculative backend changes or second API transport were introduced.
 
-The wireframe's gestures differ from the earlier playbook's right/cart,
-down/wishlist, left/discard mapping. The frontend proposal follows the wireframe;
-backend actions now documented as `like`, `save`, `discard`. Any `/swipe` call
-removes that product from the feed: never call it for photo or passive product
-browsing. Keep explicit save/cart actions separate from gesture navigation.
+## Next work
 
-The shared Product currently has one `image_url`, not a gallery, description or
-model details. Extra mock gallery images/descriptions stay in frontend fixture data;
-do not add them to the shared API contract without team agreement. Personal try-on
-is a separate `POST /tryon` result (`image_url`, `cached`, `mode`). Respect
-`mode: collage` as an outfit board, not a personal try-on. Show mock try-on as a
-demo placeholder, never as a real generated result.
+- Finish remaining feature flows after the verified Feed/cart checkpoint.
+- Size-advice input, personal try-on slide (collage labeled Outfit board), complete
+  the look/Fit Score, product details.
+- Onboarding, full search/paging after core catches up with Nabil's new routes.
+- Fit Check creation/likes/comments, Closet and Profile/Style DNA.
+- iPhone verification on Adam's Mac; Xcode can wait on Ryan's machine.
 
-## Integration dependencies
-
-- Nabil: confirm feed shape, paging/search, saved-item/swipe action values, cart
-  responses, and Fit Check routes once implemented.
-- Adam: pairing and try-on shapes are documented in `backend/README.md`.
-  `MOCK_AI=1` is a backend setting, distinct from local FlutterFlow fixtures.
-- A phone-accessible backend URL is needed; laptop localhost is not sufficient.
-- All external service calls go through FastAPI; no service keys in the app.
-- Adam's latest `ADAM.md` reports AI try-on working after billing cleared, with
-  an outfit-board fallback. This supersedes his older progress document's blocker.
-  Keep browsing usable without try-on.
-
-## Handoff to Nabil
-
-Ryan requested `ryan-nabil.md` directly on Nabil's branch. Published through the
-GitHub connector in commit `1870a1818ce0d547f514cdde52feb55c3b4d95fa` on `nabil`.
-It requests additive descriptions/gallery metadata and independent, idempotent
-wishlist operations; these are requests, not claims of implemented backend APIs.
-No agent was messaged. Continue checking the branch docs for implementation updates.
+Read and write all handoffs on staging. Publish implementation on RyanFrontendking;
+PRs target staging, never main. No service credentials or private tunnel details
+belong in code, screenshots, docs or Git.

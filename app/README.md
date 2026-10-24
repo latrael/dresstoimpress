@@ -2,7 +2,24 @@
 
 **Ryan owns the app and its design.** This folder gives his features a project to live in and a tested connection to the backend. Everything visual in it is a placeholder for Ryan to replace.
 
-## What's here
+## Current app status
+
+Ryan's shell and Feed are integrated: Home grid, Quick Browse, saved items, local
+or live cart, sandbox checkout/receipt/order history, connection settings and an
+initial Social feed/shop entry. The PDF and accepted Quick Browse mock-up remain
+the design reference. Full feature status and remaining work are in `../RYAN.md`.
+
+For a browser already installed on the machine:
+
+```sh
+flutter pub get
+flutter run -d web-server --web-hostname 127.0.0.1 --web-port 5218
+```
+
+Open the local URL. Demo is explicitly local; Connect switches to the private
+backend through device settings. No credentials or private server URL are in Git.
+
+## Shared starter contents (historical description)
 
 - `pubspec.yaml`: package `dress_to_impress`, Flutter 3.47.x. Dependencies: `http`, `shared_preferences`, `image_picker`; dev: `flutter_test`, `flutter_lints`.
 - `lib/main.dart`: a bare entry point with a URL + key screen and "Test connection". **Placeholder;** Ryan replaces it with his shell.

@@ -24,6 +24,7 @@ class QuickBrowse extends StatefulWidget {
 class _QuickBrowseState extends State<QuickBrowse> {
   final pages = PageController();
   bool paging = false;
+  int active = 0;
 
   @override
   void dispose() {
@@ -50,9 +51,11 @@ class _QuickBrowseState extends State<QuickBrowse> {
     return PageView.builder(
       controller: pages,
       scrollDirection: Axis.vertical,
+      onPageChanged: (index) => setState(() => active = index),
       itemCount: widget.products.length,
       itemBuilder: (context, index) => _ProductPage(
         key: ValueKey(widget.products[index]['id']),
+        active: index == active,
         product: widget.products[index],
         saved: widget.savedIds.contains(widget.products[index]['id']),
         onSave: widget.onSave,
@@ -75,6 +78,7 @@ class _ProductPage extends StatefulWidget {
     required this.imageUrl,
     required this.position,
     required this.onBoundary,
+    required this.active,
   });
   final Map<String, dynamic> product;
   final bool saved;
@@ -83,6 +87,7 @@ class _ProductPage extends StatefulWidget {
   final String Function(String) imageUrl;
   final String position;
   final void Function(int direction) onBoundary;
+  final bool active;
 
   @override
   State<_ProductPage> createState() => _ProductPageState();
@@ -95,6 +100,19 @@ class _ProductPageState extends State<_ProductPage> {
   bool adding = false;
   String? error;
   final PageController photos = PageController();
+
+  @override
+  void didUpdateWidget(covariant _ProductPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active && !widget.active) {
+      photo = 0;
+      size = null;
+      error = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && photos.hasClients) photos.jumpToPage(0);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -194,22 +212,25 @@ class _ProductPageState extends State<_ProductPage> {
                                       itemCount: gallery.length,
                                       onPageChanged: (i) =>
                                           setState(() => photo = i),
-                                      itemBuilder: (context, i) => Image.network(
+                                      itemBuilder: (context, i) =>
+                                          Image.network(
                                         widget.imageUrl(gallery[i]),
                                         fit: BoxFit.contain,
+                                        webHtmlElementStrategy:
+                                            WebHtmlElementStrategy.prefer,
                                         semanticLabel:
                                             '${p['name']}, photo ${i + 1}',
                                         errorBuilder: (_, error, stack) =>
                                             const _ImageFailure(),
                                         loadingBuilder: (_, child, progress) =>
                                             progress == null
-                                            ? child
-                                            : const Center(
-                                                child:
-                                                    CircularProgressIndicator(
+                                                ? child
+                                                : const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
                                                       strokeWidth: 2,
                                                     ),
-                                              ),
+                                                  ),
                                       ),
                                     ),
                             ),
@@ -355,9 +376,9 @@ class _ProductPageState extends State<_ProductPage> {
                           selected: size == s['name'],
                           onSelected:
                               s['in_stock'] == true && p['in_stock'] != false
-                              ? (_) =>
-                                    setState(() => size = s['name'] as String)
-                              : null,
+                                  ? (_) =>
+                                      setState(() => size = s['name'] as String)
+                                  : null,
                         ),
                       )
                       .toList(),
@@ -382,8 +403,8 @@ class _ProductPageState extends State<_ProductPage> {
                       adding
                           ? 'Adding…'
                           : size == null
-                          ? 'Choose a size'
-                          : 'Add to Cart',
+                              ? 'Choose a size'
+                              : 'Add to Cart',
                     ),
                   ),
                 ),
@@ -410,13 +431,13 @@ class _ImageFailure extends StatelessWidget {
   const _ImageFailure();
   @override
   Widget build(BuildContext context) => const Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.image_outlined, size: 36),
-        SizedBox(height: 8),
-        Text('Photo unavailable'),
-      ],
-    ),
-  );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.image_outlined, size: 36),
+            SizedBox(height: 8),
+            Text('Photo unavailable'),
+          ],
+        ),
+      );
 }

@@ -1,96 +1,49 @@
-# Quick Browse: wireframe revision
+# Quick Browse: Ryan's accepted design
 
-Status: implementation specification and sample fixtures prepared. Not yet applied
-or tested in FlutterFlow. Project `Niche` (`niche-4k1al0`) exists in FlutterFlow.
+Status: implemented in plain Flutter under `app/lib/features/feed/`. Ryan approved
+its mock-up and requested continuing with the original two-page WireframeSketch.pdf.
+Earlier FlutterFlow-specific implementation notes are superseded.
 
-## User-approved layout
+## Layout and gestures
 
-Follow `WireframeSketch.pdf` and Ryan's October 23 clarification. Preserve the
-existing size choices and Add to Cart button. Edit Discover/Quick Browse only.
+1. Compact header with cart access; persistent Home / Discover / Social navigation.
+2. A bounded picture area roughly in the upper half of the screen. Horizontal
+   PageView includes pictures only, with contain fit, no autoplay and no wrapping.
+3. Price overlay at the picture's lower right. Show the sale price when lower,
+   striking through the original price. Exactly one currency symbol.
+4. Position dots immediately below the picture; no dots for a single image.
+5. Retailer and product name, readable description or honest retailer fallback,
+   and pairing reason only when supplied. Do not invent fabric or model stats.
+6. Product-provided sizes, unavailable choices disabled, then Add to Cart.
+7. Description, sizes, cart button, search and navigation stay outside the photo
+   carousel. Horizontal drags there do not change photos.
+8. Vertical browsing changes products; details scroll on shorter screens and
+   continue to the next product at the scroll boundary. Reset new-product state.
+9. Double-tap a photo saves; explicit heart remains. Save uses independent wishlist
+   PUT/DELETE. Photo changes and passive product browsing NEVER call `/swipe`.
+10. Failed images stay bounded and leave controls usable.
 
-1. Compact header above the product, with cart access.
-2. A bounded picture area with a horizontal PageView. The carousel wraps only
-   image slides, not the product description, controls, or entire screen.
-3. Price overlay at the lower right of the picture area, formatted with one `$`.
-4. Centered position dots directly beneath the picture area. One dot per actual
-   image; current dot is filled/darker. Update on every page change in either
-   direction. No autoplay or infinite wrapping.
-5. Retailer and product name, followed by a readable product description.
-6. Fit/model information only if supplied. Do not invent measurements or fabric.
-7. Size picker, with unavailable options disabled, then Add to Cart.
-8. Existing bottom navigation remains outside the image carousel.
+Page 1 of the PDF also defines Home's suggested grid, persistent search and entry
+into Quick Browse. Page 2 shows retailer model photos and personal try-on slides.
+Personal try-on is the next phase; never put personal generated images in the
+shared catalog. A collage response is labeled Outfit board.
 
-The image block should occupy roughly the upper half of an iPhone screen, rather
-than acting as a full-screen hero. Keep the whole garment visible (contain fit).
-Allow details to scroll vertically on smaller displays.
+## Shared data and app integration
 
-## Gesture boundaries
+Use `app/lib/core/models.dart` and the shared API client. Product names remain
+snake_case over the wire, with `images[{url,kind}]`, nullable `description` and
+`sizes[{name,in_stock}]`. The app adapter bridges typed models to Quick Browse.
+H&M descriptions are absent; Uniqlo usually has one image. No duplicated slides or
+borrowed garments. Model kinds do not reliably identify garment-only H&M photos.
 
-- Horizontal drag starting inside the picture area changes only its photo.
-- Horizontal drag on description, sizes, cart button, header, or bottom navigation
-  must not change the photo or navigate to another product/tab.
-- Vertical browsing moves between products and must not change image index.
-- Double-tap on a photo saves; preserve the explicit save button too.
-- Reset the photo index to zero when switching to a different product. Size
-  selection must belong to its product and cannot leak into another item.
-- Display exactly one image, with no dots, if only one exists. Do not duplicate
-  an image or borrow another garment's picture to simulate a gallery.
-- Failed image loads get a bounded placeholder, with details/cart still usable.
+Live web images use backend `/img?url=`; relative static paths resolve against the
+backend base. Secrets are entered in local connection settings, never source.
+Demo mode uses a small committed catalog snapshot, with local-only cart/save.
+The older JSON fixture remains an explicitly mock historical design asset.
 
-## FlutterFlow implementation
+## Verification
 
-Create a product card component whose image section is a fixed-height Container
-containing a horizontal PageView and its indicator. Bind slides to that product's
-gallery list. Keep the description, size picker, and cart button as siblings below
-this Container. Use separate state for the selected product, photo index, and
-selected size. Never wrap the entire card in a horizontal PageView.
-
-Use `quick-browse.mock.json` for initial content: three H&M snapshot products,
-each with separate garment/model image URLs from Nabil's fixtures. Image URLs
-have not been checked for reachability. Description text, pairing suggestions,
-and one unavailable size per product are explicitly mock. Import/bind this data
-inside FlutterFlow; no new backend, service, or app framework is introduced.
-
-`product` follows staging's Product schema. `presentation` and `pairing` are
-frontend fixture metadata, not additions to the shared Product. No model stats or
-personal AI try-on are supplied by these fixtures.
-
-## Current backend constraints
-
-Reviewed `origin/staging` and `origin/adam/ai-pipeline` at `2bada98`, plus
-`origin/nabil` at `27f8fdf`. Read `docs/schema.md`, `ADAM.md`, `docs/progress.md`,
-and `NABIL.md`. Older progress prose has stale commerce status; Nabil's newer
-notes report the commerce router and a 370-product H&M/Uniqlo load.
-
-- Both lanes now agree on the canonical schema. Use `price_usd`, `product_url`,
-  and `sizes[{name,in_stock}]`.
-- Product has no description or gallery fields yet. Use local presentation data
-  for now; show an honest empty state when real products lack these fields.
-- Nabil's `/feed` returns Product plus `reason`, `score`, `pairs_with`.
-- `POST /swipe` accepts `like`, `save`, `discard`; **any call removes that product
-  from the feed**. Photo browsing and passive vertical browsing must NOT call it.
-- Adding to cart uses `/cart/{user_id}/items` with `{product_id,size,qty}` and can
-  return 422 for unavailable sizes. Keep the selection visible on failure.
-- The current try-on response adds `mode: ai|collage`. A collage is an outfit
-  board, not a generated photo of the user wearing the item.
-- Latest `ADAM.md` reports real AI try-on working after billing cleared; the older
-  progress document's billing blocker is stale. Verify the actual service before
-  showing personal results in the app.
-
-Backend requests are published as `ryan-nabil.md` on Nabil's branch (commit
-`1870a1818ce0d547f514cdde52feb55c3b4d95fa`). Gallery and description fields in that
-handoff are proposed additions, not available API fields until Nabil confirms.
-
-## Manual acceptance checks in FlutterFlow preview
-
-1. Swipe picture one to picture two and back; correct active dot follows.
-2. Try horizontal drags on the description, size row, and empty margin; picture
-   remains unchanged.
-3. Move to another product; its own photos, description and sizes appear.
-4. Try unavailable size; selection/cart add is blocked. Select an available size
-   and add; cart contains the correct product and size.
-5. Confirm product name matches both photos, text has usable contrast, and price
-   has a single currency symbol.
-6. Confirm no backend swipe event is sent merely by browsing photos/products.
-
-These checks are pending; the spec and valid JSON do not prove the UI works.
+Eight Flutter tests currently cover original gesture/cart behavior and shared API
+integration. Run `cd app && flutter analyze && flutter test`. Backend health/feed
+and image proxy were also verified with private runtime settings. The app loads
+live photos. Phone and live checkout verification remain separate checks.

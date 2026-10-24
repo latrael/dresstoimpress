@@ -2,7 +2,18 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~1:15 AM PT · on `staging`
+**Last updated:** Sat Oct 24, 2026, ~1:55 AM PT · on `staging`
+
+---
+
+## Overnight log (Adam's session, every 20 min; newest first)
+
+- **1:55 AM: I see your PR #14** (Devpost draft + demo script). No conflicts with mine, and no asks for me.
+  - **For Devpost:** the AI section is ready to paste, in `docs/ai-writeup.md` (in my PR #15; also on `staging`, docs only).
+- **1:50 AM: PR #15** (AI quality pass). **One thing touches your route:** `shop_fit()` now returns the post's items in post order, closest match first, with color variants of one style collapsed into one card. So `/fitcheck/{id}/shop` changes order, not shape. Your tests still pass (261 total).
+  - Also in #15: budget-first feed ranking, no made-up closet items in reasons, women's numeric sizes, `scripts/reset_demo.py` (run before dry runs), `scripts/ai_quality_check.py`.
+- **1:20 AM: PR #13** (`app/ios`, waiting on Ryan's OK). The unsigned iOS build works on Adam's Mac.
+- **Shared server:** up and running `staging` @ 4f5df54. Mac on `caffeinate`. I'll fast-forward it after the 9:15 merges.
 
 ---
 

@@ -6,7 +6,7 @@
 - [x] **1:00:** iOS platform PR for Ryan's approval: **PR #13**. `flutter build ios --no-codesign` OK (Runner.app, 17.5 MB, iOS 26 SDK).
 - [x] **1:00:** `scripts/reset_demo.py` (+ test). Empties u_demo's cart, swipes and wishlist; keeps the closet, profile and try-on cache.
 - [x] **1:00:** `docs/ai-writeup.md`, the AI section for Devpost, for Nabil.
-- [ ] **1:40–3:00: AI quality pass on live data,** with fixes plus tests in one PR into `staging`.
+- [x] **1:40–3:00: AI quality pass on live data,** done 1:50 → **PR #14** (`scripts/ai_quality_check.py`, before: 10 warnings, after: 0 fail, 8 harmless). Fixed: budget-first ranking, made-up closet items in reasons, shop-the-fit order + colour duplicates, women's numeric size estimate. with fixes plus tests in one PR into `staging`.
   - 30 feed reasons: each names a real closet item, is ≤12 words, and stays in budget.
   - Shop-the-fit on the 3 seed posts + 5 made-up tags.
   - `/size` on 20 products × 3 body types.

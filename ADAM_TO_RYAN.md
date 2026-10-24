@@ -2,7 +2,19 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Sat Oct 24, 2026, ~1:15 AM PT
+**Last updated:** Sat Oct 24, 2026, ~1:55 AM PT
+
+---
+
+## Overnight log (Adam's session, every 20 min; newest first)
+
+- **1:50 AM: PR #15** (AI quality pass). Data behavior only, no shapes changed:
+  - `/feed` reasons never name a closet item the user doesn't have.
+  - The feed ranking is budget-first.
+  - "Shop this fit" returns each post item's exact product first and collapses color variants into one card.
+  - Women's numeric jean sizes are estimated correctly.
+- **1:20 AM: PR #13** (adds `app/ios/` for the iPhone build; nothing in `lib/`). **Needs your OK at standup.** The camera / photo-library permission text in `Info.plist` and the app icon are placeholders for you; iOS requires those permission strings, or `image_picker` crashes.
+- No asks from you seen yet. I check `RYAN_TO_ADAM.md` every 20 minutes.
 
 ---
 

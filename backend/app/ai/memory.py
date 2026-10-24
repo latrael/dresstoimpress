@@ -100,19 +100,26 @@ def _events(user_id: str) -> list[tuple[str, str]]:
     return [(pid, action) for _, _, pid, action in rows if pid]
 
 
-def _from_store(user_id: str, n: int = 8) -> tuple[list[str], list[str]]:
+def history(user_id: str) -> tuple[list[dict], list[dict]]:
+    """(liked products, discarded products), newest first, one entry per product (its newest action)."""
     liked, discarded, seen = [], [], set()
     for pid, action in _events(user_id):
         if pid in seen:
-            continue  # newest action per product wins
+            continue
         seen.add(pid)
         p = get_product(pid)
         if not p:
             continue
-        bucket = liked if action in LIKED else discarded if action == "discard" else None
-        if bucket is not None and len(bucket) < n:
-            bucket.append(_describe(p))
+        if action in LIKED:
+            liked.append(p)
+        elif action == "discard":
+            discarded.append(p)
     return liked, discarded
+
+
+def _from_store(user_id: str, n: int = 8) -> tuple[list[str], list[str]]:
+    liked, discarded = history(user_id)
+    return [_describe(p) for p in liked[:n]], [_describe(p) for p in discarded[:n]]
 
 
 def _from_moss(user_id: str, query: str, n: int = 8) -> tuple[list[str], list[str]]:

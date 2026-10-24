@@ -300,7 +300,7 @@ def tag(products: list[dict], drops: Counter | None = None) -> list[dict]:
     for p in products:
         if use_ai:
             try:
-                t = tag_product(p["image_url"])
+                t = tag_product(p["image_url"], hint=p["name"])  # model shots: name says which garment
                 p.update({k: t[k] for k in ("label", "pattern", "formality")})
                 p["style_tags"] = [s for s in t.get("style_tags") or [] if s in STYLE_VOCAB]  # model drifts ("casual")
                 p["category"] = p.get("category") or t["category"]

@@ -2,7 +2,7 @@
 
 What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
+**Last updated:** Sat Oct 24, 2026, ~12:50 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
 
 ---
 
@@ -53,7 +53,11 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/feed?user_id=&limit=20` | in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`. Each card adds `reason`, `score`, `pairs_with` |
+| GET | `/products?q=&category=&retailer=&sort=&limit=&offset=` | search and paging → `{items, total, limit, offset, next_offset}` |
 | GET | `/products/{id}` | one product |
+| POST | `/onboarding` `{user_id?, display_name?, text}` | "Y2K, tops under $40" → user `style_text` + `price_ranges`, plus `parsed` chips |
+| POST · GET · PATCH | `/users`, `/users/{id}` | create, read and update a user (Adam owns `/users/{id}/style*` and `/body-photo`) |
+| GET · POST | `/fit?code=`, `/fit/post`, `/fit/wall`, `/fit/qr` | **public QR page** for guest Fit Check posts. Needs `FITCHECK_EVENT_CODE`; no `X-DTI-Key` |
 | POST | `/swipe` `{user_id, product_id, action, size?}` | `like` (right → cart if a size is given), `save` (down → wishlist), `discard` (left). Feeds Adam's style memory |
 | POST | `/cart/{user_id}/items` `{product_id, size, qty}` | add to cart; 422 if the size is sold out |
 | GET | `/cart/{user_id}` | cart **grouped by retailer**, with subtotals and a total |
@@ -110,6 +114,8 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 - **Style keywords are loose** on H&M (it has no y2k tag), so Adam's tagger supplies the real `style_tags`.
 
 ## Changelog
+
+- **Oct 24, ~12:50 AM:** Onboarding + users, product search and paging, feed puts ranked cards first, Fit Check seed tags, public QR guest page. Caught and fixed a `/fit` prefix that would have opened `/fitcheck/*` without the key. 247 tests. No app screens for Nabil: Ryan owns the Flutter app.
 
 - **Oct 23, ~10:45 PM:** Real Nessie checkout, Fit Check backend, 418-product snapshot (with shoes), galleries and descriptions, repeat-safe wishlist, checkout 409 on a stock change. Apify: $200 in credits secured, $2.43 spent.
 

@@ -146,6 +146,24 @@ def test_process_dedupes_and_tags_in_mock():
     assert all(p["label"] == "" for p in saved)  # mock tagger is skipped, rule-based fields kept
 
 
+def test_tag_passes_name_hint_and_keeps_vocab(monkeypatch):
+    from app.ai import llm, service
+    from app.commerce.ingest import tag
+
+    calls = []
+
+    def fake_tag(url, hint=None):
+        calls.append((url, hint))
+        return {"label": "white tee", "category": "top", "pattern": "solid", "formality": 2,
+                "style_tags": ["minimalist", "casual"]}
+
+    monkeypatch.setattr(llm, "text_mock", lambda: False)
+    monkeypatch.setattr(service, "tag_product", fake_tag)
+    out = tag([{"id": "hm:1:white", "name": "Regular Fit T-shirt", "image_url": "https://img/a.jpg"}])
+    assert calls == [("https://img/a.jpg", "Regular Fit T-shirt")]
+    assert out[0]["style_tags"] == ["minimalist"] and out[0]["label"] == "white tee"
+
+
 def test_cli_from_file_dry_run(tmp_path):
     env = {**os.environ, "MOCK_AI": "1", "DATA_DIR": str(tmp_path)}
     r = subprocess.run([sys.executable, "-m", "scripts.ingest", "--from-file", str(FIX / "hm_*.json"),

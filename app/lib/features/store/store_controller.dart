@@ -338,7 +338,7 @@ Map<String, dynamic> browseMap(RankedProduct card) {
     'images': [
       for (final i in p.images) {'url': i.url, 'kind': i.kind}
     ],
-    'description': p.description,
+    'description': p.blurb(), // one line on the card; the full retailer text stays on Product.description
     'colors': p.colors,
     'reason': card.reason,
     'your_size': card.yourSize,

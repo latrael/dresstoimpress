@@ -85,6 +85,21 @@ class Product {
   double get effectivePrice => (salePriceUsd != null && salePriceUsd! < priceUsd) ? salePriceUsd! : priceUsd;
   bool get isOnSale => effectivePrice < priceUsd;
 
+  /// One readable line for a card: the first sentence of the retailer blurb, bullets and
+  /// "- " markers stripped, capped at [maxChars]. Null when there is no description.
+  String? blurb({int maxChars = 110}) {
+    final raw = (description ?? '').replaceAll(RegExp(r'[\r\n]+'), ' ').replaceAll(RegExp(r'\s*[-•·]\s+'), ' ').trim();
+    if (raw.isEmpty) return null;
+    final first = RegExp(r'^(.+?[.!?])(\s|$)').firstMatch(raw)?.group(1) ?? raw;
+    var out = first.trim();
+    if (out.length > maxChars) {
+      final cut = out.substring(0, maxChars);
+      final space = cut.lastIndexOf(' ');
+      out = '${(space > 40 ? cut.substring(0, space) : cut).trimRight()}…';
+    }
+    return out;
+  }
+
   /// Gallery URLs (images[0] == image_url), falling back to the primary image.
   List<String> get gallery => images.isEmpty ? [imageUrl] : images.map((i) => i.url).toList();
 

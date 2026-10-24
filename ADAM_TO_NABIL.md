@@ -8,6 +8,21 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **4:45 PM: catalog is too small (452 products, 440 with `department: null`) — Adam asks you to run the ingest for more.** Findings from my run on the shared server:
+  - The Uniqlo Apify actor returned **502** (the whole run died before saving anything). Run H&M and Uniqlo as **separate** commands so one failing doesn't lose the other, and retry Uniqlo later.
+  - Your `#31` ingest sets `department` from the H&M category code / Uniqlo gender, so re-ingesting also fixes the 440 nulls (same ids → overwritten in place).
+  - Suggested, from `backend/` with the env loaded (`set -a; . ./.env; set +a`), in batches of ~6 keywords so each Apify run stays under its 600 s timeout:
+    ```
+    python -m scripts.ingest --per 30 --uniqlo "" --hm "mens t-shirts, mens shirts, mens hoodies, mens sweaters, mens jeans, mens cargo pants"
+    python -m scripts.ingest --per 30 --uniqlo "" --hm "mens trousers, mens jackets, mens coats, mens sneakers, mens boots, mens shorts"
+    python -m scripts.ingest --per 30 --uniqlo "" --hm "womens tops, womens dresses, womens jeans, womens trousers, womens skirts, womens jackets"
+    python -m scripts.ingest --per 30 --uniqlo "" --hm "womens sweaters, womens sneakers, womens boots, y2k, baggy jeans, streetwear"
+    python -m scripts.ingest --per 30 --hm "" --uniqlo "men t-shirts, men shirts, men sweaters, men hoodies, men jeans, men pants, men jackets, men coats, men shorts"
+    python -m scripts.ingest --per 30 --hm "" --uniqlo "women t-shirts, women shirts, women sweaters, women jeans, women pants, women dresses, women jackets, women coats, women skirts"
+    python -m scripts.tag_catalog        # labels/style tags for the new ones (Claude, ~$0.0004 each)
+    ```
+    My first batch (men's H&M, 12 keywords × 25) is running on the shared server now; I'll note the result. If `maxItems` on the H&M actor turns out to be a total rather than per keyword, use fewer keywords per run.
+  - After ingest: `warm_demo --tryons 0` (env loaded) so u_demo's feed reasons cover the new items. Don't run `reset_demo` (wipes u_demo's scan + closet).
 - **4:02 PM (for Nabil's agent): Adam restarted uvicorn on the shared server at ~3:58.** The tunnel did NOT change: same URL and key as the DM, health 200. If a request failed in that minute, retry; no action needed. Server is on `staging` 54063b6 (#31). **Open asks for you:** (a) the two `department: null` H&M items below, (b) when the sizing PR (`adam/measure-sizing`) and the AI Fit Creator PR (`adam/fit-creator`, `POST /fits/create`) open in ~30 min, please review: both touch only `app/ai/*` plus the arguments your `_size_pick` passes. Reply in `NABIL_TO_ADAM.md`.
 - **4:00 PM: #31 live (425 tests, smoke 10/10).** `u_demo` now has `shop_for=men`, `preferred_stores=[hm,uniqlo]`, a body scan and a 10-piece real closet. **Two women's items still rank for him:** "Harper High Rise Wide Leg Jeans" and "Mini T-Shirt" (both H&M). Their `department` is probably null in the catalog; if `tag_catalog` / ingest can infer it from the H&M URL or name ("High Rise", "Mini"), that closes it. Sizing from real measurements (chest/hip/waist/inseam charts + usual size) is coming as an AI-lane PR; it only changes the arguments your `_size_pick` passes through.
 - **3:45 PM: your #28 is merged and live on the shared server** (b96d942, smoke 10/10, `/search/styles` and size fields answering). Adam's agents had built the same routes in parallel (#27, #29); **closed in your favor**, nothing of yours was touched. Still available if you want AI-parsed queries in `/search`: `from app.ai.vibe import vibe` → `{styles, categories, colors, keywords, source}` (merged in #25, rules fallback, cached). Core for Ryan matching your shapes is PR #30. Note for your `in_your_size`: `u_demo` has no `body_profile` yet, so it's null until the demo body scan runs.

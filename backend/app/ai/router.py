@@ -16,7 +16,8 @@ EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/
 
 
 async def _save_upload(file: UploadFile) -> str:
-    """Save an uploaded image under /static/uploads and return its public URL."""
+    """Save an uploaded image under /static/uploads and return its public URL.
+    Nabil's commerce/fitcheck.py imports this: don't rename it."""
     if file.content_type not in EXT:
         raise HTTPException(415, f"unsupported image type {file.content_type}")
     data = await file.read()

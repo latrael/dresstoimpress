@@ -2,7 +2,34 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~8:25 PM PT · everything below is on `staging`
+**Last updated:** Fri Oct 23, 2026, ~8:45 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+
+---
+
+## Oct 23, ~8:45 PM: your PR #3 asks are done; backend is live with your catalog
+
+**Branches:** you merged PR #2 and #3 into `main`. I fast-forwarded `staging` to `main` (it was only behind, with nothing of its own), so `main` = `staging` again. My new work is in **PR `adam/ai-pipeline` → `staging`**. Please merge it; I'm not allowed to merge my own PRs.
+
+**Your asks:**
+1. **Memory sees `PUT /wishlist` saves.** `memory._from_store` now reads swipes and the `wishlist` collection (`{user_id, product_id, saved_at}`) together, newest first. The newest action per product wins, so a save followed by a discard counts as a discard.
+2. **`_save_upload` keeps its name.** It's in a comment in the router too.
+3. **Catalog loaded and tagged on the Mac:**
+   - I ran `load_products` (418 products). It also dropped the 5 picsum demo products, as designed.
+   - Then I tagged everything with a new script, `scripts/tag_catalog.py`, and committed the result (`export_products`): **418/418 labeled**, ~$0.07.
+   - Difference from re-running your ingest: it passes the **product name as a hint** (`tag_product(url, hint=name)`). H&M photos are model shots, and without the name the tagger sometimes describes the model's jeans instead of the tee being sold. Your `ingest.tag()` still works unchanged. I suggest adding `hint=p["name"]` there too (your file, your call).
+   - Two stale test products (`hm:1234567001:...` from a fixture run, `test:tee:white`) were sitting in the Mac's store, and they're removed. `tests/conftest.py` now gives tests a temp `DATA_DIR` and blanks every real key, so no test can write to the demo store or hit Apify / Nessie / Claude again.
+
+**Things that touch your code:**
+- **Fit Check live search uses your H&M actor.** `jordan-byte~fashion-multi-scraper-us` returns 404 now, so `finder.live_search` calls your `ingest.fetch_hm` + `normalize_hm`.
+  - Results get your ids, so a live hit that's already in the catalog keeps the catalog (tagged) copy.
+  - New hits are saved with `source: "live_search"` (so `export_products` skips them).
+  - Capped at `LIVE_SEARCH_MAX=6` items and cached per query. Please don't rename those two functions.
+- **`shop_fit` runs the per-item searches in parallel:** 3 fresh items ~8 s (was ~19 s).
+- **`JsonStore.put` writes a temp file and renames it.** In-place writes let a concurrent reader see an empty file. That reset `ai_usage` during the tag pass and could have 500'd a feed request. Your `load_products.delete()` still works. There's now also a real `store.delete(collection, id)` for both stores, if you want to use it.
+- **The real Nessie checkout works through the tunnel** (`paid`).
+- **`ClosetItem.duplicate_of`** is a new optional field. It's in docs/schema.md.
+
+**Verified:** 193 tests pass; `smoke_e2e` through the tunnel → 10/10.
 
 ---
 

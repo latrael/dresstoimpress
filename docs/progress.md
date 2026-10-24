@@ -1,6 +1,6 @@
 # dresstoimpress — progress and direction
 
-Last updated: Fri Oct 23, 8:00 PM PT. Branch: `adam/ai-pipeline` (Adam's AI lane). `main` has only the README so far.
+Last updated: Fri Oct 23, 8:45 PM PT. `main` = `staging` (commerce + AI); Adam's latest is in a PR into `staging`. **Live status: [`ADAM.md`](../ADAM.md) and [`NABIL.md`](../NABIL.md).**
 
 ## Where we are
 
@@ -17,7 +17,7 @@ The backend skeleton and the whole AI pipeline are built, tested (22 tests) and 
 | Try-on (`/tryon`) | Done, live | Gemini Flash Lite image, ~5 s, keeps body and pose; outfit-board fallback if images fail |
 | Cost controls | Done | Haiku default, caching, $5 cap, `GET /ai/usage`; real cost so far < $0.01 |
 | Gemini fallback | Done | If Claude fails (credits, network), tagging/pairing use Gemini automatically |
-| Commerce: ingest, `/feed`, `/swipe`, `/cart`, `/wishlist`, `/checkout` | Done (merged to `staging`) | Nabil. 370 real H&M + Uniqlo products on his machine; Nessie pending key |
+| Commerce: ingest, `/feed`, `/swipe`, `/cart`, `/wishlist`, `/checkout` | Done (merged to `staging`) | Nabil. 418 real H&M + Uniqlo products (AI-tagged, in `seed/products.json`); real Nessie checkout |
 | Fit Check posts + `/fitcheck/{id}/shop` | Next | Nabil |
 | Demo person photo | Done | AI-generated fictional person, `backend/assets/demo_body.jpg`, set by `seed_demo` |
 | iPhone app (FlutterFlow) | Not started in repo | Ryan |
@@ -28,8 +28,8 @@ Everything below is already merged on `staging` and passes `cd backend && pytest
 
 ### Adam → Nabil
 1. **Fit Check backend:** store posts (`POST /fitcheck`, `GET /fitcheck/feed`) and make `GET /fitcheck/{post_id}/shop?user_id=` return `ai.service.shop_fit(user_id, post["tagged"])`. To pre-fill a post's tags from its photo: `ai.service.tag_fit(photo_url)`.
-2. **Run the shared demo backend** on your machine (you have the 370 products): `python -m scripts.seed_demo` (adds the demo user and their photo), then a public URL (ngrok or cloudflared), set `PUBLIC_BASE` to it in `.env`, restart, and send the URL to Ryan.
-3. **Tag the catalog once:** re-run ingest without `--no-tag` so products get `style_tags`/`label`/`pattern` (better pairing; about $0.07 for 370 on Haiku).
+2. ~~**Run the shared demo backend**~~ Done: it runs on Adam's Mac behind a tunnel (URL + key shared privately). Original plan: on your machine (you have the 370 products): `python -m scripts.seed_demo` (adds the demo user and their photo), then a public URL (ngrok or cloudflared), set `PUBLIC_BASE` to it in `.env`, restart, and send the URL to Ryan.
+3. ~~**Tag the catalog once:**~~ Done (418/418, `scripts/tag_catalog.py`). Original plan: re-run ingest without `--no-tag` so products get `style_tags`/`label`/`pattern` (better pairing; about $0.07 for 370 on Haiku).
 4. **Add shoes** to ingest (e.g. H&M `"sneakers, boots"`); there are none yet, so complete-the-look can only fill shoes from the closet.
 5. **Keys in the shared `.env`:** `APIFY_TOKEN` (also powers Fit Check live search), `NESSIE_API_KEY` when you have it. Adam can send the Anthropic and Gemini keys.
 

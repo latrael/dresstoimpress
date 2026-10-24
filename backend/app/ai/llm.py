@@ -22,7 +22,8 @@ CLAUDE_TAG_MODEL = os.getenv("CLAUDE_TAG_MODEL", CLAUDE_MODEL)
 CLAUDE_PAIR_MODEL = os.getenv("CLAUDE_PAIR_MODEL", CLAUDE_MODEL)
 # Cheapest image model; switch to gemini-3.1-flash-image if faces/bodies drift in try-on.
 GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-lite-image")
-GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
+# gemini-2.5-flash is closed to new Google projects; Google points new users to 3.8 Flash.
+GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-3.8-flash")
 
 
 def text_provider() -> str:
@@ -187,7 +188,15 @@ def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
     )
     last_err: Exception | None = None
     for _ in range(2):
-        resp = client.models.generate_content(model=GEMINI_TEXT_MODEL, contents=parts, config=cfg)
+        try:
+            resp = client.models.generate_content(model=GEMINI_TEXT_MODEL, contents=parts, config=cfg)
+        except Exception as e:  # noqa: BLE001
+            if "thinking" not in str(e).lower():
+                raise
+            # newer models may not accept thinking_budget=0; retry with defaults
+            cfg = types.GenerateContentConfig(max_output_tokens=max_tokens * 4,
+                                              response_mime_type="application/json")
+            resp = client.models.generate_content(model=GEMINI_TEXT_MODEL, contents=parts, config=cfg)
         try:
             meta = resp.usage_metadata
             _record_gemini_text(meta.prompt_token_count or 0, meta.candidates_token_count or 0)

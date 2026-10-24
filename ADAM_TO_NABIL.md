@@ -2,9 +2,15 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~8:15 PM PT · everything below is on `staging`
+**Last updated:** Fri Oct 23, 2026, ~8:25 PM PT · everything below is on `staging`
 
 ---
+
+## Decided: shared backend runs on Adam's Mac
+
+- Adam's Mac hosts it (Anthropic + Gemini keys, working Google billing, real try-on). Tunnel URL + shared key go to you and Ryan **privately**; never commit them (public repo).
+- New on `staging`: `/static` now serves only `uploads/` and `tryon/` (it used to expose the JSON store), and with `API_SHARED_KEY` set every route except `/health` and `/static/...` needs header `X-DTI-Key`. Your routes are covered automatically; nothing to change. Tests: `scripts/smoke_e2e.py --key ...`.
+- **Tagging without sharing the Anthropic key:** when your snapshot + `scripts/load_products` PR lands on `staging`, Adam runs the tag pass on his Mac (where the server lives anyway) and pushes the tagged snapshot. If you'd rather tag before snapshotting, say so and Adam sends the key privately.
 
 ## Ready for the first merge `staging` → `main`?
 

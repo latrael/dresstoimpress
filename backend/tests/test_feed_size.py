@@ -1,4 +1,5 @@
-"""/feed soft size ranking (in your size first, never hidden), preferred-store boost, and seeded Home (?seed=)."""
+"""/feed soft size ranking (in your size first, never hidden), preferred-store 2:1 mix, seeded Home (?seed=,
+seed_shown), and the same size fields/order on Discover (/search, /search/photo, trending)."""
 import os
 from pathlib import Path
 
@@ -111,3 +112,81 @@ def test_seeded_feed_size_first_and_404(client, monkeypatch):
     cards = client.get("/feed", params={"user_id": "u", "seed": "jeans"}).json()
     assert _ids(cards) == ["jeans", "other", "twin"]  # in your size beats more similar
     assert client.get("/feed", params={"user_id": "u", "seed": "nope"}).status_code == 404
+
+
+def test_preferred_stores_two_to_one(client, monkeypatch):
+    _put({"preferred_stores": ["Uniqlo"], "body_profile": {"usual_sizes": {"top": "M"}}},
+         [*[_mk(f"u{i}", "uniqlo") for i in range(1, 5)], *[_mk(f"h{i}", "hm") for i in range(1, 4)],
+          _mk("u5", "uniqlo", sizes=NO_M), _mk("h4", "hm", sizes=NO_M)])
+    _rank(monkeypatch, ["h2", "u3", "h1", "u1", "h3", "u2", "u4", "h4", "u5"])
+    cards = client.get("/feed", params={"user_id": "u"}).json()
+    # in your size: 2 uniqlo per H&M, each store in its own (AI) order; uniqlo runs out, H&M follows.
+    # Not in your size: still shown, last, mixed the same way
+    assert _ids(cards) == ["u3", "u1", "h2", "u2", "u4", "h1", "h3", "u5", "h4"]
+
+
+def test_two_to_one_leftovers():
+    from app.commerce.router import _two_to_one
+    assert _two_to_one([1, 2, 3, 4, 5], ["a"]) == [1, 2, "a", 3, 4, 5]
+    assert _two_to_one([1], ["a", "b", "c"]) == [1, "a", "b", "c"]
+    assert _two_to_one([], ["a", "b"]) == ["a", "b"] and _two_to_one([1, 2], []) == [1, 2]
+
+
+def test_seed_shown_drops_the_seed_card(client, monkeypatch):
+    _put({"body_profile": {"usual_sizes": {"bottom": "M"}}},
+         [_mk("jeans", category="bottom", name="Baggy jeans", colors=["blue"]),
+          _mk("twin", category="bottom", name="Baggy blue jeans", colors=["blue"], sizes=NO_M),
+          _mk("other", category="bottom", name="Chinos")])
+    _rank(monkeypatch, [])
+    params = {"user_id": "u", "seed": "jeans"}
+    assert _ids(client.get("/feed", params=params).json()) == ["jeans", "other", "twin"]
+    # later loads of the same seeded feed: still similar to the seed, the seed card itself is gone
+    assert _ids(client.get("/feed", params={**params, "seed_shown": "true"}).json()) == ["other", "twin"]
+    assert _ids(client.get("/feed", params={**params, "seed_shown": "true", "limit": 1}).json()) == ["other"]
+    assert client.get("/feed", params={**params, "seed": "nope", "seed_shown": "true"}).status_code == 404
+
+
+# ---------- Discover: same size fields + in-your-size first ----------
+
+def test_text_search_in_your_size_first(client, monkeypatch):
+    from app.commerce import search
+    _put({"body_profile": {"usual_sizes": {"top": "M"}}},
+         [_mk("a", name="Tee tee classic", sizes=NO_M), _mk("b", name="Tee plain"),
+          _mk("c", name="Tee zip", sizes=NO_M), _mk("d", name="Tee boxy")])
+    anchors = []
+    monkeypatch.setattr(search, "complete_look_route", lambda req: anchors.append(req.product_id) or {"items": []})
+    similar = client.get("/search", params={"user_id": "u", "q": "tee"}).json()["similar"]
+    # relevance alone: a (2 hits), then d, b, c by name; in your size moves d and b up, nothing is hidden
+    assert [(p["id"], p["your_size"], p["in_your_size"]) for p in similar] == [
+        ("d", "M", True), ("b", "M", True), ("a", None, False), ("c", None, False)]
+    assert anchors == ["d"]  # goes_with completes the first card shown
+
+
+def test_text_search_no_size_info_keeps_relevance(client):
+    _put({}, [_mk("a", name="Tee tee classic", sizes=NO_M), _mk("b", name="Tee plain")])
+    similar = client.get("/search", params={"user_id": "u", "q": "tee"}).json()["similar"]
+    assert [(p["id"], p["your_size"], p["in_your_size"]) for p in similar] == [("a", None, None), ("b", None, None)]
+
+
+def test_photo_search_in_your_size_first(client, monkeypatch):
+    from app.ai import service
+    _put({"body_profile": {"usual_sizes": {"top": "M"}}}, [_mk("a", sizes=NO_M), _mk("b"), _mk("c", sizes=NO_M)])
+    monkeypatch.setattr(service, "tag_fit", lambda url: [{"label": "white tee", "category": "top"}])
+    monkeypatch.setattr(service, "shop_fit", lambda uid, tags: [
+        {"id": pid, "reason": f"why {pid}", "score": s, "matched_tag": "white tee"}
+        for pid, s in (("a", 0.9), ("b", 0.8), ("c", 0.7))])
+    r = client.post("/search/photo", data={"user_id": "u"}, files={"file": ("fit.png", b"\x89PNG fake", "image/png")})
+    assert r.status_code == 200, r.text
+    similar = r.json()["similar"]
+    assert [(p["id"], p["in_your_size"], p["reason"]) for p in similar] == [
+        ("b", True, "why b"), ("a", False, "why a"), ("c", False, "why c")]  # AI order inside each group
+    assert similar[0]["your_size"] == "M"
+
+
+def test_trending_cards_carry_size_fields(client, monkeypatch):
+    _put({"body_profile": {"usual_sizes": {"top": "M"}}}, [_mk("a", sizes=NO_M), _mk("b")])
+    _rank(monkeypatch, [])
+    assert client.put("/wishlist/someone/items/a").status_code == 200
+    trending = client.get("/search/styles", params={"user_id": "u"}).json()["trending"]
+    assert [(p["id"], p["trend_count"], p["your_size"], p["in_your_size"]) for p in trending] == [
+        ("a", 1, None, False), ("b", 0, "M", True)]  # trending order kept; the feed top-up is sized too

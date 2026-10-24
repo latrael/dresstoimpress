@@ -2,7 +2,30 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Fri Oct 23, 2026, ~9:40 PM PT
+**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT
+
+---
+
+## Fri ~11:15 PM: your 3 core requests are in PR #11
+
+From your RYAN_TO_ADAM "concrete core requests". All of it is in `app/lib/core` plus `pubspec`; none of your files changed.
+1. **`Api.imageProxyUrl(url)`:**
+   - Retailer images (H&M, Uniqlo, …) → `GET /img?url=`.
+   - `/static/...` → base URL.
+   - Anything else is returned unchanged.
+   - `imageUrl()` is **unchanged**, so your `store_controller.dart` wrapper keeps working. Switch whenever you want; the README claim was wrong before, sorry.
+2. **Nabil's newer routes:**
+   - `searchProducts({q, category, retailer, inStock, sort, limit, offset})` → `ProductPage {items, total, limit, offset, nextOffset}`. `nextOffset` is null on the last page.
+   - `createUser`, `getUser([id])`, `updateUser(...)` → `AppUser {id, displayName, styleText, priceRanges, bodyPhotoUrl, friends}`.
+   - `onboarding(text, {displayName, userId})` → `OnboardingResult {user, styles, budgets, unmatched}`.
+   - `applyStyle()` → `StyleApplyResult {user, profile}`. It throws `ApiError` 409 with fewer than 5 liked items.
+3. **`image_picker`** is in `pubspec.yaml`.
+
+**Checked:**
+- `flutter analyze` clean, and `flutter test` **14/14**: your 8 unchanged, plus 6 new core tests in `test/core/`.
+- **Live, read-only:** `searchProducts('baggy jeans')` returns 3 of 29 with `nextOffset` 3; `getUser`, `style()` and the 404 parse; `imageProxyUrl` on an H&M photo returns 200 image/jpeg.
+
+**Server:** it now runs merged `staging` (your #10 included), and the smoke test passes 10/10 through the tunnel. The `/fit` guest page stays off until you decide.
 
 ---
 

@@ -1,11 +1,22 @@
 # Team progress: overseer check
 
-**Fri Oct 23, 2026, ~9:45 PM PT.** Adam's session checked every branch and PR, the shared backend and the handoffs. Newer checks replace this file.
+**Fri Oct 23, 2026, ~9:45 PM PT; update at ~11:15 PM below.** Adam's session checked every branch and PR, the shared backend and the handoffs. Newer checks replace this file.
 
 **Ownership:**
 - **Ryan:** the app and all of its design.
 - **Adam:** AI backend, hosting, and `app/lib/core` kept in sync with the backend.
 - **Nabil:** commerce backend.
+
+## Update: Fri ~11:15 PM
+
+- **Merged into `staging`:** #8 (Adam), #7 (Nabil), #9 (shell + core), #10 (Ryan's app). Every deviation in the table below is closed except #5, the `/fit` OK, which is waiting on Ryan.
+- **Server:** pulled to `staging` and restarted. Tests: backend **248 pass**; app `flutter analyze` clean, **14/14** tests.
+- **Checks:**
+  - `seed_fitcheck` re-run with the richer tags.
+  - **Smoke test 10/10 through the tunnel.** The feed has a reason on 8 of 8 cards, and Nessie checkout is `paid`.
+  - New routes are live: search, users, Fit Score on the seed posts (85).
+  - Auth: `/fit` 404 (off), `/fitcheck` 401 without the key.
+- **Open:** **PR #11** (core: Ryan's 3 asks + `/img` exact match). Ryan's remaining screens are his call. Then the iPhone build: iOS 26 platform download (Adam).
 
 ## Snapshot
 

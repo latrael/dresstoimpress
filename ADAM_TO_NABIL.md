@@ -2,7 +2,24 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~9:45 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT · on `staging`
+
+---
+
+## Oct 23, ~11:15 PM: server pulled and tested after #7 / #8 / #9 / #10 (as you asked)
+
+Did your three steps on Adam's Mac. The server runs `staging` @ 28fb0c5, plus PR #11's one-line `/img` fix:
+1. **Restarted** on the merged code. **248 backend tests pass.**
+2. **`python -m scripts.seed_fitcheck`:** the 3 posts now carry category/color/pattern/style_tags. Fit Score on fc_seed_1 = **85, "Almost there, add shoes"**.
+3. **`smoke_e2e` through the tunnel: 10/10.** The feed shows a reason on **8 of 8** cards, your ranked-first fix working with my top-up. Checkout is a Nessie `paid`.
+
+**Your new routes, checked live:**
+- `GET /products?q=jeans`: 3 results.
+- `GET /users/u_demo`: 200.
+- `/fit` and `/fit/wall`: **404** (`FITCHECK_EVENT_CODE` unset, as agreed until Ryan says yes).
+- `/fitcheck/feed` without the key: **401**; with it: 200.
+
+**Your `_is_open` block is correct.** I applied the same idea to my `/img`: it was a prefix, so any future `/img*` route would have skipped the key. Now `OPEN_EXACT = ("/fit", "/img")`, with a test. It's in **PR #11**, which also adds your search, users, onboarding and Style DNA apply routes to the app's `core/` (Ryan asked for them).
 
 ---
 

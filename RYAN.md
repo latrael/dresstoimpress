@@ -1,83 +1,70 @@
 # Ryan: Flutter app status
 
-Reviewed October 23, 2026 (Pacific). Branch: `RyanFrontendking`.
+Updated October 24, 2026 (Pacific). Branch: `RyanFrontendking`.
 
-## Current ownership and references
+## Ownership and references
 
-Ryan explicitly approved plain Flutter and owns every app screen and all design.
-Adam maintains AI/backend hosting and the shared `app/lib/core`; Nabil maintains
-commerce. Earlier FlutterFlow and split-screen assignments are superseded.
+Ryan owns every app screen and all design. Adam maintains AI/backend hosting and
+`app/lib/core`; Nabil maintains commerce. Plain Flutter supersedes FlutterFlow.
+Reference: both pages of `WireframeSketch.pdf`, Ryan's accepted Quick Browse,
+and `frontend/QUICK_BROWSE.md`. Preserve ivory/burgundy, the bounded photo
+carousel/dots/price, details/sizes/cart, Home grid and persistent search, and the
+Home / Discover / Social navigation. Never invent descriptions or model stats.
 
-Design references: `WireframeSketch.pdf` (both pages), Ryan's accepted Quick Browse
-mock-up, and `frontend/QUICK_BROWSE.md`. Preserve the ivory/burgundy layout, bounded
-photo carousel, dots, price overlay, details, sizes and Add to Cart. Home has a
-suggested grid and persistent search; Home / Discover / Social navigation stays
-outside the product carousel. Do not invent retailer descriptions or model stats.
+## Overnight implementation (PR #16 into staging; not merged)
 
-## Team review and branch integration
+Worked `docs/plan-sat/ryan.md` in order:
+1. Size advice: positive measurement inputs, optional waist/US shoes, backend fit
+   values slim/regular/oversized, confidence/reason, available-size selection.
+   Product descriptions/colors stay outside the horizontal gallery. Cart is explicit.
+2. Personal try-on: user-driven body photo if needed, generated slide only in that
+   product's local gallery; collage labeled Outfit board, not a photo of the user.
+3. Complete the look: owned/catalog distinction, missing slots/new-items total,
+   catalog detail entry, Fit Score with separate product and closet IDs.
+4. Onboarding: free text saved through core, parsed styles/budgets shown, feed
+   refreshed. Full catalog search/paging replaces loaded-feed-only search when
+   connected; stale results ignored, failed next pages retain earlier results.
+5. Fit Check: selected photo/caption upload, likes, comments, existing-label editing,
+   shop and score; failed comments retain their draft. No public guest-page changes.
+6. Closet: selected image upload, real MIME, duplicate notice with both items retained,
+   list refresh, explicit confirmed removal.
+7. Profile: user and Style DNA, palette/styles/patterns/formality/retailers/budgets,
+   apply with 409 handling, onboarding/Closet/photo access within existing navigation.
 
-Read all distinct Markdown file versions on staging, adam/ai-pipeline, nabil,
-flutter-starter and Ryan's branch. Full review includes progress, app plan, schema,
-backend README, both backend lanes' status and directional handoffs, old requests,
-and local frontend specifications. Newer staging/Adam ownership notes supersede
-old SwiftUI / FlutterFlow / optional-reference-only plans.
+Previous Feed/wishlist/cart/checkout/receipt/order behavior is preserved. Browsing
+never calls `/swipe`. The shared core remains the only API transport. The feature
+image adapter now uses core's `imageProxyUrl` from PR #11. No backend/core edits.
 
-Reviewed staging 5c320be, Adam e27baa9, Nabil e2ea844 and starter 1b4aff2.
-Merged staging and flutter-starter into RyanFrontendking. The only conflict was
-an older NABIL_TO_RYAN.md added on Ryan's branch; kept staging's newer handoff.
-No backend or core implementation was edited.
+## Verification and remaining acceptance
 
-## Implemented
+Flutter 3.47.6 / Dart 3.13.5: analyze clean, 31 tests pass, release web build succeeds.
+Regression checks include gallery boundaries/reset, sizes/cart errors, account-read
+failure, query races/paging, three independent generated galleries, cancel/upload
+MIME, Fit Check actions/drafts/tags and Style DNA 409.
 
-The real project now runs from `app/`, rather than a temporary preview:
-- Home suggested grid opens the selected product in Quick Browse.
-- Persistent search filters the currently loaded suggestions; it is not full
-  catalog search or natural-language onboarding yet.
-- Photo-only horizontal paging and active dots; vertical product paging and
-  detail scrolling; mouse, touch and trackpad input supported.
-- Retailer/name/description fallback, optional pairing reason, correct sale price,
-  actual size labels and stock. Save/double-tap uses wishlist PUT; unsave DELETE.
-- Shared core Feed/wishlist/cart adapters and image proxy routing. Browsing never
-  calls `/swipe`. Failed account reads preserve the visible feed and block writes
-  until retry, so unknown saved/cart state isn't silently overwritten.
-- Cart grouped by retailer, removal, subtotals, total, explicit sandbox checkout,
-  receipts, payment-status distinctions and order history. Stock-change 409 errors
-  retain the cart and identify unavailable items.
-- Device-local connection settings. Explicit demo mode uses 12 catalog snapshot
-  products with local cart/wishlist and a receipt labeled as no payment processed.
-- Initial Social feed and Shop this fit entry use the shared routes; posting,
-  comments and full social interactions remain pending.
+Isolated backend with mock AI and synthetic images: actual shared Dart client
+verified health, all 418 catalog products (417 in stock), H&M top + waist/length
+jeans size suggestions, three mock outfit-board image loads, onboarding budgets,
+complete-look/score, Fit Check create/like/comment/shop, Closet upload/delete and
+Style DNA. These are LOCAL checks, not shared-live or real AI quality acceptance.
+Browser review at 390x844 verified Home/Quick Browse, scrollable details and tools,
+available-size selection and the generated-slide label. No Xcode required.
 
-## Verification
+Shared live acceptance is pending: the tunnel changed and its new address has not
+been provided to this session. Connection details belong only in device settings,
+never Git/docs/screenshots. Preview currently uses an isolated local test server.
+No live checkout, paid AI generation or personal-photo upload was done overnight.
 
-Flutter 3.47.6 / Dart 3.13.5. `flutter analyze` clean and eight tests pass, including
-original gesture checks plus shared API/cart flow, checkout 409, partial account
-failure and image-proxy URL preservation.
+## Human decisions and morning checks
 
-Private backend details entered only into device-local connection settings, never
-Git or handoffs. Live checks: unauthenticated health 200/ok, authenticated feed with
-limit 5 returned five products with galleries/sizes, image proxy 200 image/jpeg.
-The actual browser app connects, loads the live feed and shows retailer photos.
-Mouse-driven gallery paging and the description gesture boundary were verified in the live browser. Live wishlist save also succeeded. Live size-M cart add and removal also succeeded, and the test wishlist membership was restored. Vertical paging reached a single-photo Uniqlo item with its real description and disabled unavailable sizes. No live checkout has been executed.
+- Review PR #16; humans merge or hold. Agent does not merge.
+- Ryan decides PR #13 iOS icon/permission wording and Nabil's `/fit` guest page.
+- Privately update backend connection; repeat shared acceptance for all seven rows.
+- Supply personal/real outfit/closet photos; verify actual AI quality and phone
+  picker/keyboard/layout/checkout on Adam's iPhone. Xcode download can continue.
+- UI remains subject to Ryan's review; existing labels may be corrected/removed,
+  but arbitrary new tag fields and follow/unfollow are not implemented.
 
-## Core gaps to Adam
-
-The published starter at 1b4aff2 differs from its README: imageUrl only resolves
-relative paths and doesn't proxy retailer images. The app currently wraps the
-already documented `/img?url=` route in StoreController; please provide the core
-helper later. Core also lacks Nabil's newer users/onboarding/search routes and
-Style DNA apply. pubspec currently has http/shared_preferences, without image_picker.
-No speculative backend changes or second API transport were introduced.
-
-## Next work
-
-- Finish remaining feature flows after the verified Feed/cart checkpoint.
-- Size-advice input, personal try-on slide (collage labeled Outfit board), complete
-  the look/Fit Score, product details.
-- Onboarding, full search/paging after core catches up with Nabil's new routes.
-- Fit Check creation/likes/comments, Closet and Profile/Style DNA.
-- iPhone verification on Adam's Mac; Xcode can wait on Ryan's machine.
-
-Read and write all handoffs on staging. Publish implementation on RyanFrontendking;
-PRs target staging, never main. No service credentials or private tunnel details
-belong in code, screenshots, docs or Git.
+Read/write directional handoffs on staging. The morning report is at the top of
+`RYAN_TO_ADAM.md`; it records the late posting time candidly. PRs target staging,
+never main. No private connection information belongs in the repository.

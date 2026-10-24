@@ -25,7 +25,7 @@ Earlier FlutterFlow-specific implementation notes are superseded.
 
 Page 1 of the PDF also defines Home's suggested grid, persistent search and entry
 into Quick Browse. Page 2 shows retailer model photos and personal try-on slides.
-Personal try-on is the next phase; never put personal generated images in the
+Personal try-on is an explicitly requested generated slide; never put personal generated images in the
 shared catalog. A collage response is labeled Outfit board.
 
 ## Shared data and app integration
@@ -43,7 +43,21 @@ The older JSON fixture remains an explicitly mock historical design asset.
 
 ## Verification
 
-Eight Flutter tests currently cover original gesture/cart behavior and shared API
-integration. Run `cd app && flutter analyze && flutter test`. Backend health/feed
+Thirty-one Flutter tests cover original gestures/cart and the overnight feature flows.
+Connected mode uses paged catalog search; explicit demo mode stays local. Run `cd app && flutter analyze && flutter test`. Backend health/feed
 and image proxy were also verified with private runtime settings. The app loads
 live photos. Phone and live checkout verification remain separate checks.
+
+## Overnight product tools
+
+Find my size opens measurements and the backend's fit choices. It returns a
+recommendation with confidence/reason; only an available size can be selected.
+Try it on appends a generated photo inside the existing image section. A returned
+collage is labeled Outfit board, not a photo of the user. Complete the look opens
+owned/catalog suggestions and Fit Score. These controls stay outside horizontal
+photo swipes; product details scroll to expose controls on smaller screens.
+No model measurements, real descriptions or personal photos are invented.
+
+31 tests pass and a release web build succeeds. Overnight backend checks used
+mock AI and synthetic local fixtures. Shared live / phone / personal-photo quality
+acceptance remains pending; see RYAN.md and the staging morning report.

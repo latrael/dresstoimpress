@@ -21,3 +21,12 @@ Both touch gesture tests and a shared-API Home -> Feed -> wishlist/cart flow are
 covered. The actual app loads live catalog photos through the documented image
 proxy route. Personal try-on, sizing assistance and full product detail remain
 pending. Core and backend ownership stay with Adam/Nabil.
+
+## Overnight additions
+
+Optional size-advice, try-on and complete-look callbacks are supplied by the shell.
+A try-on result adds a product-local gallery slide and an honest mode label; it
+never changes the catalog. Measurements, size selection and other actions stay
+outside the bounded image area. Demo omits service-dependent controls.
+Full app validation: 31 tests, analyze clean and release web build. Shared live
+and phone acceptance remain pending (RYAN.md).

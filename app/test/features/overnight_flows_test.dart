@@ -81,7 +81,7 @@ Api mockApi(Future<http.Response> Function(http.Request) handle) => Api(
       const Settings(baseUrl: 'https://api.example.test', apiKey: 'test-only');
 final testPhoto = PickedPhoto(
     Uint8List.fromList(base64Decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=')),
+        'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAE0lEQVR4nGP8//8/AwMDEwMYAAAkBgMBXaJOiAAAAABJRU5ErkJggg==')),
     'image/png');
 
 Future<void> mount(WidgetTester tester, Widget child) async {
@@ -465,5 +465,83 @@ void main() {
     await tap(tester, 'Use learned budgets');
     expect(find.textContaining('at least five'), findsOneWidget);
     expect(find.text('Your learned budgets are saved.'), findsNothing);
+  });
+  testWidgets(
+      'Fit Check creation sends selected photo MIME and caption only on Post',
+      (tester) async {
+    var writes = 0;
+    bool? created;
+    final api = mockApi((r) async {
+      writes++;
+      expect(r.url.path, '/fitcheck');
+      final multipart = utf8.decode(r.bodyBytes, allowMalformed: true);
+      expect(multipart, contains('Content-Type: image/png'));
+      expect(multipart, contains('Local test caption'));
+      return json(postJson());
+    });
+    await mount(
+        tester,
+        Scaffold(
+            body: Builder(
+                builder: (context) => TextButton(
+                    onPressed: () async {
+                      created = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => CreateFitCheckScreen(
+                                  api: api, picker: () async => testPhoto)));
+                    },
+                    child: const Text('Create')))));
+    await tap(tester, 'Create');
+    await tap(tester, 'Choose outfit photo');
+    expect(writes, 0);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Caption'), 'Local test caption');
+    await tap(tester, 'Post to Fit Check');
+    expect(writes, 1);
+    expect(created, true);
+  });
+  testWidgets('canceling a photo picker leaves Fit Check unpublished',
+      (tester) async {
+    var writes = 0;
+    final api = mockApi((r) async {
+      writes++;
+      return json(postJson());
+    });
+    await mount(
+        tester, CreateFitCheckScreen(api: api, picker: () async => null));
+    await tap(tester, 'Choose outfit photo');
+    expect(
+        tester
+            .widget<FilledButton>(
+                find.widgetWithText(FilledButton, 'Post to Fit Check'))
+            .onPressed,
+        isNull);
+    expect(writes, 0);
+  });
+  testWidgets('failed comment keeps draft and never adds a success comment',
+      (tester) async {
+    final api = mockApi((r) async => json({'detail': 'unavailable'}, 502));
+    await mount(
+        tester,
+        Scaffold(
+            body: SingleChildScrollView(
+                child: FitPostCard(
+                    post: FitCheckPost.fromJson(postJson()),
+                    api: api,
+                    onShop: (_) {}))));
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Add a comment'), 'Keep this draft');
+    await tester.ensureVisible(find.byTooltip('Send comment'));
+    await tester.tap(find.byTooltip('Send comment'));
+    await tester.pumpAndSettle();
+    expect(find.text('u_demo · Keep this draft'), findsNothing);
+    expect(
+        tester
+            .widget<TextField>(find.widgetWithText(TextField, 'Add a comment'))
+            .controller!
+            .text,
+        'Keep this draft');
+    expect(find.textContaining('Could not send comment'), findsOneWidget);
   });
 }

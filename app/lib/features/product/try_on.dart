@@ -31,11 +31,14 @@ Future<({String url, String label})?> requestTryOn(
     await api.uploadBodyPhoto(photo.bytes, mimeType: photo.mimeType);
   }
   final result = await api.tryOn([productId]);
+  if (result.imageUrl.isEmpty) throw Exception('No preview was returned.');
   return (
     url: result.imageUrl,
     label: result.isOutfitBoard
         ? 'Outfit board · collage, not a photo of you'
-        : 'Your AI try-on'
+        : result.mode == 'ai'
+            ? 'Your AI try-on'
+            : 'Generated preview'
   );
 }
 

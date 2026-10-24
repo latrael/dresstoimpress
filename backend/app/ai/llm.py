@@ -157,6 +157,9 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
             model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": content}],
+            # Haiku 5.5 thinks by default; that burned the whole token budget on pairing and cut the
+            # JSON off. These are short structured tasks: no thinking = faster, cheaper, complete.
+            **({} if os.getenv("CLAUDE_THINKING") == "on" else {"thinking": {"type": "disabled"}}),
         )
         try:
             _record_claude(model, msg.usage.input_tokens, msg.usage.output_tokens)

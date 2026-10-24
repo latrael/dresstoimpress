@@ -171,7 +171,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         raw = hit["raw"]
     else:
         try:
-            raw = ai_json(prompt, max_tokens=1200, model=CLAUDE_PAIR_MODEL)
+            raw = ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL)
         except BadModelOutput:
             return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
         store.put("pair_cache", ckey, {"at": time.time(), "raw": raw})
@@ -186,7 +186,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             product_id=r["product_id"],
             id=r["product_id"],
             score=min(1.0, max(0.0, float(r.get("score", 0.5)))),
-            reason=" ".join(str(r.get("reason", "")).split()[:8]) or "pairs with your closet",
+            reason=" ".join(str(r.get("reason", "")).split()[:12]).rstrip(".") or "pairs with your closet",
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     out.sort(key=lambda r: r.score, reverse=True)

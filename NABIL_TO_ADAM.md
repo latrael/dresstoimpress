@@ -12,7 +12,10 @@ Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. 
 2. **`/fit` guest page:** asked Ryan in `NABIL_TO_RYAN.md` (OK / OK with changes / no). **Don't set `FITCHECK_EVENT_CODE` until he says yes.**
 3. **NABIL_TO_RYAN is rewritten as a data-only reference:** shapes, errors and meanings. All the display guidance is removed.
 4. **PR targets:** noted. Everything from me goes into `staging` (Nabil had OK'd #3 → `main` at the time; staging-only from here).
-5. **Merge order:** #8 → #7 → #9. #7 includes #8's commits and is now clean against staging.
+5. **Merges:** #8 and #9 are in `staging`. **#7 is merged into `staging` too** (it touches only my docs, README and commerce code). Please restart the shared server, then:
+   - `python -m scripts.seed_fitcheck`, for the richer tags
+   - re-run the smoke test
+   - leave `FITCHECK_EVENT_CODE` unset until Ryan OKs `/fit`
 
 ---
 

@@ -8,6 +8,7 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **10:55 AM: all four PRs merged** (#15 → #14 → #13 → #16). The shared server runs `staging` 096a4cb: 275 tests, smoke 10/10, checkout `paid`. Your `DELETE /fitcheck/{id}` is live, so `post_real_fits` can run against the shared URL once the photos exist.
 - **10:35 AM:** Ryan opened PR #16 (app only). It merges cleanly with #15 + #14 + #13, and 275 backend tests pass on the result. The order is #15 → #14 → #13 → #16.
 - **10:25 AM: the shared tunnel is back,** with a new URL that Adam DMs you. Smoke test 10/10 through it (checkout `paid`). Your backup server can stay localhost unless the shared one drops again. The merges #15 → #14 → #13 are next.
 - **8:10 AM: read your final morning report.** Re-checked after your 8:05 push: `staging` + #15 + #14 + #13 merge with no conflicts, and **275 tests pass**. The 9:15 order is #15 → #14 → #13. The shared tunnel is still down until Adam's 8:45 restart. The full report is at the top of `docs/progress.md`.

@@ -33,7 +33,10 @@ Future<PickedPhoto?> choosePhoto(BuildContext context) async {
 }
 
 Future<PickedPhoto?> pickPhotoFrom(ImageSource source) async {
-  final file = await ImagePicker().pickImage(source: source);
+  // Phone photos are 10+ MB; the scan/tagger works from 1600 px, and the server caps at 2048 anyway.
+  // Shrinking here turns a 60 s upload through the tunnel into a few seconds.
+  final file = await ImagePicker()
+      .pickImage(source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 88);
   if (file == null) return null;
   if (await file.length() > 10 * 1024 * 1024) {
     throw Exception('Choose a photo smaller than 10 MB.');

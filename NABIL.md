@@ -2,7 +2,7 @@
 
 What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Fri Oct 23, 2026, about 8 PM PT
+**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
 
 ---
 
@@ -12,6 +12,8 @@ What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `
 - **The feed is built on H&M and Uniqlo.** Both return real per-size stock on our free Apify plan with no proxy, and neither has a run cap. Zara and Mango are optional extras later.
 - **Products are a snapshot.** They're scraped once at ingest and the feed serves them from the store. Nothing is scraped live during the demo, except Adam's Fit Check lookups (`source: "live_search"`).
 - **The demo's H&M top stays.** H&M sizes and stock are confirmed real.
+- **Catalog: 418 products** (H&M 290 including 48 shoes, Uniqlo 128), committed at `backend/seed/products.json`. Load it with `python -m scripts.load_products`. Every product has an `images[]` gallery; Uniqlo also has a `description`.
+- **Checkout makes real Nessie purchases** (one per store). **Fit Check backend is live.** **Hosting:** Adam's Mac behind a tunnel, with the URL and `X-DTI-Key` shared privately.
 
 ---
 
@@ -56,8 +58,11 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 | POST | `/cart/{user_id}/items` `{product_id, size, qty}` | add to cart; 422 if the size is sold out |
 | GET | `/cart/{user_id}` | cart **grouped by retailer**, with subtotals and a total |
 | DELETE | `/cart/{user_id}/items/{product_id}?size=` | remove an item |
-| GET | `/wishlist/{user_id}` | saved items |
-| POST | `/checkout/{user_id}` | one purchase per retailer. Status is `pending_nessie` until the Nessie key is in |
+| PUT / DELETE | `/wishlist/{user_id}/items/{product_id}` | save / unsave. Repeat-safe, and does **not** remove the item from the feed |
+| GET | `/wishlist/{user_id}` · `/wishlist/{user_id}/ids` | saved products (newest first) · just their ids |
+| GET | `/orders/{user_id}` | past orders |
+| * | `/fitcheck…` | post, feed, detail, PATCH tags, `/shop`, like, comment. See NABIL_TO_RYAN.md |
+| POST | `/checkout/{user_id}` | one **real Nessie purchase** per retailer (`paid` / `nessie_failed`). 409 if a size sold out since it went in the cart, and nothing is charged |
 
 Shapes:
 - **Feed card** = full `Product` + `reason`, `score`, `pairs_with[]`. One card per style (colour variants are collapsed), and stores and categories alternate. If `pair()` returns fewer cards than `limit`, it tops up with unranked cards (`reason: ""`).
@@ -74,7 +79,7 @@ Shapes:
 - FYI: H&M images show a person wearing the item. Uniqlo images are garment-only, so Uniqlo items are the safest for try-on demos.
 
 ### Ryan
-- **Feed cards:** `image_url`, `name`, `brand`, `price_usd`, `retailer` and `sizes` are always present. Show `sale_price_usd` struck through when it isn't null.
+- **Feed cards:** `image_url`, `name`, `brand`, `price_usd`, `retailer` and `sizes` are always present. When `sale_price_usd` isn't null, it's the price to charge and show; strike through the original `price_usd` next to it. (Corrected: this was reversed before.)
 - **Size picker** before add-to-cart: grey out sizes where `in_stock: false`.
 - **Cart and checkout confirmation:** group by `retailer` (H&M and Uniqlo for the demo).
 - Real products should be in the store tonight. Until then, `python -m scripts.seed_demo` gives you mock data in the same shape.
@@ -100,11 +105,13 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Risks
 
-- **Nessie isn't wired yet** (no key). Checkout returns `pending_nessie` purchases until it is.
-- **There's no public backend URL yet.** The app can't reach a laptop's localhost, so we need ngrok or Render before the Saturday-noon end-to-end run.
+- **Nessie** stores amounts as integers (we round), and it's https only. Without a key on the host, checkout falls back to `pending_nessie`.
+- **Hosting** depends on Adam's Mac and tunnel staying up through judging.
 - **Style keywords are loose** on H&M (it has no y2k tag), so Adam's tagger supplies the real `style_tags`.
 
 ## Changelog
+
+- **Oct 23, ~10:45 PM:** Real Nessie checkout, Fit Check backend, 418-product snapshot (with shoes), galleries and descriptions, repeat-safe wishlist, checkout 409 on a stock change. Apify: $200 in credits secured, $2.43 spent.
 
 - **Oct 23, ~9 PM:** Ingest CLI and commerce router built (84 tests pass). 370 real H&M and Uniqlo products loaded. Merged Adam's staging update; his notes to me are covered here (see ADAM.md).
 - **Oct 23, ~8 PM:** Schema locked to `models.py` (on `staging`). Ingest built around H&M and Uniqlo. Commerce router and ingest CLI in progress on `nabil`.

@@ -138,3 +138,15 @@ Update `NABIL.md` and this document with:
 Ryan will keep the app on local fixtures until these shapes are available. His
 frontend implementation notes and mock JSON live under `frontend/` on
 `RyanFrontendking`. No request here requires modifying that branch or FlutterFlow.
+
+---
+
+## Implemented (Nabil, Oct 23 ~10:45 PM): on `nabil`, PR into `staging`
+
+All P0 and P1 items are done. Full shapes, examples and error bodies are in [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md).
+- **Gallery:** `images[{url, kind}]` is filled in for all 418 products; `images[0]` is the same as `image_url`. H&M has 2–6 `retailer_model` photos each; Uniqlo has 1 `product` photo each. Every photo is the same product and colour, with no duplicates.
+- **Description:** plain text. Uniqlo 117 of 128 have one; H&M is always `null`, because the scraper returns no text.
+- **Wishlist:** `PUT/DELETE /wishlist/{user_id}/items/{product_id}` (repeat-safe, and doesn't remove the item from the feed), `GET /wishlist/{user_id}`, and `GET /wishlist/{user_id}/ids`. Legacy `/swipe action=save` still works.
+- **Price wording:** corrected in NABIL.md. Show `sale_price_usd` and strike through `price_usd`.
+- **Stock changes:** cart add gives a specific 422 message, and checkout gives 409 with the `unavailable` list, charging nothing.
+- **Base URL:** Adam's tunnel, shared privately along with the `X-DTI-Key` header. Demo user `u_demo`.

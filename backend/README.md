@@ -54,6 +54,15 @@ python -m scripts.eval_tagger ~/Desktop/closet    # real tagger on a folder of p
 python -m scripts.precompute_tryons --user u_demo # warm try-on cache before judging (needs GEMINI_API_KEY)
 ```
 
+## Products (real catalog)
+
+`backend/data/` is gitignored, so the real catalog (242 H&M + 128 Uniqlo) is committed at `seed/products.json`, with the raw Apify pulls in `seed/raw/*.json.gz`.
+
+```bash
+python -m scripts.seed_demo && python -m scripts.load_products   # demo user + 370 real products (drops the 5 placeholders; --keep-seed-demo, --replace)
+python -m scripts.ingest && python -m scripts.export_products    # re-ingest live (needs APIFY_TOKEN), then commit seed/products.json
+```
+
 ## Where things live
 
 ```

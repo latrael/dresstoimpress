@@ -53,7 +53,7 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/feed?user_id=&limit=20&seed=` | Home: in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`, **in-your-size first**. Each card adds `reason`, `score`, `pairs_with`, `your_size`, `in_your_size`. `seed=` → that product first, then similar (same category first); `&seed_shown=true` on later reloads drops the seed card. Filtered by `User.shop_for`; preferred stores 2:1 |
-| GET | `/search?user_id=&q=` | Discover text search → `{query, similar, goes_with}` (goes_with = complete the look around the top result, closet first) |
+| GET | `/search?user_id=&q=` | Discover text search → `{query, similar, goes_with, vibe}` (goes_with = complete the look around the top result, closet first; sentences or no keyword hits go through Adam's `vibe()`) |
 | GET | `/search/styles?user_id=&limit=` | Discover idle: `{styles:[{tag,count}], trending:[Product+trend_count]}` |
 | POST | `/search/photo` (multipart `user_id`, `file`) | Discover photo search → `{photo_url, tags, similar, goes_with}`; no post or closet item created |
 | GET | `/products?q=&category=&retailer=&sort=&limit=&offset=` | search and paging → `{items, total, limit, offset, next_offset}` |

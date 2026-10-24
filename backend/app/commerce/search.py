@@ -18,9 +18,10 @@ from fastapi import APIRouter, File, Form, UploadFile
 from ..ai import service
 from ..ai.llm import BadModelOutput
 from ..ai.router import _ai_down, _save_upload, complete_look_route
+from ..ai.vibe import vibe
 from ..models import CompleteLookRequest, StyleTag
 from ..store import store
-from .router import _buyable, _dedupe, _dept_ok, _size_fields, _size_first, feed, search_products
+from .router import _buyable, _dedupe, _dept_ok, _hits, _size_fields, _size_first, feed, search_products
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["search"])
@@ -62,13 +63,40 @@ def _goes_with(user_id: str, anchor_id: str) -> list[dict]:
 @router.get("/search")
 def search(user_id: str, q: str = ""):
     """Keyword search (same matching as /products, in stock, one card per style; the top results by relevance,
-    in your size first) + complete the look around the #1 card. A blank query returns empty sections (the app
-    shows chips + trending instead)."""
+    in your size first) + complete the look around the #1 card. A sentence (3+ words) or a query with no
+    keyword hits goes through Adam's vibe() instead; `vibe` echoes the filters it used (null otherwise).
+    A blank query returns empty sections (the app shows chips + trending instead)."""
     if not q.strip():
-        return {"query": q, "similar": [], "goes_with": []}
-    top = _dedupe(search_products(q=q, limit=100, department=_shop_for(user_id))["items"])[:SIMILAR_LIMIT]
+        return {"query": q, "similar": [], "goes_with": [], "vibe": None}
+    shop_for = _shop_for(user_id)
+    hits = search_products(q=q, limit=100, department=shop_for)["items"]
+    filters = None
+    if len(q.split()) >= 3 or not hits:  # a sentence ("fit for a rooftop party") or no direct hits: ask vibe()
+        filters = vibe(q)
+        seen = {h["id"] for h in hits}  # exact keyword matches stay first ("black cargo pants")
+        hits += [p for p in _vibe_hits(filters, shop_for) if p["id"] not in seen]
+    top = _dedupe(hits)[:SIMILAR_LIMIT]
     similar = _size_first(top, _body_profile(user_id))  # same 24 results, in your size first
-    return {"query": q, "similar": similar, "goes_with": _goes_with(user_id, similar[0]["id"]) if similar else []}
+    return {"query": q, "similar": similar, "vibe": filters,
+            "goes_with": _goes_with(user_id, similar[0]["id"]) if similar else []}
+
+
+def _vibe_hits(f: dict, shop_for) -> list[dict]:
+    """In-stock products scored against vibe() filters: style 3, category 2, keyword phrase 2, colour 1 each.
+    Best first (ties by name); nothing that scores 0."""
+    styles, cats = set(f.get("styles") or []), set(f.get("categories") or [])
+    colors = [c.lower() for c in f.get("colors") or []]
+    keywords = [k.lower().split() for k in f.get("keywords") or [] if k.strip()]
+    scored = []
+    for p in store.list("products"):
+        if not _buyable(p) or not _dept_ok(p, shop_for):
+            continue
+        score = (3 * len(styles & set(p.get("style_tags") or [])) + 2 * (p.get("category") in cats)
+                 + 2 * sum(_hits(p, kw) is not None for kw in keywords)
+                 + sum(any(c in col.lower() for col in p.get("colors") or []) for c in colors))
+        if score:
+            scored.append((-score, p.get("name") or "", p))
+    return [p for *_, p in sorted(scored, key=lambda t: t[:2])]
 
 
 # ---------- before a search: style chips + trending ----------

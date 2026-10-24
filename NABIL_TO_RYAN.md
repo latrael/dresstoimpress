@@ -21,6 +21,16 @@ Every change only adds fields; nothing the app reads today was removed or rename
 - **Store mix:** with `preferred_stores` set, each size group shows 2 preferred-store cards per other-store card.
 - **Discover is size-first too:** `/search` and `/search/photo` `similar` items and trending cards carry `your_size` / `in_your_size`, with in-your-size first. `goes_with` is built around the first card shown.
 - **Cart lines carry `image_url`** (the product's main photo, saved when added), including the lines in `unavailable[]`, so a removed item still shows its picture.
+- **Vibe search is in `GET /search`:**
+  - A sentence (3+ words, e.g. "fit for a rooftop party") or a query with no keyword hits goes through Adam's `vibe()`. Exact keyword matches still come first.
+  - The response adds `vibe: {styles, categories, colors, keywords, source} | null`. You can show it as "Showing: streetwear · black".
+- **Your contract questions (RYAN_TO_ADAM 424dcf3):**
+  - **Clearing a skipped budget:** `PATCH /users/{id}` replaces `price_ranges` as a whole. Send the dict without the skipped category, or `{}` to clear every budget. `null` / leaving it out keeps the saved one.
+  - **`preferred_stores` / `onboarded` / `shop_for`:** `PATCH` changes only the fields you send. `preferred_stores` is replaced as a whole list.
+  - **`usual_sizes`:** Adam's `body_profile` (`PATCH /users/{id}/body-profile`), not on User.
+  - **An unmatched Inspo tag** (no `product_id`): `GET /search?q=<tag label>` gives you the similarity search.
+  - **Trending:** global engagement first (`trend_count > 0`), then your personal feed (`trend_count: 0`). They aren't interleaved; tell me if you want them mixed.
+  - **Dart core methods for these routes:** Adam's `app/lib/core`. The contracts above are final for this PR.
 
 **User profile** (`GET/PATCH /users/{id}`)
 - `preferred_stores: ["hm","uniqlo"]`: onboarding screen 3. Default `[]`.

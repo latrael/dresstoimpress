@@ -217,6 +217,10 @@ class Api {
   Future<FitCheckComment> commentFitCheck(String postId, String text) async => FitCheckComment.fromJson(
       await _send('POST', '/fitcheck/${_seg(postId)}/comments', body: {'user_id': _user, 'text': text}));
 
+  /// Deletes the current user's own post. Throws [ApiError] 403 for someone else's post, 404 if it's gone.
+  Future<bool> deleteFitCheck(String postId) async =>
+      (await _send('DELETE', '/fitcheck/${_seg(postId)}', query: {'user_id': _user}))['deleted'] == true;
+
   // ------------------------------------------------------------ plumbing
 
   static String _seg(String s) => Uri.encodeComponent(s);

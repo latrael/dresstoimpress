@@ -105,4 +105,15 @@ void main() {
     expect(p.items, isEmpty);
     expect((p.total, p.nextOffset), (0, null));
   });
+
+  test('deleteFitCheck sends DELETE with the owner id and reads deleted', () async {
+    final seen = <http.Request>[];
+    final api = _api(seen, (r) => {'post_id': 'fc 1', 'deleted': true});
+    expect(await api.deleteFitCheck('fc 1'), isTrue);
+    final r = seen.single;
+    expect(r.method, 'DELETE');
+    expect(r.url.path, '/fitcheck/fc%201');
+    expect(r.url.queryParameters, {'user_id': 'u_demo'});
+    expect(r.headers['X-DTI-Key'], 'k');
+  });
 }

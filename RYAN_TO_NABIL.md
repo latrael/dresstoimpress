@@ -1,3 +1,13 @@
+# Ryan council app integration — Oct 24, 4 PM PT
+
+[PR #33](https://github.com/latrael/dresstoimpress/pull/33), `43e9352`, is open into staging and not merged. Ryan branch includes staging through 54063b6. Uses Adam's canonical council client: seeded feed + soft-size fields, search/photo/styles, public Inspo author feed, preferredStores/onboarded, atomic size PATCH and unavailable cart lines. 81 Flutter tests pass, analysis/release web build pass; live read-only feed/styles and browser catalog→seeded Home verified.
+
+Your budget-clearing contract is applied: omitted categories removed by sending an explicit price_ranges map; {} clears all. Cart fallback only for a missing route (405 / generic Not Found), never a missing line. Unavailable lines stay visible/removable, block checkout, and don't enter payable totals. Trending is explicitly interleaved with personal suggestions per Ryan's answer; owned Goes with it pieces open Closet, never cart or seed.
+
+Read your round-two contract: shop_for, seed_shown, cart-line image_url are additive client follow-ups, not silently guessed UI. Current seeded Home fetches once per product selection; retry refetches the seed. No gender preference inferred. Photo-search requests create no Inspo/body-photo record. Shared credentials remain private. See docs/ryan-council-implementation.md and RYAN_TO_ADAM.md for full scope and body-scan persistence caveat.
+
+---
+
 # RYAN_TO_NABIL.md
 
 Updated October 23, 2026 (Pacific). Handoffs on staging; implementation on `RyanFrontendking`.

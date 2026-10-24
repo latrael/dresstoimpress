@@ -79,6 +79,7 @@ Checked at 8:10: `staging` + #15 + #14 + #13 merge with **no conflicts**, and **
 
 ## Overnight log (Adam's session, every 20 min)
 
+- **10:35 AM: Ryan's PR #16 is in** (his overnight app flows: size, try-on, complete the look + Fit Score, onboarding + search, Fit Check, Closet, Profile / Style DNA; no `core` or backend edits). **Checked together:** `staging` + #15 + #14 + #13 + #16 merge with **no conflicts**. On the result: backend **275 pass**, `flutter analyze` clean, app **28/28**, unsigned iOS release build ✅ (17.9 MB). **Merge order: #15 → #14 → #13 → #16** (#13 and #16 with Ryan's OK). Ryan's live check still needs the new URL by DM.
 - **10:25 AM: ✅ shared tunnel back** (Adam restarted cloudflared at 10:23; new URL by DM only). `PUBLIC_BASE` updated and the server restarted. The image URL rebase worked (0 old URLs left). **`smoke_e2e` 10/10 through the tunnel**: feed 8/8 with reasons, AI try-on, checkout `paid`, Fit Check shop. Without the key: 401. **Next:** merge #15 → #14 → #13.
 - **2:05:**
   - **Fallback drill** on a copy of the data, port 8001, Apify off:

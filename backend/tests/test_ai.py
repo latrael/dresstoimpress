@@ -36,8 +36,8 @@ def test_tryon_caches(client):
     assert first["image_url"] == second["image_url"]
 
 
-def test_tryon_unknown_user(client):
-    r = client.post("/tryon", json={"user_id": "nobody", "product_ids": ["hm-demo-1"]})
+def test_tryon_unknown_product(client):
+    r = client.post("/tryon", json={"user_id": "u_demo", "product_ids": ["nope"]})
     assert r.status_code == 400
 
 
@@ -343,3 +343,35 @@ def test_seeded_products_match_schema(client):
     for p in store.list("products"):
         if p.get("source") == "seed":
             Product.model_validate(p)
+
+
+def test_tryon_collage_when_ai_unavailable(client, monkeypatch, tmp_path):
+    import io
+    from PIL import Image
+    from app.ai import service
+    from app.store import store
+    # local images so no network is needed
+    for name, color in [("body.png", (200, 180, 160)), ("tee.png", (250, 250, 250))]:
+        (service.DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (300, 500), color).save(service.DATA_DIR / "uploads" / name)
+    store.put("users", "u_board", {"id": "u_board", "display_name": "B",
+                                   "body_photo_url": "/static/uploads/body.png"})
+    store.put("products", "board-tee", {"id": "board-tee", "retailer": "hm", "name": "Tee", "brand": "H&M",
+                                        "category": "top", "price_usd": 10, "image_url": "/static/uploads/tee.png",
+                                        "product_url": "https://p"})
+    monkeypatch.setattr(service, "mock_mode", lambda k: False)
+    monkeypatch.delenv("MOCK_AI", raising=False)
+
+    def no_images(*a, **k):
+        raise service.BadModelOutput("429 quota")
+    monkeypatch.setattr(service, "gemini_image", no_images)
+    url, cached, mode = service.try_on("u_board", ["board-tee"], [])
+    assert mode == "collage" and not cached and url.endswith("-board.png")
+    img = Image.open(io.BytesIO((service.TRYON_DIR / url.rsplit("/", 1)[1]).read_bytes()))
+    assert img.size == (1024, 1280)
+    assert service.try_on("u_board", ["board-tee"], [])[1] is True  # cached within retry window
+
+
+def test_tryon_without_body_photo_still_returns_board(client):
+    r = client.post("/tryon", json={"user_id": "nobody", "product_ids": ["hm-demo-1"]})
+    assert r.status_code == 200 and r.json()["mode"] in {"ai", "collage"}

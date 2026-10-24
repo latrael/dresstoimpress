@@ -39,6 +39,38 @@ Source of truth: `backend/app/models.py` → `Product`. Use these exact names.
 | `scraped_at` | ISO string or null | `2026-10-24T02:16:01Z` | |
 | `source` | enum | `ingest` | `ingest` (Nabil), `live_search` (Fit Check lookups), `seed` (demo) |
 
+### Where this came from
+
+Two drafts were merged: Nabil's proposal in [`NABIL.md`](../NABIL.md) (merged into `staging`, unchanged) and the first `models.py`. Nabil's pipeline, Apify findings and API plan in `NABIL.md` still apply; only the field names below changed.
+
+Nabil's example product, in the unified shape:
+
+```json
+{
+  "id": "asos:211172667:ivory",
+  "retailer": "asos",
+  "name": "Topshop knitted high neck ribbed sweater lace detail in ivory",
+  "brand": "Topshop",
+  "category": "top",
+  "price_usd": 96.73,
+  "sale_price_usd": null,
+  "currency": "USD",
+  "colors": ["ivory"],
+  "sizes": [{"name": "S", "in_stock": true}, {"name": "M", "in_stock": false}],
+  "in_stock": true,
+  "image_url": "https://images.asos-media.com/products/.../211172667-1-white",
+  "product_url": "https://www.asos.com/.../prd/211172667",
+  "style_tags": ["minimalist"],
+  "pattern": "solid",
+  "formality": 2,
+  "label": "ivory ribbed sweater",
+  "scraped_at": "2026-10-24T02:16:01Z",
+  "source": "ingest"
+}
+```
+
+Note: NABIL.md's style words ("cozy", "minimal") become the shared vocabulary (`minimalist`), since the tagger and closet items use the same 10 tags.
+
 ### Renames from the two earlier drafts
 
 | NABIL.md draft | `models.py` draft | **Unified** |

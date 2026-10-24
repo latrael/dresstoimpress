@@ -37,6 +37,22 @@ async def closet_upload(user_id: str = Form(...), file: UploadFile = File(...)):
     return closet_tag(TagRequest(user_id=user_id, image_url=url))
 
 
+@router.get("/closet/{user_id}", response_model=list[ClosetItem])
+def closet_list(user_id: str):
+    """Everything in this user's closet (newest last)."""
+    return store.list("closet_items", user_id=user_id)
+
+
+@router.delete("/closet/{user_id}/{item_id}")
+def closet_delete(user_id: str, item_id: str):
+    """Remove one closet item, e.g. after "you already have this" on upload."""
+    item = store.get("closet_items", item_id)
+    if not item or item.get("user_id") != user_id:
+        raise HTTPException(404, "unknown closet item")
+    store.delete("closet_items", item_id)
+    return {"deleted": item_id}
+
+
 @router.post("/users/{user_id}/body-photo")
 async def body_photo(user_id: str, file: UploadFile = File(...)):
     """Private full-body photo used for try-on."""

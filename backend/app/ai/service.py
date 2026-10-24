@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 
 from ..models import ClosetItem, PairResult, Product
+from .colors import find_duplicate
 from .compat import get_product, list_products
 from ..store import DATA_DIR, store
 from . import prompts
@@ -68,6 +69,8 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
         source="photo",
         label=" ".join(str(raw.get("label", "")).split()[:5]),
     )
+    # same garment uploaded twice? the app can offer "you already have this - keep both?"
+    item.duplicate_of = find_duplicate(item.model_dump(), store.list("closet_items", user_id=user_id))
     store.put("closet_items", item.id, item.model_dump())
     return item
 

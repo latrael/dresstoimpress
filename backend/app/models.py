@@ -62,6 +62,7 @@ class ClosetItem(BaseModel):
     formality: int = Field(3, ge=1, le=5)
     source: Literal["photo", "receipt", "seed"] = "photo"
     label: str = ""  # short plain name, e.g. "black cargo pants" (optional, added Fri night)
+    duplicate_of: Optional[str] = None  # id of a closet item that's probably the same garment (set on upload)
 
 
 class User(BaseModel):

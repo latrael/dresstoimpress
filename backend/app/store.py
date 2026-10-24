@@ -3,7 +3,7 @@
 Default: JSON files under backend/data/ (works offline, zero setup).
 Set USE_FIRESTORE=1 (+ GOOGLE_APPLICATION_CREDENTIALS) to use Firestore with
 the same collection names: products, closet_items, users, swipes, tryon_cache.
-Nabil can swap in his own product source — only get/list/put are used here.
+Nabil can swap in his own product source — get/list/put/delete are all that's used.
 """
 from __future__ import annotations
 
@@ -44,6 +44,14 @@ class JsonStore:
             data[doc_id] = doc
             self._path(collection).write_text(json.dumps(data, indent=2))
 
+    def delete(self, collection: str, doc_id: str) -> bool:
+        with self._lock:
+            data = self._load(collection)
+            if data.pop(doc_id, None) is None:
+                return False
+            self._path(collection).write_text(json.dumps(data, indent=2))
+            return True
+
 
 class FirestoreStore:
     def __init__(self):
@@ -63,6 +71,13 @@ class FirestoreStore:
 
     def put(self, collection: str, doc_id: str, doc: dict) -> None:
         self.db.collection(collection).document(doc_id).set(doc)
+
+    def delete(self, collection: str, doc_id: str) -> bool:
+        ref = self.db.collection(collection).document(doc_id)
+        if not ref.get().exists:
+            return False
+        ref.delete()
+        return True
 
 
 store = FirestoreStore() if os.getenv("USE_FIRESTORE") == "1" else JsonStore()

@@ -246,23 +246,54 @@ def test_finder_rejects_wrong_type_and_category():
     assert best_matches(tag, [tee, hoodie, jeans]) == [hoodie]
 
 
-def test_finder_live_search_normalizes(monkeypatch):
-    import httpx
+def test_finder_live_search_uses_hm_actor(monkeypatch):
     from app.ai import finder
+    from app.commerce import ingest
+    from app.store import store
 
-    class R:
-        def raise_for_status(self): pass
-        def json(self):
-            return [{"site": "asos", "name": "ASOS DESIGN oversized hoodie in mustard", "price": "$42.00",
-                     "image": "https://img/x.jpg", "url": "https://asos.com/p/1", "sizes": ["S", "M"]},
-                    {"site": "asos", "name": "no price"}]
-    sent = {}
+    raw = [{"id": "0970819001", "title": "Loose Fit Hoodie", "category": "men_hoodiessweatshirts",
+            "color": "Mustard yellow", "price": 24.99, "model_image": "https://img/x.jpg",
+            "url": "https://www2.hm.com/en_us/productpage.0970819001.html",
+            "sizes": [{"size": "M", "in_stock": True}]},
+           {"id": "kid1", "title": "Kids hoodie", "category": "kids_hoodies", "color": "Mustard",
+            "price": 9.99, "model_image": "https://img/k.jpg", "url": "https://www2.hm.com/k"}]
+    calls = []
     monkeypatch.setenv("APIFY_TOKEN", "t")
-    monkeypatch.setattr(httpx, "post", lambda url, **k: sent.update(k) or R())
-    got = finder.live_search({"label": "oversized hoodie", "color": "mustard", "category": "top"})
-    assert len(got) == 1 and got[0]["price_usd"] == 42.0 and got[0]["retailer"] == "asos"
-    assert "mustard+oversized+hoodie" in sent["json"]["asosCategoryUrl"]
-    assert got[0]["id"] == finder.live_search({"label": "oversized hoodie", "color": "mustard"})[0]["id"]  # cached, stable id
+    monkeypatch.setattr(ingest, "fetch_hm", lambda kw, n, token: calls.append((kw, n)) or raw)
+    tag = {"label": "mustard oversized hoodie", "color": "mustard", "category": "top"}
+    got = finder.live_search(tag)
+    assert calls == [(["mustard oversized hoodie"], finder.LIVE_SEARCH_MAX)]  # color not doubled
+    assert [p["id"] for p in got] == ["hm:0970819001:mustard-yellow"]        # kids item dropped
+    assert got[0]["source"] == "live_search" and store.get("products", got[0]["id"])
+    assert finder.live_search(tag)[0]["id"] == got[0]["id"] and len(calls) == 1  # cached
+    assert finder.best_matches(tag, got) == got
+
+
+def test_finder_live_search_keeps_catalog_copy(monkeypatch):
+    from app.ai import finder
+    from app.commerce import ingest
+    from app.store import store
+
+    store.put("products", "hm:111:black", {"id": "hm:111:black", "label": "tagged already", "source": "ingest"})
+    raw = [{"id": "111", "title": "Hoodie", "category": "men_hoodies", "color": "Black", "price": 20,
+            "model_image": "https://img/h.jpg", "url": "https://www2.hm.com/h"}]
+    monkeypatch.setenv("APIFY_TOKEN", "t")
+    monkeypatch.setattr(ingest, "fetch_hm", lambda kw, n, token: raw)
+    got = finder.live_search({"label": "plain black hoodie zz", "category": "top"})
+    assert got[0]["label"] == "tagged already"
+    assert store.get("products", "hm:111:black")["source"] == "ingest"
+
+
+def test_finder_live_search_failure_is_quiet(monkeypatch, caplog):
+    from app.ai import finder
+    from app.commerce import ingest
+
+    def boom(*a, **k):
+        raise RuntimeError("https://api.apify.com/...?token=secret")
+    monkeypatch.setenv("APIFY_TOKEN", "secret")
+    monkeypatch.setattr(ingest, "fetch_hm", boom)
+    assert finder.live_search({"label": "unfindable thing qq"}) == []
+    assert "secret" not in caplog.text
 
 
 def test_finder_no_token_no_live_search(monkeypatch):

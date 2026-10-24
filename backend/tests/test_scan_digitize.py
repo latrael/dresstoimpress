@@ -201,3 +201,36 @@ def test_editing_the_profile_keeps_the_body_scan(client):
     r = client.patch("/users/u_s", json={"display_name": "Sam"})
     assert r.status_code == 200, r.text
     assert store.get("users", "u_s")["body_profile"]["height_cm"] == 170
+
+
+# ---------- uploads drop EXIF (GPS) and come out upright ----------
+
+def _jpeg_with_gps_and_rotation() -> bytes:
+    from PIL import Image
+
+    im = Image.new("RGB", (300, 100), "red")  # stored landscape; EXIF says "rotate 90 to show it"
+    exif = Image.Exif()
+    exif[0x0112] = 6                                                # Orientation: rotate 90 CW
+    exif[0x8825] = {1: "N", 2: (37.0, 46.0, 30.0), 3: "W", 4: (122.0, 25.0, 9.0)}  # GPSInfo
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", exif=exif)
+    return buf.getvalue()
+
+
+def test_uploads_strip_gps_and_apply_rotation(client):
+    from PIL import Image
+
+    raw = _jpeg_with_gps_and_rotation()
+    assert Image.open(io.BytesIO(raw)).getexif().get(0x8825)  # the test photo really has GPS
+    r = client.post("/users/u_s/body-photo", files={"file": ("me.jpg", raw, "image/jpeg")})
+    url = r.json()["body_photo_url"]
+    saved = Image.open(io.BytesIO(client.get("/static/uploads/" + url.rsplit("/", 1)[1]).content))
+    assert not saved.getexif()          # no GPS, no EXIF at all
+    assert saved.size == (100, 300)     # rotation applied, so it shows upright everywhere
+
+
+def test_unreadable_images_are_kept_as_uploaded():
+    from app.ai.router import _clean_image
+
+    data, ext = _clean_image(b"not really a heic", "image/heic")
+    assert (data, ext) == (b"not really a heic", ".heic")

@@ -24,17 +24,46 @@ MAX_UPLOAD = 10 * 1024 * 1024
 EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/heic": ".heic"}
 
 
+MAX_SIDE_PX = 2048
+
+
+def _clean_image(data: bytes, content_type: str) -> tuple[bytes, str]:
+    """Re-encode an upload without its metadata: phone photos carry EXIF GPS, and /static/uploads
+    needs no key. The EXIF rotation is applied first (so the saved image is upright) and the longest
+    side is capped. PNG stays PNG; everything else becomes JPEG. If Pillow can't read it (e.g. HEIC
+    without a plugin) the bytes are kept as uploaded."""
+    import io
+    import logging
+
+    try:
+        from PIL import Image, ImageOps
+
+        with Image.open(io.BytesIO(data)) as im:
+            im = ImageOps.exif_transpose(im)
+            im.thumbnail((MAX_SIDE_PX, MAX_SIDE_PX))
+            buf = io.BytesIO()
+            if content_type == "image/png":
+                im.save(buf, "PNG")  # no pnginfo / exif passed: metadata is dropped
+                return buf.getvalue(), ".png"
+            im.convert("RGB").save(buf, "JPEG", quality=90)
+            return buf.getvalue(), ".jpg"
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger(__name__).warning("upload kept as-is (could not re-encode %s): %s", content_type, e)
+        return data, EXT[content_type]
+
+
 async def _save_upload(file: UploadFile) -> str:
-    """Save an uploaded image under /static/uploads and return its public URL.
-    Nabil's commerce/fitcheck.py imports this: don't rename it."""
+    """Save an uploaded image under /static/uploads (metadata stripped, upright) and return its
+    public URL. Nabil's commerce/fitcheck.py imports this: don't rename it."""
     if file.content_type not in EXT:
         raise HTTPException(415, f"unsupported image type {file.content_type}")
     data = await file.read()
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "image over 10 MB")
+    data, ext = _clean_image(data, file.content_type)
     folder = DATA_DIR / "uploads"
     folder.mkdir(parents=True, exist_ok=True)
-    name = uuid.uuid4().hex + EXT[file.content_type]
+    name = uuid.uuid4().hex + ext
     (folder / name).write_bytes(data)
     base = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/")
     return f"{base}/static/uploads/{name}"

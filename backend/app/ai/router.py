@@ -11,6 +11,14 @@ from .llm import AI_BUDGET_USD, MAX_TRYONS, BadModelOutput, usage
 
 router = APIRouter(tags=["ai"])
 
+
+def _ai_down(what: str, err: Exception) -> HTTPException:
+    """502 with a plain message for the app; provider details (status codes, request ids) go to the log."""
+    import logging
+
+    logging.getLogger(__name__).warning("%s failed: %s", what, err)
+    return HTTPException(502, f"{what} is unavailable right now, try again in a minute")
+
 MAX_UPLOAD = 10 * 1024 * 1024
 EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/heic": ".heic"}
 
@@ -98,7 +106,7 @@ def closet_tag(req: TagRequest):
     except service.NotClothing:
         raise HTTPException(422, "not_clothing")
     except BadModelOutput as e:
-        raise HTTPException(502, f"tagger failed: {e}")
+        raise _ai_down("photo tagging", e)
 
 
 @router.post("/tryon", response_model=TryOnResponse)
@@ -108,7 +116,7 @@ def tryon(req: TryOnRequest):
     except ValueError as e:
         raise HTTPException(400, str(e))
     except BadModelOutput as e:
-        raise HTTPException(502, f"try-on failed: {e}")
+        raise _ai_down("try-on", e)
     return TryOnResponse(image_url=url, cached=cached, mode=mode)
 
 
@@ -128,7 +136,7 @@ def shop_fit(req: ShopFitRequest):
         try:
             tagged = service.tag_fit(req.photo_url)
         except BadModelOutput as e:
-            raise HTTPException(502, f"fit tagger failed: {e}")
+            raise _ai_down("outfit tagging", e)
     return service.shop_fit(req.viewer_id, tagged)
 
 
@@ -142,7 +150,7 @@ def products_tag(req: TagFitRequest):
     except service.NotClothing:
         raise HTTPException(422, "not_clothing")
     except BadModelOutput as e:
-        raise HTTPException(502, f"tagger failed: {e}")
+        raise _ai_down("photo tagging", e)
 
 
 @router.post("/ai/tag-fit")
@@ -154,7 +162,7 @@ def tag_fit(req: TagFitRequest):
     try:
         return service.tag_fit(req.image_url)
     except BadModelOutput as e:
-        raise HTTPException(502, f"fit tagger failed: {e}")
+        raise _ai_down("outfit tagging", e)
 
 
 @router.get("/ai/usage")

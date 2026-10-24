@@ -87,3 +87,19 @@ def test_mens_waist_estimate_unchanged():
 
     jeans = {"category": "bottom", "retailer": "hm", "sizes": ["28/32", "30/32", "32/32", "34/32", "36/32"]}
     assert recommend_size(jeans, 172, 68)["size"] in {"32/32", "34/32"}
+
+
+def test_ai_errors_are_plain_messages(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.ai import service
+    from app.ai.llm import BadModelOutput
+    from app.main import app
+
+    def boom(*a, **k):
+        raise BadModelOutput("claude: Error code: 401 - {'request_id': 'req_123', 'x-api-key': 'sk-...'}")
+    monkeypatch.setattr(service, "tag_closet_item", boom)
+    r = TestClient(app).post("/closet/tag", json={"user_id": "u", "image_url": "https://img/x.jpg"})
+    assert r.status_code == 502
+    assert r.json()["detail"] == "photo tagging is unavailable right now, try again in a minute"
+    assert "req_" not in r.text and "401" not in r.text

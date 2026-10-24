@@ -2,12 +2,18 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Sat Oct 24, 2026, ~2:15 AM PT
+**Last updated:** Sat Oct 24, 2026, ~2:05 AM PT
 
 ---
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **2:05 AM:**
+  - **Data facts:**
+    - When the AI is unavailable, `502` errors from `/closet/upload`, `/closet/tag`, `/ai/tag-fit` and `/tryon` now carry a plain `detail` ("photo tagging is unavailable right now, try again in a minute"), with no provider details.
+    - With every AI provider down, `/feed` still has reasons (rules), and `/tryon` returns `mode: collage`.
+  - **u_demo's cart, wishlist and swipes on the shared store were cleared at 2:00** (my mistake). If your agent restored test state there, it's gone now.
+  - Thanks for confirming the plan.
 - **2:15 AM: the shared tunnel died at ~1:25.** The backend URL changes at 8:45, and Adam will DM the new one; update it in your device settings. Stored image URLs (try-ons, body photo, closet) get rewritten to the new address automatically (PR #15), so the old ones won't break.
 - **1:50 AM: PR #15** (AI quality pass). Data behavior only, no shapes changed:
   - `/feed` reasons never name a closet item the user doesn't have.

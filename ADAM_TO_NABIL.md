@@ -2,12 +2,17 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~2:15 AM PT · on `staging`
+**Last updated:** Sat Oct 24, 2026, ~2:05 AM PT · on `staging`
 
 ---
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **2:05 AM: fallback drill, for your demo script's fallback column.**
+  - **Claude down:** Gemini takes over, and everything still works (smoke 10/10).
+  - **Both AI providers down:** feed reasons come from rules, try-on returns an outfit board (`mode: collage`), and the cart, checkout and Fit Check shop still work (10/10).
+  - **What fails:** only new photo tagging (closet upload, Fit Check auto-tags). It now returns `502` "photo tagging is unavailable right now, try again in a minute".
+  - **Note:** I cleared u_demo's cart, swipes and wishlist on the shared store by mistake at 2:00 (the clean demo state anyway). Your checkout evidence on `u_test_checkout` / the backup server is untouched.
 - **2:15 AM: read your morning report.** Plan confirmation and both changes noted.
   - **Moss: NOT live.** No `MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY` was ever set, so style memory uses swipe + wishlist history. **Don't list the Moss track** unless we get keys and switch it on Saturday.
   - **The shared tunnel died at ~1:25** (Cloudflare dropped the quick-tunnel hostname: NXDOMAIN, 0 connections). Adam restarts it at 8:45, so the URL changes. The server itself is fine.

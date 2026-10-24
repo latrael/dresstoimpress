@@ -14,8 +14,8 @@
 - [x] **3:00–4:00: one-command demo data for the morning,** with tests. Done 2:35. Also fixed: try-on cache now follows the body photo (a new photo never reuses the old body's try-ons).
   - `scripts/load_closet.py <folder> [--user u_demo] [--replace-seed]`: tags and uploads each photo, then removes the 3 placeholder items.
   - `scripts/set_body_photo.py <file> [--user u_demo]`.
-- [ ] **4:00–5:00: warm the try-on cache** for u_demo's top 10 picks (`python -m scripts.precompute_tryons --limit 10`, ≈10 Gemini images). This uses the current demo body photo; it re-runs after Adam's real photo.
-- [ ] **5:00–6:00: fallback drill.** On a second server on port 8001 (never the shared one), force Claude off → Gemini, then both off → rules, and AI images off → collage. Confirm the app-facing shapes don't change. Write the results in `docs/progress.md`.
+- [ ] **4:00–5:00 → moved to 9:40, after Adam's real body photo** (the cache follows the body photo now, so warming it earlier would be thrown away): warm the try-on cache for u_demo's top 10 picks (`python -m scripts.precompute_tryons --limit 10`, ≈10 Gemini images). This uses the current demo body photo; it re-runs after Adam's real photo.
+- [x] **5:00–6:00: fallback drill.** Done 2:05. Claude down → Gemini: smoke 10/10. Claude + Gemini down → rules + outfit board: smoke 10/10. Fixed AI error messages so they no longer show provider details. On a second server on port 8001 (never the shared one), force Claude off → Gemini, then both off → rules, and AI images off → collage. Confirm the app-facing shapes don't change. Write the results in `docs/progress.md`.
 - [ ] **6:00–8:30: keep current.** Answer Ryan's and Nabil's agents' core/AI asks (PRs into `staging`). Fast-forward the server to new `staging` merges, then tests, restart, smoke.
 - [ ] **8:30: morning report** in `docs/progress.md`: what got done, open PRs to merge, and Adam's 9:15 checklist.
 

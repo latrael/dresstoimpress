@@ -90,9 +90,13 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
 
 # ---------- /tryon ----------
 
-def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str]) -> str:
+def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str], body: str = "") -> str:
+    """Cache key. Includes which body photo was used (its path, not host, so a tunnel change keeps the
+    cache) so a new body photo never serves try-ons of the old one."""
+    from urllib.parse import urlparse
+
     raw = (prompts.TRYON_VERSION + "|" + user_id + "|" + ",".join(sorted(product_ids)) + "|"
-           + ",".join(sorted(closet_ids)))
+           + ",".join(sorted(closet_ids)) + "|" + (urlparse(body).path if body else ""))
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
@@ -102,14 +106,13 @@ COLLAGE_RETRY_SECONDS = int(os.getenv("COLLAGE_RETRY_SECONDS", "600"))
 def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> tuple[str, bool, str]:
     """Returns (image_url, cached, mode). mode "ai" = Gemini try-on; "collage" = outfit board
     fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS)."""
-    key = _tryon_key(user_id, product_ids, closet_item_ids)
+    user = store.get("users", user_id) or {}
+    body = user.get("body_photo_url")
+    key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
     hit = store.get("tryon_cache", key)
     if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
                 or mock_mode("GEMINI_API_KEY")):
         return hit["image_url"], True, hit.get("mode", "ai")
-
-    user = store.get("users", user_id) or {}
-    body = user.get("body_photo_url")
 
     pieces = [p for pid in product_ids if (p := get_product(pid))]
     pieces += [c for cid in closet_item_ids if (c := store.get("closet_items", cid))]

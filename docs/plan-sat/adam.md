@@ -11,7 +11,7 @@
   - Shop-the-fit on the 3 seed posts + 5 made-up tags.
   - `/size` on 20 products × 3 body types.
   - Spot-check tags on 20 products.
-- [ ] **3:00–4:00: one-command demo data for the morning,** with tests.
+- [x] **3:00–4:00: one-command demo data for the morning,** with tests. Done 2:35. Also fixed: try-on cache now follows the body photo (a new photo never reuses the old body's try-ons).
   - `scripts/load_closet.py <folder> [--user u_demo] [--replace-seed]`: tags and uploads each photo, then removes the 3 placeholder items.
   - `scripts/set_body_photo.py <file> [--user u_demo]`.
 - [ ] **4:00–5:00: warm the try-on cache** for u_demo's top 10 picks (`python -m scripts.precompute_tryons --limit 10`, ≈10 Gemini images). This uses the current demo body photo; it re-runs after Adam's real photo.

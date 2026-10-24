@@ -17,7 +17,8 @@ Map<String, dynamic> piece(String id, {bool long = false}) => {
       ],
     };
 
-Future<void> mount(WidgetTester tester, {bool long = false}) async {
+Future<void> mount(WidgetTester tester,
+    {bool long = false, int count = 3}) async {
   tester.view.physicalSize = const Size(420, 900);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -25,7 +26,7 @@ Future<void> mount(WidgetTester tester, {bool long = false}) async {
   await tester.pumpWidget(MaterialApp(
       home: Scaffold(
           body: QuickBrowse(
-    products: [piece('a', long: long), piece('b'), piece('c')],
+    products: List.generate(count, (i) => piece('$i', long: long && i == 0)),
     savedIds: const {},
     onSave: (_, value) async {},
     onAddToCart: (_, size) async {},
@@ -34,107 +35,81 @@ Future<void> mount(WidgetTester tester, {bool long = false}) async {
   await tester.pumpAndSettle();
 }
 
-Finder details(String id) => find.byKey(ValueKey('details-$id'));
-PageController productPages(WidgetTester tester) =>
-    tester.widget<PageView>(find.byType(PageView).first).controller!;
-Future<void> wheel(WidgetTester tester, double dy) async {
-  await tester.sendEventToBinding(PointerScrollEvent(
-      position: const Offset(200, 600), scrollDelta: Offset(0, dy)));
-  await tester.pump();
-}
+Finder stream() => find.byKey(const ValueKey('product-stream'));
+ScrollPosition position(WidgetTester tester) => tester
+    .state<ScrollableState>(
+        find.descendant(of: stream(), matching: find.byType(Scrollable)).first)
+    .position;
 
 void main() {
-  testWidgets('tiny reverse drag at top does not twitch to previous product',
+  testWidgets('a single upward drag crosses straight into the next product',
       (tester) async {
     await mount(tester);
-    await tester.drag(details('a'), const Offset(0, -1000));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 1);
-    await tester.drag(details('b'), const Offset(0, 30));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 1);
-  });
-  testWidgets('small wheel overflow stays on current product', (tester) async {
-    await mount(tester);
-    await wheel(tester, 20);
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 0);
-  });
-  testWidgets('one continuous wheel burst advances only one product',
-      (tester) async {
-    await mount(tester);
-    for (var i = 0; i < 12; i++) {
-      await wheel(tester, 40);
-      await tester.pump(const Duration(milliseconds: 45));
-    }
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 1);
-    await tester.pump(const Duration(milliseconds: 300));
-    for (var i = 0; i < 4; i++) {
-      await wheel(tester, 40);
-      await tester.pump(const Duration(milliseconds: 30));
-    }
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 2);
-  });
-  testWidgets('description scroll and its fling do not skip the next product',
-      (tester) async {
-    await mount(tester, long: true);
-    await tester.fling(details('a'), const Offset(0, -200), 2200);
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 0);
-  });
-  testWidgets('a deliberate touch drag changes product only after release',
-      (tester) async {
-    await mount(tester);
+    final start = tester.getTopLeft(find.text('Piece 1')).dy;
     final gesture = await tester.startGesture(const Offset(200, 650));
-    await gesture.moveBy(const Offset(0, -160));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(productPages(tester).page, 0);
-    expect(find.byType(LinearProgressIndicator), findsNothing);
+    await gesture.moveBy(const Offset(0, -650));
+    await tester.pump();
+    expect(position(tester).pixels, greaterThan(500));
+    expect(tester.getTopLeft(find.text('Piece 1')).dy, lessThan(start - 500));
+    expect(find.byIcon(Icons.keyboard_arrow_up), findsNothing);
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(productPages(tester).page, 1);
+  });
+  testWidgets('long descriptions and the next item share one vertical scroll',
+      (tester) async {
+    await mount(tester, long: true);
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    await tester.drag(stream(), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    final before = position(tester).pixels;
+    expect(before, greaterThan(0));
+    await tester.scrollUntilVisible(find.text('Piece 1'), 300,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(position(tester).pixels, greaterThan(before));
+    expect(find.text('Piece 1').hitTestable(), findsOneWidget);
+  });
+  testWidgets('wheel scroll advances continuously without an idle confirmation',
+      (tester) async {
+    await mount(tester);
+    for (var i = 0; i < 8; i++) {
+      await tester.sendEventToBinding(const PointerScrollEvent(
+          position: Offset(200, 650), scrollDelta: Offset(0, 100)));
+      await tester.pump();
+      expect(position(tester).pixels, closeTo((i + 1) * 100, 1));
+    }
+    expect(find.text('Piece 1').hitTestable(), findsOneWidget);
   });
   testWidgets(
-      'wheel gesture that scrolls details cannot carry into another product',
+      'only nearby products are built, distant products appear on approach',
       (tester) async {
-    await mount(tester, long: true);
-    for (var i = 0; i < 30; i++) {
-      await wheel(tester, 50);
-      await tester.pump(const Duration(milliseconds: 25));
-    }
+    await mount(tester, count: 60);
+    expect(find.text('Piece 0'), findsOneWidget);
+    expect(find.text('Piece 59'), findsNothing);
+    expect(find.byKey(const ValueKey('details-30')), findsNothing);
+    await tester.scrollUntilVisible(find.text('Piece 6'), 500,
+        scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
-    expect(productPages(tester).page, 0);
-    // A separate gesture begun at the bottom deliberately advances.
-    await tester.pump(const Duration(milliseconds: 300));
-    for (var i = 0; i < 4; i++) {
-      await wheel(tester, 40);
-    }
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 1);
+    expect(find.text('Piece 6').hitTestable(), findsOneWidget);
+    expect(find.text('Piece 59'), findsNothing);
+    expect(find.text('Piece 0'), findsNothing);
   });
-  testWidgets('bottom scrolling advances without an arrow or progress overlay',
+  testWidgets('a thick faded separator lies between consecutive products',
       (tester) async {
-    await mount(tester, long: true);
-    await wheel(tester, 20);
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 0);
-    for (var i = 0; i < 30; i++) {
-      await wheel(tester, 50);
-      await tester.pump(const Duration(milliseconds: 25));
-    }
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 0);
-    await wheel(tester, 130);
-    expect(find.byIcon(Icons.keyboard_arrow_up), findsNothing);
-    expect(find.byType(LinearProgressIndicator), findsNothing);
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pumpAndSettle();
-    expect(productPages(tester).page, 1);
+    await mount(tester);
+    final marker = find.byKey(const ValueKey('product-separator-0'));
+    expect(tester.getSize(marker).height, 72);
+    final gradient =
+        (tester.widget<Container>(marker).decoration! as BoxDecoration)
+            .gradient! as LinearGradient;
+    expect(gradient.colors.first.a, 0);
+    expect(gradient.colors[1].a, greaterThan(0));
+    expect(gradient.colors.last.a, 0);
+    expect(tester.getBottomLeft(find.byKey(const ValueKey('details-0'))).dy,
+        lessThanOrEqualTo(tester.getTopLeft(marker).dy));
+    expect(
+        tester.getBottomLeft(marker).dy,
+        lessThanOrEqualTo(
+            tester.getTopLeft(find.byKey(const ValueKey('details-1'))).dy));
   });
 }

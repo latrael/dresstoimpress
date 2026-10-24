@@ -199,8 +199,18 @@ void main() {
                   );
                 })));
     for (final id in ['a', 'b', 'c']) {
-      await tap(tester, 'Try it on');
-      expect(find.text('Outfit board · collage, not a photo of you'),
+      final product = find.byKey(ValueKey('details-$id'));
+      final tryOn =
+          find.descendant(of: product, matching: find.text('Try it on'));
+      await tester.ensureVisible(tryOn);
+      await tester.pumpAndSettle();
+      await tester.tap(tryOn);
+      await tester.pumpAndSettle();
+      expect(
+          find.descendant(
+              of: product,
+              matching:
+                  find.text('Outfit board · collage, not a photo of you')),
           findsOneWidget);
       expect(
           tester
@@ -209,7 +219,9 @@ void main() {
               .page,
           1);
       await tester.drag(
-          find.text('Retailer description').last, const Offset(250, 0));
+          find.descendant(
+              of: product, matching: find.text('Retailer description')),
+          const Offset(250, 0));
       await tester.pumpAndSettle();
       expect(
           tester
@@ -217,11 +229,6 @@ void main() {
               .controller!
               .page,
           1);
-      if (id != 'c') {
-        await tester.drag(
-            find.byKey(ValueKey('details-$id')), const Offset(0, -1500));
-        await tester.pumpAndSettle();
-      }
     }
     expect(generated, ['a', 'b', 'c']);
   });

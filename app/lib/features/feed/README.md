@@ -31,15 +31,17 @@ outside the bounded image area. Demo omits service-dependent controls.
 Full app validation: 31 tests, analyze clean and release web build. Shared live
 and phone acceptance remain pending (RYAN.md).
 
-## Scrolling refinement (bottom-gated browsing)
+## Continuous browsing
 
-Product paging no longer competes with the details scroller. Read to the end,
-then begin a fresh boundary gesture to advance to the next item. There is no
-arrow or progress overlay. Touch confirms on release; wheel/trackpad confirms
-after 250 ms idle.
-A smaller movement cancels, one burst selects one item, and description momentum
-cannot skip products. Previous-item navigation uses the corresponding top edge.
-Horizontal gestures remain limited to photos. Details reset on leaving a product.
+Ryan replaced boundary-gated swiping with a single lazy vertical product list.
+Product details and subsequent products share the same scroll; there are no nested
+vertical scrollers, page snaps, arrows, thresholds, or release confirmations.
+A 48-pixel faded burgundy band with 12-pixel spacing on each side separates items.
+The list prepares about one viewport ahead and behind and disposes distant items.
+Nearby items retain their own photo/size state. Horizontal swiping stays scoped
+to each bounded photo gallery; cart/size tools remain with the matching product.
 
-Verified with seven new regressions (38 app tests total), clean analysis and the
-actual browser demo. Native iPhone gesture verification remains pending.
+Flutter analysis clean; 36 app tests pass, including continuous touch/wheel,
+long descriptions, lazy item creation/disposal, separators, carousel boundaries,
+cart selection and separate generated try-on slides. Actual browser preview
+verified the separator and continuous product transition. Phone feel awaits Ryan.

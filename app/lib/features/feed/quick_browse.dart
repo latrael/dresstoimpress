@@ -1,7 +1,5 @@
-import 'dart:async';
-
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 /// Route adapters belong to the shared shell. Browsing emits no swipe events.
 class QuickBrowse extends StatefulWidget {
@@ -32,97 +30,31 @@ class QuickBrowse extends StatefulWidget {
 }
 
 class _QuickBrowseState extends State<QuickBrowse> {
-  final pages = PageController();
-  bool paging = false;
-  int active = 0;
-  Timer? wheelIdle;
-  double wheelDistance = 0;
-  bool wheelBurst = false;
-  bool wheelEligible = false;
-  int? wheelTarget;
-
-  // A wheel/trackpad burst must begin at the details boundary. Momentum from
-  // scrolling the description cannot turn into a product change, and a burst
-  // can advance only one product even after the next page becomes active.
-  void wheel(double delta, bool atBoundary) {
-    if (!wheelBurst) {
-      wheelBurst = true;
-      wheelEligible = atBoundary && !paging;
-    }
-    if (!atBoundary) {
-      wheelEligible = false;
-      wheelDistance = 0;
-      wheelTarget = null;
-    }
-    if (paging || !wheelEligible || !atBoundary) return;
-    if (wheelDistance.sign != delta.sign) wheelDistance = 0;
-    wheelDistance = (wheelDistance + delta).clamp(-160.0, 160.0);
-    final target = active + wheelDistance.sign.toInt();
-    if (target < 0 || target >= widget.products.length) {
-      wheelTarget = null;
-      return;
-    }
-    wheelTarget = wheelDistance.abs() >= 120 ? target : null;
-  }
-
-  void keepWheelAlive(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent ||
-        event.scrollDelta.dy == 0 ||
-        event.scrollDelta.dx.abs() > event.scrollDelta.dy.abs()) {
-      return;
-    }
-    // Wait for the gesture to settle so one continuous trackpad burst
-    // can only choose one target.
-    wheelIdle?.cancel();
-    wheelIdle = Timer(const Duration(milliseconds: 250), () {
-      final target = wheelTarget;
-      wheelBurst = false;
-      wheelDistance = 0;
-      wheelTarget = null;
-      if (target != null && mounted) move(target);
-    });
-  }
-
-  @override
-  void dispose() {
-    wheelIdle?.cancel();
-    pages.dispose();
-    super.dispose();
-  }
-
-  Future<void> move(int index) async {
-    if (paging ||
-        !pages.hasClients ||
-        index < 0 ||
-        index >= widget.products.length) {
-      return;
-    }
-    paging = true;
-    try {
-      await pages.animateToPage(index,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic);
-    } finally {
-      paging = false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.products.isEmpty) {
       return const Center(child: Text('No pieces to browse yet.'));
     }
-    return Listener(
-      onPointerSignal: keepWheelAlive,
-      child: PageView.builder(
-        controller: pages,
-        scrollDirection: Axis.vertical,
-        physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: (index) => setState(() => active = index),
+    return LayoutBuilder(builder: (context, viewport) {
+      return ListView.separated(
+        key: const ValueKey('product-stream'),
+        // Build the visible products and roughly one screen ahead/behind.
+        scrollCacheExtent: const ScrollCacheExtent.viewport(1),
         itemCount: widget.products.length,
+        separatorBuilder: (context, index) => Container(
+          key: ValueKey('product-separator-$index'),
+          height: 48,
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x00722F42), Color(0x30722F42), Color(0x00722F42)],
+            ),
+          ),
+        ),
         itemBuilder: (context, index) => _ProductPage(
           key: ValueKey(widget.products[index]['id']),
-          active: index == active,
           product: widget.products[index],
           saved: widget.savedIds.contains(widget.products[index]['id']),
           onSave: widget.onSave,
@@ -131,12 +63,11 @@ class _QuickBrowseState extends State<QuickBrowse> {
           onSizeAdvice: widget.onSizeAdvice,
           onTryOn: widget.onTryOn,
           onCompleteLook: widget.onCompleteLook,
-          onBoundary: (direction) => move(index + direction),
-          onWheel: wheel,
+          imageHeight: (viewport.maxHeight * .46).clamp(180.0, 390.0),
           position: '${index + 1} / ${widget.products.length}',
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -149,9 +80,7 @@ class _ProductPage extends StatefulWidget {
     required this.onAddToCart,
     required this.imageUrl,
     required this.position,
-    required this.onBoundary,
-    required this.onWheel,
-    required this.active,
+    required this.imageHeight,
     this.onSizeAdvice,
     this.onTryOn,
     this.onCompleteLook,
@@ -162,9 +91,7 @@ class _ProductPage extends StatefulWidget {
   final Future<void> Function(String, String) onAddToCart;
   final String Function(String) imageUrl;
   final String position;
-  final void Function(int direction) onBoundary;
-  final void Function(double delta, bool atBoundary) onWheel;
-  final bool active;
+  final double imageHeight;
   final Future<String?> Function(String id)? onSizeAdvice;
   final Future<({String url, String label})?> Function(String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
@@ -183,84 +110,8 @@ class _ProductPageState extends State<_ProductPage> {
   ({String url, String label})? personalPhoto;
   String? error;
   final PageController photos = PageController();
-  final ScrollController details = ScrollController();
-  double dragDistance = 0;
-  double dragStart = 0;
-  bool dragging = false;
-
-  bool scroll(ScrollNotification notification) {
-    // Horizontal photo notifications never participate in product paging.
-    if (!widget.active ||
-        notification.depth != 0 ||
-        notification.metrics.axis != Axis.vertical) {
-      return false;
-    }
-    if (notification is ScrollStartNotification &&
-        notification.dragDetails != null) {
-      dragging = true;
-      dragStart = notification.metrics.pixels;
-      dragDistance = 0;
-    } else if (notification is ScrollUpdateNotification &&
-        notification.dragDetails != null) {
-      dragDistance = 0;
-    } else if (notification is OverscrollNotification &&
-        notification.dragDetails != null &&
-        dragging) {
-      final beganAtEdge = notification.overscroll > 0
-          ? dragStart >= notification.metrics.maxScrollExtent - 1
-          : dragStart <= notification.metrics.minScrollExtent + 1;
-      if (beganAtEdge) {
-        if (dragDistance.sign != notification.overscroll.sign) dragDistance = 0;
-        dragDistance += notification.overscroll;
-      }
-    } else if (notification is ScrollEndNotification && dragging) {
-      dragging = false;
-      final direction =
-          dragDistance.abs() >= 72 ? dragDistance.sign.toInt() : 0;
-      dragDistance = 0;
-      if (direction != 0) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && widget.active) widget.onBoundary(direction);
-        });
-      }
-    }
-    return false;
-  }
-
-  void pointerSignal(PointerSignalEvent event) {
-    if (!widget.active || !details.hasClients || event is! PointerScrollEvent) {
-      return;
-    }
-    final delta = event.scrollDelta;
-    if (delta.dy == 0 || delta.dx.abs() > delta.dy.abs()) return;
-    final position = details.position;
-    final atEdge = delta.dy > 0
-        ? position.pixels >= position.maxScrollExtent - 1
-        : position.pixels <= position.minScrollExtent + 1;
-    widget.onWheel(delta.dy, atEdge);
-  }
-
-  @override
-  void didUpdateWidget(covariant _ProductPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.active && !widget.active) {
-      photo = 0;
-      size = null;
-      error = null;
-      dragging = false;
-      dragDistance = 0;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          if (photos.hasClients) photos.jumpToPage(0);
-          if (details.hasClients) details.jumpTo(0);
-        }
-      });
-    }
-  }
-
   @override
   void dispose() {
-    details.dispose();
     photos.dispose();
     super.dispose();
   }
@@ -341,7 +192,7 @@ class _ProductPageState extends State<_ProductPage> {
           .length;
       setState(() => personalPhoto = result);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.active && photos.hasClients) {
+        if (mounted && photos.hasClients) {
           photos.animateToPage(retailerPhotos == 0 ? 1 : retailerPhotos,
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOut);
@@ -373,293 +224,264 @@ class _ProductPageState extends State<_ProductPage> {
     final description = p['description'] as String?;
     final reason = p['reason'] as String?;
     final price = (p['sale_price_usd'] ?? p['price_usd']) as num;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final imageHeight = (constraints.maxHeight * .46).clamp(180.0, 390.0);
-        return Listener(
-          onPointerSignal: pointerSignal,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: scroll,
-            child: SingleChildScrollView(
-              controller: details,
-              physics: const AlwaysScrollableScrollPhysics(
-                  parent: ClampingScrollPhysics()),
-              key: ValueKey('details-${p['id']}'),
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: imageHeight,
-                    child: Stack(
+    return Padding(
+      key: ValueKey('details-${p['id']}'),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: widget.imageHeight,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: ColoredBox(
+                      color: const Color(0xFFEDEAE4),
+                      child: GestureDetector(
+                        onDoubleTap: () => save(value: true),
+                        child: gallery.isEmpty
+                            ? const _ImageFailure()
+                            : PageView.builder(
+                                key: ValueKey('photos-${p['id']}'),
+                                controller: photos,
+                                itemCount: gallery.length,
+                                onPageChanged: (i) => setState(() => photo = i),
+                                itemBuilder: (context, i) => Image.network(
+                                  widget.imageUrl(gallery[i]),
+                                  fit: BoxFit.contain,
+                                  webHtmlElementStrategy:
+                                      WebHtmlElementStrategy.prefer,
+                                  semanticLabel: '${p['name']}, photo ${i + 1}',
+                                  errorBuilder: (_, error, stack) =>
+                                      const _ImageFailure(),
+                                  loadingBuilder: (_, child, progress) =>
+                                      progress == null
+                                          ? child
+                                          : const Center(
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filledTonal(
+                    tooltip: widget.saved ? 'Unsave item' : 'Save item',
+                    onPressed: saving ? null : save,
+                    icon: Icon(
+                      widget.saved ? Icons.favorite : Icons.favorite_border,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF722F42),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: ColoredBox(
-                              color: const Color(0xFFEDEAE4),
-                              child: GestureDetector(
-                                onDoubleTap: () => save(value: true),
-                                child: gallery.isEmpty
-                                    ? const _ImageFailure()
-                                    : PageView.builder(
-                                        key: ValueKey('photos-${p['id']}'),
-                                        controller: photos,
-                                        itemCount: gallery.length,
-                                        onPageChanged: (i) =>
-                                            setState(() => photo = i),
-                                        itemBuilder: (context, i) =>
-                                            Image.network(
-                                          widget.imageUrl(gallery[i]),
-                                          fit: BoxFit.contain,
-                                          webHtmlElementStrategy:
-                                              WebHtmlElementStrategy.prefer,
-                                          semanticLabel:
-                                              '${p['name']}, photo ${i + 1}',
-                                          errorBuilder: (_, error, stack) =>
-                                              const _ImageFailure(),
-                                          loadingBuilder:
-                                              (_, child, progress) =>
-                                                  progress == null
-                                                      ? child
-                                                      : const Center(
-                                                          child:
-                                                              CircularProgressIndicator(
-                                                            strokeWidth: 2,
-                                                          ),
-                                                        ),
-                                        ),
-                                      ),
+                        if (p['sale_price_usd'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Text(
+                              '\$${(p['price_usd'] as num).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                decoration: TextDecoration.lineThrough,
                               ),
                             ),
                           ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: IconButton.filledTonal(
-                            tooltip: widget.saved ? 'Unsave item' : 'Save item',
-                            onPressed: saving ? null : save,
-                            icon: Icon(
-                              widget.saved
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF722F42),
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (p['sale_price_usd'] != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: Text(
-                                      '\$${(p['price_usd'] as num).toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        decoration: TextDecoration.lineThrough,
-                                      ),
-                                    ),
-                                  ),
-                                Text(
-                                  '\$${price.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Text(
+                          '\$${price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  if (gallery.length > 1)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          gallery.length,
-                          (i) => Semantics(
-                            label: 'Photo ${i + 1} of ${gallery.length}',
-                            selected: photo == i,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: photo == i
-                                    ? const Color(0xFF722F42)
-                                    : const Color(0xFFD5C9CB),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (personalPhoto != null && photo == gallery.length - 1)
-                    Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(personalPhoto!.label,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600))),
-                  const SizedBox(height: 12),
-                  Text(
-                    (p['brand'] ?? p['retailer'] ?? '')
-                        .toString()
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      color: Color(0xFF722F42),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    p['name'] as String,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    description?.trim().isNotEmpty == true
-                        ? description!
-                        : 'Description not provided by retailer.',
-                    style:
-                        const TextStyle(height: 1.5, color: Color(0xFF57514F)),
-                  ),
-                  if (reason?.trim().isNotEmpty == true)
-                    Container(
-                      margin: const EdgeInsets.only(top: 14),
-                      padding: const EdgeInsets.all(12),
+                ),
+              ],
+            ),
+          ),
+          if (gallery.length > 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  gallery.length,
+                  (i) => Semantics(
+                    label: 'Photo ${i + 1} of ${gallery.length}',
+                    selected: photo == i,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: 7,
+                      height: 7,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0E5E5),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome,
-                            size: 18,
-                            color: Color(0xFF722F42),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(reason!)),
-                        ],
-                      ),
-                    ),
-                  if ((p['colors'] as List? ?? []).isNotEmpty)
-                    Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Text(
-                            'Color · ${(p['colors'] as List).join(', ')}')),
-                  const SizedBox(height: 20),
-                  if (widget.onSizeAdvice != null)
-                    Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                            onPressed: advising ? null : advise,
-                            icon: const Icon(Icons.straighten),
-                            label: const Text('Find my size'))),
-                  const Text(
-                    'Select size',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: sizes
-                        .map(
-                          (s) => ChoiceChip(
-                            label: Text(s['name'] as String),
-                            selected: size == s['name'],
-                            onSelected: s['in_stock'] == true &&
-                                    p['in_stock'] != false
-                                ? (_) =>
-                                    setState(() => size = s['name'] as String)
-                                : null,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  if (error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton(
-                      onPressed: size == null || adding ? null : add,
-                      child: Text(
-                        adding
-                            ? 'Adding…'
-                            : size == null
-                                ? 'Choose a size'
-                                : 'Add to Cart',
+                        shape: BoxShape.circle,
+                        color: photo == i
+                            ? const Color(0xFF722F42)
+                            : const Color(0xFFD5C9CB),
                       ),
                     ),
                   ),
-                  if (widget.onTryOn != null || widget.onCompleteLook != null)
-                    Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Wrap(spacing: 8, children: [
-                          if (widget.onTryOn != null)
-                            OutlinedButton.icon(
-                                onPressed: generating ? null : tryOn,
-                                icon: const Icon(Icons.person_outline),
-                                label: Text(generating
-                                    ? 'Creating try-on…'
-                                    : 'Try it on')),
-                          if (widget.onCompleteLook != null)
-                            OutlinedButton.icon(
-                                onPressed: () =>
-                                    widget.onCompleteLook!(p['id'] as String),
-                                icon: const Icon(Icons.auto_awesome),
-                                label: const Text('Complete the look')),
-                        ])),
-                  const SizedBox(height: 14),
-                  Center(
-                    child: Text(
-                      'Scroll to the bottom, then swipe up · ${widget.position}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF736D69),
-                      ),
-                    ),
+                ),
+              ),
+            ),
+          if (personalPhoto != null && photo == gallery.length - 1)
+            Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(personalPhoto!.label,
+                    style: const TextStyle(fontWeight: FontWeight.w600))),
+          const SizedBox(height: 12),
+          Text(
+            (p['brand'] ?? p['retailer'] ?? '').toString().toUpperCase(),
+            style: const TextStyle(
+              color: Color(0xFF722F42),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            p['name'] as String,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description?.trim().isNotEmpty == true
+                ? description!
+                : 'Description not provided by retailer.',
+            style: const TextStyle(height: 1.5, color: Color(0xFF57514F)),
+          ),
+          if (reason?.trim().isNotEmpty == true)
+            Container(
+              margin: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0E5E5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 18,
+                    color: Color(0xFF722F42),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(reason!)),
                 ],
               ),
             ),
+          if ((p['colors'] as List? ?? []).isNotEmpty)
+            Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text('Color · ${(p['colors'] as List).join(', ')}')),
+          const SizedBox(height: 20),
+          if (widget.onSizeAdvice != null)
+            Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                    onPressed: advising ? null : advise,
+                    icon: const Icon(Icons.straighten),
+                    label: const Text('Find my size'))),
+          const Text(
+            'Select size',
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: sizes
+                .map(
+                  (s) => ChoiceChip(
+                    label: Text(s['name'] as String),
+                    selected: size == s['name'],
+                    onSelected: s['in_stock'] == true && p['in_stock'] != false
+                        ? (_) => setState(() => size = s['name'] as String)
+                        : null,
+                  ),
+                )
+                .toList(),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              onPressed: size == null || adding ? null : add,
+              child: Text(
+                adding
+                    ? 'Adding…'
+                    : size == null
+                        ? 'Choose a size'
+                        : 'Add to Cart',
+              ),
+            ),
+          ),
+          if (widget.onTryOn != null || widget.onCompleteLook != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Wrap(spacing: 8, children: [
+                  if (widget.onTryOn != null)
+                    OutlinedButton.icon(
+                        onPressed: generating ? null : tryOn,
+                        icon: const Icon(Icons.person_outline),
+                        label: Text(
+                            generating ? 'Creating try-on…' : 'Try it on')),
+                  if (widget.onCompleteLook != null)
+                    OutlinedButton.icon(
+                        onPressed: () =>
+                            widget.onCompleteLook!(p['id'] as String),
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Complete the look')),
+                ])),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              widget.position,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF736D69),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

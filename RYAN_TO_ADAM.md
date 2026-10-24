@@ -1,3 +1,28 @@
+# Ryan → Adam: latest app onboarding + automatic sizing — Oct 24
+
+Published `12a8a9d` on `RyanFrontendking`; [PR #18](https://github.com/latrael/dresstoimpress/pull/18) updated into staging, remains unmerged. Ryan now wants a SOLID separator (48px muted burgundy plus spacing) in the continuous lazy product list. Earlier arrow/boundary/faded requests below are superseded.
+
+## Current app behavior
+
+- New local user IDs first land on Welcome to Niche. Start with optional plain-English looks/clothing/stores, preferred slim/regular/oversized fit, actual measurements, or a usual alphabetic size. Price maximums for tops/bottoms/jackets/shoes are optional, individually blank/skippable; entire onboarding can be skipped. Completion and measurements persist locally per configured user ID; this is not auth or cross-device sync.
+- Manual dimensions: height, waist, chest, hips, inseam in cm; weight kg; US shoe size. No default body measurements are silently accepted. Photo-based body measurement is NOT implemented or claimed.
+- Existing Api.onboarding handles live style/price text; local measurement-only onboarding needs no style request. Demo saves locally. Profile preferences and the missing-size path allow editing later.
+- Quick Browse automatically calls Api.sizeAdvice on nearby items once per product/profile revision using explicit height+weight, preferred fit, waist converted cm/2.54 and shoe US. Only returned in-stock sizes can be selected. An explicit usual letter size may match an available size exactly; demo uses this fallback, not a made-up dimension estimator. Missing/unsupported size results never choose an arbitrary first size. Single Add to Cart + quiet chosen-size text replaces the size chips and manual size-advice sheet in the app flow.
+- Cart pencil offers real sizes, unavailable disabled, preserving quantities and merging an existing matching line. Demo is local. Live replacement uses existing add-new then remove-old routes. Failure refreshes the cart and clearly asks review; it cannot claim an atomic replacement.
+
+## Backend/core requests to coordinate
+
+1. Please provide server-side measurement/profile persistence + get/update contracts for cross-device onboarding. Chest/hips/inseam currently stay local because /size accepts only height/weight/fit/waist/shoe. Also clarify whether per-category usual-size fallbacks can be stored.
+2. Please define a real body-scan → measurement capability if implementing it. Current body-photo upload/try-on is not a sizing scan; no dimensions are inferred from it.
+3. Coordinate with Nabil on an atomic cart size-change endpoint preserving quantity and merging target lines safely. Existing two-step route composition can leave both lines after a partial failure, which the UI explicitly reports and refreshes.
+4. Optional category price maximums are sent as plain text via current onboarding parser. Confirm canonical category recognition; no new payload fields or unsupported dimensions were invented.
+
+## Verification
+
+Flutter analysis clean; all 45 tests pass (first visit/skip/return, actual dimensions without prices, per-user persistence, cache+waist conversion, no default-body guessing, unavailable advice, cart pencil/quantity and failed live replacement, continuous scrolling and carousel boundaries). Signed release updated and launched on Ryan's iPhone. Browser first-visit layout visually checked. Native keyboard/photo/gesture feel and real-user size quality still require acceptance. Private tunnel/key and Apple signing configuration remain outside Git. Shared core/backend files unchanged. Details: frontend/ONBOARDING.md.
+
+---
+
 # Ryan update: continuous scroll replaces boundary gestures — Oct 24
 
 Ryan reported the swipe-up gate required a reversal and requested continuous scrolling. Published `b161553` on `RyanFrontendking`; [PR #18](https://github.com/latrael/dresstoimpress/pull/18) updated into staging, unmerged. All prior boundary/arrow instructions below are superseded. One lazy vertical list contains full product details, separated by a 48px faded burgundy band plus 12px spacing above/below. Prepare roughly one screen ahead/behind; distant widgets/images build on approach. No nested vertical scroll, page snapping, thresholds, timers or gesture confirmation. Each nearby item keeps independent size/photo state. Horizontal gallery behavior, backend/core and passive-browsing API behavior unchanged.

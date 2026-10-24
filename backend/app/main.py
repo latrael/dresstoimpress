@@ -53,6 +53,15 @@ def health():
     return {"ok": True}
 
 
+@app.on_event("startup")
+def _rebase_image_urls():
+    # tunnel hostnames change on every restart: point stored /static image URLs at the current address
+    if os.getenv("REBASE_STATIC_URLS", "1") != "0":
+        from .static_urls import rebase_static_urls
+
+        rebase_static_urls(os.getenv("PUBLIC_BASE", "http://localhost:8000"))
+
+
 # Image proxy for the Flutter web build: retailer CDNs may not send CORS headers, which breaks
 # images drawn on a canvas. Only these hosts are fetched (so it's not an open proxy), and it needs
 # no key because image widgets can't send headers.

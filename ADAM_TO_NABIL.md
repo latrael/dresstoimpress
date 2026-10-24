@@ -2,7 +2,54 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~8:45 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+**Last updated:** Fri Oct 23, 2026, ~9:45 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+
+---
+
+## Oct 23, ~9:45 PM: overseer check of all branches (full report: `docs/progress.md`)
+
+Adam's session checked every branch, PR, test suite and handoff:
+- **Your branch is in good shape.** `nabil` (74b7499): **247 tests pass**. The secret scan is clean on all branches and in history.
+- **The `/fit` guest page passed review:** off unless `FITCHECK_EVENT_CODE` is set, rate-limited, guest cap, AI tagging under the budget cap, escaped output.
+- **Ryan built his Flutter Feed** (`RyanFrontendking`, 4 widget tests) and was waiting on the shared shell. That's now PR **#9** (`flutter-starter`), and his Feed passes analyze + tests inside it.
+
+**Deviations that touch you:**
+1. PR #3 went `nabil` → `main` directly. It's fixed, but please keep PRs into `staging` only.
+2. **The `/fit` guest page is a user-facing web page,** and Ryan owns all design. Please get his OK on it (in RYAN_TO_NABIL / NABIL_TO_RYAN) before we turn on `FITCHECK_EVENT_CODE` at the table.
+3. **NABIL_TO_RYAN has some display guidance** ("show it with the original struck through", "hide the dots", "show `message`"). Please keep notes to Ryan to data facts (shapes, errors, what a field means) and leave how it displays to him. I've removed the same kind of guidance from my own docs.
+4. PR #7 contains #8's commits, since you merged `adam/ai-pipeline` in. That's fine: merge #8 first, then #7; there are no conflicts.
+
+**Asks, in order:**
+1. Review **#8** and **#9**. Merge #7 after #8.
+2. Ryan's OK on `/fit`.
+3. Devpost write-up, the README for sponsor judges and the demo script (your track).
+
+After merges, Adam's session restarts the shared server and re-runs the smoke test.
+
+---
+
+## Oct 23, ~9:15 PM: how we proceed from here (please reply in NABIL_TO_ADAM.md)
+
+**Also new:** `pair()` now always returns `k` results with a reason. When Claude ranks fewer, rules-based picks fill the rest. The smoke test's feed still shows 5 of 8 cards with a reason, so `/feed` must be mixing in unranked candidates. Could it prefer the ranked ones, and only use unranked candidates when the ranked ones run out?
+
+**Where things stand:**
+- **Backend:** done and live on Adam's Mac through the tunnel. Smoke test 10/10, including your real Nessie checkout, plus 418 tagged products.
+- **Fit Check:** 3 demo posts are seeded on the shared server (`seed_fitcheck`), so u_demo's Fit Check feed isn't empty.
+- **The risk is now the app.** FlutterFlow is out (API calls need a paid plan), so Ryan continues his FlutterFlow work as **plain Flutter** (`docs/app-plan.md`) and completes the screens himself. iOS comes afterward.
+
+**What Adam does (only he can):**
+- Keeps the Mac awake with the tunnel running, and reposts the URL in the group chat if it changes. Keeps the Anthropic credits topped up (thanks for flagging those errors).
+- Stays on the AI backend. Keeps `app/lib/core` (API + models) in sync when routes change.
+- Builds the iPhone version on his Mac (Xcode, free Apple ID) for the demo.
+- Merges PRs when you're both busy. Note: our agents can open PRs but can't merge them; a human has to click Merge.
+
+**What we need from you:**
+1. **Merges:** review and merge **#8** (Style DNA + app plan) into `staging`. Your #7 has no conflicts with them.
+2. **No app screens for you (or Adam).** Ryan owns the whole Flutter app and is continuing from his FlutterFlow work. You stay on commerce: make `/feed` prefer ranked cards (item at the top), keep Nessie checkout solid, and own the README for sponsor judges, the Devpost write-up and the demo script.
+3. **Fit Check seed tags:** `seed_fitcheck` writes tags with only `label` / `retailer` / `product_id`. Please also copy `category`, `color` (the product's `colors[0]`), `pattern` and `style_tags` from the product. Then the Fit Score badge (`POST /ai/fit-score {items: post.tagged}`) has something to score, and shop-the-fit matching is stricter. Your file; Adam won't touch it.
+4. **Saturday noon checkpoint:** feed → size → add to cart → checkout `paid`, on a phone. If it's at risk, one of us takes one whole tab from Ryan (agreed in the group chat), never a half-shared screen.
+
+**Order of work tonight:** merge #8 → Ryan gets his Flutter project running against the live backend: Feed → Cart. You: the `/feed` ranked-first fix + seed tags. Adam: AI polish + the iPhone build.
 
 ---
 
@@ -63,7 +110,7 @@ Adam's side says yes: `pytest -q` → 101 passed (your commerce + ingest + AI), 
 1. **Fit Check posts:** your shape `{id, user_id, photo_url, caption, tagged: [FitTag], created_at, likes: [], comments: []}` works. Store `tagged` exactly as `/ai/tag-fit` returns it: `FitTag` now also carries `category`, `color`, `pattern`, `style_tags`, `brand` (they were being dropped before, which weakened strict matching). Then `GET /fitcheck/{post_id}/shop` = `ai.service.shop_fit(viewer_id, post["tagged"])`, no extra fields needed.
 2. **`APIFY_TOKEN`:** private is right; the repo is public. `.env` is gitignored on all branches.
 3. **Shared backend host:** proposal is Adam's Mac (the Anthropic + Gemini keys and the Google billing are there; real try-on works). Adam is confirming the tunnel. When your snapshot PR lands, Adam runs `python -m scripts.load_products` there.
-4. **`POST /complete-look`:** Ryan calls it directly from the product sheet ("Complete the look" button), optionally from the cart. `/feed` shouldn't.
+4. **`POST /complete-look`:** the app calls it (where and how is Ryan's call). `/feed` shouldn't.
 
 ## Your points that touch my code
 

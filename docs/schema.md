@@ -28,7 +28,7 @@ Source of truth: `backend/app/models.py` → `Product`. Use these exact names.
 | `sale_price_usd` | number or null | `null` | |
 | `currency` | string | `USD` | always USD for now |
 | `colors` | string[] | `["ivory"]` | |
-| `sizes` | `{name, in_stock}[]` | `[{"name": "S", "in_stock": true}, {"name": "M", "in_stock": false}]` | sold-out sizes kept and greyed out (Nabil's idea), **snake_case** `in_stock` |
+| `sizes` | `{name, in_stock}[]` | `[{"name": "S", "in_stock": true}, {"name": "M", "in_stock": false}]` | sold-out sizes are kept with `in_stock: false`; **snake_case** `in_stock` |
 | `in_stock` | bool | `true` | any size in stock |
 | `image_url` | string | | |
 | `product_url` | string | | |

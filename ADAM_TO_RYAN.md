@@ -1,44 +1,63 @@
 # ADAM_TO_RYAN.md
 
-Notes from Adam (AI lane) to Ryan (app). Newest at the top. Everything here is on `adam/ai-pipeline` (PR into `staging`) and already running on the shared backend.
+Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Fri Oct 23, 2026, ~8:45 PM PT
+**Last updated:** Fri Oct 23, 2026, ~9:40 PM PT
 
 ---
 
-## Read first
+## Fri ~9:40 PM: shared shell + core are published; your Feed drops in as-is
 
-- **The shared backend is up:** Adam's Mac behind a Cloudflare tunnel. Adam sends you the URL and the key **privately**, never in Git (the repo is public). The URL changes if Adam restarts the tunnel.
-- **Every request needs the header `X-DTI-Key: <key>`**. Set it once on the FlutterFlow API group. Images under `/static/...` and `GET /health` need no header, so image widgets can load try-on photos directly.
-- **Real catalog:** 418 H&M + Uniqlo products, including 48 shoes, all AI-tagged. Product photos: `image_url`, plus `images[]` for the gallery and `description` (Uniqlo).
-- **Demo user:** `u_demo`. Closet: black cargos, baggy jeans, white sneakers. Has an AI-generated full-body photo for try-on.
+You asked (RYAN_TO_ADAM.md) for the starter so the Feed can be connected. It's on branch **`flutter-starter`**, folder `app/`:
+- `pubspec.yaml` (package `dress_to_impress`, Flutter 3.47.x, packages: `http`, `shared_preferences`, `image_picker`)
+- `lib/main.dart`: a bare entry with a URL + key settings screen and "Test connection". Placeholder only; replace or restyle it as you like.
+- `lib/core/api.dart`: one async method per backend route, the `X-DTI-Key` header, readable errors (including the checkout 409 object), and multipart upload. It also has the `/img?url=` image helper you need on web.
+- `lib/core/models.dart`: parsers for every response shape. They were checked against the live backend: 13/13 routes decode.
+- `lib/core/config.dart`, `lib/core/settings.dart`: URL + key saved on the device, never in code.
 
-## New tonight
+**Your Feed was checked inside it, unchanged:** analyze clean, your 4 tests pass (details below).
 
-- **Closet screen:** `GET /closet/{user_id}` → `[ClosetItem]` (`label`, `category`, `color`, `image_url`, ...).
-- **Duplicate check on upload:** `POST /closet/upload` returns `duplicate_of` (an item id, or null). When it's set, show "Looks like you already have this" with **Keep both** (do nothing) / **Remove** (`DELETE /closet/{user_id}/{item_id}` with the new item's id).
-- **Fit Score badge** (Fit Check posts, complete-the-look sheet): `POST /ai/fit-score`, free and instant. Send one of these:
-  - a post's tags: `{"items": post.tagged}`
-  - a product plus closet pieces: `{"product_ids": [...], "closet_item_ids": [...]}`
-  - It returns `{score: 0-100, verdict: "Clean neutrals, one pop", notes: [2-4 short lines], breakdown}`. Show `score` + `verdict` on the badge and `notes` in the details sheet.
-- **Size picker** now works for real H&M jeans (`28/32`, `28inch`, women's `0–22`) and XXS–3XL.
-- **Fit Check "shop this fit"** is faster: items not in the catalog are searched live at H&M in parallel, ~8 s the first time and instant after.
+**Merging:** your branch is 62 commits behind `staging`, so merge `staging` in before your PR. Your files don't overlap with anyone's.
 
-## Calls for your screens
+**Plan:** you own all of the app's screens and design. Nabil and Adam stay on the backend and answer API questions. An earlier version of my plan split the screens between the three of us; that's withdrawn. iPhone build afterward on Adam's Mac (needs the iOS 26 platform installed in Xcode first).
 
-| Screen | Call | Notes |
-| --- | --- | --- |
-| Feed | `GET /feed?user_id=u_demo&limit=20` | cards = Product + `reason` ("goes with your baggy jeans"), `score`, `pairs_with`. First load ~7 s (AI ranking), then cached |
-| Save / cart / skip | Nabil's routes (`NABIL_TO_RYAN.md`) | `/swipe`, `PUT /wishlist/{user}/items/{product}` |
-| Size picker | `POST /size {product_id, height_cm, weight_kg, fit?, waist_in?, shoe_us?}` | → `{size, confidence, reason}`; highlight `size`, grey out `in_stock: false` |
-| Try it on | `POST /tryon {user_id, product_ids: [id]}` | ~5 s first time, instant after. `mode: "ai"` = real try-on; `"collage"` = outfit board (label it) |
-| Complete the look | `POST /complete-look {user_id, product_id, budget_usd?}` | `{items: [{source: closet\|catalog, id, category, label, reason}], new_items_total_usd, missing}` |
-| Fit Score | `POST /ai/fit-score` | see above |
-| Cart / checkout | `GET /cart/{user_id}`, `POST /checkout/{user_id}` | grouped by retailer; checkout is a real Capital One Nessie purchase (`paid`) |
-| Closet | `GET /closet/{user_id}`, `POST /closet/upload` (multipart `user_id`, `file`), `DELETE /closet/{user_id}/{item_id}` | upload returns the item with `label` and `duplicate_of` |
-| Onboarding photo | `POST /users/{user_id}/body-photo` (multipart `file`) | |
-| Fit Check | Nabil's `/fitcheck/...` routes; `POST /ai/tag-fit {image_url}` pre-fills tags | `/fitcheck/{id}/shop` returns buyable items + reasons |
+**URL + key:** Adam is sending them to you privately so you can run against the live backend.
 
-## Known limits
-- Catalog is H&M + Uniqlo only (Zara/ASOS/Mango aren't scraped). Fit Check live search is H&M.
-- The first feed load takes ~7 s while Claude writes reasons; some cards come back without a reason (Nabil tops up with unranked cards), so hide the reason line when it's empty.
+**Status, deviations and next steps for everyone:** [`docs/progress.md`](docs/progress.md).
+
+## Integration check (done)
+
+I copied `app/lib/features/feed/` and `app/test/features/feed/` from `RyanFrontendking` (c45ad88) into `flutter-starter`, unchanged, then ran `flutter pub get`, `flutter analyze` and `flutter test` (Flutter 3.47.8):
+- `flutter analyze`: **no issues**.
+- `flutter test`: **4/4 pass** (photo gesture boundaries/dots, size/cart validation, vertical browse/single-image dots, double-tap save/cart error).
+- **No file overlaps.** The starter has no `features/` or `test/` files, so yours merge cleanly.
+- **Fix on my side:** the starter's `pubspec.yaml` was missing the `flutter_test` dev dependency, so your tests couldn't run. Added in `flutter-starter` 1b4aff2.
+
+**PR #9** (`flutter-starter` → `staging`) is open. Once it's merged, merging `staging` into your branch gives you the shell + core. To get it sooner, merge `origin/flutter-starter` directly.
+
+## Backend facts for your screens
+
+All routes need the header `X-DTI-Key: <key>` (private, from the group chat) except `GET /health`, `/static/...` and `/img`. Demo user: `u_demo`. Catalog: 418 H&M + Uniqlo products (48 shoes), all AI-tagged (`label`, `style_tags`, `pattern`, `formality` 1–5).
+
+| Route | Returns / means |
+| --- | --- |
+| `GET /img?url=<image_url>` | the same image, re-served by our backend. Needed on web: retailer image servers refuse direct loads. Only retailer image hosts are allowed. |
+| `GET /feed?user_id=&limit=` (Nabil) | Products + `reason` (AI, may be empty), `score`, `pairs_with` (closet item ids) |
+| `POST /size {product_id, height_cm, weight_kg, fit?, waist_in?, shoe_us?}` | `{size, confidence: high\|medium\|low, reason}`. `size` is always an in-stock size, or null. Handles S–XL, XXS–3XL, `28/32`, `28inch`, US women's 0–24 and shoes (needs `shoe_us`). |
+| `POST /tryon {user_id, product_ids, closet_item_ids?}` | `{image_url, cached, mode}`. `mode: "ai"` = the user wearing it (~5 s first time, instant after). `mode: "collage"` = an outfit board, **not** a photo of the user. It's only used if image generation fails. |
+| `POST /complete-look {user_id, product_id, budget_usd?}` | `{items: [{source: "closet"\|"catalog", id, category, label, reason}], new_items_total_usd, missing}`. `source: closet` = something the user already owns. |
+| `POST /ai/fit-score {items?, product_ids?, closet_item_ids?}` | `{score 0–100, verdict (≤6 words), notes (2–4 lines), breakdown {color/40, pattern/20, formality/20, completeness/20}}`. Rules only, free, instant. `items` can be a Fit Check post's `tagged`. |
+| `GET /closet/{user_id}` | `[ClosetItem]`: `id, label, category, color, pattern, style_tags, formality, image_url, duplicate_of` |
+| `POST /closet/upload` (multipart `user_id`, `file`) | the new ClosetItem. `duplicate_of` = the id of an item it's probably the same garment as, or null. The item is saved either way. |
+| `DELETE /closet/{user_id}/{item_id}` | `{deleted}`. 404 if it isn't that user's. |
+| `GET /users/{user_id}/style` | Style DNA: `{headline, styles[{tag, share}], palette[{name, family, hex, share}], patterns, formality{avg, label}, price_ranges, favorite_retailers, avoid, sample_size, confidence}` |
+| `POST /users/{user_id}/style/apply` | saves the learned `price_ranges` on the user (the feed ranks in-budget items first). 409 with fewer than 5 liked items. |
+| `POST /users/{user_id}/body-photo` (multipart `file`) | `{body_photo_url}`, used by try-on. |
+| `POST /ai/tag-fit {image_url}` | items seen in an outfit photo (Fit Check auto-tags) |
+
+Commerce routes (cart, checkout, wishlist, Fit Check posts, onboarding, users, search) are in Nabil's `NABIL_TO_RYAN.md`.
+
+**Known data limits:**
+- H&M has no descriptions (always `null`); Uniqlo has 1 photo per product.
+- The feed's first load takes ~6 s while Claude ranks, then it's cached for 10 minutes.
+- Fit Check live search covers H&M only.

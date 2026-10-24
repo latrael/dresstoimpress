@@ -113,3 +113,11 @@ store.put("products", p["id"], p)
 - `POST /ai/vibe {q}` (≤200 chars) → `{styles, categories, colors, keywords, source: "ai"|"rules"}` for Discover; in-process: `from app.ai.vibe import vibe`.
 - `DELETE /users/{id}/body-photo` → `{deleted: bool}`: clears `body_photo_url` and deletes our uploaded file; `body_profile` stays.
 - Colors: free text everywhere. `app.ai.colors.normalize_color(text)` maps it to `{name, family, hex}` (31 names, families neutral / earth / warm / cool / unknown) when code needs to compare colors.
+
+## AI Fit Creator
+
+Complete outfits built for the user's body (body scan) that mix closet pieces with new catalog pieces in their size. Core: `Api.createFits({count, occasion, mustInclude, budgetUsd, tryOn})` → `List<OutfitFit>`, `Api.fit(id)`, `Api.fitTryOn(id)` → `TryOnResponse`, `Api.addFitToCart(id)` → `Cart`.
+
+- `POST /fits/create?tryon=false` body `{user_id, count: 3, occasion?: "rooftop party", must_include?: [product_id], budget_usd?}` → `{fits: [OutfitFit], source: "ai"|"rules"}`. Pool = closet + buyable catalog products in the user's department / price ranges / budget that have a `your_size` (no size filter without a body profile). Claude picks; ids are validated against the pool, incomplete fits (need top+bottom or dress, plus shoes) are filled by the outfit rules; rules build one fit per top closet piece when AI is off. Cached 1 h per (user, closet, occasion, must_include, budget). `?tryon=true` also renders each fit (slow) when the user has a body photo.
+- `OutfitFit {id: "fit_<hash>", name, occasion, reason (names build/measurement + the closet piece), pieces: [{slot: top|bottom|shoes|outerwear|dress|accessory, source: closet|catalog, closet_item: ClosetItem|null, product: Product card (+your_size/in_your_size)|null, your_size, in_your_size}], new_total_usd (catalog pieces), closet_count, try_on: {image_url, mode: "ai"|"collage"}|null}`.
+- `GET /fits/{fit_id}?user_id=` → the cached fit (404 after 1 h). `POST /fits/{fit_id}/try-on?user_id=` → `{image_url, mode}` (same generator as `/tryon`). `POST /fits/{fit_id}/cart?user_id=` adds every catalog piece at `your_size` and returns the cart like `POST /cart/{user}/items`.

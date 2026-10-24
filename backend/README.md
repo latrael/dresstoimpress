@@ -26,13 +26,14 @@ For phones at the venue, expose it: `ngrok http 8000`, then set `PUBLIC_BASE` to
 | `POST /pair` | `{user_id, candidate_product_ids[]}` (empty = all unswiped products) | `[{product_id, score, reason, pairs_with[]}]` |
 | `POST /closet/upload` | multipart `user_id`, `file` (jpeg/png/webp/heic, ≤10 MB) | ClosetItem (saves, then tags) |
 | `POST /users/{user_id}/body-photo` | multipart `file` | `{body_photo_url}` |
-| `POST /ai/shop-fit` | `{viewer_id, tagged[{label, retailer?, product_id?}]}` | Products + `reason`, `pairs_with`, `score`, `matched_tag` |
+| `POST /ai/shop-fit` | `{viewer_id, tagged[{label, retailer?, product_id?}]}` or `{viewer_id, photo_url}` | Products + `reason`, `pairs_with`, `score`, `matched_tag` |
+| `POST /ai/tag-fit` | `{image_url}` (an outfit photo) | `[{label, category, color, pattern, style_tags, brand, retailer}]` — use as a post's `tagged` |
 
 - **Tagging:** Claude vision → JSON, validated and clamped to the contract, retried once on bad JSON.
 - **Try-on:** Gemini Flash image with the user's body photo + garment images; prompt forbids reshaping the body. Results cached by user + sorted ids and served from `/static/tryon/`.
 - **Pairing:** budget matches first, top 50 sent to Claude with closet + style memory; hallucinated ids are dropped; falls back to budget/price ranking if Claude fails or the closet is empty.
 - **Style memory:** with `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY` set, swipes are indexed in Moss (one index per user) and pairing retrieves the most relevant likes/discards; otherwise it reads recent swipes. **Nabil: call `ai.memory.record_swipe(user_id, product, action)` from `/swipe`.**
-- **Shop the fit:** matches each tagged item in a Fit Check post to products (exact `product_id`, else retailer + word overlap), then ranks them against the viewer's closet. **Nabil: `GET /fitcheck/{post_id}/shop` can return `ai.service.shop_fit(viewer_id, post["tagged"])`.**
+- **Shop the fit:** matches each tagged item to products strictly (same type word and category, plus a descriptor, color or retailer). If the catalog has nothing, it searches the stores live through Apify (`APIFY_TOKEN`), then ranks matches against the viewer's closet. **Nabil: `GET /fitcheck/{post_id}/shop` can return `ai.service.shop_fit(viewer_id, post["tagged"])`.**
 - **Images:** fetched server-side and sent to Claude as base64 (retailer CDNs block outside fetchers; localhost isn't reachable). Only http(s) URLs accepted from the API.
 
 ## Cost
@@ -58,7 +59,7 @@ python -m scripts.precompute_tryons --user u_demo # warm try-on cache before jud
 ```
 app/models.py     shared data contract (don't rename fields without telling the team)
 app/store.py      JSON-file store (default) or Firestore (USE_FIRESTORE=1)
-app/ai/           Adam's pipeline: prompts, llm wrappers, service, router, memory
+app/ai/           Adam's pipeline: prompts, llm wrappers, service, router, memory, finder (item matching + live search)
 scripts/          seed_demo.py
 ```
 

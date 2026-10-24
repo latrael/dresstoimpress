@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, SizeRequest, TagFitRequest, TagRequest,
+from ..models import (ClosetItem, CompleteLookRequest, PairRequest, PairResult, ShopFitRequest, SizeRequest, TagFitRequest, TagRequest,
                       TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
@@ -132,3 +132,20 @@ def size(req: SizeRequest):
         raise HTTPException(404, "unknown product")
     return recommend_size(product, req.height_cm, req.weight_kg, fit=req.fit,
                           shoe_us=req.shoe_us, waist_in=req.waist_in)
+
+
+@router.post("/complete-look")
+def complete_look_route(req: CompleteLookRequest):
+    """Full outfit around a swiped product: fills top/bottom/shoes (or dress/shoes) from the user's
+    closet first, then in-stock catalog items within budget. No AI call, instant."""
+    from .compat import get_product, list_products
+    from .complete_look import complete_look
+
+    anchor = get_product(req.product_id)
+    if not anchor:
+        raise HTTPException(404, "unknown product")
+    user = store.get("users", req.user_id) or {}
+    closet = store.list("closet_items", user_id=req.user_id)
+    catalog = [p for p in list_products() if p["id"] != anchor["id"]]
+    return complete_look(anchor, closet, catalog, budget_usd=req.budget_usd,
+                         style_text=user.get("style_text", ""))

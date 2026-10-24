@@ -375,3 +375,13 @@ def test_tryon_collage_when_ai_unavailable(client, monkeypatch, tmp_path):
 def test_tryon_without_body_photo_still_returns_board(client):
     r = client.post("/tryon", json={"user_id": "nobody", "product_ids": ["hm-demo-1"]})
     assert r.status_code == 200 and r.json()["mode"] in {"ai", "collage"}
+
+
+def test_complete_look_endpoint(client):
+    r = client.post("/complete-look", json={"user_id": "u_demo", "product_id": "hm-demo-1"})
+    assert r.status_code == 200
+    body = r.json()
+    cats = {i["category"]: i for i in body["items"]}
+    assert cats["bottom"]["source"] == "closet"   # u_demo owns jeans and cargos
+    assert cats["shoes"]["source"] == "closet"    # and white sneakers
+    assert client.post("/complete-look", json={"user_id": "u_demo", "product_id": "nope"}).status_code == 404

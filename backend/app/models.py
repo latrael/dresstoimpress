@@ -120,5 +120,11 @@ class SizeRequest(BaseModel):
     waist_in: Optional[float] = None
 
 
+class CompleteLookRequest(BaseModel):
+    user_id: str
+    product_id: str                     # the product the user just swiped right on
+    budget_usd: Optional[float] = None  # total for new items incl. the anchor
+
+
 class TagFitRequest(BaseModel):
     image_url: str

@@ -38,7 +38,7 @@ Restart the shared server (it adds `DELETE /fitcheck/{id}`). No reseed needed.
 ### Nabil at 9:15 (in order)
 > The shared tunnel has been down since ~1:25 AM (Adam restarts it at 8:45, with a new URL). That makes step 2, your backup going public, the real fallback if 8:45 goes wrong.
 
-1. **Merge PR #14** after review (its tests pass: 254). **Checked together with Adam's #15:** staging + #15 + #14 merges with no conflicts, and **275 tests pass** (re-checked at ~2:00 against the latest #15). Either order works.
+1. **Merge order (agreed with Adam at 8:10): #15 → #14 → #13** (#13 needs Ryan's OK). **Merge PR #14** after review (its tests pass: 254). **Checked together with Adam's #15:** staging + #15 + #14 merges with no conflicts, and **275 tests pass** (re-checked at ~2:00 against the latest #15). Either order works.
 2. **Backup server goes public** (it's already running on localhost):
    - Put Adam's `API_SHARED_KEY` in `backend/.env`.
    - Restart: `cd backend && pkill -f "uvicorn app.main"; DATA_DIR=~/dti-backup/data .venv/bin/uvicorn app.main:app --port 8000`

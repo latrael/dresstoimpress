@@ -10,11 +10,15 @@ from pathlib import Path
 from ..models import ClosetItem, PairResult, Product
 from ..store import DATA_DIR, store
 from . import prompts
-from .llm import BadModelOutput, claude_json, gemini_image, mock_mode
+import time
+
+from .llm import (CLAUDE_PAIR_MODEL, CLAUDE_TAG_MODEL, BadModelOutput, claude_json, gemini_image,
+                  mock_mode)
 from .memory import style_memory
 
 TRYON_DIR = DATA_DIR / "tryon"
 PUBLIC_BASE = os.getenv("PUBLIC_BASE", "http://localhost:8000")
+PAIR_TTL = int(os.getenv("PAIR_CACHE_SECONDS", "600"))
 CATEGORIES = {"top", "bottom", "outerwear", "shoes", "dress", "accessory"}
 
 
@@ -29,7 +33,16 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
         raw = {"category": "top", "color": "black", "pattern": "solid",
                "style_tags": ["streetwear"], "formality": 2}
     else:
-        raw = claude_json(prompts.TAGGER, image_url=image_url, max_tokens=300)
+        # same photo tagged twice (retries, re-uploads) costs nothing the second time
+        key = hashlib.sha256(image_url.encode()).hexdigest()[:24]
+        hit = store.get("tag_cache", key)
+        if hit:
+            raw = hit
+        else:
+            raw = claude_json(prompts.TAGGER, image_url=image_url, max_tokens=200,
+                              model=CLAUDE_TAG_MODEL)
+            if isinstance(raw, dict):
+                store.put("tag_cache", key, raw)
 
     if isinstance(raw, dict) and raw.get("error") == "not_clothing":
         raise NotClothing()
@@ -131,10 +144,20 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         products_json=json.dumps(slim_cands),
         k=k,
     )
-    try:
-        raw = claude_json(prompt, max_tokens=2000)
-    except BadModelOutput:
-        return _fallback(cands, ranges, k)
+    # Cache: same user, same candidates, same closet/swipe state -> reuse for 10 min.
+    # The feed and shop-the-fit can hit this on every scroll; this keeps that free.
+    state = (f"{user_id}|{','.join(sorted(p['id'] for p in cands))}|{len(closet)}|{len(swiped)}|{k}|"
+             f"{user.get('style_text', '')}|{json.dumps(ranges, sort_keys=True)}")
+    ckey = hashlib.sha256(state.encode()).hexdigest()[:24]
+    hit = store.get("pair_cache", ckey)
+    if hit and time.time() - hit["at"] < PAIR_TTL:
+        raw = hit["raw"]
+    else:
+        try:
+            raw = claude_json(prompt, max_tokens=1200, model=CLAUDE_PAIR_MODEL)
+        except BadModelOutput:
+            return _fallback(cands, ranges, k)
+        store.put("pair_cache", ckey, {"at": time.time(), "raw": raw})
 
     valid_ids = {p["id"] for p in cands}
     closet_ids = {c["id"] for c in closet}

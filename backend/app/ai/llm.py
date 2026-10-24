@@ -12,8 +12,68 @@ from typing import Any
 
 import httpx
 
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5")
+# Haiku by default: ~20x cheaper than Sonnet and plenty for tagging/pairing.
+# Override per task if quality needs it (e.g. CLAUDE_PAIR_MODEL=claude-sonnet-5-5).
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
+CLAUDE_TAG_MODEL = os.getenv("CLAUDE_TAG_MODEL", CLAUDE_MODEL)
+CLAUDE_PAIR_MODEL = os.getenv("CLAUDE_PAIR_MODEL", CLAUDE_MODEL)
 GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+
+# USD per million tokens (input, output), from platform.claude.com/docs pricing, Oct 2026.
+PRICES = {
+    "claude-haiku-5-5": (0.10, 0.50),
+    "claude-sonnet-5-5": (2.0, 10.0),
+    "claude-opus-5-5": (4.0, 20.0),
+}
+# Hard stop: once estimated Claude spend passes this, calls fail fast and every
+# endpoint uses its non-AI fallback instead. Set 0 to disable.
+AI_BUDGET_USD = float(os.getenv("AI_BUDGET_USD", "5"))
+# Gemini try-ons are the expensive part; cap how many fresh ones we generate.
+MAX_TRYONS = int(os.getenv("MAX_TRYONS", "150"))
+
+
+class BudgetExceeded(Exception):
+    pass
+
+
+def usage() -> dict:
+    from ..store import store
+
+    return store.get("ai_usage", "total") or {
+        "claude_calls": 0, "input_tokens": 0, "output_tokens": 0, "est_usd": 0.0,
+        "gemini_images": 0, "by_model": {}}
+
+
+def _record_claude(model: str, in_tok: int, out_tok: int) -> None:
+    from ..store import store
+
+    u = usage()
+    pin, pout = PRICES.get(model, PRICES["claude-sonnet-5-5"])  # unknown model: assume pricier
+    cost = in_tok / 1e6 * pin + out_tok / 1e6 * pout
+    u["claude_calls"] += 1
+    u["input_tokens"] += in_tok
+    u["output_tokens"] += out_tok
+    u["est_usd"] = round(u["est_usd"] + cost, 6)
+    m = u["by_model"].setdefault(model, {"calls": 0, "est_usd": 0.0})
+    m["calls"] += 1
+    m["est_usd"] = round(m["est_usd"] + cost, 6)
+    store.put("ai_usage", "total", u)
+
+
+def record_gemini_image() -> None:
+    from ..store import store
+
+    u = usage()
+    u["gemini_images"] += 1
+    store.put("ai_usage", "total", u)
+
+
+def check_budget(kind: str = "claude") -> None:
+    u = usage()
+    if kind == "claude" and AI_BUDGET_USD and u["est_usd"] >= AI_BUDGET_USD:
+        raise BudgetExceeded(f"Claude budget ${AI_BUDGET_USD} reached")
+    if kind == "gemini" and MAX_TRYONS and u["gemini_images"] >= MAX_TRYONS:
+        raise BudgetExceeded(f"try-on cap {MAX_TRYONS} reached")
 
 
 def mock_mode(key_env: str) -> bool:
@@ -39,10 +99,17 @@ def extract_json(text: str) -> Any:
     return obj
 
 
-def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500) -> Any:
-    """Call Claude and return parsed JSON. Retries once on unparseable output."""
+def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
+                model: str | None = None) -> Any:
+    """Call Claude and return parsed JSON. Retries once on unparseable output.
+    Raises BadModelOutput (incl. when over budget) so callers fall back."""
     from anthropic import Anthropic
 
+    model = model or CLAUDE_MODEL
+    try:
+        check_budget("claude")
+    except BudgetExceeded as e:
+        raise BadModelOutput(str(e)) from e
     client = Anthropic()
     content: list[dict] = []
     if image_url:
@@ -52,10 +119,14 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
     last_err: Exception | None = None
     for _ in range(2):
         msg = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": content}],
         )
+        try:
+            _record_claude(model, msg.usage.input_tokens, msg.usage.output_tokens)
+        except Exception:  # noqa: BLE001 — never let accounting break a request
+            pass
         text = "".join(b.text for b in msg.content if b.type == "text")
         try:
             return extract_json(text)
@@ -134,6 +205,10 @@ def gemini_image(prompt: str, image_urls: list[str]) -> bytes:
     from google import genai
     from google.genai import types
 
+    try:
+        check_budget("gemini")
+    except BudgetExceeded as e:
+        raise BadModelOutput(str(e)) from e
     client = genai.Client()
     parts: list[Any] = []
     for url in image_urls:
@@ -145,5 +220,6 @@ def gemini_image(prompt: str, image_urls: list[str]) -> bytes:
     for cand in resp.candidates or []:
         for part in cand.content.parts or []:
             if getattr(part, "inline_data", None) and part.inline_data.data:
+                record_gemini_image()
                 return part.inline_data.data
     raise BadModelOutput("Gemini returned no image")

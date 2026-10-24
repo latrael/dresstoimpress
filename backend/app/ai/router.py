@@ -7,7 +7,7 @@ from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, TagRe
                       TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
-from .llm import BadModelOutput
+from .llm import AI_BUDGET_USD, MAX_TRYONS, BadModelOutput, usage
 
 router = APIRouter(tags=["ai"])
 
@@ -80,3 +80,9 @@ def shop_fit(req: ShopFitRequest):
     """AI half of GET /fitcheck/{post_id}/shop: Nabil's route loads the post and passes its `tagged` here
     (or calls service.shop_fit directly). Returns Products + reason, pairs_with, score, matched_tag."""
     return service.shop_fit(req.viewer_id, [t.model_dump() for t in req.tagged])
+
+
+@router.get("/ai/usage")
+def ai_usage():
+    """Running AI spend estimate. Check it from a browser during the hackathon."""
+    return {**usage(), "budget_usd": AI_BUDGET_USD, "max_tryons": MAX_TRYONS}

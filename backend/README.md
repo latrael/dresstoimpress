@@ -35,6 +35,16 @@ For phones at the venue, expose it: `ngrok http 8000`, then set `PUBLIC_BASE` to
 - **Shop the fit:** matches each tagged item in a Fit Check post to products (exact `product_id`, else retailer + word overlap), then ranks them against the viewer's closet. **Nabil: `GET /fitcheck/{post_id}/shop` can return `ai.service.shop_fit(viewer_id, post["tagged"])`.**
 - **Images:** fetched server-side and sent to Claude as base64 (retailer CDNs block outside fetchers; localhost isn't reachable). Only http(s) URLs accepted from the API.
 
+## Cost
+
+The Claude API is billed per token, separate from any Claude subscription. Defaults keep it near zero:
+
+- **Haiku 5.5 for everything** ($0.10 / $0.50 per million input/output tokens). A closet tag is roughly 2k tokens, so a fraction of a cent. Set `CLAUDE_PAIR_MODEL=claude-sonnet-5-5` only if pairing quality needs it.
+- **Caching:** tags cached per image URL, pairings for 10 min per user + candidate set, try-ons forever.
+- **Hard caps:** `AI_BUDGET_USD` (default $5) and `MAX_TRYONS` (default 150). Past either, endpoints use their non-AI fallbacks instead of failing.
+- **Watch it:** `GET /ai/usage` shows calls, tokens and estimated spend.
+- **Building UI?** `MOCK_AI=1` spends nothing.
+
 ## Scripts
 
 ```bash

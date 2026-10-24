@@ -120,3 +120,41 @@ def test_record_swipe_noop_without_moss(client):
     from app.ai.memory import record_swipe
     from app.store import store
     record_swipe("u_demo", store.get("products", "hm-demo-1"), "cart")  # must not raise
+
+
+def test_usage_endpoint(client):
+    r = client.get("/ai/usage").json()
+    assert {"claude_calls", "est_usd", "gemini_images", "budget_usd"} <= r.keys()
+
+
+def test_budget_stops_claude_before_calling(client, monkeypatch):
+    from app.ai import llm
+    from app.store import store
+    monkeypatch.setattr(llm, "AI_BUDGET_USD", 1.0)
+    store.put("ai_usage", "total", {**llm.usage(), "est_usd": 1.5})
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")  # would fail loudly if a real call happened
+    with pytest.raises(llm.BadModelOutput, match="budget"):
+        llm.claude_json("hi")
+    store.put("ai_usage", "total", {**llm.usage(), "est_usd": 0.0})
+
+
+def test_cost_accounting(client):
+    from app.ai import llm
+    before = llm.usage()["est_usd"]
+    llm._record_claude("claude-haiku-5-5", 1_000_000, 0)
+    assert round(llm.usage()["est_usd"] - before, 4) == 0.10
+
+
+def test_pair_cache_reuses_claude(client, monkeypatch):
+    from app.ai import llm, service
+    calls = []
+
+    def fake(prompt, **kw):
+        calls.append(1)
+        return [{"product_id": "hm-demo-1", "score": 0.9, "reason": "goes with your baggy jeans",
+                 "pairs_with": ["ci_demo_2"]}]
+    monkeypatch.setattr(service, "claude_json", fake)
+    monkeypatch.setattr(service, "mock_mode", lambda k: False)
+    a = service.pair("u_demo", ["hm-demo-1", "zara-demo-1"])
+    b = service.pair("u_demo", ["hm-demo-1", "zara-demo-1"])
+    assert len(calls) == 1 and a == b and a[0].pairs_with == ["ci_demo_2"]

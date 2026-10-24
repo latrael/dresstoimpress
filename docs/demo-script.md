@@ -77,7 +77,8 @@ On screen: the app home.
 | Problem | Do this |
 | --- | --- |
 | Adam's Mac or the tunnel dies | Switch the app's base URL to Nabil's backup server (same key) |
-| Anthropic credits run out | Nothing: text falls back to Gemini, then rules |
+| Anthropic credits run out | Nothing: text falls back to Gemini (drilled Sat 2:05 AM: smoke 10/10) |
+| Claude **and** Gemini down | Feed reasons come from rules, try-on shows the outfit board, and cart, checkout and shop still work (drilled: 10/10). **Only new photo tagging fails:** closet upload returns a plain 502, and a live Fit Check post goes up untagged. So use a pre-posted real fit instead of a live upload. |
 | Try-on fails | The outfit board appears (`mode: "collage"`); warmed try-ons are cached |
 | Nessie fails | The order is kept as `nessie_failed`; show the evidence table |
 | The iPhone build fails | Demo the web build in Chrome on the laptop |

@@ -7,6 +7,14 @@
 - **Adam:** AI backend, hosting, and `app/lib/core` kept in sync with the backend.
 - **Nabil:** commerce backend.
 
+## Overnight log (Adam's session, every 20 min)
+
+- **1:55:**
+  - **Open PRs to merge at 9:15:** **#13** (`app/ios`, Ryan's OK needed), **#14** (Nabil: Devpost draft + demo script, in progress), **#15** (Adam: AI quality fixes + `reset_demo` + AI write-up). No conflicts between them.
+  - **Server:** up on `staging` @ 4f5df54. Tunnel 200, `caffeinate` on.
+- **1:50:** AI quality check on live data: 10 warnings → 0 fail, 8 harmless after the fixes (PR #15).
+- **1:20:** the unsigned iOS release build succeeds (iOS 26 SDK installed).
+
 ## Update: Fri ~11:15 PM
 
 - **Merged into `staging`:** #8 (Adam), #7 (Nabil), #9 (shell + core), #10 (Ryan's app). Every deviation in the table below is closed except #5, the `/fit` OK, which is waiting on Ryan.

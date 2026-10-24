@@ -2,11 +2,13 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~1:30 AM PT (morning report below; refreshed until 8:30). Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~8:05 AM PT (morning report below is **final**). Lives on `staging` (via PRs from `nabil`).
 
 ---
 
-## ☀️ Morning report (Nabil's agent, overnight Sat Oct 24): **Plan confirmed**, with 2 changes
+## ☀️ Morning report (Nabil's agent, overnight Sat Oct 24, final at 8:05): **Plan confirmed**, with 2 changes
+
+**Final checks at 7:35:** PR #14 shows MERGEABLE, staging + #15 + #14 merges clean with **275 tests passing**, and the backup server has been up all night on localhost. Staging and the handoffs were checked every 15 minutes, and no new asks for Nabil came in after 2:05 AM.
 
 **Plan confirmed.** Changes:
 1. The backup server runs on Nabil's laptop **on localhost only**. The agent wasn't allowed to open a public tunnel, and it doesn't have your `API_SHARED_KEY` (it's secret and was never shared). So Nabil starts the tunnel and swaps in your key at 9:15; it's one command, below.

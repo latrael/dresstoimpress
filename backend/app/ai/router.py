@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
+from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
                       SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
@@ -127,7 +127,7 @@ async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm:
                           weight_kg: Optional[float] = Form(None)):
     """Body scan: full-body photo + height (weight optional) -> estimated measurements saved as
     body_profile (used by /size) and the photo saved as the try-on photo."""
-    from .body_scan import HEIGHT_CM, WEIGHT_KG, scan
+    from .body_scan import HEIGHT_CM, WEIGHT_KG, merge_scan, scan
 
     if not HEIGHT_CM[0] <= height_cm <= HEIGHT_CM[1]:
         raise HTTPException(422, "height_cm must be between 120 and 230")
@@ -137,9 +137,21 @@ async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm:
     profile = scan(url, height_cm, weight_kg)
     user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
     user["body_photo_url"] = url
-    user["body_profile"] = profile
+    user["body_profile"] = merge_scan(user.get("body_profile"), profile)
     store.put("users", user_id, user)
-    return {"body_photo_url": url, "body_profile": profile}
+    return {"body_photo_url": url, "body_profile": user["body_profile"]}
+
+
+@router.patch("/users/{user_id}/body-profile")
+def body_profile_update(user_id: str, req: BodyProfileUpdate):
+    """Measurements the user typed (onboarding / profile), saved server-side so they follow the user
+    to any device. Merged with the body scan; typed values win. GET /users/{id} returns body_profile."""
+    from .body_scan import apply_manual
+
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["body_profile"] = apply_manual(user.get("body_profile"), req.model_dump(exclude_unset=True))
+    store.put("users", user_id, user)
+    return user["body_profile"]
 
 
 @router.get("/users/{user_id}/style")
@@ -253,10 +265,26 @@ def size(req: SizeRequest):
     scan = ((store.get("users", req.user_id) or {}).get("body_profile") or {}) if req.user_id else {}
     height = req.height_cm or scan.get("height_cm")
     weight = req.weight_kg or scan.get("weight_kg")
+    fit = req.fit if "fit" in req.model_fields_set or not scan.get("fit") else scan["fit"]
+    usual = (scan.get("usual_sizes") or {}).get(product.get("category"))
     if not height or not weight:
+        known = _usual_size(product, usual) if usual else None  # no body numbers, but a usual size
+        if known:
+            return known
         raise HTTPException(422, "add your height and weight (or do a body scan with both)")
-    return recommend_size(product, height, weight, fit=req.fit,
-                          shoe_us=req.shoe_us, waist_in=req.waist_in or scan.get("waist_in"))
+    out = recommend_size(product, height, weight, fit=fit, shoe_us=req.shoe_us or scan.get("shoe_us"),
+                         waist_in=req.waist_in or scan.get("waist_in"))
+    if not out.get("size") and usual:
+        out = _usual_size(product, usual) or out
+    return out
+
+
+def _usual_size(product: dict, usual: str) -> dict | None:
+    """The user's usual size for this category, if this product has it in stock."""
+    for s in product.get("sizes") or []:
+        if str(s).strip().lower() == usual.strip().lower():
+            return {"size": s, "confidence": "medium", "reason": "your usual size"}
+    return None
 
 
 @router.post("/complete-look")

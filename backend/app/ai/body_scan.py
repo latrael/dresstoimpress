@@ -57,6 +57,41 @@ def _ask(photo_url: str, height_cm: float, weight_kg: float | None) -> dict:
     return raw if isinstance(raw, dict) else {}
 
 
+CM_FIELDS = {"waist_cm": "waist_in", "chest_cm": "chest_in", "hip_cm": "hip_in", "inseam_cm": "inseam_in"}
+
+
+def apply_manual(profile: dict | None, changes: dict) -> dict:
+    """Merge typed measurements into a body profile. cm lengths are stored in inches; a None value
+    clears that field. Fields the user typed are listed in `manual`, and a later scan keeps them."""
+    out = dict(profile or {})
+    manual = set(out.get("manual") or [])
+    for key, value in changes.items():
+        field = CM_FIELDS.get(key, key)
+        if key in CM_FIELDS and value is not None:
+            value = round(value / 2.54 * 2) / 2
+        out[field] = value
+        if value is None:
+            manual.discard(field)
+        else:
+            manual.add(field)
+    out["manual"] = sorted(manual)
+    if manual & {"height_cm", "weight_kg", *CM_FIELDS.values()}:
+        out["source"] = "manual"
+    out.setdefault("source", "manual")
+    out["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return out
+
+
+def merge_scan(previous: dict | None, scanned: dict) -> dict:
+    """A new scan replaces the estimates but keeps what the user typed (and their preferences)."""
+    prev = previous or {}
+    out = {**prev, **scanned}
+    for field in prev.get("manual") or []:
+        out[field] = prev.get(field)
+    out["manual"] = list(prev.get("manual") or [])
+    return out
+
+
 def scan(photo_url: str, height_cm: float, weight_kg: float | None = None) -> dict:
     """Body profile saved on the user as `body_profile` (inches; estimates)."""
     raw = _ask(photo_url, height_cm, weight_kg)

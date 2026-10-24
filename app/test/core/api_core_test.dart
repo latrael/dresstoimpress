@@ -144,6 +144,21 @@ void main() {
     expect((await noWeight.bodyScan([1], heightCm: 170)).profile.source, 'estimate');
   });
 
+  test('updateBodyProfile sends only what is given, in cm, and parses the saved profile', () async {
+    final seen = <http.Request>[];
+    final api = _api(seen, (_) => {
+          'height_cm': 175, 'waist_in': 32, 'fit': 'oversized', 'shoe_us': 10, 'source': 'manual',
+          'usual_sizes': {'top': 'M'}, 'manual': ['height_cm', 'waist_in'],
+        });
+    final p = await api.updateBodyProfile(heightCm: 175, waistCm: 81.3, fit: 'oversized', usualSizes: {'top': 'M'});
+    final r = seen.single;
+    expect((r.method, r.url.path), ('PATCH', '/users/u_demo/body-profile'));
+    expect(jsonDecode(r.body), {'height_cm': 175.0, 'waist_cm': 81.3, 'fit': 'oversized', 'usual_sizes': {'top': 'M'}});
+    expect((p.waistIn, p.fit, p.shoeUs, p.source), (32.0, 'oversized', 10.0, 'manual'));
+    expect(p.usualSizes, {'top': 'M'});
+    expect(p.manual, ['height_cm', 'waist_in']);
+  });
+
   test('AppUser carries the body scan; sizeAdvice sends the user id', () async {
     final u = AppUser.fromJson({..._user, 'body_profile': {'height_cm': 170, 'waist_in': 30, 'source': 'estimate'}});
     expect(u.bodyProfile?.waistIn, 30);

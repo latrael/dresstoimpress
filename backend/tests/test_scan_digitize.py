@@ -234,3 +234,60 @@ def test_unreadable_images_are_kept_as_uploaded():
 
     data, ext = _clean_image(b"not really a heic", "image/heic")
     assert (data, ext) == (b"not really a heic", ".heic")
+
+
+# ---------- typed measurements: PATCH /users/{id}/body-profile ----------
+
+def test_typed_measurements_are_saved_in_inches_and_marked_manual(client):
+    r = client.patch("/users/u_s/body-profile", json={"height_cm": 175, "weight_kg": 70, "waist_cm": 81.3,
+                                                      "inseam_cm": 81, "shoe_us": 10, "fit": "oversized",
+                                                      "usual_sizes": {"top": "M"}})
+    assert r.status_code == 200, r.text
+    p = r.json()
+    assert (p["height_cm"], p["waist_in"], p["inseam_in"], p["shoe_us"], p["fit"]) == (175, 32.0, 32.0, 10, "oversized")
+    assert p["usual_sizes"] == {"top": "M"} and p["source"] == "manual"
+    assert set(p["manual"]) >= {"height_cm", "waist_in", "inseam_in"}
+    assert client.get("/users/u_s").json()["body_profile"]["waist_in"] == 32.0  # any device can read it back
+
+
+def test_patch_only_changes_what_is_sent_and_null_clears(client):
+    client.patch("/users/u_s/body-profile", json={"height_cm": 175, "weight_kg": 70})
+    p = client.patch("/users/u_s/body-profile", json={"weight_kg": None, "chest_cm": 96}).json()
+    assert p["height_cm"] == 175 and p["weight_kg"] is None and p["chest_in"] == 38.0
+    assert "weight_kg" not in p["manual"]
+
+
+@pytest.mark.parametrize("bad", [{"height_cm": 50}, {"waist_cm": 400}, {"fit": "baggy"}, {"usual_sizes": {"hat": "M"}}])
+def test_patch_rejects_impossible_values(client, bad):
+    assert client.patch("/users/u_s/body-profile", json=bad).status_code == 422
+
+
+def test_a_scan_keeps_what_the_user_typed(client):
+    client.patch("/users/u_s/body-profile", json={"height_cm": 180, "weight_kg": 75, "waist_cm": 76.2,
+                                                  "usual_sizes": {"top": "L"}})
+    p = client.post("/users/u_s/body-scan", data={"height_cm": "178", "weight_kg": "72"},
+                    files={"file": ("me.jpg", _jpeg(), "image/jpeg")}).json()["body_profile"]
+    assert p["waist_in"] == 30.0 and p["height_cm"] == 180  # typed values win over the scan
+    assert p["usual_sizes"] == {"top": "L"} and p["inseam_in"]  # preferences kept, scan filled the rest
+
+
+def _tee(store):
+    store.put("products", "hm:tee:black", {
+        "id": "hm:tee:black", "retailer": "hm", "brand": "H&M", "name": "Tee", "category": "top", "price_usd": 10.0,
+        "colors": ["black"], "image_url": "https://img/t.jpg", "product_url": "https://hm.com/t",
+        "sizes": ["S", "M", "L"], "in_stock": True})
+
+
+def test_size_uses_the_saved_fit_and_falls_back_to_the_usual_size(client):
+    from app.store import store
+
+    _tee(store)
+    client.patch("/users/u_s/body-profile", json={"usual_sizes": {"top": "m"}})
+    r = client.post("/size", json={"product_id": "hm:tee:black", "user_id": "u_s"})
+    assert r.status_code == 200 and r.json() == {"size": "M", "confidence": "medium", "reason": "your usual size"}
+    client.patch("/users/u_s/body-profile", json={"height_cm": 185, "weight_kg": 80, "fit": "oversized"})
+    slim = client.post("/size", json={"product_id": "hm:tee:black", "user_id": "u_s", "fit": "slim"}).json()
+    saved = client.post("/size", json={"product_id": "hm:tee:black", "user_id": "u_s"}).json()
+    assert slim["size"] in {"S", "M", "L"} and saved["size"] in {"S", "M", "L"}
+    order = ["S", "M", "L"]
+    assert order.index(saved["size"]) >= order.index(slim["size"])  # saved "oversized" sizes up vs explicit slim

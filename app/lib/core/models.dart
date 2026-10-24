@@ -477,11 +477,13 @@ class AppUser {
       );
 }
 
-/// Estimated measurements from POST /users/{id}/body-scan (inches). Every number is an estimate and
-/// may be null. [source] is "ai" (read from the photo) or "estimate" (height/weight formula).
+/// The user's body profile (lengths in inches): typed via PATCH /users/{id}/body-profile and/or estimated
+/// by POST /users/{id}/body-scan. Any number may be null. [source]: "manual" (typed), "ai" (read from the
+/// photo) or "estimate" (height/weight formula). [manual] lists the fields the user typed.
 class BodyProfile {
   const BodyProfile({required this.heightCm, this.weightKg, this.chestIn, this.waistIn, this.hipIn, this.inseamIn,
-      this.build, required this.source, this.fullBody, this.note = '', this.scannedAt});
+      this.build, required this.source, this.fullBody, this.note = '', this.scannedAt, this.shoeUs, this.fit,
+      this.usualSizes = const {}, this.manual = const []});
 
   final double heightCm;
   final double? weightKg;
@@ -494,6 +496,10 @@ class BodyProfile {
   final bool? fullBody; // false: the photo wasn't one standing person head to feet
   final String note; // short fit tip, or a hint to retake the photo
   final String? scannedAt;
+  final double? shoeUs;
+  final String? fit; // slim | regular | oversized
+  final Map<String, String> usualSizes; // category -> usual size
+  final List<String> manual;
 
   factory BodyProfile.fromJson(Json j) => BodyProfile(
         heightCm: _dbl(j['height_cm']),
@@ -507,6 +513,10 @@ class BodyProfile {
         fullBody: _boolN(j['full_body']),
         note: _str(j['note']),
         scannedAt: _strN(j['scanned_at']),
+        shoeUs: _dblN(j['shoe_us']),
+        fit: _strN(j['fit']),
+        usualSizes: {for (final e in _obj(j['usual_sizes']).entries) e.key: _str(e.value)},
+        manual: _strs(j['manual']),
       );
 }
 

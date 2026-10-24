@@ -1,3 +1,34 @@
+# Ryan morning report — Sat Oct 24, 10:27 AM PT
+
+Plan confirmed. Implementation is published on `RyanFrontendking` at `d5a4aec`; PR [#16](https://github.com/latrael/dresstoimpress/pull/16) targets `staging` and is **not merged**. This report is posted after the requested 8:30 deadline; it is not backdated. Final edge-case checks and documentation are still being completed.
+
+## Done, in Ryan’s checklist order
+
+1. **Size advice + product details:** measurement/fit form, optional waist and shoe size, confidence/reason, available-size selection only. Retailer descriptions/colors preserved; no invented model stats. Separate Add to Cart.
+2. **Try-on:** generated personal slide stays within the photo carousel; returned collage is explicitly labeled Outfit board, not a photo of the user. User-driven body-photo selection/upload; cancel skips upload.
+3. **Complete the look + Fit Score:** separates owned closet pieces from catalog suggestions, exposes missing categories and new-items total; score submits catalog and closet IDs separately.
+4. **Onboarding + search:** free text saves parsed style/budgets and refreshes suggestions. Search uses `searchProducts` with paging, keeps earlier results on a failed next page, ignores late responses from older queries.
+5. **Fit Check:** photo/caption upload, like, comment, edit existing labels, shop and score. Errors do not optimistically claim success. No guest-page activation.
+6. **Closet:** user-selected upload with real MIME, possible-duplicate notice (both saved), list refresh and confirmed removal.
+7. **Profile / Style DNA:** user/profile, style shares, palette, patterns, formality, retailers, learned budgets/apply with explicit 409 handling. Onboarding and Closet reachable without changing the three-tab navigation.
+
+## Evidence and limits
+
+- Baseline 14 tests passed; current expanded suite **28/28**. Flutter analysis clean; release web build succeeds. No edits to `app/lib/core` or backend implementation.
+- Isolated local backend, mock AI and synthetic fixture only: actual shared Dart client verified all 418 catalog products (417 currently in stock), H&M top and waist/length-jean size recommendations, three mock outfit-board image loads, onboarding budgets, complete-look/score, Fit Check create/like/comment/shop, Closet upload/delete, Style DNA.
+- Actual browser: phone-size Home and Quick Browse retain the wireframe layout; size recommendation selects an available chip; generated gallery slide is bounded and honestly labeled. More browser checks continue.
+- **Shared live acceptance is not signed off.** Earlier tunnel outage prevented it; latest staging now says the backend is back at a new URL shared privately. That new URL has not been supplied to this session. Device preview currently uses an isolated local test server. No live checkout, paid AI generation, or real personal-photo upload performed.
+- iPhone/Xcode, real photo quality, and final visual approval remain human checks. Xcode download is independent of this work.
+
+## Morning decisions / follow-up
+
+- Ryan: review PR #16; humans merge or hold it. Agent will not merge.
+- Ryan: decide on PR #13’s iOS permission wording/icon and Nabil’s `/fit` guest page. Neither was approved or activated.
+- Adam: privately provide the refreshed backend connection; repeat shared live acceptance and phone run after review. Backend/core ownership stays with Adam/Nabil.
+- Posting/removing real personal photos was skipped. Upload UI is implemented, while overnight checks used only synthetic local fixtures.
+
+---
+
 # Plan confirmed — Ryan overnight work
 
 Ryan’s agent is running the staging docs/plan-sat/ryan.md list in order. Implementation stays on RyanFrontendking; PRs target staging and will not be merged by the agent. Human decisions, personal photos and iPhone work are deferred to the morning report, which will be prepended here by 8:30 AM PT. The documented tunnel outage blocks shared live checks; local checks continue. No private connection information will be committed.

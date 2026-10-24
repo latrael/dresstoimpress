@@ -1,11 +1,81 @@
 # Team progress: overseer check
 
-**Fri Oct 23, 2026, ~9:45 PM PT; update at ~11:15 PM below.** Adam's session checked every branch and PR, the shared backend and the handoffs. Newer checks replace this file.
+**Fri Oct 23, 2026, ~9:45 PM PT; updates below, newest first. The morning report (Sat 8:10 AM) is first.** Adam's session checked every branch and PR, the shared backend and the handoffs. Newer checks replace this file.
 
 **Ownership:**
 - **Ryan:** the app and all of its design.
 - **Adam:** AI backend, hosting, and `app/lib/core` kept in sync with the backend.
 - **Nabil:** commerce backend.
+
+## ☀️ Morning report: Sat Oct 24, 8:10 AM PT (Adam's session)
+
+**In short:** the only thing that broke overnight is the public tunnel. Three PRs are ready, and together they merge with no conflicts (**275 tests pass**). Adam's first job is the tunnel at 8:45.
+
+### Right now
+- **Shared server:** up on Adam's Mac and answering locally. It runs `adam/ai-pipeline`, which is `staging` + PR #15.
+- **Public tunnel: down since ~1:25 AM.** Cloudflare dropped the quick-tunnel hostname. `cloudflared` is still running but has 0 connections, so nothing outside the Mac can reach the server.
+- **Nabil's backup server:** up on his laptop, localhost only; `smoke_e2e` 10/10.
+- **Ryan's branch:** no pushes since ~11 PM Friday.
+
+### Done overnight
+**Adam's agent (PR #15, plus #13):**
+- **AI quality check** (`scripts/ai_quality_check.py`) and the fixes it found:
+  - in-budget picks always rank first
+  - no made-up closet items in reasons
+  - shop the fit lists the exact match first and collapses color variants
+  - women's jean sizes use a women's waist estimate
+- **Image URLs survive tunnel changes:** they're rewritten to `PUBLIC_BASE` at startup, so old try-on, closet and body photos keep loading.
+- **Try-on cache** now follows the body photo, so a new photo gives new try-ons.
+- **Morning photo scripts:** `set_body_photo`, `load_closet` (`--dry-run`, `--replace-seed`).
+- **Fallback drill:**
+  - Claude down → Gemini: 10/10.
+  - Claude and Gemini both down → rules + outfit board: 10/10.
+  - Only new photo tagging needs an AI provider; its error is now a plain message.
+- `reset_demo.py`, `docs/ai-writeup.md` (AI section for Devpost).
+- **iOS:** the unsigned release build succeeds with the iOS 26 SDK (PR #13).
+- ⚠️ **Mistake at 2:00:** `reset_demo` cleared u_demo's cart, swipes, wishlist and feed cache on the shared store. That's the clean demo state anyway.
+
+**Nabil's agent (PR #14):**
+- `docs/devpost.md` (full draft plus sponsor evidence) and `docs/demo-script.md` (3 minutes, with a fallback per step).
+- `scripts/post_real_fits.py` and the owner-only route `DELETE /fitcheck/{id}`.
+- Checkout evidence: **4/4 Nessie purchases `paid`**, run on the backup server.
+- Details: the morning report at the top of `NABIL_TO_ADAM.md`.
+
+**Ryan's agent:**
+- Confirmed the plan at 1:42 AM; no pushes overnight.
+- Last status (`RYAN_TO_ADAM.md`): live app checked in a browser, `flutter analyze` clean, 8 tests.
+- Remaining, from his note: sizing, try-on slide, complete-look / Fit Score, product detail, onboarding, Social, Closet/Profile, phone verification.
+
+### PRs to merge at 9:15, in this order
+| PR | From | What | Tests |
+| --- | --- | --- | --- |
+| **#15** | Adam | AI quality fixes, URL rebase, try-on cache fix, photo scripts, plain AI-down errors, `reset_demo`, AI write-up | 269 pass |
+| **#14** | Nabil | Devpost draft, demo script, `post_real_fits`, `DELETE /fitcheck/{id}` | 254 pass |
+| **#13** | Adam | `app/ios` runner. **Needs Ryan's OK**; the Info.plist wording, icon and display name are his. | iOS release build OK |
+
+Checked at 8:10: `staging` + #15 + #14 + #13 merge with **no conflicts**, and **275 backend tests pass** on the result. Restart the shared server after merging (#14 adds a route).
+
+### Adam's checklist
+- [ ] **8:45 tunnel:** in the terminal running cloudflared, press Ctrl-C, then run `cloudflared tunnel --no-autoupdate --url http://localhost:8000`.
+  - Adam's session picks up the new hostname, sets `PUBLIC_BASE`, restarts the server and runs the smoke test.
+  - Then DM the new URL to Nabil and Ryan (never in Git).
+- [ ] **9:15 merges:** #15 → #14 → #13 (with Ryan's OK). Pull `staging` on the Mac and restart the server.
+- [ ] **9:20 iPhone build:** needs #13. Open `app/ios/Runner.xcworkspace` in Xcode, pick your Personal Team, and run it on the phone.
+- [ ] **9:40 photos** (from `backend/`):
+  1. `python -m scripts.set_body_photo <file>`
+  2. `python -m scripts.load_closet <folder> --dry-run`, then again with `--replace-seed`
+  3. `python -m scripts.precompute_tryons --limit 10`, only after the body photo.
+- [ ] **Anthropic credits:** check the balance before the dry runs.
+
+### Waiting on people
+- **Public tunnel:** Adam, 8:45. Ryan's live checks need the new URL.
+- **#13:** Ryan's OK.
+- **Backup server public URL:** Nabil, 9:15. His steps are in `NABIL_TO_ADAM.md`.
+- **Team decisions** (from Nabil's report):
+  - which sponsor tracks to tick (Moss isn't live; Visa never)
+  - Nabil's proposed `POST /orders/{id}/retry`
+  - Ryan's approval for the `/fit` guest page
+- **Try-on warm-up:** after Adam's body photo (9:40).
 
 ## Overnight log (Adam's session, every 20 min)
 

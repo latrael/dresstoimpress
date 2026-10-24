@@ -4,10 +4,12 @@
 
 ## Current app status
 
-Ryan's shell and Feed are integrated: Home grid, Quick Browse, saved items, local
-or live cart, sandbox checkout/receipt/order history, connection settings and an
-initial Social feed/shop entry. The PDF and accepted Quick Browse mock-up remain
-the design reference. Full feature status and remaining work are in `../RYAN.md`.
+Ryan's app includes Home/Quick Browse, save/cart/checkout/orders, size advice,
+personal try-on gallery slides, complete-the-look/Fit Score, text onboarding,
+paged catalog search, Fit Check actions, Closet and Profile/Style DNA.
+The PDF and accepted Quick Browse remain the design reference. Full verification
+and remaining live/phone checks are in `../RYAN.md`. Overnight PR #16 targets
+staging for human review; it has not been merged.
 
 For a browser already installed on the machine:
 

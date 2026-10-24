@@ -111,3 +111,16 @@ def test_onboarding_budget_filters_feed(client):
     assert [c["id"] for c in tops] == ["t-cheap"]
     assert all((c.get("sale_price_usd") or c["price_usd"]) <= 15 for c in tops)
     assert "b-1" in {c["id"] for c in cards}  # other categories untouched
+
+
+def test_patch_preferred_stores_and_onboarded(client):
+    from app.store import store
+    store.put("users", "u_old", {"id": "u_old", "display_name": "Old"})  # saved before these fields existed
+    u = client.get("/users/u_old").json()
+    assert u["preferred_stores"] == [] and u["onboarded"] is False
+    u = client.patch("/users/u_old", json={"preferred_stores": ["hm", "uniqlo"], "onboarded": True}).json()
+    assert u["preferred_stores"] == ["hm", "uniqlo"] and u["onboarded"] is True
+    assert client.get("/users/u_old").json() == u
+    u = client.post("/onboarding", json={"user_id": "u_old", "text": "y2k"}).json()["user"]
+    assert u["preferred_stores"] == ["hm", "uniqlo"] and u["onboarded"] is True  # onboarding keeps them
+    assert client.patch("/users/u_old", json={"preferred_stores": []}).json()["preferred_stores"] == []

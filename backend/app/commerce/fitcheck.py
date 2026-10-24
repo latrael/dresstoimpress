@@ -2,8 +2,8 @@
 
 Collection fitcheck_posts: {id, user_id, photo_url, caption, tagged: [FitTag], created_at, likes: [user_id],
 comments: [{id, user_id, text, created_at}], visibility: "friends" | "public"}.
-Privacy: a viewer sees their own posts, friends' posts (either side of `friends`), and public ones;
-a viewer with no friends list sees everything (demo). Hidden posts 404 so ids don't leak.
+Inspo is one feed for everyone (council D4): every user sees every post, so friends lists don't filter
+anything here. `visibility` is still stored (the guest /fit wall only shows "public" posts).
 """
 from __future__ import annotations
 
@@ -56,13 +56,6 @@ def _user(uid: str) -> dict:
     return store.get("users", uid) or {"id": uid, "display_name": uid}
 
 
-def _can_see(viewer: dict, post: dict) -> bool:
-    author = post["user_id"]
-    if post.get("visibility") == "public" or author == viewer["id"] or not viewer.get("friends"):
-        return True
-    return author in viewer["friends"] or viewer["id"] in (_user(author).get("friends") or [])
-
-
 def _view(post: dict, viewer_id: str) -> dict:
     author = _user(post["user_id"])
     likes = post.get("likes") or []
@@ -73,7 +66,7 @@ def _view(post: dict, viewer_id: str) -> dict:
 
 def _post(post_id: str, viewer_id: str) -> dict:
     post = store.get(COL, post_id)
-    if not post or not _can_see(_user(viewer_id), post):
+    if not post:
         raise HTTPException(404, "unknown post")
     return post
 
@@ -123,9 +116,9 @@ async def create_post(request: Request):
 
 
 @router.get("/fitcheck/feed")
-def feed(user_id: str, limit: int = 20):
-    viewer = _user(user_id)
-    posts = [p for p in store.list(COL) if _can_see(viewer, p)]
+def feed(user_id: str, limit: int = 20, author: Optional[str] = None):
+    """Everyone's posts, newest first; `author` = only that user's posts (tap a name in Inspo)."""
+    posts = store.list(COL, user_id=author) if author else store.list(COL)
     posts.sort(key=lambda p: p["created_at"], reverse=True)
     return [_view(p, user_id) for p in posts[:max(1, min(limit, 100))]]
 

@@ -22,10 +22,8 @@ class BodyScanScreen extends StatefulWidget {
 }
 
 class _BodyScanScreenState extends State<BodyScanScreen> {
-  late final height =
-      TextEditingController(text: _text(widget.heightCm));
-  late final weight =
-      TextEditingController(text: _text(widget.weightKg));
+  late final height = TextEditingController(text: _text(widget.heightCm));
+  late final weight = TextEditingController(text: _text(widget.weightKg));
   bool busy = false;
   String? error;
   BodyProfile? result;
@@ -42,9 +40,8 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
 
   Future<void> scan() async {
     final h = double.tryParse(height.text.trim());
-    final w = weight.text.trim().isEmpty
-        ? null
-        : double.tryParse(weight.text.trim());
+    final w =
+        weight.text.trim().isEmpty ? null : double.tryParse(weight.text.trim());
     if (h == null || h < 120 || h > 230) {
       setState(() => error = 'Enter your height in cm (120–230).');
       return;
@@ -127,8 +124,7 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
             for (final line in bodyProfileLines(r)) Text(line),
             if (r.note.isNotEmpty)
               Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(r.note)),
+                  padding: const EdgeInsets.only(top: 8), child: Text(r.note)),
             const SizedBox(height: 16),
             FilledButton(
                 onPressed: () => Navigator.pop(context, r),

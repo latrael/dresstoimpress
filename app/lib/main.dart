@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'features/profile/shopper_profile.dart';
+import 'features/profile/body_photo_card.dart';
 
 import 'core/api.dart';
 import 'core/config.dart';
 import 'core/models.dart';
 import 'features/feed/quick_browse.dart';
 import 'features/social/social_feed.dart';
-import 'features/search/catalog_search.dart';
+import 'features/discover/discover_screen.dart';
+import 'features/closet/closet_screen.dart';
+import 'features/shared/feature_ui.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/onboarding_screen.dart';
 import 'features/product/try_on.dart';
@@ -22,11 +27,118 @@ Future<void> main() async {
           api: Api.instance, demo: Config.current.apiKey.isEmpty)));
 }
 
-class NicheApp extends StatelessWidget {
+class NicheApp extends StatefulWidget {
   const NicheApp({super.key, required this.store});
   final StoreController store;
   @override
+  State<NicheApp> createState() => _NicheAppState();
+}
+
+class _NicheAppState extends State<NicheApp> {
+  final navigation = GlobalKey<NavigatorState>();
+  final shell = GlobalKey<_ShopShellState>();
+  final entry = GlobalKey<_FirstVisitState>();
+  StoreController get store => widget.store;
+  void open(Widget page) => navigation.currentState
+      ?.push(MaterialPageRoute<void>(builder: (_) => page));
+  void seed(RankedProduct product) {
+    navigation.currentState?.popUntil((r) => r.isFirst);
+    shell.currentState?.openProducts([product]);
+  }
+
+  void settings() {
+    navigation.currentState
+        ?.push(MaterialPageRoute<void>(
+            builder: (_) => ConnectionScreen(store: store)))
+        .whenComplete(() {
+      entry.currentState?.reload();
+    });
+  }
+
+  void user() => open(FeaturePage(
+      title: 'You',
+      child: ListView(padding: const EdgeInsets.all(20), children: [
+        for (final section in [
+          ('Your style', 1),
+          ('Stores you like', 2),
+          ('Body scan', 3),
+          ('Measurements & size', 4),
+          ('Price preferences', 5)
+        ])
+          ListTile(
+              title: Text(section.$1),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => open(OnboardingScreen(
+                  api: store.api,
+                  demo: store.demo,
+                  initialStep: section.$2,
+                  onSaved: () async {
+                    await store.loadProfile(fromServer: !store.demo);
+                    await store.load();
+                  }))),
+        if (!store.demo)
+          ListTile(
+              title: const Text('Style DNA'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => open(ProfileScreen(
+                  api: store.api,
+                  onChanged: () async {
+                    await store.loadProfile(fromServer: !store.demo);
+                    await store.load();
+                  }))),
+        ListTile(
+            title: const Text('Orders'),
+            leading: const Icon(Icons.receipt_long_outlined),
+            onTap:
+                store.demo ? null : () => open(OrderHistory(api: store.api))),
+        ListTile(
+            title: const Text('Connection settings'),
+            leading: const Icon(Icons.tune),
+            onTap: settings),
+        if (!store.demo)
+          ListTile(
+              title: const Text('Private scan & try-on photo'),
+              leading: const Icon(Icons.lock_outline),
+              onTap: () => open(BodyPhotoCard(api: store.api))),
+        ListTile(
+            title: const Text('Log out on this device'),
+            leading: const Icon(Icons.logout),
+            onTap: () async {
+              final p = await SharedPreferences.getInstance();
+              await p.remove('niche.activeUser');
+              await p.setBool('niche.signedOut', true);
+              navigation.currentState?.popUntil((r) => r.isFirst);
+              entry.currentState?.logOut();
+            }),
+        ListTile(
+            title: const Text('Restart setup'),
+            onTap: () async {
+              final yes = await showDialog<bool>(
+                  context: navigation.currentContext!,
+                  builder: (context) => AlertDialog(
+                          title: const Text('Restart setup?'),
+                          content: const Text(
+                              'Review your onboarding answers again. Your measurements and account are kept.'),
+                          actions: [
+                            TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel')),
+                            FilledButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Restart'))
+                          ]));
+              if (yes != true) return;
+              await store.profile
+                  .withCompletion(false)
+                  .save(store.api.settings.userId);
+              await store.loadProfile();
+              navigation.currentState?.popUntil((r) => r.isFirst);
+              entry.currentState?.restart();
+            }),
+      ])));
+  @override
   Widget build(BuildContext context) => MaterialApp(
+      navigatorKey: navigation,
       scrollBehavior: const MaterialScrollBehavior().copyWith(dragDevices: {
         PointerDeviceKind.touch,
         PointerDeviceKind.mouse,
@@ -50,18 +162,155 @@ class NicheApp extends StatelessWidget {
               style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF722F42),
                   foregroundColor: Colors.white))),
-      home: FirstVisit(store: store));
+      builder: (context, child) => Overlay.wrap(
+          child: SafeArea(
+              bottom: false,
+              child: Stack(children: [
+                Positioned.fill(
+                    top: 56, child: child ?? const SizedBox.shrink()),
+                Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Material(
+                        color: const Color(0xFFFFFBF0),
+                        child: SizedBox(
+                            height: 56,
+                            child: Row(children: [
+                              const Padding(
+                                  padding: EdgeInsets.only(left: 16),
+                                  child: Text('Niche',
+                                      style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w700))),
+                              const Spacer(),
+                              IconButton(
+                                  tooltip: 'Liked',
+                                  icon: const Icon(Icons.favorite_border),
+                                  onPressed: () => open(
+                                      LikedScreen(store: store, onOpen: seed))),
+                              AnimatedBuilder(
+                                  animation: store,
+                                  builder: (context, _) => Badge(
+                                      label: Text('${store.cart.count}'),
+                                      isLabelVisible: store.cart.count > 0,
+                                      child: IconButton(
+                                          tooltip: 'Your cart',
+                                          icon: const Icon(
+                                              Icons.shopping_bag_outlined),
+                                          onPressed: () =>
+                                              open(CartScreen(store: store))))),
+                              IconButton(
+                                  tooltip: 'Closet',
+                                  icon: const Icon(Icons.checkroom_outlined),
+                                  onPressed: () => open(store.demo
+                                      ? const FeaturePage(
+                                          title: 'Closet',
+                                          child: Center(
+                                              child: Text(
+                                                  'Connect your account to digitize your closet.')))
+                                      : ClosetScreen(api: store.api))),
+                              IconButton(
+                                  tooltip: 'User',
+                                  icon: const Icon(Icons.person_outline),
+                                  onPressed: user),
+                              const SizedBox(width: 8),
+                            ])))),
+              ]))),
+      home: FirstVisit(key: entry, store: store, shellKey: shell));
 }
 
 class FirstVisit extends StatefulWidget {
-  const FirstVisit({super.key, required this.store});
+  const FirstVisit({super.key, required this.store, this.shellKey});
+  final GlobalKey? shellKey;
   final StoreController store;
   @override
   State<FirstVisit> createState() => _FirstVisitState();
 }
 
 class _FirstVisitState extends State<FirstVisit> {
-  late Future<void> ready = widget.store.loadProfile();
+  late Future<void> ready = load();
+  bool active = false;
+  bool hasReturning = false;
+  void reload() {
+    final next = load();
+    setState(() {
+      ready = next;
+    });
+  }
+
+  void logOut() => setState(() => active = false);
+  void restart() => setState(() => active = true);
+  bool busy = false;
+  String? error;
+  Future<void> load() async {
+    final p = await SharedPreferences.getInstance();
+    try {
+      await widget.store.loadProfile(fromServer: !widget.store.demo);
+    } on ApiError catch (e) {
+      if (e.status != 404) rethrow;
+      await widget.store.loadProfile();
+      hasReturning = false;
+      active = false;
+      return;
+    }
+    hasReturning =
+        p.containsKey(ShopperProfile.key(widget.store.api.settings.userId)) ||
+            p.getString('niche.activeUser') != null;
+    active = p.getBool('niche.signedOut') != true &&
+        (p.getString('niche.activeUser') == widget.store.api.settings.userId ||
+            widget.store.profile.completed);
+  }
+
+  Future<void> enter({bool create = false, bool test = false}) async {
+    String? displayName;
+    if (create) {
+      displayName = await showDialog<String>(
+          context: context, builder: (_) => const _NewAccountDialog());
+      if (displayName == null) return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      var id = widget.store.api.settings.userId;
+      if (test) {
+        id = 'u_demo';
+      }
+      if (create) {
+        id = widget.store.demo
+            ? 'local_${DateTime.now().microsecondsSinceEpoch}'
+            : (await widget.store.api.createUser(displayName: displayName!)).id;
+      }
+      final settings = widget.store.api.settings.copyWith(userId: id);
+      await Config.save(settings);
+      widget.store.api.settings = settings;
+      await widget.store.loadProfile(fromServer: !widget.store.demo);
+      if (test && widget.store.demo && !widget.store.profile.completed) {
+        await const ShopperProfile(
+            completed: true, usualSize: 'M', usualSizes: {'top': 'M'}).save(id);
+        await widget.store.loadProfile(fromServer: !widget.store.demo);
+      }
+      if (test && !widget.store.profile.completed) {
+        await widget.store.profile.withCompletion(true).save(id);
+        await widget.store.loadProfile();
+      }
+      final p = await SharedPreferences.getInstance();
+      await p.setBool('niche.signedOut', false);
+      await p.setString('niche.activeUser', id);
+      hasReturning = true;
+      if (mounted) setState(() => active = true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Could not open your profile. Check your connection and retry.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<void>(
       future: ready,
@@ -70,14 +319,38 @@ class _FirstVisitState extends State<FirstVisit> {
           return Scaffold(
               body: Center(
                   child: TextButton(
-                      onPressed: () =>
-                          setState(() => ready = widget.store.loadProfile()),
-                      child: const Text(
-                          'Could not load your preferences. Tap to retry.'))));
+                      onPressed: reload,
+                      child:
+                          const Text('Could not load your profile. Retry'))));
         }
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
+        }
+        if (!active) {
+          return FeaturePage(
+              title: 'Welcome',
+              child: ListView(padding: const EdgeInsets.all(24), children: [
+                Text('Find your next favorite fit',
+                    style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 16),
+                const Text(
+                    'Login reopens the profile saved on this device. Google sign-in is coming later.'),
+                const SizedBox(height: 24),
+                FilledButton(
+                    onPressed: busy || !hasReturning ? null : () => enter(),
+                    child: const Text('Login')),
+                OutlinedButton(
+                    onPressed: busy ? null : () => enter(create: true),
+                    child: const Text('New account')),
+                TextButton(
+                    onPressed: busy ? null : () => enter(test: true),
+                    child: const Text('Use team test profile')),
+                if (widget.store.demo)
+                  const Text(
+                      'Sample mode: new profiles stay on this device until you connect.'),
+                if (error != null) Text(error!),
+              ]));
         }
         if (!widget.store.profile.completed) {
           return OnboardingScreen(
@@ -85,11 +358,11 @@ class _FirstVisitState extends State<FirstVisit> {
               firstRun: true,
               demo: widget.store.demo,
               onSaved: () async {
-                await widget.store.loadProfile();
+                await widget.store.loadProfile(fromServer: !widget.store.demo);
                 if (mounted) setState(() {});
               });
         }
-        return ShopShell(store: widget.store);
+        return ShopShell(key: widget.shellKey, store: widget.store);
       });
 }
 
@@ -102,85 +375,58 @@ class ShopShell extends StatefulWidget {
 
 class _ShopShellState extends State<ShopShell> {
   int tab = 0;
-  int anchor = 0;
-  bool savedOnly = false;
-  String query = '';
-  late final catalog = CatalogSearch(store.api);
-  final search = TextEditingController();
+  RankedProduct? seed;
+  String? discoverQuery;
+  int feedRevision = 0;
+  List<RankedProduct>? seeded;
+  String? seedError;
+  int seedGeneration = 0;
+  void clearSeed() => setState(() {
+        seed = null;
+        seeded = null;
+        seedError = null;
+        seedGeneration++;
+        feedRevision++;
+      });
   StoreController get store => widget.store;
   @override
   void initState() {
     super.initState();
-    store.load();
-  }
-
-  @override
-  void dispose() {
-    catalog.dispose();
-    search.dispose();
-    super.dispose();
-  }
-
-  List<RankedProduct> get visible {
-    final words = query
-        .toLowerCase()
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((s) => s.isNotEmpty);
-    final source = query.isNotEmpty && !store.demo ? catalog.cards : store.feed;
-    return source.where((card) {
-      final p = card.product;
-      final text =
-          '${p.name} ${p.brand} ${p.label} ${p.category} ${p.colors.join(' ')} ${p.styleTags.join(' ')}'
-              .toLowerCase();
-      return (!savedOnly || store.saved.contains(p.id)) &&
-          (!store.demo && query.isNotEmpty || words.every(text.contains));
-    }).toList();
-  }
-
-  void submitSearch(String value) {
-    setState(() {
-      query = value.trim();
-      anchor = 0;
-      tab = 1;
-      savedOnly = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) store.load();
     });
-    if (query.isNotEmpty && !store.demo) catalog.search(query);
   }
 
-  void browse(int index) => setState(() {
-        anchor = index;
-        tab = 1;
-      });
   void openProducts(List<RankedProduct> products) {
-    Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-            builder: (_) => AnimatedBuilder(
-                  animation: store,
-                  builder: (context, _) => Scaffold(
-                    appBar: AppBar(title: const Text('Quick Browse')),
-                    body: Center(
-                        child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 540),
-                            child: QuickBrowse(
-                              products: products.map(browseMap).toList(),
-                              savedIds: store.saved,
-                              onSave: store.save,
-                              onAddToCart: store.add,
-                              imageUrl: store.imageUrl,
-                              automaticSizing: true,
-                              sizingRevision: store.sizingRevision,
-                              onSizeAdvice: store.automaticSize,
-                              onSizingSetup: editSizing,
-                              onTryOn: store.demo
-                                  ? null
-                                  : (id) =>
-                                      requestTryOn(context, store.api, id),
-                              onCompleteLook: store.demo ? null : completeLook,
-                            ))),
-                  ),
-                )));
+    if (products.isEmpty) return;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    final request = ++seedGeneration;
+    setState(() {
+      seed = products.first;
+      seeded = null;
+      seedError = null;
+      tab = 0;
+      feedRevision++;
+    });
+    if (!store.demo) {
+      store.api.feed(seed: products.first.id).then((cards) {
+        if (mounted && request == seedGeneration) {
+          setState(() => seeded = cards);
+        }
+      }).catchError((Object e) {
+        if (mounted && request == seedGeneration) {
+          setState(() => seedError = 'Could not load similar items. Retry.');
+        }
+      });
+    }
+  }
+
+  void searchTag(String query) {
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    setState(() {
+      discoverQuery = query;
+      tab = 1;
+    });
   }
 
   Future<void> editSizing() async {
@@ -190,11 +436,12 @@ class _ShopShellState extends State<ShopShell> {
             builder: (_) => OnboardingScreen(
                 api: store.api,
                 demo: store.demo,
+                initialStep: 4,
                 onSaved: () async {
-                  await store.loadProfile();
+                  await store.loadProfile(fromServer: !store.demo);
                   await store.load();
                 })));
-    await store.loadProfile();
+    await store.loadProfile(fromServer: !store.demo);
     if (mounted) setState(() {});
   }
 
@@ -202,191 +449,25 @@ class _ShopShellState extends State<ShopShell> {
       context,
       MaterialPageRoute(
           builder: (_) => CompleteLookScreen(
-                api: store.api,
-                productId: id,
-                onProduct: (p) => openProducts([RankedProduct(product: p)]),
-              )));
-
-  Future<void> settings() async {
-    await Navigator.push<void>(context,
-        MaterialPageRoute(builder: (_) => ConnectionScreen(store: store)));
-    if (mounted) {
-      setState(() {
-        anchor = 0;
-        query = '';
-        search.clear();
-      });
-    }
-  }
-
-  Widget content(
-      List<RankedProduct> cards, List<RankedProduct> ordered, int start) {
-    if (tab == 2) {
-      return SocialFeed(
-          key: ValueKey('${store.demo}:${store.api.settings.userId}'),
-          store: store,
-          onShop: openProducts);
-    }
-    if (store.loading ||
-        query.isNotEmpty &&
-            !store.demo &&
-            catalog.loading &&
-            catalog.cards.isEmpty) {
-      return const Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 16),
-        Text('Finding pieces for you…')
-      ]));
-    }
-    if (query.isNotEmpty &&
-        !store.demo &&
-        catalog.error != null &&
-        catalog.cards.isEmpty) {
-      return Center(
-          child: TextButton(
-              onPressed: () => catalog.search(query),
-              child: Text(catalog.error!)));
-    }
-    if (store.error != null) {
-      return Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Padding(padding: const EdgeInsets.all(24), child: Text(store.error!)),
-        FilledButton(onPressed: store.load, child: const Text('Try again'))
-      ]));
-    }
-    if (tab == 1) {
-      return QuickBrowse(
-        key: ValueKey(
-            '${store.api.settings.userId}:${store.demo}:$query:$savedOnly:$start'),
-        products: ordered.map(browseMap).toList(),
-        savedIds: store.saved,
-        onSave: store.save,
-        onAddToCart: store.add,
-        imageUrl: store.imageUrl,
-        automaticSizing: true,
-        sizingRevision: store.sizingRevision,
-        onSizeAdvice: store.automaticSize,
-        onSizingSetup: editSizing,
-        onTryOn:
-            store.demo ? null : (id) => requestTryOn(context, store.api, id),
-        onCompleteLook: store.demo ? null : completeLook,
-      );
-    }
-    if (cards.isEmpty) {
-      return Center(
-          child: Text(savedOnly
-              ? 'Double-tap a piece to save it here.'
-              : 'No matches. Try a different search.'));
-    }
-    return CustomScrollView(slivers: [
-      SliverToBoxAdapter(
-          child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(savedOnly ? 'Your saved pieces' : 'Suggested for you',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 6),
-                    const Text('Find something that feels like you.'),
-                  ]))),
-      SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 16,
-                childAspectRatio: .67),
-            delegate: SliverChildBuilderDelegate((context, i) {
-              final p = cards[i].product;
-              return InkWell(
-                  key: ValueKey('suggested-${p.id}'),
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => browse(i),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                            child: SizedBox(
-                                width: double.infinity,
-                                child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: ProductPhoto(
-                                        url: store.imageUrl(p.imageUrl),
-                                        name: p.name)))),
-                        const SizedBox(height: 8),
-                        Text(p.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
-                        Text(
-                            '${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
-                      ]));
-            }, childCount: cards.length),
-          )),
-      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-    ]);
+              api: store.api,
+              productId: id,
+              onProduct: (product) =>
+                  openProducts([RankedProduct(product: product)]))));
+  List<RankedProduct> get home {
+    if (seed == null) return store.feed;
+    if (!store.demo) return seeded ?? [seed!];
+    final rest = store.feed.where((p) => p.id != seed!.id).toList();
+    rest.sort((a, b) => (b.product.category == seed!.product.category ? 1 : 0)
+        .compareTo(a.product.category == seed!.product.category ? 1 : 0));
+    return [seed!, ...rest];
   }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-      animation: Listenable.merge([store, catalog]),
+      animation: store,
       builder: (context, _) {
-        final cards = visible;
-        final start = anchor < cards.length ? anchor : 0;
-        final ordered = [...cards.skip(start), ...cards.take(start)];
         return Scaffold(
-          appBar: AppBar(
-              title: Text(
-                  tab == 0
-                      ? 'Niche'
-                      : tab == 1
-                          ? 'Quick Browse'
-                          : 'Fit Check',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              actions: [
-                IconButton(
-                    tooltip: savedOnly ? 'Show all pieces' : 'Saved pieces',
-                    onPressed: () => setState(() {
-                          savedOnly = !savedOnly;
-                          anchor = 0;
-                          tab = 0;
-                        }),
-                    icon: Icon(
-                        savedOnly ? Icons.favorite : Icons.favorite_border)),
-                if (!store.demo)
-                  IconButton(
-                      tooltip: 'Your profile',
-                      icon: const Icon(Icons.person_outline),
-                      onPressed: () => Navigator.push<void>(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => ProfileScreen(
-                                  api: store.api,
-                                  onChanged: () async {
-                                    await store.loadProfile();
-                                    await store.load();
-                                  })))),
-                IconButton(
-                    tooltip: 'Settings',
-                    onPressed: settings,
-                    icon: const Icon(Icons.tune)),
-                Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Badge(
-                        label: Text('${store.cart.count}'),
-                        isLabelVisible: store.cart.count > 0,
-                        child: IconButton(
-                            tooltip: 'Your cart',
-                            onPressed: () => Navigator.push<void>(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => CartScreen(store: store))),
-                            icon: const Icon(Icons.shopping_bag_outlined)))),
-              ]),
+          extendBody: true,
           body: Column(children: [
             if (store.demo)
               Material(
@@ -394,9 +475,7 @@ class _ShopShellState extends State<ShopShell> {
                   child: ListTile(
                       dense: true,
                       title: const Text(
-                          'Demo mode · sample catalog and local cart'),
-                      trailing: TextButton(
-                          onPressed: settings, child: const Text('Connect')))),
+                          'Demo mode · sample catalog and local cart'))),
             if (store.accountWarning != null)
               ListTile(
                   title: Text(store.accountWarning!),
@@ -406,62 +485,98 @@ class _ShopShellState extends State<ShopShell> {
                 child: Center(
                     child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 540),
-                        child: content(cards, ordered, start)))),
-            if (tab != 2 && query.isNotEmpty && !store.demo) ...[
-              if (catalog.error != null && catalog.cards.isNotEmpty)
-                Text(catalog.error!),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('${catalog.cards.length} of ${catalog.total} matches'),
-                if (catalog.nextOffset != null)
-                  TextButton(
-                      onPressed: catalog.loading ? null : catalog.more,
-                      child: Text(catalog.loading ? 'Loading…' : 'Load more')),
-                TextButton(
-                    onPressed: () {
-                      search.clear();
-                      submitSearch('');
-                    },
-                    child: const Text('Clear')),
-              ]),
-            ],
-            if (tab != 2)
-              Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Center(
-                      child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 500),
-                          child: TextField(
-                            controller: search,
-                            textInputAction: TextInputAction.search,
-                            decoration: InputDecoration(
-                                hintText: 'Search a look…',
-                                prefixIcon: const Icon(Icons.search),
-                                suffixIcon: IconButton(
-                                    tooltip: 'Search catalog',
-                                    icon: const Icon(Icons.arrow_upward),
-                                    onPressed: () =>
-                                        submitSearch(search.text))),
-                            onSubmitted: submitSearch,
-                          )))),
+                        child: tab == 2
+                            ? SocialFeed(
+                                store: store,
+                                onShop: openProducts,
+                                onTagSearch: searchTag)
+                            : tab == 1
+                                ? DiscoverScreen(
+                                    initialQuery: discoverQuery,
+                                    store: store,
+                                    onOpen: (p) => openProducts([p]))
+                                : Column(children: [
+                                    if (seed != null)
+                                      Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: InputChip(
+                                              label: Text(
+                                                  'Similar to: ${seed!.product.name}'),
+                                              onPressed: clearSeed,
+                                              deleteButtonTooltipMessage:
+                                                  'Show all products',
+                                              onDeleted: clearSeed)),
+                                    if (seedError != null && seed != null)
+                                      TextButton(
+                                          onPressed: () =>
+                                              openProducts([seed!]),
+                                          child: Text(seedError!)),
+                                    Expanded(
+                                        child: store.loading
+                                            ? const Center(
+                                                child:
+                                                    CircularProgressIndicator())
+                                            : store.error != null
+                                                ? Center(
+                                                    child: TextButton(
+                                                        onPressed: store.load,
+                                                        child:
+                                                            Text(store.error!)))
+                                                : QuickBrowse(
+                                                    key: ValueKey(
+                                                        'home-$feedRevision'),
+                                                    products: home
+                                                        .map(browseMap)
+                                                        .toList(),
+                                                    savedIds: store.saved,
+                                                    onSave: store.save,
+                                                    onAddToCart: store.add,
+                                                    imageUrl: store.imageUrl,
+                                                    automaticSizing: true,
+                                                    hasSizingProfile:
+                                                        store.hasSizingData,
+                                                    sizingRevision:
+                                                        store.sizingRevision,
+                                                    onSizeAdvice:
+                                                        store.automaticSize,
+                                                    onSizingSetup: editSizing,
+                                                    onTryOn: store.demo
+                                                        ? null
+                                                        : (id) => requestTryOn(
+                                                            context,
+                                                            store.api,
+                                                            id),
+                                                    onCompleteLook: store.demo
+                                                        ? null
+                                                        : completeLook)),
+                                  ])))),
           ]),
-          bottomNavigationBar: NavigationBar(
-              selectedIndex: tab,
-              onDestinationSelected: (value) => setState(() {
-                    tab = value;
-                    if (value == 0) {
-                      query = '';
-                      search.clear();
-                      anchor = 0;
-                    }
-                  }),
-              destinations: const [
-                NavigationDestination(
-                    icon: Icon(Icons.home_outlined), label: 'Home'),
-                NavigationDestination(
-                    icon: Icon(Icons.explore_outlined), label: 'Discover'),
-                NavigationDestination(
-                    icon: Icon(Icons.people_outline), label: 'Social'),
-              ]),
+          bottomNavigationBar: SafeArea(
+              minimum: const EdgeInsets.fromLTRB(28, 8, 28, 14),
+              child: Center(
+                  heightFactor: 1,
+                  child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: Material(
+                          elevation: 8,
+                          borderRadius: BorderRadius.circular(32),
+                          clipBehavior: Clip.antiAlias,
+                          child: NavigationBar(
+                              height: 68,
+                              selectedIndex: tab,
+                              onDestinationSelected: (value) =>
+                                  setState(() => tab = value),
+                              destinations: const [
+                                NavigationDestination(
+                                    icon: Icon(Icons.home_outlined),
+                                    label: 'Home'),
+                                NavigationDestination(
+                                    icon: Icon(Icons.explore_outlined),
+                                    label: 'Discover'),
+                                NavigationDestination(
+                                    icon: Icon(Icons.people_outline),
+                                    label: 'Inspo'),
+                              ]))))),
         );
       });
 }
@@ -594,4 +709,39 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           },
                     child: const Text('Use demo mode')),
               ]))));
+}
+
+class _NewAccountDialog extends StatefulWidget {
+  const _NewAccountDialog();
+  @override
+  State<_NewAccountDialog> createState() => _NewAccountDialogState();
+}
+
+class _NewAccountDialogState extends State<_NewAccountDialog> {
+  final name = TextEditingController();
+  @override
+  void dispose() {
+    name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+          title: const Text('New account'),
+          content: TextField(
+              controller: name,
+              decoration:
+                  const InputDecoration(labelText: 'Your display name')),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () {
+                  if (name.text.trim().isNotEmpty) {
+                    Navigator.pop(context, name.text.trim());
+                  }
+                },
+                child: const Text('Create profile'))
+          ]);
 }

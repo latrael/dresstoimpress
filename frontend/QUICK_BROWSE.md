@@ -1,3 +1,8 @@
+> Council update: the product feed is now **Home**. Discover is a separate two-section
+> search grid and Social is **Inspo**. The persistent header and floating island follow
+> docs/council-final-sprint.md and docs/ryan-council-implementation.md. The photo layout,
+> continuous scrolling and solid separator below remain the accepted product design.
+
 # Quick Browse: Ryan's accepted design
 
 Status: implemented in plain Flutter under `app/lib/features/feed/`. Ryan approved
@@ -49,7 +54,7 @@ The older JSON fixture remains an explicitly mock historical design asset.
 
 ## Verification
 
-Forty-five Flutter tests cover original gestures/cart and the overnight feature flows.
+Eighty Flutter tests cover original gestures/cart and the overnight feature flows.
 Connected mode uses paged catalog search; explicit demo mode stays local. Run `cd app && flutter analyze && flutter test`. Backend health/feed
 and image proxy were also verified with private runtime settings. The app loads
 live photos. Phone and live checkout verification remain separate checks.
@@ -64,6 +69,6 @@ owned/catalog suggestions and Fit Score. These controls stay outside horizontal
 photo swipes; product details scroll to expose controls on smaller screens.
 No model measurements, real descriptions or personal photos are invented.
 
-45 tests pass and Flutter analysis is clean. The overnight release web build succeeded. Overnight backend checks used
+81 tests pass and Flutter analysis is clean. The overnight release web build succeeded. Overnight backend checks used
 mock AI and synthetic local fixtures. Shared live / phone / personal-photo quality
 acceptance remains pending; see RYAN.md and the staging morning report.

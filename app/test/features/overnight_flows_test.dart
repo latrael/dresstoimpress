@@ -329,6 +329,11 @@ void main() {
       (tester) async {
     var refreshed = false;
     final api = mockApi((r) async {
+      if (r.method == 'GET') return json(user());
+      if (r.method == 'PATCH' && r.url.path.endsWith('/body-profile')) {
+        return json({'height_cm': 0});
+      }
+      if (r.method == 'PATCH') return json(user());
       expect(r.url.path, '/onboarding');
       expect(jsonDecode(r.body)['text'], r'Y2K tops under $40, regular fit');
       return json({
@@ -402,6 +407,7 @@ void main() {
   testWidgets('editing outfit labels preserves tagged product identity',
       (tester) async {
     final api = mockApi((r) async {
+      if (r.method == 'GET') return json(piece('p'));
       expect(r.url.path, '/fitcheck/post/tags');
       final tags = jsonDecode(r.body)['tagged'] as List;
       expect(tags.single['label'], 'Blue shirt');
@@ -420,7 +426,10 @@ void main() {
     await tester.enterText(
         find.widgetWithText(TextField, 'Piece 1'), 'Blue shirt');
     await tap(tester, 'Save tags');
-    expect(find.text('Blue shirt'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Show outfit tags'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<CatalogTag>(find.byType(CatalogTag)).tag.label,
+        'Blue shirt');
   });
   testWidgets(
       'closet uploads real MIME, keeps duplicate and removes only after confirmation',
@@ -442,7 +451,7 @@ void main() {
     });
     await mount(tester, ClosetScreen(api: api, picker: () async => testPhoto));
     await tap(tester, 'Add a piece');
-    expect(find.textContaining('both are saved'), findsOneWidget);
+    expect(find.textContaining('Possible duplicates'), findsOneWidget);
     expect(find.text('White shirt'), findsOneWidget);
     await tester.tap(find.byTooltip('Remove closet piece'));
     await tester.pumpAndSettle();
@@ -514,7 +523,7 @@ void main() {
     expect(writes, 0);
     await tester.enterText(
         find.widgetWithText(TextField, 'Caption'), 'Local test caption');
-    await tap(tester, 'Post to Fit Check');
+    await tap(tester, 'Post to Inspo');
     expect(writes, 1);
     expect(created, true);
   });
@@ -531,7 +540,7 @@ void main() {
     expect(
         tester
             .widget<FilledButton>(
-                find.widgetWithText(FilledButton, 'Post to Fit Check'))
+                find.widgetWithText(FilledButton, 'Post to Inspo'))
             .onPressed,
         isNull);
     expect(writes, 0);

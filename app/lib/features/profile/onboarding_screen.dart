@@ -2,300 +2,481 @@ import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
 import '../shared/feature_ui.dart';
+import '../shared/pick_photo.dart';
 import 'shopper_profile.dart';
-import 'body_scan_screen.dart';
 
+/// The same sections power first-time setup and the User editor.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen(
       {super.key,
       required this.api,
       required this.onSaved,
       this.firstRun = false,
-      this.demo = false});
-  final bool firstRun, demo;
+      this.demo = false,
+      this.initialStep = 1,
+      this.picker});
   final Api api;
   final Future<void> Function() onSaved;
+  final bool firstRun, demo;
+  final int initialStep;
+  final PhotoPicker? picker;
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final name = TextEditingController();
-  final text = TextEditingController();
-  final measurements = {
-    for (final label in [
+  static const titles = [
+    'Welcome to Niche',
+    'Your style',
+    'Stores you like',
+    'Body scan',
+    'Measurements & size',
+    'Your budget',
+    'Ready for you'
+  ];
+  final name = TextEditingController(),
+      style = TextEditingController(),
+      other = TextEditingController();
+  final measures = {
+    for (final s in [
       'Height (cm)',
       'Weight (kg)',
-      'Waist (cm)',
       'Chest (cm)',
+      'Waist (cm)',
       'Hips (cm)',
       'Inseam (cm)',
       'Shoe size (US)'
     ])
-      label: TextEditingController()
+      s: TextEditingController()
+  };
+  final sizes = {
+    for (final s in ['top', 'bottom', 'shoes']) s: TextEditingController()
   };
   final budgets = {
-    for (final category in ['tops', 'bottoms', 'jackets', 'shoes'])
-      category: TextEditingController()
+    for (final s in ['tops', 'bottoms', 'jackets', 'shoes'])
+      s: TextEditingController()
   };
-  final usual = TextEditingController();
+  final stores = <String>{};
+  late int step = widget.firstRun ? 0 : widget.initialStep;
   String fit = 'regular';
-  bool loading = true;
+  bool loading = true, busy = false, restoreFailed = false;
+  String? error;
+  BodyScanResult? scan;
+  OnboardingResult? result;
   @override
   void initState() {
     super.initState();
     restore();
   }
 
-  Future<void> restore() async {
-    var p = await ShopperProfile.load(widget.api.settings.userId);
-    if (!widget.demo) {
-      // Measurements saved on the server (another device, or a body scan) fill in what's missing here.
-      try {
-        final body = (await widget.api.getUser()).bodyProfile;
-        if (body != null) p = p.withBody(body, gapsOnly: true);
-      } catch (_) {}
-    }
-    if (!mounted) return;
-    text.text = p.style;
-    usual.text = p.usualSize;
-    fit = p.fit;
-    final values = [
-      p.heightCm,
-      p.weightKg,
-      p.waistCm,
-      p.chestCm,
-      p.hipCm,
-      p.inseamCm,
-      p.shoeUs
-    ];
-    var i = 0;
-    for (final c in measurements.values) {
-      c.text = values[i++]?.toString() ?? '';
-    }
-    for (final e in budgets.entries) {
-      e.value.text = p.budgets[e.key]?.toString() ?? '';
-    }
-    setState(() => loading = false);
-  }
-
-  OnboardingResult? result;
-  String? error;
-  bool busy = false;
-
-  /// Body scan pre-fills the measurement fields (council D2: the user checks them, then saves).
-  Future<void> scanBody() async {
-    final body = await Navigator.push<BodyProfile>(
-        context,
-        MaterialPageRoute(
-            builder: (_) => BodyScanScreen(
-                api: widget.api,
-                heightCm:
-                    double.tryParse(measurements['Height (cm)']!.text.trim()),
-                weightKg: double.tryParse(
-                    measurements['Weight (kg)']!.text.trim()))));
-    if (body == null || !mounted) return;
-    double? cm(double? inches) => inches == null ? null : inches * 2.54;
-    final values = {
-      'Height (cm)': body.heightCm > 0 ? body.heightCm : null,
-      'Weight (kg)': body.weightKg,
-      'Waist (cm)': cm(body.waistIn),
-      'Chest (cm)': cm(body.chestIn),
-      'Hips (cm)': cm(body.hipIn),
-      'Inseam (cm)': cm(body.inseamIn),
-    };
-    setState(() {
-      for (final e in values.entries) {
-        if (e.value != null) {
-          measurements[e.key]!.text = e.value!.toStringAsFixed(1);
-        }
-      }
-      error = null;
-    });
-  }
   @override
   void dispose() {
-    for (final c in [...measurements.values, ...budgets.values, usual]) {
+    for (final c in [
+      name,
+      style,
+      other,
+      ...measures.values,
+      ...sizes.values,
+      ...budgets.values
+    ]) {
       c.dispose();
     }
-    name.dispose();
-    text.dispose();
     super.dispose();
   }
 
-  Future<void> save({bool skip = false}) async {
-    double? number(String label) =>
-        skip ? null : double.tryParse(measurements[label]!.text.trim());
-    if (!skip &&
-        [...measurements.values, ...budgets.values].any((c) =>
-            c.text.trim().isNotEmpty &&
-            (double.tryParse(c.text.trim()) == null ||
-                !double.parse(c.text.trim()).isFinite ||
-                double.parse(c.text.trim()) <= 0))) {
+  Future<void> restore() async {
+    try {
+      restoreFailed = false;
+      final local = await ShopperProfile.load(widget.api.settings.userId);
+      BodyProfile? remote;
+      AppUser? user;
+      if (!widget.demo) {
+        user = await widget.api.getUser();
+        remote = user.bodyProfile;
+      }
+      if (!mounted) return;
+      name.text = user?.displayName ?? '';
+      style.text = user?.styleText ?? local.style;
+      fit = remote?.fit ?? local.fit;
+      stores.addAll((user?.preferredStores ?? local.preferredStores)
+          .where((s) => ['hm', 'uniqlo'].contains(s)));
+      other.text = user == null
+          ? local.otherStores
+          : user.preferredStores
+              .where((s) => !['hm', 'uniqlo'].contains(s))
+              .join(', ');
+      final values = [
+        remote?.heightCm ?? local.heightCm,
+        remote?.weightKg ?? local.weightKg,
+        remote?.chestIn == null ? local.chestCm : remote!.chestIn! * 2.54,
+        remote?.waistIn == null ? local.waistCm : remote!.waistIn! * 2.54,
+        remote?.hipIn == null ? local.hipCm : remote!.hipIn! * 2.54,
+        remote?.inseamIn == null ? local.inseamCm : remote!.inseamIn! * 2.54,
+        remote?.shoeUs ?? local.shoeUs
+      ];
+      var i = 0;
+      for (final c in measures.values) {
+        c.text = values[i++]?.toStringAsFixed(1) ?? '';
+      }
+      for (final e in sizes.entries) {
+        e.value.text = remote?.usualSizes[e.key] ??
+            local.usualSizes[e.key] ??
+            (e.key == 'top' ? local.usualSize : '');
+      }
+      for (final e in budgets.entries) {
+        final server = user?.priceRanges[{
+          'tops': 'top',
+          'bottoms': 'bottom',
+          'jackets': 'outerwear',
+          'shoes': 'shoes'
+        }[e.key]];
+        e.value.text = (server != null && server.length > 1
+                    ? server[1]
+                    : local.budgets[e.key])
+                ?.toString() ??
+            '';
+      }
+    } catch (_) {
+      if (mounted) {
+        error =
+            'Could not load your saved answers. Retry before making changes.';
+        restoreFailed = true;
+      }
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  double? value(String label) => double.tryParse(measures[label]!.text.trim());
+  bool validate(Iterable<TextEditingController> fields) {
+    if (fields.any((c) =>
+        c.text.trim().isNotEmpty &&
+        (double.tryParse(c.text.trim()) == null ||
+            !double.parse(c.text.trim()).isFinite ||
+            double.parse(c.text.trim()) <= 0))) {
+      setState(() =>
+          error = 'Use positive numbers, or leave optional fields blank.');
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> scanBody() async {
+    final height = value('Height (cm)'), weight = value('Weight (kg)');
+    if (height == null ||
+        height < 120 ||
+        height > 230 ||
+        (weight != null && (weight < 30 || weight > 250))) {
       setState(() => error =
-          'Use positive numbers for measurements and prices, or leave them blank.');
+          'Enter your height from 120–230 cm first. Weight is optional (30–250 kg).');
       return;
     }
-    final profile = ShopperProfile(
-        completed: true,
-        style: skip ? '' : text.text.trim(),
-        fit: fit,
-        usualSize: skip ? '' : usual.text.trim().toUpperCase(),
-        heightCm: number('Height (cm)'),
-        weightKg: number('Weight (kg)'),
-        waistCm: number('Waist (cm)'),
-        chestCm: number('Chest (cm)'),
-        hipCm: number('Hips (cm)'),
-        inseamCm: number('Inseam (cm)'),
-        shoeUs: number('Shoe size (US)'),
-        budgets: {
-          if (!skip)
-            for (final e in budgets.entries)
-              if (e.value.text.trim().isNotEmpty)
-                e.key: double.parse(e.value.text.trim())
-        });
+    if (widget.demo) {
+      setState(() => error =
+          'Connect to use a private body scan. You can enter measurements on the next screen.');
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
-      result = null;
     });
     try {
-      final priceText = profile.budgets.entries
-          .map((e) => '${e.key} under \$${e.value}')
-          .join(', ');
-      final input = [
-        profile.style,
-        if (profile.style.isNotEmpty) '${profile.fit} fit',
-        priceText
-      ].where((s) => s.isNotEmpty).join(', ');
-      if (!widget.demo && !skip && input.isNotEmpty) {
-        final saved = await widget.api.onboarding(input,
-            displayName: name.text.trim().isEmpty ? null : name.text.trim());
-        if (!mounted) return;
-        setState(() => result = saved);
+      final photo = await (widget.picker != null
+          ? widget.picker!()
+          : choosePhoto(context));
+      if (photo == null) return;
+      final estimate = await widget.api.bodyScan(photo.bytes,
+          heightCm: height, weightKg: weight, mimeType: photo.mimeType);
+      if (!mounted) return;
+      final p = estimate.profile;
+      final estimates = {
+        'Chest (cm)': p.chestIn,
+        'Waist (cm)': p.waistIn,
+        'Hips (cm)': p.hipIn,
+        'Inseam (cm)': p.inseamIn
+      };
+      for (final e in estimates.entries) {
+        if (measures[e.key]!.text.trim().isEmpty && e.value != null) {
+          measures[e.key]!.text = (e.value! * 2.54).toStringAsFixed(1);
+        }
       }
+      setState(() => scan = estimate);
+    } catch (e) {
+      if (mounted) setState(() => error = featureError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> save({bool skipAll = false}) async {
+    if (restoreFailed && !skipAll) return;
+    if (!skipAll && !validate([...measures.values, ...budgets.values])) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final profile = ShopperProfile(
+          completed: true,
+          style: skipAll ? '' : style.text.trim(),
+          fit: fit,
+          preferredStores: skipAll ? [] : stores.toList(),
+          otherStores: skipAll ? '' : other.text.trim(),
+          usualSize: skipAll ? '' : sizes['top']!.text.trim().toUpperCase(),
+          usualSizes: {
+            if (!skipAll)
+              for (final e in sizes.entries)
+                if (e.value.text.trim().isNotEmpty)
+                  e.key: e.value.text.trim().toUpperCase()
+          },
+          heightCm: skipAll ? null : value('Height (cm)'),
+          weightKg: skipAll ? null : value('Weight (kg)'),
+          chestCm: skipAll ? null : value('Chest (cm)'),
+          waistCm: skipAll ? null : value('Waist (cm)'),
+          hipCm: skipAll ? null : value('Hips (cm)'),
+          inseamCm: skipAll ? null : value('Inseam (cm)'),
+          shoeUs: skipAll ? null : value('Shoe size (US)'),
+          budgets: {
+            if (!skipAll)
+              for (final e in budgets.entries)
+                if (e.value.text.trim().isNotEmpty)
+                  e.key: double.parse(e.value.text.trim())
+          });
+      if (!widget.demo && !skipAll) {
+        final input = [
+          profile.style,
+          if (profile.style.isNotEmpty) '${profile.fit} fit',
+          if (stores.isNotEmpty) 'Preferred stores: ${stores.join(', ')}',
+          if (other.text.trim().isNotEmpty)
+            'Other store interests: ${other.text.trim()}',
+          ...profile.budgets.entries.map((e) => '${e.key} under \$${e.value}')
+        ].where((s) => s.isNotEmpty).join(', ');
+        if (input.isNotEmpty) {
+          result = await widget.api.onboarding(input,
+              displayName: name.text.trim().isEmpty ? null : name.text.trim());
+        }
+        await profile.syncToServer(widget.api);
+        await widget.api.updateUser(
+            preferredStores: [
+              ...profile.preferredStores,
+              ...profile.otherStores
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+            ],
+            onboarded: widget.firstRun ? true : null,
+            priceRanges: widget.firstRun || step == 5
+                ? {
+                    for (final e in profile.budgets.entries)
+                      ({
+                            'tops': 'top',
+                            'bottoms': 'bottom',
+                            'jackets': 'outerwear',
+                            'shoes': 'shoes'
+                          }[e.key] ??
+                          e.key): [0, e.value]
+                  }
+                : null);
+      }
+      if (!widget.demo && skipAll) await widget.api.updateUser(onboarded: true);
       await profile.save(widget.api.settings.userId);
-      if (!widget.demo && !skip) {
-        // D5: measurements live on the server too. Best effort: the phone copy is already saved.
-        try {
-          await profile.syncToServer(widget.api);
-        } catch (_) {}
-      }
       await widget.onSaved();
-    } catch (_) {
+      if (mounted) setState(() {});
+    } catch (e) {
       if (mounted) {
-        setState(() => error = 'Could not save your preferences. Try again.');
+        setState(() =>
+            error = 'Could not save all your answers. ${featureError(e)}');
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
+  Widget field(TextEditingController controller, String label,
+          {bool number = false, String? hint}) =>
+      Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: TextField(
+              controller: controller,
+              enabled: !busy,
+              keyboardType: number
+                  ? const TextInputType.numberWithOptions(decimal: true)
+                  : TextInputType.text,
+              decoration: InputDecoration(labelText: label, hintText: hint)));
+  List<Widget> section() {
+    switch (step) {
+      case 0:
+        return [
+          Text("Let's make Niche yours",
+              style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          const Text(
+              'Tell us your style, stores and fit once. Every optional step can be skipped.')
+        ];
+      case 1:
+        return [
+          const Text(
+              'Describe the looks you want, fits you love, and anything you hate wearing.'),
+          field(name, 'Display name (optional)'),
+          field(style, 'Style and budget',
+              hint: 'Y2K fits, baggy jeans, no skinny anything…')
+        ];
+      case 2:
+        return [
+          const Text('Stores we carry'),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, children: [
+            for (final e in {'hm': 'H&M', 'uniqlo': 'Uniqlo'}.entries)
+              FilterChip(
+                  label: Text(e.value),
+                  selected: stores.contains(e.key),
+                  onSelected: busy
+                      ? null
+                      : (selected) => setState(() {
+                            selected ? stores.add(e.key) : stores.remove(e.key);
+                          }))
+          ]),
+          field(other, 'Other stores you love (optional)'),
+          const SizedBox(height: 12),
+          const Text(
+              'Other stores are saved as interests. We currently carry H&M and Uniqlo.')
+        ];
+      case 3:
+        return [
+          const Text(
+              'A full-body photo helps estimate your proportions. Enter your height as a reference. Your photo stays private and is also used for try-on.'),
+          field(measures['Height (cm)']!, 'Height (cm)', number: true),
+          field(measures['Weight (kg)']!, 'Weight (kg)', number: true),
+          const SizedBox(height: 20),
+          FilledButton.tonalIcon(
+              onPressed: busy ? null : scanBody,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: Text(busy ? 'Estimating…' : 'Choose a full-body photo')),
+          if (scan != null) ...[
+            const SizedBox(height: 16),
+            Text(scan!.profile.source == 'ai'
+                ? 'Estimates from your photo — review every value next.'
+                : 'Estimated proportions — review every value next.'),
+            if (scan!.profile.fullBody == false)
+              const Text(
+                  'Please retake with one person visible from head to feet.'),
+            Text(scan!.profile.note)
+          ]
+        ];
+      case 4:
+        return [
+          const Text(
+              'Check or edit every measurement. Photo estimates are a starting point, not an exact measurement.'),
+          for (final e in measures.entries) field(e.value, e.key, number: true),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+              initialValue: fit,
+              decoration: const InputDecoration(labelText: 'Preferred fit'),
+              items: [
+                for (final v in ['slim', 'regular', 'oversized'])
+                  DropdownMenuItem(value: v, child: Text(v))
+              ],
+              onChanged: busy ? null : (v) => setState(() => fit = v!)),
+          for (final e in sizes.entries)
+            field(e.value, 'Usual ${e.key} size (optional)',
+                hint: e.key == 'top'
+                    ? 'XS, S, M, L…'
+                    : e.key == 'bottom'
+                        ? '32/32, M…'
+                        : '9, 10…')
+        ];
+      case 5:
+        return [
+          const Text('Optional — leave any category blank to skip it.'),
+          for (final e in budgets.entries)
+            field(e.value, 'Maximum for ${e.key} (USD)', number: true)
+        ];
+      default:
+        return [
+          Text('Your feed is ready',
+              style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          const Text(
+              'Your style, stores, measurements and budgets can all be changed later under User.')
+        ];
+    }
+  }
+
+  void next() {
+    if ((step == 3 || step == 4) && !validate(measures.values)) return;
+    if (step == 5 && !validate(budgets.values)) return;
+    setState(() {
+      step++;
+      error = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) => FeaturePage(
-      title: widget.firstRun ? 'Welcome to Niche' : 'Your style & sizing',
+      title: titles[step],
       child: loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.all(24), children: [
-              Text('Make it feel like you',
-                  style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 12),
-              const Text(
-                  'Start with your style, your measurements, or both. Everything is optional and you can change it later.'),
-              const SizedBox(height: 20),
-              TextField(
-                  controller: name,
-                  enabled: !busy,
-                  decoration: const InputDecoration(
-                      labelText: 'Display name (optional)')),
-              const SizedBox(height: 16),
-              TextField(
-                  controller: text,
-                  enabled: !busy,
-                  minLines: 3,
-                  maxLines: 6,
-                  decoration: const InputDecoration(
-                      labelText: 'Style and budget',
-                      hintText:
-                          'Baggy streetwear, relaxed fits, Uniqlo, earth tones…')),
-              const SizedBox(height: 24),
-              Text('Your fit', style: Theme.of(context).textTheme.titleLarge),
-              const Text(
-                  'Enter your measurements, or scan a full-body photo to fill them in. Check the estimates before saving.'),
-              if (!widget.demo)
-                Align(
-                    alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                        onPressed: busy ? null : scanBody,
-                        icon: const Icon(Icons.accessibility_new),
-                        label: const Text('Scan from a photo'))),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                  initialValue: fit,
-                  decoration: const InputDecoration(labelText: 'Preferred fit'),
-                  items: [
-                    for (final v in ['slim', 'regular', 'oversized'])
-                      DropdownMenuItem(value: v, child: Text(v))
+          : ListView(
+              key: ValueKey('onboarding-$step'),
+              padding: const EdgeInsets.all(24),
+              children: [
+                  if (widget.firstRun)
+                    Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: LinearProgressIndicator(value: (step + 1) / 7)),
+                  ...section(),
+                  const SizedBox(height: 24),
+                  if (error != null)
+                    Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(error!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error))),
+                  if (restoreFailed)
+                    TextButton(
+                        onPressed: busy
+                            ? null
+                            : () async {
+                                setState(() => loading = true);
+                                await restore();
+                              },
+                        child: const Text('Retry loading answers')),
+                  FilledButton(
+                      onPressed: busy || restoreFailed
+                          ? null
+                          : !widget.firstRun && step == 3
+                              ? () => setState(() => step = 4)
+                              : !widget.firstRun || step == 6
+                                  ? () => save()
+                                  : next,
+                      child: Text(busy
+                          ? 'Saving…'
+                          : !widget.firstRun && step == 3
+                              ? 'Review measurements'
+                              : !widget.firstRun
+                                  ? 'Save preferences'
+                                  : step == 0
+                                      ? 'Start'
+                                      : step == 6
+                                          ? 'Go to Home'
+                                          : 'Continue')),
+                  if (widget.firstRun && step == 0)
+                    TextButton(
+                        onPressed: busy ? null : () => save(skipAll: true),
+                        child: const Text('Skip setup')),
+                  if (widget.firstRun && step > 0 && step < 6)
+                    TextButton(
+                        onPressed: busy ? null : () => setState(() => step++),
+                        child: const Text('Skip for now')),
+                  if (widget.firstRun && step > 0)
+                    TextButton(
+                        onPressed: busy ? null : () => setState(() => step--),
+                        child: const Text('Back')),
+                  if (result != null && !widget.firstRun) ...[
+                    Text('Saved for ${result!.user.displayName}'),
+                    for (final e in result!.user.priceRanges.entries)
+                      if (e.value.length > 1)
+                        Text(
+                            '${e.key} · \$${e.value[0].toStringAsFixed(0)}–\$${e.value[1].toStringAsFixed(0)}')
                   ],
-                  onChanged: busy ? null : (v) => setState(() => fit = v!)),
-              for (final e in measurements.entries)
-                Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: TextField(
-                        controller: e.value,
-                        enabled: !busy,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: InputDecoration(labelText: e.key))),
-              const SizedBox(height: 12),
-              TextField(
-                  controller: usual,
-                  enabled: !busy,
-                  decoration: const InputDecoration(
-                      labelText: 'Usual letter size (optional)',
-                      hintText: 'XS, S, M, L, XL…')),
-              const SizedBox(height: 24),
-              Text('Your price range',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const Text('Optional — leave any category blank to skip it.'),
-              for (final e in budgets.entries)
-                Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: TextField(
-                        controller: e.value,
-                        enabled: !busy,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        decoration: InputDecoration(
-                            labelText: 'Maximum for ${e.key} (USD)'))),
-              const SizedBox(height: 20),
-              FilledButton(
-                  onPressed: busy ? null : () => save(),
-                  child: Text(busy
-                      ? 'Saving…'
-                      : widget.firstRun
-                          ? 'Start browsing'
-                          : 'Save preferences')),
-              if (widget.firstRun)
-                TextButton(
-                    onPressed: busy ? null : () => save(skip: true),
-                    child: const Text('Skip for now')),
-              if (error != null) Text(error!),
-              if (result != null) ...[
-                const SizedBox(height: 20),
-                Text('Saved for ${result!.user.displayName}',
-                    style: Theme.of(context).textTheme.titleLarge),
-                Text(result!.styles.isEmpty
-                    ? 'No style tags recognized.'
-                    : 'Styles · ${result!.styles.join(', ')}'),
-                for (final e in result!.user.priceRanges.entries)
-                  if (e.value.length >= 2)
-                    Text(
-                        '${e.key} · \$${e.value[0].toStringAsFixed(0)}–\$${e.value[1].toStringAsFixed(0)}'),
-                if (result!.unmatched.isNotEmpty)
-                  Text('Not understood yet · ${result!.unmatched}'),
-                const Text(
-                    'You can update this any time. Your suggestions have been refreshed.'),
-              ],
-            ]));
+                ]));
 }

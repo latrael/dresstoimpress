@@ -6,24 +6,30 @@ import '../store/store_controller.dart';
 import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
 import '../product/complete_look_screen.dart';
+import '../store/cart_screen.dart';
 
 class SocialFeed extends StatefulWidget {
   const SocialFeed(
       {super.key,
       required this.store,
       required this.onShop,
-      this.picker = pickPhoto});
+      this.picker = pickPhoto,
+      this.onTagSearch,
+      this.authorId});
   final StoreController store;
   final void Function(List<RankedProduct>) onShop;
   final PhotoPicker picker;
+  final void Function(String)? onTagSearch;
+  final String? authorId;
   @override
   State<SocialFeed> createState() => _SocialFeedState();
 }
 
 class _SocialFeedState extends State<SocialFeed> {
   late Future<List<FitCheckPost>> posts = load();
-  Future<List<FitCheckPost>> load() =>
-      widget.store.demo ? Future.value([]) : widget.store.api.fitCheckFeed();
+  Future<List<FitCheckPost>> load() => widget.store.demo
+      ? Future.value([])
+      : widget.store.api.fitCheckFeed(limit: 100, author: widget.authorId);
   void refresh() => setState(() => posts = load());
   Future<void> create() async {
     final posted = await Navigator.push<bool>(
@@ -65,7 +71,7 @@ class _SocialFeedState extends State<SocialFeed> {
                   if (snapshot.data!.isEmpty) {
                     return Center(
                         child: Text(widget.store.demo
-                            ? 'Connect to see your friends’ fits.'
+                            ? 'Connect to explore Inspo.'
                             : 'No fits yet. Your next look could be the first.'));
                   }
                   return ListView(padding: const EdgeInsets.all(20), children: [
@@ -75,7 +81,18 @@ class _SocialFeedState extends State<SocialFeed> {
                           post: post,
                           api: widget.store.api,
                           onShop: widget.onShop,
-                          onDeleted: refresh)
+                          onTagSearch: widget.onTagSearch,
+                          onDeleted: refresh,
+                          onAuthor: (id, name) => Navigator.push<void>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => FeaturePage(
+                                      title: name,
+                                      child: SocialFeed(
+                                          store: widget.store,
+                                          onShop: widget.onShop,
+                                          onTagSearch: widget.onTagSearch,
+                                          authorId: id)))))
                   ]);
                 })),
       ]);
@@ -140,7 +157,7 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
       title: 'Post a fit',
       child: ListView(padding: const EdgeInsets.all(24), children: [
         const Text(
-            'Share an outfit with your friends. Your photo and caption are uploaded to your connected server; the outfit is tagged automatically.'),
+            'Share an outfit with everyone in Inspo. Your photo and caption are uploaded to your connected server; the outfit is tagged automatically.'),
         const SizedBox(height: 16),
         if (photo != null)
           SizedBox(
@@ -160,7 +177,7 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
         const SizedBox(height: 16),
         FilledButton(
             onPressed: busy || photo == null ? null : post,
-            child: Text(busy ? 'Posting and tagging…' : 'Post to Fit Check')),
+            child: Text(busy ? 'Posting and tagging…' : 'Post to Inspo')),
         if (error != null) Text(error!),
       ]));
 }
@@ -171,10 +188,14 @@ class FitPostCard extends StatefulWidget {
       required this.post,
       required this.api,
       required this.onShop,
+      this.onTagSearch,
+      this.onAuthor,
       this.onDeleted});
   final FitCheckPost post;
   final Api api;
   final void Function(List<RankedProduct>) onShop;
+  final void Function(String)? onTagSearch;
+  final void Function(String id, String name)? onAuthor;
   final VoidCallback? onDeleted;
   @override
   State<FitPostCard> createState() => _FitPostCardState();
@@ -188,6 +209,29 @@ class _FitPostCardState extends State<FitPostCard> {
   final comment = TextEditingController();
   String? busy;
   String? error;
+  bool showTags = false;
+  Future<void> deletePost() async {
+    final yes = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+                title: const Text('Delete this post?'),
+                content: const Text(
+                    'Remove your outfit and its comments from Inspo?'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Keep')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'))
+                ]));
+    if (yes != true || !mounted) return;
+    await action('delete post', () async {
+      await widget.api.deleteFitCheck(post.id);
+      widget.onDeleted?.call();
+    });
+  }
+
   FitScore? score;
   @override
   void didUpdateWidget(covariant FitPostCard oldWidget) {
@@ -241,29 +285,6 @@ class _FitPostCardState extends State<FitPostCard> {
           });
         }
       });
-  Future<void> deletePost() async {
-    final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: const Text('Delete this post?'),
-              content: const Text(
-                  'Your photo, tags, likes and comments on it are removed for everyone.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Keep')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Delete'))
-              ],
-            ));
-    if (confirmed != true || !mounted) return;
-    await action('delete post', () async {
-      await widget.api.deleteFitCheck(post.id);
-      widget.onDeleted?.call();
-    });
-  }
-
   Future<void> editTags() async {
     final result = await showDialog<List<FitTag>>(
         context: context, builder: (_) => EditTagsDialog(tags: post.tagged));
@@ -287,6 +308,10 @@ class _FitPostCardState extends State<FitPostCard> {
             contentPadding: EdgeInsets.zero,
             leading: const CircleAvatar(child: Icon(Icons.person_outline)),
             title: Text(post.authorName ?? post.userId),
+            onTap: widget.onAuthor == null
+                ? null
+                : () => widget.onAuthor!(
+                    post.userId, post.authorName ?? post.userId),
             trailing: post.userId == widget.api.settings.userId
                 ? IconButton(
                     tooltip: 'Delete your post',
@@ -295,19 +320,52 @@ class _FitPostCardState extends State<FitPostCard> {
                 : null),
         AspectRatio(
             aspectRatio: .85,
-            child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: PiecePhoto(
-                    url: widget.api.imageProxyUrl(post.photoUrl),
-                    label: 'Outfit by ${post.authorName ?? post.userId}'))),
+            child: Semantics(
+                button: true,
+                label: showTags ? 'Hide outfit tags' : 'Show outfit tags',
+                child: GestureDetector(
+                    onTap: () => setState(() => showTags = !showTags),
+                    child: Stack(fit: StackFit.expand, children: [
+                      ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: PiecePhoto(
+                              url: widget.api.imageProxyUrl(post.photoUrl),
+                              label:
+                                  'Outfit by ${post.authorName ?? post.userId}')),
+                      Positioned(
+                          left: 12,
+                          bottom: 12,
+                          right: 12,
+                          child: showTags
+                              ? Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                      color: const Color(0xEEFFFFF8),
+                                      borderRadius: BorderRadius.circular(12)),
+                                  constraints:
+                                      const BoxConstraints(maxHeight: 180),
+                                  child: SingleChildScrollView(
+                                      child: Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: [
+                                        for (final tag in post.tagged)
+                                          CatalogTag(
+                                              api: widget.api,
+                                              tag: tag,
+                                              onProduct: (p) => widget.onShop(
+                                                  [RankedProduct(product: p)]),
+                                              onSearch: widget.onTagSearch)
+                                      ])))
+                              : const Align(
+                                  alignment: Alignment.bottomLeft,
+                                  child: Icon(Icons.local_offer_outlined,
+                                      color: Colors.white))),
+                    ])))),
         if (post.caption?.isNotEmpty == true)
           Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(post.caption!)),
-        if (post.tagged.isNotEmpty)
-          Wrap(spacing: 6, children: [
-            for (final tag in post.tagged) Chip(label: Text(tag.label))
-          ]),
         Wrap(
             spacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -417,4 +475,41 @@ class _EditTagsDialogState extends State<EditTagsDialog> {
                 },
                 child: const Text('Save tags'))
           ]);
+}
+
+class CatalogTag extends StatefulWidget {
+  const CatalogTag(
+      {super.key,
+      required this.api,
+      required this.tag,
+      required this.onProduct,
+      this.onSearch});
+  final Api api;
+  final FitTag tag;
+  final void Function(Product) onProduct;
+  final void Function(String)? onSearch;
+  @override
+  State<CatalogTag> createState() => _CatalogTagState();
+}
+
+class _CatalogTagState extends State<CatalogTag> {
+  late final Future<Product?> product = widget.tag.productId == null
+      ? Future.value(null)
+      : widget.api
+          .product(widget.tag.productId!)
+          .then<Product?>((p) => p)
+          .catchError((_) => null);
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Product?>(
+      future: product,
+      builder: (context, snapshot) {
+        final p = snapshot.data;
+        return ActionChip(
+            label: Text(p == null
+                ? '${widget.tag.label}${widget.tag.retailer == null ? '' : ' · ${retailerName(widget.tag.retailer!)}'}'
+                : '${p.name} · ${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
+            onPressed: () => p == null
+                ? widget.onSearch?.call(widget.tag.label)
+                : widget.onProduct(p));
+      });
 }

@@ -12,6 +12,7 @@ class QuickBrowse extends StatefulWidget {
     required this.imageUrl,
     this.onSizeAdvice,
     this.automaticSizing = false,
+    this.hasSizingProfile = false,
     this.onSizingSetup,
     this.sizingRevision = 0,
     this.onTryOn,
@@ -25,6 +26,7 @@ class QuickBrowse extends StatefulWidget {
   final String Function(String source) imageUrl;
 
   final bool automaticSizing;
+  final bool hasSizingProfile;
   final int sizingRevision;
   final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
@@ -44,6 +46,7 @@ class _QuickBrowseState extends State<QuickBrowse> {
     return LayoutBuilder(builder: (context, viewport) {
       return ListView.separated(
         key: const ValueKey('product-stream'),
+        padding: const EdgeInsets.only(bottom: 112),
         // Build the visible products and roughly one screen ahead/behind.
         scrollCacheExtent: const ScrollCacheExtent.viewport(1),
         itemCount: widget.products.length,
@@ -62,6 +65,7 @@ class _QuickBrowseState extends State<QuickBrowse> {
           imageUrl: widget.imageUrl,
           onSizeAdvice: widget.onSizeAdvice,
           automaticSizing: widget.automaticSizing,
+          hasSizingProfile: widget.hasSizingProfile,
           onSizingSetup: widget.onSizingSetup,
           sizingRevision: widget.sizingRevision,
           onTryOn: widget.onTryOn,
@@ -86,6 +90,7 @@ class _ProductPage extends StatefulWidget {
     required this.imageHeight,
     this.onSizeAdvice,
     required this.automaticSizing,
+    required this.hasSizingProfile,
     required this.onSizingSetup,
     required this.sizingRevision,
     this.onTryOn,
@@ -99,6 +104,7 @@ class _ProductPage extends StatefulWidget {
   final String position;
   final double imageHeight;
   final bool automaticSizing;
+  final bool hasSizingProfile;
   final int sizingRevision;
   final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
@@ -135,16 +141,20 @@ class _ProductPageState extends State<_ProductPage> {
   }
 
   int sizeRequest = 0;
+  bool alternativeSize = false;
   Future<void> resolveSize() async {
     final request = ++sizeRequest;
     setState(() {
       advising = true;
+      alternativeSize = false;
       size = null;
       error = null;
     });
     try {
-      final value =
-          await widget.onSizeAdvice?.call(widget.product['id'] as String);
+      if (widget.product['in_your_size'] == false) return;
+      final value = widget.product['in_your_size'] == true
+          ? widget.product['your_size'] as String?
+          : await widget.onSizeAdvice?.call(widget.product['id'] as String);
       if (!mounted || request != sizeRequest) return;
       final sizes = (widget.product['sizes'] as List? ?? []).cast<Map>();
       setState(() {
@@ -165,9 +175,42 @@ class _ProductPageState extends State<_ProductPage> {
 
   Future<void> automaticAdd() async {
     if (size == null) {
-      if (error == null) await widget.onSizingSetup?.call();
-      if (!mounted) return;
-      await resolveSize();
+      if ((widget.hasSizingProfile ||
+              widget.product['in_your_size'] == false) &&
+          error == null) {
+        final sizes = (widget.product['sizes'] as List? ?? []).cast<Map>();
+        final selected = await showModalBottomSheet<String>(
+            context: context,
+            useSafeArea: true,
+            builder: (context) => Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('Not in your size. Try another fit?'),
+                  const SizedBox(height: 16),
+                  Wrap(spacing: 8, children: [
+                    for (final s in sizes)
+                      ChoiceChip(
+                          label: Text(s['name'] as String),
+                          selected: false,
+                          onSelected: s['in_stock'] == true
+                              ? (_) =>
+                                  Navigator.pop(context, s['name'] as String)
+                              : null)
+                  ]),
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Keep browsing')),
+                ])));
+        if (!mounted || selected == null) return;
+        setState(() {
+          size = selected;
+          alternativeSize = true;
+        });
+      } else {
+        if (error == null) await widget.onSizingSetup?.call();
+        if (!mounted) return;
+        await resolveSize();
+      }
     }
     if (mounted && size != null) await add();
   }
@@ -498,8 +541,15 @@ class _ProductPageState extends State<_ProductPage> {
                 child: Text(advising
                     ? 'Finding your size…'
                     : size != null
-                        ? 'Size $size · you can edit it in your cart'
-                        : 'Add your measurements or usual size to find your fit.')),
+                        ? alternativeSize
+                            ? 'Size $size · alternative fit · edit in cart'
+                            : 'In your size · $size · edit in cart'
+                        : (widget.hasSizingProfile ||
+                                p['in_your_size'] == false)
+                            ? p['your_size'] == null
+                                ? 'Not in your size · other fits available'
+                                : 'Not in your size · try ${p['your_size']}?'
+                            : 'Add your measurements or usual size to find your fit.')),
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),

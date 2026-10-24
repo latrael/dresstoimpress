@@ -1,34 +1,34 @@
-# Ryan: onboarding and automatic sizing
+# Onboarding and account entry
 
-First visit for the current configured user opens Welcome to Niche. Start with
-plain-English clothing/looks/stores, a fit preference, manual body dimensions,
-a usual alphabetic size, or skip. Prices for tops/bottoms/jackets/shoes are optional
-maximums; each can be blank. No invented defaults are shown as entered measurements.
+Council flow supersedes the older combined form. Entry offers returning-device
+Login, New account, and an explicit team test profile. Google sign-in is deferred.
+Connected account creation uses Api.createUser and remembers its returned ID;
+sample-mode profiles are explicitly local. Invalid/missing saved server profiles
+return to entry instead of impersonating another user.
 
-Dimensions: cm for height, waist, chest, hips, inseam; kg for weight; US shoe size.
-Completion, preferences, dimensions and budgets persist on this device per user ID
-in features/profile/shopper_profile.dart. Profile preferences can be edited later.
-This does not create authentication or synchronize measurements between devices.
+First setup is seven screens: Welcome → Style → Stores → Scan → Measurements →
+Budget → Done. Every optional step has Skip for now; Welcome can skip setup.
+User exposes each section for editing later. Scan precedes manual review. Height
+is the reference, weight optional; camera/gallery choices use the existing picker.
+AI estimates and fallback estimates are labeled, notes/head-to-feet warnings shown,
+and typed dimensions are retained when a scan pre-fills blanks. The photo stays
+in the private scan/try-on profile and can be previewed/deleted under User.
 
-Live style/price text uses existing Api.onboarding; measurement-only onboarding
-saves locally without a style request. Blank price categories impose no local cap.
-The shared backend parses prices and ranks connected suggestions. Demo preferences
-are local, and the sample catalog is not claimed to be personalized by the service.
+Live style text uses onboarding; price limits, preferred stores (including other
+interests), and onboarded use updateUser. BodyProfile syncing saves height/weight,
+chest/waist/hips/inseam, shoe size, fit and usual top/bottom/shoe sizes on the server.
+Lengths are entered in cm; shared server-profile inch values are converted to cm.
+Skipped/blank category budgets are omitted; editing the budget section can clear
+old caps using an explicit map. Device completion/preferences are a cache/session,
+not a password or secure sign-in service.
 
-Quick Browse uses explicit height + weight, fit, optional waist (cm / 2.54), and
-shoe size with Api.sizeAdvice. Advice is cached per product/profile revision.
-Only in-stock returned sizes are accepted. Usual letters can exactly match a
-provided size, including in demo mode; no arbitrary first-size fallback. Without
-an available match, Add to Cart opens preferences instead of guessing. Chest,
-hips and inseam are saved for the richer sizing contract, not silently sent as
-unsupported fields. Nearby cards retain continuous scrolling and independent state.
+Home uses authoritative yourSize/inYourSize card fields when known. Missing size
+advice can use explicit measurements or exact usual-size matches. The saved-profile
+client option sends null for omitted height/weight instead of 170/65 defaults.
+Only available sizes can reach the cart. Unknown sizes prompt setup; a known
+unavailable fit offers an explicit alternative chooser and stays in the feed.
+The cart pencil uses atomic size replacement, retaining quantity.
 
-The cart pencil offers the product's actual sizes, disables unavailable choices,
-and preserves quantities/totals. Demo changes are local. Live changes use add-new
-then remove-old via existing routes; a failure refreshes the cart and explicitly
-asks the user to review it. An atomic backend size-change route is requested.
-
-Pending Adam coordination (see staging RYAN_TO_ADAM.md): server-side measurement
-profile/sync, additional dimensions and per-category fallback sizes, actual body
-scan → measurements, and atomic cart size replacement. No body photo is claimed
-to be a scan or measurement. No private URLs, keys or personal sizing committed.
+Backend caveat: bodyScan currently persists its estimates while returning them.
+The app requires review/save before completing setup, but draft-only scan storage
+would need a backend draft/confirm contract. No photo is published to Inspo by scan.

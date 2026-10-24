@@ -5,9 +5,9 @@ import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
 
 class ClosetScreen extends StatefulWidget {
-  const ClosetScreen({super.key, required this.api, this.picker = pickPhoto});
+  const ClosetScreen({super.key, required this.api, this.picker});
   final Api api;
-  final PhotoPicker picker;
+  final PhotoPicker? picker;
   @override
   State<ClosetScreen> createState() => _ClosetScreenState();
 }
@@ -16,49 +16,28 @@ class _ClosetScreenState extends State<ClosetScreen> {
   late Future<List<ClosetItem>> items = widget.api.closet();
   bool busy = false;
   String? message;
-  Future<void> upload() async {
+  Future<void> upload({bool digitize = false}) async {
     setState(() {
       busy = true;
       message = null;
     });
     try {
-      final photo = await widget.picker();
+      final photo = await (widget.picker != null
+          ? widget.picker!()
+          : choosePhoto(context));
       if (photo == null) return;
-      final result = await widget.api
-          .uploadClosetItem(photo.bytes, mimeType: photo.mimeType);
+      final results = digitize
+          ? await widget.api
+              .digitizeCloset(photo.bytes, mimeType: photo.mimeType)
+          : [
+              await widget.api
+                  .uploadClosetItem(photo.bytes, mimeType: photo.mimeType)
+            ];
       if (mounted) {
         setState(() {
-          message = result.duplicateOf == null
-              ? 'Added to your closet.'
-              : 'Added. This may be the same garment as ${result.duplicateOf}; both are saved.';
-          items = widget.api.closet();
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => message = featureError(e));
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
-  }
-
-  /// Digitize wardrobe: one photo of several pieces (flat lay, rack, mirror selfie) adds each one.
-  Future<void> scanSeveral() async {
-    setState(() {
-      busy = true;
-      message = null;
-    });
-    try {
-      final photo = await widget.picker();
-      if (photo == null) return;
-      final added = await widget.api
-          .digitizeCloset(photo.bytes, mimeType: photo.mimeType);
-      if (mounted) {
-        final dupes = added.where((i) => i.duplicateOf != null).length;
-        setState(() {
-          message = added.isEmpty
-              ? 'No clothing found in that photo. Try a clearer shot.'
-              : 'Added ${added.length} piece${added.length == 1 ? '' : 's'}: ${added.map((i) => i.label ?? i.category).join(', ')}.'
-                  '${dupes > 0 ? ' $dupes may already be in your closet.' : ''}';
+          final duplicates = results.where((i) => i.duplicateOf != null).length;
+          message =
+              '${results.length} piece${results.length == 1 ? '' : 's'} added to your closet.${duplicates > 0 ? ' Possible duplicates were kept for your review.' : ''}';
           items = widget.api.closet();
         });
       }
@@ -116,18 +95,16 @@ class _ClosetScreenState extends State<ClosetScreen> {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text(
-                  'Add a photo of one garment, or scan a photo of several (a flat lay, your rack, a mirror selfie) to add each piece. Photos are uploaded to your connected server and tagged for outfit suggestions.'),
+                  'Add a photo of a garment you own. It is uploaded to your connected server and tagged for outfit suggestions.'),
               const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                FilledButton.icon(
-                    onPressed: busy ? null : upload,
-                    icon: const Icon(Icons.add_a_photo_outlined),
-                    label: Text(busy ? 'Working…' : 'Add a piece')),
-                OutlinedButton.icon(
-                    onPressed: busy ? null : scanSeveral,
-                    icon: const Icon(Icons.document_scanner_outlined),
-                    label: const Text('Scan several pieces')),
-              ]),
+              FilledButton.icon(
+                  onPressed: busy ? null : () => upload(),
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                  label: Text(busy ? 'Working…' : 'Add a piece')),
+              OutlinedButton.icon(
+                  onPressed: busy ? null : () => upload(digitize: true),
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Digitize an outfit or wardrobe')),
               if (message != null) Text(message!),
             ])),
         Expanded(

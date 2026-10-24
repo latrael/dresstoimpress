@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/material.dart';
 
 class PickedPhoto {
   const PickedPhoto(this.bytes, this.mimeType);
@@ -9,8 +10,30 @@ class PickedPhoto {
 
 typedef PhotoPicker = Future<PickedPhoto?> Function();
 
-Future<PickedPhoto?> pickPhoto() async {
-  final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+Future<PickedPhoto?> pickPhoto() => pickPhotoFrom(ImageSource.gallery);
+
+Future<PickedPhoto?> choosePhoto(BuildContext context) async {
+  final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
+            ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.pop(context, ImageSource.camera)),
+            ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from camera roll'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery)),
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+          ]));
+  return source == null ? null : pickPhotoFrom(source);
+}
+
+Future<PickedPhoto?> pickPhotoFrom(ImageSource source) async {
+  final file = await ImagePicker().pickImage(source: source);
   if (file == null) return null;
   if (await file.length() > 10 * 1024 * 1024) {
     throw Exception('Choose a photo smaller than 10 MB.');

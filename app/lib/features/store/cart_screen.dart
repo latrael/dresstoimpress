@@ -27,7 +27,10 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    widget.store.refreshCart(); // the server copy wins over what was added minutes ago
+    busy = !widget.store.demo;
+    widget.store.refreshCart().whenComplete(() {
+      if (mounted) setState(() => busy = false);
+    });
   }
 
   Future<void> retry(String retailer) async {
@@ -233,7 +236,8 @@ class _CartScreenState extends State<CartScreen> {
                         const SizedBox(height: 12),
                         Builder(builder: (context) {
                           final paid = receipt!.purchases
-                              .where((p) => p.status == 'paid' || p.status == 'demo')
+                              .where((p) =>
+                                  p.status == 'paid' || p.status == 'demo')
                               .fold<double>(0, (s, p) => s + p.amountUsd);
                           final allPaid = paid >= receipt!.totalUsd - 0.005;
                           return Text(
@@ -264,6 +268,33 @@ class _CartScreenState extends State<CartScreen> {
                         if (widget.store.demo)
                           const Text(
                               'DEMO CART · no payment will be processed'),
+                        if (widget.store.accountWarning != null)
+                          ListTile(
+                              title: Text(widget.store.accountWarning!),
+                              trailing: TextButton(
+                                  onPressed: widget.store.load,
+                                  child: const Text('Retry'))),
+                        if (cart.unavailable.isNotEmpty) ...[
+                          const Text('Unavailable pieces',
+                              style: TextStyle(fontWeight: FontWeight.w700)),
+                          for (final item in cart.unavailable)
+                            ListTile(
+                                title: Text(item.name),
+                                subtitle: Text(
+                                    'Size ${item.size} · Qty ${item.qty} · ${item.reason}'),
+                                trailing: IconButton(
+                                    tooltip: 'Remove unavailable ${item.name}',
+                                    icon: const Icon(Icons.close),
+                                    onPressed: busy
+                                        ? null
+                                        : () => remove(CartItem(
+                                            productId: item.productId,
+                                            size: item.size,
+                                            qty: item.qty,
+                                            product: item.product)))),
+                          const Text(
+                              'Remove unavailable pieces before checking out.'),
+                        ],
                         for (final group in cart.groups) ...[
                           const SizedBox(height: 24),
                           Text(retailerName(group.retailer),
@@ -271,6 +302,18 @@ class _CartScreenState extends State<CartScreen> {
                           for (final item in group.items)
                             ListTile(
                                 contentPadding: EdgeInsets.zero,
+                                leading: item.product == null
+                                    ? null
+                                    : SizedBox(
+                                        width: 44,
+                                        height: 56,
+                                        child: Image.network(
+                                            widget.store.imageUrl(
+                                                item.product!.imageUrl),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, e, s) =>
+                                                const Icon(
+                                                    Icons.checkroom_outlined))),
                                 title:
                                     Text(item.product?.name ?? item.productId),
                                 subtitle: Text(
@@ -314,7 +357,11 @@ class _CartScreenState extends State<CartScreen> {
                                           .colorScheme
                                           .error))),
                         FilledButton(
-                            onPressed: busy ? null : checkout,
+                            onPressed: busy ||
+                                    cart.unavailable.isNotEmpty ||
+                                    widget.store.accountWarning != null
+                                ? null
+                                : checkout,
                             child: Text(busy
                                 ? 'Please wait…'
                                 : widget.store.demo
@@ -333,6 +380,39 @@ class OrderHistory extends StatefulWidget {
 }
 
 class _OrderHistoryState extends State<OrderHistory> {
+  final retrying = <String>{};
+  String? error;
+  Future<void> retry(Order order, Purchase purchase) async {
+    final yes = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+                title: const Text('Retry sandbox payment?'),
+                content: Text(
+                    'Retry ${retailerName(purchase.retailer)} for ${dollars(purchase.amountUsd)}. Already-paid stores will not be charged again.'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Retry'))
+                ]));
+    if (yes != true || !mounted) return;
+    final key = '${order.id}:${purchase.retailer}';
+    setState(() => retrying.add(key));
+    try {
+      await widget.api.retryOrder(order.id, retailer: purchase.retailer);
+      if (mounted) setState(() => orders = widget.api.orders());
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Could not confirm payment. Refresh orders before retrying.');
+      }
+    } finally {
+      if (mounted) setState(() => retrying.remove(key));
+    }
+  }
+
   late Future<List<Order>> orders = widget.api.orders();
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -354,6 +434,10 @@ class _OrderHistoryState extends State<OrderHistory> {
               return const Center(child: Text('No orders yet.'));
             }
             return ListView(children: [
+              if (error != null) Text(error!),
+              TextButton(
+                  onPressed: () => setState(() => orders = widget.api.orders()),
+                  child: const Text('Refresh orders')),
               for (final order in snapshot.data!)
                 ExpansionTile(
                     title: Text('Order ${order.id}'),
@@ -363,7 +447,18 @@ class _OrderHistoryState extends State<OrderHistory> {
                         ListTile(
                             title: Text(retailerName(p.retailer)),
                             subtitle: Text(p.status),
-                            trailing: Text(dollars(p.amountUsd)))
+                            trailing:
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                              Text(dollars(p.amountUsd)),
+                              if (['nessie_failed', 'pending_nessie']
+                                  .contains(p.status))
+                                TextButton(
+                                    onPressed: retrying.contains(
+                                            '${order.id}:${p.retailer}')
+                                        ? null
+                                        : () => retry(order, p),
+                                    child: const Text('Retry payment'))
+                            ]))
                     ])
             ]);
           }));

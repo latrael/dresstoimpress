@@ -41,7 +41,7 @@ The list prepares about one viewport ahead and behind and disposes distant items
 Nearby items retain their own photo/size state. Horizontal swiping stays scoped
 to each bounded photo gallery; cart/size tools remain with the matching product.
 
-Flutter analysis clean; 45 app tests pass, including continuous touch/wheel,
+Flutter analysis clean; 81 app tests pass, including continuous touch/wheel,
 long descriptions, lazy item creation/disposal, separators, carousel boundaries,
 cart selection and separate generated try-on slides. Actual browser preview
 verified the separator and continuous product transition. Phone feel awaits Ryan.
@@ -57,3 +57,11 @@ One Add to Cart button replaces the size picker. Missing measurements open the
 preferences editor; unavailable recommendations do not silently choose a size.
 Manual callback mode remains available for isolated widget adapters/tests.
 See frontend/ONBOARDING.md for persistence and backend handoff limits.
+
+## Council shell
+
+The shared product view is Home, with a persistent header and floating
+Home/Discover/Inspo navigation. Discovery, Liked and Inspo catalog tags seed the
+same Home feed through the shared seeded API. Known feed size fields are
+respected; unknown sizes do not acquire an invented badge. See the implementation
+checklist in docs/ryan-council-implementation.md for all current flows and limits.

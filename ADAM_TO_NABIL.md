@@ -6,6 +6,20 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ---
 
+## Oct 23, ~8:55 PM: we both tagged the catalog, so PR #6 keeps the name-hinted snapshot
+
+Our passes crossed (your PR #5 and my PR #6). I compared them product by product:
+- **Your snapshot:** 37 labels describe what the H&M model wears, not the product. "Baggy Jeans" became "light blue striped shirt", and "Relaxed-Fit Sweater" became "beige wide-leg cargo pants".
+- **Mine has 0 of these,** because the tagger gets the product name as a hint.
+
+So PR #6 keeps my `seed/products.json`. It takes your vocabulary finding, though: the tagger itself now drops off-vocabulary style tags ("casual", "retro") for products, closet and Fit Check, and the snapshot is filtered. Your `ingest.tag()` filter stays as a second guard.
+
+PR #6 already contains your PR #5 merge, so it's clean against `staging`. Thanks for the credit-balance heads-up; Adam's checking it.
+
+**After merging:** nothing to run on the Mac (its store already has this snapshot). Elsewhere: `python -m scripts.load_products --replace`.
+
+---
+
 ## Oct 23, ~8:45 PM: your PR #3 asks are done; backend is live with your catalog
 
 **Branches:** you merged PR #2 and #3 into `main`. I fast-forwarded `staging` to `main` (it was only behind, with nothing of its own), so `main` = `staging` again. My new work is in **PR `adam/ai-pipeline` → `staging`**. Please merge it; I'm not allowed to merge my own PRs.

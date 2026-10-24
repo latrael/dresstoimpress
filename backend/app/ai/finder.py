@@ -131,12 +131,12 @@ def _normalize(raw: dict, tag: dict) -> dict | None:
         sale = None
     pid = f"{site}-" + hashlib.sha256(str(url).encode()).hexdigest()[:12]
     colors = raw.get("colors") or ([raw["color"]] if raw.get("color") else [])
-    sizes = raw.get("sizes") or []
+    sizes = [s if isinstance(s, dict) else {"name": str(s), "in_stock": True} for s in (raw.get("sizes") or [])]
     return {
         "id": pid, "retailer": site, "name": str(name), "brand": raw.get("brand") or {
             "hm": "H&M", "zara": "Zara", "asos": "ASOS", "uniqlo": "Uniqlo", "mango": "Mango"}[site],
         "category": tag.get("category") or "top", "price_usd": price, "sale_price_usd": sale,
-        "colors": [str(c) for c in colors][:5], "sizes": [str(s) for s in sizes][:12],
+        "colors": [str(c) for c in colors][:5], "sizes": sizes[:12], "currency": "USD",
         "in_stock": True, "image_url": str(img), "product_url": str(url),
         "style_tags": list(tag.get("style_tags", []))[:3], "source": "live_search",
     }

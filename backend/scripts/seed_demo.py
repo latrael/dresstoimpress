@@ -36,9 +36,10 @@ products = [
 for pid, ret, brand, name, cat, price, tags in products:
     store.put("products", pid, {
         "id": pid, "retailer": ret, "name": name, "brand": brand, "category": cat,
-        "price_usd": price, "sale_price_usd": None, "colors": [], "sizes": ["S", "M", "L"],
+        "price_usd": price, "sale_price_usd": None, "colors": [],
+        "sizes": [{"name": s, "in_stock": s != "XL"} for s in ["XS", "S", "M", "L", "XL"]],
         "in_stock": True, "image_url": IMG.format(pid), "product_url": "https://example.com",
-        "style_tags": tags,
+        "style_tags": tags, "currency": "USD", "source": "seed",
     })
 
 print("seeded u_demo: 3 closet items, 5 products")

@@ -89,3 +89,23 @@ def to_nabil_tags(item: dict) -> dict:
         "style": list(item.get("style_tags", [])),
         "formality": word,
     }
+
+
+def to_canonical(p: dict) -> dict:
+    """Any product shape -> the staging `Product` schema (sizes as [{name, in_stock}]).
+    Use when writing products so everyone stores one shape."""
+    from ..models import Product
+
+    q = as_product(p) or {}
+    raw_sizes = p.get("sizes") or []
+    if raw_sizes and isinstance(raw_sizes[0], dict):
+        sizes = [{"name": str(s.get("name")), "in_stock": bool(s.get("in_stock", s.get("inStock", True)))}
+                 for s in raw_sizes if s.get("name")]
+    else:
+        sizes = [{"name": str(s), "in_stock": True} for s in raw_sizes]
+    data = {k: q.get(k) for k in Product.model_fields if q.get(k) is not None}
+    data["sizes"] = sizes
+    data["in_stock"] = any(s["in_stock"] for s in sizes) if sizes else bool(q.get("in_stock", True))
+    if data.get("category") not in PLURAL:
+        data["category"] = "top"
+    return Product.model_validate(data).model_dump()

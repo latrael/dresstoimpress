@@ -322,3 +322,24 @@ def test_fallback_uses_outfit_rules(client, monkeypatch):
     got = service.pair("u_demo", ["hm-demo-1", "zara-demo-1", "mango-demo-1"])
     assert got[-1].product_id == "mango-demo-1"  # over budget goes last
     assert got[0].reason.startswith("goes with your")  # names a closet item now
+
+
+def test_to_canonical_unifies_both_shapes():
+    from app.ai.compat import to_canonical
+    from app.models import Product
+    a = to_canonical(NABIL_PRODUCT)
+    assert a["category"] == "top" and a["price_usd"] == 96.73 and a["product_url"].endswith("211172667")
+    assert a["sizes"] == [{"name": "S", "in_stock": True}, {"name": "M", "in_stock": False}]
+    old = {"id": "hm-1", "retailer": "hm", "name": "Tee", "brand": "H&M", "category": "top",
+           "price_usd": 9.99, "sizes": ["S", "M"], "image_url": "https://i", "product_url": "https://p"}
+    b = to_canonical(old)
+    assert b["sizes"][0] == {"name": "S", "in_stock": True} and b["currency"] == "USD"
+    assert set(a) == set(b) == set(Product.model_fields)
+
+
+def test_seeded_products_match_schema(client):
+    from app.models import Product
+    from app.store import store
+    for p in store.list("products"):
+        if p.get("source") == "seed":
+            Product.model_validate(p)

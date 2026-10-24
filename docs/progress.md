@@ -34,7 +34,11 @@ Boundaries:
 - `/feed` (Nabil) calls `ai.service.pair()`; `/swipe` (Nabil) calls `ai.memory.record_swipe()`; `GET /fitcheck/{post_id}/shop` (Nabil) returns `ai.service.shop_fit(viewer_id, post["tagged"])`. Adam doesn't edit those routes.
 - Gemini-drafted modules (size advisor, outfit rules) land in `backend/app/ai/` via Adam.
 
-## Schema: contract vs NABIL.md (decide at the schema meeting)
+## Schema: unified on `staging` (see docs/schema.md)
+
+Proposal for the team: one Product shape (Nabil's ids and sizes-with-stock, singular categories and `price_usd`/`product_url` names). Everyone merges into `staging` first.
+
+### Earlier drafts
 
 Nabil's proposal (branch `nabil`, `NABIL.md`) differs from `backend/app/models.py`: `price`/`currency` vs `price_usd`, `url` vs `product_url`, plural categories (`tops`) vs singular (`top`), single `color` vs `colors[]`, sizes as `[{name, inStock}]` vs `["S"]`, and `tags {style[], formality: "casual"}` vs `style_tags[]` + `formality` 1–5.
 

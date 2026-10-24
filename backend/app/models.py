@@ -1,4 +1,7 @@
-"""Shared data contract. Field names are fixed — tell the team before changing any."""
+"""Shared data contract (unified on `staging`; see docs/schema.md).
+
+Field names are fixed: change them only with a PR into `staging` that the whole team reviews.
+"""
 from __future__ import annotations
 
 from typing import Literal, Optional
@@ -14,20 +17,31 @@ StyleTag = Literal[
 ]
 
 
+class Size(BaseModel):
+    name: str                 # "M", "32", "9.5", "One size"
+    in_stock: bool = True
+
+
 class Product(BaseModel):
-    id: str
+    id: str                   # "{retailer}:{product_code}:{color}", stable across scrapes
     retailer: Retailer
     name: str
     brand: str
-    category: Category
+    category: Category        # singular, same vocabulary as closet items
     price_usd: float
     sale_price_usd: Optional[float] = None
+    currency: Literal["USD"] = "USD"
     colors: list[str] = []
-    sizes: list[str] = []
-    in_stock: bool = True
+    sizes: list[Size] = []    # sold-out sizes kept with in_stock=false (greyed out in the app)
+    in_stock: bool = True     # any size in stock
     image_url: str
     product_url: str
     style_tags: list[str] = []
+    pattern: Optional[Pattern] = None     # from the tagger
+    formality: Optional[int] = Field(None, ge=1, le=5)  # from the tagger
+    label: str = ""           # short plain name from the tagger, e.g. "white baby tee"
+    scraped_at: Optional[str] = None      # ISO time of the scrape
+    source: Literal["ingest", "live_search", "seed"] = "ingest"
 
 
 class ClosetItem(BaseModel):

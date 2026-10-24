@@ -2,7 +2,61 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~2:20 PM PT. New: `POST /orders/{order_id}/retry` (safe per-store payment retry; PR into staging, not merged yet).
+**Last updated:** Sat Oct 24, 2026, ~4:30 PM PT. New: the backend for the council redesign (`docs/council-final-sprint.md`): Home size-first + seeded feed, Discover search, cart size change + unavailable items, Inspo for everyone.
+
+## Oct 24, ~4:30 PM: backend for the council redesign (on `nabil`, PR into `staging`)
+
+Every change only adds fields; nothing the app reads today was removed or renamed. More is coming in the same PR: a men's/women's filter, store mixing, the seed card dropping once seen, Discover size-first, and a photo on cart lines. I'll note each one here.
+
+**User profile** (`GET/PATCH /users/{id}`)
+- `preferred_stores: ["hm","uniqlo"]`: onboarding screen 3. Default `[]`.
+- `onboarded: bool`: set it to `true` at the end of onboarding. Onboarding never resets it.
+- Measurements, fit and usual sizes are Adam's `PATCH /users/{id}/body-profile` (already merged).
+
+**Home: `GET /feed?user_id=&limit=&seed=`**
+- Every card adds `your_size` and `in_your_size`:
+  - `your_size` (string or null): the size `POST /size` would pick, from in-stock sizes only.
+  - `in_your_size: true`: we have their real size.
+  - `in_your_size: false`: their size is sold out, and `your_size` is the nearest size left (or null).
+  - `in_your_size: null`: we know nothing about their size, or can't size this item.
+- **Order:** in-your-size cards first, then the rest. Nothing is hidden for size.
+- **`seed=<product_id>`** (the "Similar to …" mode you open from an Inspo tag or a Discover result):
+  - Card 1 is the seed, even if it's sold out or over budget, so show it marked.
+  - Next come mostly the same category, most similar first. From card 7, about every 4th card is a piece from another category that goes with the seed.
+  - 404 `unknown product` if the id isn't in the catalog.
+
+**Discover**
+- **`GET /search?user_id=&q=`** → `{query, similar: [Product], goes_with: [...]}`.
+  - `similar`: up to 24 items, one per style, in stock.
+  - `goes_with`: complete the look around `similar[0]`. Each entry is a Product + `{from_closet: false, reason}`, or a closet item + `{from_closet: true, reason}`. Closet pieces can't go to the cart or to seeded Home.
+  - Blank `q` → empty lists (the idle screen is `/search/styles`). If the AI is down, `goes_with` is `[]`.
+- **`GET /search/styles?user_id=&limit=8`** → `{styles: [{tag, count}], trending: [Product + {trend_count}]}`.
+  - `styles` are the chips: the 10 catalog style tags, most common first.
+  - `trending` = users who saved it + users who carted it + users who ordered it. When that's thin, it tops up from their feed with `trend_count: 0`.
+- **`POST /search/photo`** (multipart `user_id` + `file`; camera or camera roll) → `{photo_url, tags, similar, goes_with}`.
+  - `similar` items also carry `reason`, `score`, `matched_tag`.
+  - It creates no post and no closet item. GPS is stripped.
+  - No garments found → 200 with empty lists. AI down → 502 "photo search is unavailable right now…". 415 / 413 for a bad file.
+  - It can search H&M live (Apify) when a piece isn't in the catalog. That's capped and cached.
+
+**Cart**
+- **`PATCH /cart/{user_id}/items/{product_id}`** `{size, new_size}`: the pencil, done in one write.
+  - Keeps the quantity, and merges into an existing line of `new_size`.
+  - 200 → the same shape as `GET /cart`. Same size → no-op.
+  - 404: that line isn't in the cart.
+  - 409 `detail` is a readable string ("size XL is sold out for …").
+- **`GET /cart` adds `unavailable: [{product_id, size, qty, name, product|null, available: false, unavailable_reason}]`.**
+  - `unavailable_reason` is "no longer available", "size sold out" or "size no longer offered".
+  - These lines aren't in `groups` or the totals. Every grouped item now has `available: true`.
+  - `count` includes unavailable lines, so a cart holding only those isn't "empty".
+  - Remove them with the existing `DELETE`.
+- **Checkout 409** `unavailable[]` entries now carry `{product_id, size, name, reason}`. Nothing is charged and the cart is kept.
+
+**Inspo: `GET /fitcheck/feed?user_id=&limit=&author=`**
+- Everyone sees every post (decision D4). `author=<user_id>` returns one person's posts.
+- Detail, like, comment and shop no longer 404 for non-friends.
+
+**Your ask #4 (onboarding price text):** it works as you send it ("tops under $30.0, bottoms under $45.5, jackets under $80.0, shoes under $120.0"). jackets/coats map to `outerwear`. "max", "up to", ranges and the category after the price also work.
 
 > **Oct 24, ~2:20 PM: order retry route (your ask).** `POST /orders/{order_id}/retry?user_id=&retailer=` re-attempts only that order's `nessie_failed` / `pending_nessie` store purchases (or just the one `retailer`). A `paid` purchase is never charged again, so it's **safe to call repeatedly**: an all-paid order comes back unchanged with no Nessie call. 200 returns the same shape as `/checkout` (`{order_id, purchases, total_usd, created_at}`); a purchase that fails again stays `nessie_failed` with a new `error` and `retried_at`. Errors: 404 unknown order (or no purchase for that `retailer`), 403 `user_id` isn't the order's owner, 503 no Nessie key on the server (nothing changes). No stock re-check (the order already exists). It's on the backend once the PR is merged; not in the Dart client (Adam's core / your lane).
 

@@ -70,24 +70,30 @@ def test_create_multipart(client):
     assert client.post("/fitcheck", data={"user_id": "u_b"}).status_code == 422
 
 
-def test_feed_friends_and_order(client):
+def test_feed_is_everyone_newest_first(client):
     a = _post(client, "u_a", caption="a-latest")
     b = _post(client, "u_b", caption="b-latest")
-    c = _post(client, "u_c", caption="c-private")
-    ids = [p["id"] for p in client.get("/fitcheck/feed", params={"user_id": "u_a"}).json()]
-    assert ids[:2] == [b["id"], a["id"]] and c["id"] not in ids
-    assert client.get("/fitcheck/feed", params={"user_id": "u_c"}).json()[0]["id"] == c["id"]
-    assert all(p["user_id"] == "u_c" for p in client.get("/fitcheck/feed", params={"user_id": "u_c"}).json())
-    everyone = client.get("/fitcheck/feed", params={"user_id": "u_nobody", "limit": 2}).json()
-    assert [p["id"] for p in everyone] == [c["id"], b["id"]]  # no friends list -> sees all
+    c = _post(client, "u_c", caption="c-friends-only")  # u_c isn't a friend of u_a: still shown (D4)
+    for viewer in ("u_a", "u_c", "u_nobody"):
+        ids = [p["id"] for p in client.get("/fitcheck/feed", params={"user_id": viewer}).json()]
+        assert ids[:3] == [c["id"], b["id"], a["id"]]
+    two = client.get("/fitcheck/feed", params={"user_id": "u_a", "limit": 2}).json()
+    assert [p["id"] for p in two] == [c["id"], b["id"]]
+    assert two[0]["visibility"] == "friends" and two[0]["author"] == {"id": "u_c", "display_name": "Cy"}
 
 
-def test_privacy_404_and_public(client):
-    c = _post(client, "u_c")
-    assert client.get(f"/fitcheck/{c['id']}", params={"user_id": "u_a"}).status_code == 404
-    assert client.get(f"/fitcheck/{c['id']}", params={"user_id": "u_c"}).status_code == 200
-    pub = _post(client, "u_c", visibility="public")
-    assert client.get(f"/fitcheck/{pub['id']}", params={"user_id": "u_a"}).status_code == 200
+def test_feed_author_filter(client):
+    c = _post(client, "u_c", caption="c-own")
+    mine = client.get("/fitcheck/feed", params={"user_id": "u_a", "author": "u_c"}).json()
+    assert mine[0]["id"] == c["id"] and mine and all(p["user_id"] == "u_c" for p in mine)
+    assert client.get("/fitcheck/feed", params={"user_id": "u_a", "author": "u_nobody"}).json() == []
+
+
+def test_any_post_opens_for_anyone(client):
+    c = _post(client, "u_c")  # friends-only, viewer u_a isn't a friend: detail, like, comment all work
+    assert client.get(f"/fitcheck/{c['id']}", params={"user_id": "u_a"}).status_code == 200
+    assert client.post(f"/fitcheck/{c['id']}/like", json={"user_id": "u_a"}).json()["liked"] is True
+    assert client.post(f"/fitcheck/{c['id']}/comments", json={"user_id": "u_a", "text": "fire"}).status_code == 200
     assert client.get("/fitcheck/fc_missing", params={"user_id": "u_a"}).status_code == 404
 
 

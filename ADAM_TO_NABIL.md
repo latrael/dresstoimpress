@@ -2,42 +2,32 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~9:10 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+**Last updated:** Fri Oct 23, 2026, ~9:15 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
 
 ---
 
-## Oct 23, ~9:10 PM: how we proceed from here (please reply in NABIL_TO_ADAM.md)
+## Oct 23, ~9:15 PM: how we proceed from here (please reply in NABIL_TO_ADAM.md)
+
+**Also new:** `pair()` now always returns `k` results with a reason. When Claude ranks fewer, rules-based picks fill the rest. The smoke test's feed still shows 5 of 8 cards with a reason, so `/feed` must be mixing in unranked candidates. Could it prefer the ranked ones, and only use unranked candidates when the ranked ones run out?
 
 **Where things stand:**
 - **Backend:** done and live on Adam's Mac through the tunnel. Smoke test 10/10, including your real Nessie checkout, plus 418 tagged products.
 - **Fit Check:** 3 demo posts are seeded on the shared server (`seed_fitcheck`), so u_demo's Fit Check feed isn't empty.
-- **The risk is now the app.** FlutterFlow is out (API calls need a paid plan), so we're rebuilding in SwiftUI (`docs/ios-plan.md`). A starter (Xcode project, API client and models for all your routes, Settings, and a first Quick Browse feed) is landing as the `ios-starter` PR tonight.
+- **The risk is now the app.** FlutterFlow is out (API calls need a paid plan), so we're rebuilding in **plain Flutter** (`docs/app-plan.md`). Swift was dropped because Ryan has no Xcode. A starter (folder `app/`: API client and models for all your routes, Settings, and a first Quick Browse feed) is landing as the `flutter-starter` PR tonight. It runs in Chrome on any laptop.
 
 **What Adam does (only he can):**
 - Keeps the Mac awake with the tunnel running, and reposts the URL in the group chat if it changes. Keeps the Anthropic credits topped up (thanks for flagging those errors).
-- Owns `ios/Core` (API + models) and builds the Closet tab, the Profile / Style DNA tab and the Fit Score badge.
-- Runs the app on his iPhone for the demo (free Apple ID).
+- Owns `app/lib/core` (API + models) and builds the Closet tab, the Profile / Style DNA tab and the Fit Score badge.
+- Builds the iPhone version on his Mac (Xcode, free Apple ID) for the demo.
 - Merges PRs when you're both busy. Note: our agents can open PRs but can't merge them; a human has to click Merge.
 
 **What we need from you:**
-1. **Merges:** review and merge **#8** (Style DNA + iOS plan) and the **`ios-starter`** PR into `staging` once its build passes. Your #7 has no conflicts with them.
-2. **Tell us if you have a Mac with Xcode.**
-   - **Yes:** build the **Cart / Checkout / Orders** and **Fit Check** tabs in SwiftUI under `ios/DressToImpress/Features/Cart/` and `Features/FitCheck/`. They're your routes, and the plan lists exactly what each screen calls.
-   - **No:** pair on Adam's Mac for those tabs, or take the non-Xcode work instead: the Devpost write-up, sponsor-track write-ups (Apify, Capital One/Nessie), the demo script, and the Fit Check seed improvement below.
+1. **Merges:** review and merge **#8** (Style DNA + app plan) and the **`flutter-starter`** PR into `staging` once `flutter analyze` is clean. Your #7 has no conflicts with them.
+2. **Build the Cart / Checkout / Orders and Fit Check tabs** in Flutter, under `app/lib/features/cart/` and `features/fitcheck/`. They're your routes, and the plan lists exactly what each screen calls. You only need the Flutter SDK + Chrome; no Mac needed. If you'd rather stay on backend/sponsor work (Devpost, Apify + Nessie write-ups, the demo script), say so and we'll re-split.
 3. **Fit Check seed tags:** `seed_fitcheck` writes tags with only `label` / `retailer` / `product_id`. Please also copy `category`, `color` (the product's `colors[0]`), `pattern` and `style_tags` from the product. Then the Fit Score badge (`POST /ai/fit-score {items: post.tagged}`) has something to score, and shop-the-fit matching is stricter. Your file; Adam won't touch it.
-4. **Saturday noon checkpoint:** feed → size → add to cart → checkout `paid`, on a phone. If the iOS Cart tab isn't ready by then, say so early and Adam will pick it up.
+4. **Saturday noon checkpoint:** feed → size → add to cart → checkout `paid`, on a phone. If the Flutter Cart tab isn't ready by then, say so early and Adam will pick it up.
 
-**Order of work tonight:** merge #8 + `ios-starter` → everyone runs the starter against the live backend → you start Cart (it's the noon checkpoint), then Fit Check → Ryan does the Feed/product page → Adam does Closet/Profile.
-
----
-
-## Oct 23, ~9:05 PM: app is moving to SwiftUI; you own the Cart + Fit Check tabs
-
-FlutterFlow needs a paid plan for API calls, so we're going native SwiftUI. Nothing changes on the backend. Plan: [`docs/ios-plan.md`](docs/ios-plan.md).
-- **Your tabs (your routes):** Cart (grouped by store), Checkout (`paid` / `nessie_failed`, the 409 object `detail`), Orders, and Fit Check (feed, create a post with a photo, edit tags, like/comment, "Shop this fit").
-- **Starter:** the `ios-starter` PR has the API client and models for every route in NABIL_TO_RYAN.md, so you only build views under `ios/DressToImpress/Features/Cart/` and `Features/FitCheck/`.
-- **You'll need a Mac with Xcode,** or pair on Adam's.
-- **New AI routes you may want:** `POST /ai/fit-score {items: post.tagged}` for a Fit Score badge on post detail, and `GET /users/{id}/style` (Style DNA).
+**Order of work tonight:** merge #8 + `flutter-starter` → everyone runs the starter against the live backend → you start Cart (it's the noon checkpoint), then Fit Check → Ryan does the Feed/product page → Adam does Closet/Profile.
 
 ---
 

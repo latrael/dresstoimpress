@@ -7,8 +7,15 @@ import pytest
 
 os.environ["MOCK_AI"] = "1"
 
-PNG = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
-       b"\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82")
+def _png() -> bytes:
+    import io
+    from PIL import Image
+    out = io.BytesIO()
+    Image.new("RGB", (4, 4), "blue").save(out, "PNG")
+    return out.getvalue()
+
+
+PNG = _png()
 
 
 @pytest.fixture()
@@ -82,3 +89,26 @@ def test_delete_post_owner_only(client):
     r = client.delete("/fitcheck/fc_seed_1", params={"user_id": "u_adam"})
     assert r.status_code == 200 and r.json() == {"post_id": "fc_seed_1", "deleted": True}
     assert client.delete("/fitcheck/fc_seed_1", params={"user_id": "u_adam"}).status_code == 404
+
+
+def test_clean_strips_exif_gps_and_shrinks(tmp_path):
+    from PIL import Image
+    from scripts.post_real_fits import MAX_SIDE, clean
+    exif = Image.Exif()
+    exif[0x8825] = {2: (37.0, 46.0, 30.0)}  # GPSLatitude
+    src = tmp_path / "fit.jpg"
+    Image.new("RGB", (3000, 2000), "red").save(src, exif=exif)
+    assert Image.open(src).getexif().get_ifd(0x8825)
+    out = tmp_path / "out.jpg"
+    out.write_bytes(clean(src))
+    img = Image.open(out)
+    assert img.format == "JPEG" and max(img.size) == MAX_SIDE
+    assert not img.getexif()
+
+
+def test_unreadable_photo_is_not_uploaded(client, tmp_path):
+    from scripts.post_real_fits import run
+    (tmp_path / "fit.heic").write_bytes(b"not an image")
+    before = len(_feed(client))
+    assert run(client, tmp_path, ["u_nabil"]) == 1
+    assert len(_feed(client)) == before

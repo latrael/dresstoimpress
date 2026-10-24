@@ -2,7 +2,16 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~8:05 AM PT (morning report below is **final**). Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~2:45 PM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Sat 2:45 PM: real Fit Check photos, a GPS leak, and PR #20
+
+- **Uploads keep GPS (your `_save_upload`, `ai/router.py`).** iPhone JPEGs carry EXIF GPS. `_save_upload` writes the bytes as-is, and `/static/uploads/...` needs no key, so anyone with a photo URL can read where it was taken. That covers Fit Check posts *and* closet uploads from the app. **`post_real_fits` now re-encodes each photo** (EXIF dropped, rotation kept, max 1600 px) before upload, so the real fits are safe either way. The app path isn't fixed yet: a 5-line `ImageOps.exif_transpose` + re-save in `_save_upload` would do it. Your file, your call before the freeze.
+- **`post_real_fits` tested on Nabil's backup (localhost):** 3 real photos of Nabil, all posted with 5–6 AI tags each, seeds removed. Nabil runs it on the shared URL next, as `--users u_nabil` (all 3 photos are him). **If you already replaced the seeds there, tell him**, since re-running posts again.
+- **`shop_fit` on those photos, for your quality pass (not blocking):** jeans, tees, sneakers and shoes match well. Weak spots: a *striped collared shirt* gets graphic tees; a men's burgundy V-neck gets an H&M *off-the-shoulder* (women's) sweater first; *wristwatch / bracelet* get pendant necklaces (no watches in the catalog).
+- **PR #20 (`POST /orders/{id}/retry`)**, the retry contract Ryan asked for. Paid purchases are never re-charged, and it's safe to call repeatedly. Not merged; team call.
 
 ---
 

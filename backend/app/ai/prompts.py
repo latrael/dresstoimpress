@@ -21,20 +21,36 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
-TRYON_VERSION = "v2"  # bump to invalidate cached try-ons when the prompt changes
+TRYON_VERSION = "v3"  # bump to invalidate cached try-ons when the prompt changes
+
+_FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic": "an athletic build",
+              "curvy": "a curvy figure", "broad": "a broad build"}
 
 
-def tryon_prompt(slots: list[str]) -> str:
-    """slots[i] = category of garment image i+2 (image 1 is the person), e.g. ["top", "shoes"]."""
-    lines = [f"Image {i + 2} shows a {cat}: put it on the person, replacing only their current {cat}."
-             for i, cat in enumerate(slots)]
+def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | None = None,
+                 size: str | None = None) -> str:
+    """slots[i] = category of garment image i+2 (image 1 is the person), e.g. ["top", "shoes"].
+    names: the garments' catalog names (same order), build: body-scan build, size: the size we'd pick,
+    so the garment drapes like that size on that body instead of a generic model fit."""
+    names = names or [""] * len(slots)
+    lines = []
+    for i, cat in enumerate(slots):
+        what = f"{cat} ({names[i]})" if names[i] else cat
+        lines.append(f"Image {i + 2} shows a {what}: put it on the person, replacing only their current {cat}.")
+    body_line = ""
+    if build in _FIT_WORDS:
+        body_line = f" The person has {_FIT_WORDS[build]}; the clothes must drape and fit on that body"
+        body_line += f", as a size {size} would" if size else ""
+        body_line += ", with natural wrinkles, weight and shadows, not painted on."
     return (
-        "Image 1 is the person. " + " ".join(lines) + " "
-        "Keep everything else from image 1 exactly the same: their other clothing, shoes, face, skin tone, hair, "
-        "body shape, proportions, pose and background. "
+        "Image 1 is the person. This is the SAME person in the output: identical face, skin tone, hair, "
+        "body shape, height, proportions, pose, hands and background. " + " ".join(lines) + body_line + " "
+        "Keep everything else from image 1 exactly the same: their other clothing, shoes and accessories. "
         "The garment images are references only: if they show a model, a logo, a size label, text or a watermark, "
-        "ignore all of it and use only the garment's color, fabric, fit and details. "
-        "Output one photorealistic full-body photo of the person from image 1, with no text, logos or borders."
+        "ignore all of it and use only the garment's color, fabric, cut, length and details. Match the garment's "
+        "real length and silhouette (cropped stays cropped, baggy stays baggy, oversized stays oversized). "
+        "Keep the lighting of image 1. Output one photorealistic full-body photo of the person from image 1, "
+        "sharp, with no text, logos, borders, collage panels or duplicate people."
     )
 
 PAIR = """You are a stylist.

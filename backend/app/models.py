@@ -77,6 +77,7 @@ class PairRequest(BaseModel):
 
 class PairResult(BaseModel):
     product_id: str
+    id: str = ""  # same as product_id; NABIL.md reads `id`
     score: float = Field(ge=0, le=1)
     reason: str
     pairs_with: list[str] = []

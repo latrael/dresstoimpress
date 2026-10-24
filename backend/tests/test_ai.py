@@ -269,3 +269,38 @@ def test_finder_no_token_no_live_search(monkeypatch):
     from app.ai import finder
     monkeypatch.delenv("APIFY_TOKEN", raising=False)
     assert finder.live_search({"label": "hoodie"}) == []
+
+
+NABIL_PRODUCT = {
+    "id": "asos:211172667:ivory", "retailer": "asos",
+    "name": "Topshop knitted high neck ribbed sweater lace detail in ivory", "price": 96.73,
+    "currency": "USD", "sizes": [{"name": "S", "inStock": True}, {"name": "M", "inStock": False}],
+    "image_url": "https://images.asos-media.com/x", "url": "https://www.asos.com/prd/211172667",
+    "category": "tops", "color": "ivory",
+    "tags": {"category": "tops", "color": "ivory", "pattern": "solid", "style": ["cozy", "minimal"],
+             "formality": "casual"}}
+
+
+def test_compat_reads_nabil_schema():
+    from app.ai.compat import as_product
+    p = as_product(NABIL_PRODUCT)
+    assert p["price_usd"] == 96.73 and p["product_url"].endswith("211172667")
+    assert p["category"] == "top" and p["colors"] == ["ivory"] and p["sizes"] == ["S"]
+    assert p["style_tags"] == ["cozy", "minimal"] and p["formality"] == 2 and p["brand"] == "ASOS"
+
+
+def test_pair_and_shop_fit_with_nabil_products(client):
+    from app.store import store
+    store.put("products", NABIL_PRODUCT["id"], NABIL_PRODUCT)
+    r = client.post("/pair", json={"user_id": "u_demo", "candidate_product_ids": [NABIL_PRODUCT["id"]]})
+    assert r.status_code == 200 and r.json()[0]["id"] == NABIL_PRODUCT["id"]
+    r = client.post("/ai/shop-fit", json={"viewer_id": "u_demo", "tagged": [
+        {"label": "ivory ribbed sweater"}]})
+    assert NABIL_PRODUCT["id"] in {p["id"] for p in r.json()}
+
+
+def test_products_tag_returns_nabil_tags(client):
+    r = client.post("/products/tag", json={"image_url": "https://x/prod.jpg"})
+    assert r.status_code == 200
+    t = r.json()["tags"]
+    assert t["category"] == "tops" and t["formality"] == "casual" and t["style"] == ["streetwear"]

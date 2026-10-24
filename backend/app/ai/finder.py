@@ -17,6 +17,7 @@ from urllib.parse import quote_plus
 
 import httpx
 
+from .compat import get_product, list_products
 from ..store import store
 
 log = logging.getLogger(__name__)
@@ -150,7 +151,7 @@ def live_search(tag: dict) -> list[dict]:
     key = "q-" + re.sub(r"[^a-z0-9]+", "-", query.lower())[:80]
     cached = store.get("live_search_cache", key)
     if cached is not None:
-        return [p for pid in cached["ids"] if (p := store.get("products", pid))]
+        return [p for pid in cached["ids"] if (p := get_product(pid))]
     sites = [tag["retailer"]] if tag.get("retailer") in LIVE_SITES else LIVE_SITES
     urls = search_urls(query)
     body = {"sites": sites, "maxItemsPerSite": LIVE_PER_SITE,
@@ -173,7 +174,7 @@ def live_search(tag: dict) -> list[dict]:
 def find_products(tag: dict, products: list[dict], n: int = 3) -> list[dict]:
     """Best buyable matches for one Fit Check item: catalog first, then live search."""
     if tag.get("product_id"):
-        p = store.get("products", tag["product_id"])
+        p = get_product(tag["product_id"])
         if p:
             return [p]
     hits = best_matches(tag, products, n)

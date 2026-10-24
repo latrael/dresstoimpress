@@ -90,6 +90,19 @@ def shop_fit(req: ShopFitRequest):
     return service.shop_fit(req.viewer_id, tagged)
 
 
+@router.post("/products/tag")
+def products_tag(req: TagFitRequest):
+    """Nabil's ingest: product image -> tags (contract fields + NABIL.md `tags` object). Cached per URL."""
+    if not req.image_url.startswith(("http://", "https://")):
+        raise HTTPException(400, "image_url must be http(s)")
+    try:
+        return service.tag_product(req.image_url)
+    except service.NotClothing:
+        raise HTTPException(422, "not_clothing")
+    except BadModelOutput as e:
+        raise HTTPException(502, f"tagger failed: {e}")
+
+
 @router.post("/ai/tag-fit")
 def tag_fit(req: TagFitRequest):
     """Items visible in an outfit photo -> Fit Check tags. Ryan: call after a post is created

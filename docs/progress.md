@@ -34,6 +34,15 @@ Boundaries:
 - `/feed` (Nabil) calls `ai.service.pair()`; `/swipe` (Nabil) calls `ai.memory.record_swipe()`; `GET /fitcheck/{post_id}/shop` (Nabil) returns `ai.service.shop_fit(viewer_id, post["tagged"])`. Adam doesn't edit those routes.
 - Gemini-drafted modules (size advisor, outfit rules) land in `backend/app/ai/` via Adam.
 
+## Schema: contract vs NABIL.md (decide at the schema meeting)
+
+Nabil's proposal (branch `nabil`, `NABIL.md`) differs from `backend/app/models.py`: `price`/`currency` vs `price_usd`, `url` vs `product_url`, plural categories (`tops`) vs singular (`top`), single `color` vs `colors[]`, sizes as `[{name, inStock}]` vs `["S"]`, and `tags {style[], formality: "casual"}` vs `style_tags[]` + `formality` 1–5.
+
+**The AI code reads both** (`backend/app/ai/compat.py`), so either choice works for Adam's side. What Nabil asked for is ready:
+- `POST /products/tag {image_url}` returns tags for a product image, including his exact `tags` object (`category: "tops"`, `style[]`, `formality: "casual"`). Cached per image, so tagging the catalog once is cheap (Haiku, ~$0.0002 per product).
+- `POST /pair` results now include `id` (same as `product_id`) plus `reason`.
+- Pick one shape for Ryan's app so the UI reads one set of names; Adam suggests keeping Nabil's richer `sizes` with `inStock`.
+
 ## Blockers
 
 1. **Google billing for try-on images.** The new Gemini project ("DRESStoIMPRESS") is locked while Google processes the billing account. Adam is waiting; retry with `python /tmp/gem_img.py` or any `/tryon` call.

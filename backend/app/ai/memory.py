@@ -13,6 +13,7 @@ import asyncio
 import logging
 import os
 
+from .compat import get_product, list_products
 from ..store import store
 
 log = logging.getLogger(__name__)
@@ -75,6 +76,9 @@ def record_swipe(user_id: str, product: dict, action: str) -> None:
     """Index one swipe in Moss. Never raises — memory is best-effort."""
     if not _moss_enabled():
         return
+    from .compat import as_product
+
+    product = as_product(product)
     doc = {
         "id": f'{product["id"]}-{action}',
         "text": _describe(product),
@@ -89,7 +93,7 @@ def record_swipe(user_id: str, product: dict, action: str) -> None:
 def _from_store(user_id: str, n: int = 8) -> tuple[list[str], list[str]]:
     liked, discarded = [], []
     for s in reversed(store.list("swipes", user_id=user_id)):
-        p = store.get("products", s["product_id"])
+        p = get_product(s["product_id"])
         if not p:
             continue
         bucket = liked if s.get("action") in LIKED else discarded if s.get("action") == "discard" else None

@@ -79,32 +79,49 @@ def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str]) -> s
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
-def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> tuple[str, bool]:
+COLLAGE_RETRY_SECONDS = int(os.getenv("COLLAGE_RETRY_SECONDS", "600"))
+
+
+def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> tuple[str, bool, str]:
+    """Returns (image_url, cached, mode). mode "ai" = Gemini try-on; "collage" = outfit board
+    fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS)."""
     key = _tryon_key(user_id, product_ids, closet_item_ids)
     hit = store.get("tryon_cache", key)
-    if hit:
-        return hit["image_url"], True
+    if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
+                or mock_mode("GEMINI_API_KEY")):
+        return hit["image_url"], True, hit.get("mode", "ai")
 
     user = store.get("users", user_id) or {}
     body = user.get("body_photo_url")
-    if not body:
-        raise ValueError("user has no body_photo_url")
 
     garments = [p["image_url"] for pid in product_ids if (p := get_product(pid))]
     garments += [c["image_url"] for cid in closet_item_ids if (c := store.get("closet_items", cid))]
     if not garments:
         raise ValueError("no garment images found for given ids")
 
-    if mock_mode("GEMINI_API_KEY"):
-        url = garments[0]  # placeholder so the UI flow works
-    else:
-        img = gemini_image(prompts.TRYON, [body, *garments])
-        TRYON_DIR.mkdir(parents=True, exist_ok=True)
-        (TRYON_DIR / f"{key}.png").write_bytes(img)
-        url = f"{PUBLIC_BASE}/static/tryon/{key}.png"
+    if os.getenv("MOCK_AI") == "1":  # UI development: instant placeholder, no downloads
+        store.put("tryon_cache", key, {"image_url": garments[0], "user_id": user_id, "mode": "collage",
+                                       "at": time.time()})
+        return garments[0], False, "collage"
 
-    store.put("tryon_cache", key, {"image_url": url, "user_id": user_id})
-    return url, False
+    TRYON_DIR.mkdir(parents=True, exist_ok=True)
+    mode = "ai"
+    img = None
+    if body and not mock_mode("GEMINI_API_KEY"):
+        try:
+            img = gemini_image(prompts.TRYON, [body, *garments])
+        except BadModelOutput:
+            img = None  # quota, billing, budget cap, no image returned
+    if img is None:
+        from .collage import outfit_board
+
+        mode = "collage"
+        img = outfit_board(body, garments)
+    name = f"{key}.png" if mode == "ai" else f"{key}-board.png"
+    (TRYON_DIR / name).write_bytes(img)
+    url = f"{PUBLIC_BASE}/static/tryon/{name}"
+    store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": mode, "at": time.time()})
+    return url, False, mode
 
 
 # ---------- /pair ----------

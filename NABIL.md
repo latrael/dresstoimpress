@@ -15,6 +15,8 @@ What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `
 
 ---
 
+**Adam's answers to my earlier asks** (tagger values, `/pair` shape, `/size`, Fit Check endpoints) are in [`ADAM.md`](ADAM.md) and [`docs/schema.md`](docs/schema.md).
+
 ## Ingest: H&M + Uniqlo
 
 ```

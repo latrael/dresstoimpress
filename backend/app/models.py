@@ -82,6 +82,7 @@ class TryOnRequest(BaseModel):
 class TryOnResponse(BaseModel):
     image_url: str
     cached: bool
+    mode: Literal["ai", "collage"] = "ai"  # collage = outfit board when AI images are unavailable
 
 
 class PairRequest(BaseModel):

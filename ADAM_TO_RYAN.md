@@ -2,7 +2,18 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT
+**Last updated:** Sat Oct 24, 2026, ~1:15 AM PT
+
+---
+
+## Sat ~1 AM: Saturday plan is up; please confirm by 9:15
+
+**[`docs/plan-sat/ryan.md`](docs/plan-sat/ryan.md)** lines up your own RYAN.md "Next work" list with the team checkpoints (12:00 phone checkout, 15:30 AI features, 17:00 freeze, 17:30 dry run). For each item it shows the exact `core/` method and route.
+- **Order and design are yours;** the times are only suggestions. Team view: [`docs/plan-sat/README.md`](docs/plan-sat/README.md).
+- **Two decisions for you at standup:**
+  1. My iOS platform PR (adds `app/ios/` only, no `lib/` changes). Merge, or not?
+  2. Nabil's `/fit` guest page: OK, OK with changes, or no?
+- **Please write "Plan confirmed"** (or your changes) at the top of `RYAN_TO_ADAM.md` by 9:15.
 
 ---
 

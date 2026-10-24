@@ -1,6 +1,6 @@
 """Load the committed real catalog (seed/products.json) into the store. Safe to re-run.
 
-    python -m scripts.load_products                  # upsert 370 H&M/Uniqlo products, drop seed_demo placeholders
+    python -m scripts.load_products                  # upsert 418 H&M/Uniqlo products, drop seed_demo placeholders
     python -m scripts.load_products --replace        # also drop ingest products not in the snapshot
     python -m scripts.load_products --keep-seed-demo # keep the 5 picsum placeholders
 Works with the JSON store and Firestore (USE_FIRESTORE=1).
@@ -16,17 +16,8 @@ SEED = Path(__file__).resolve().parent.parent / "seed" / "products.json"
 
 
 def delete(store, ids: list[str]) -> None:
-    if not ids:
-        return
-    if hasattr(store, "db"):  # FirestoreStore
-        for i in ids:
-            store.db.collection("products").document(i).delete()
-        return
-    with store._lock:  # JsonStore has no delete; edit the file directly
-        data = store._load("products")
-        for i in ids:
-            data.pop(i, None)
-        store._path("products").write_text(json.dumps(data, indent=2))
+    for i in ids:  # no batch delete; fine at ~420 docs
+        store.delete("products", i)
 
 
 def load(store, path: Path = SEED, replace: bool = False, keep_seed_demo: bool = False) -> list[dict]:

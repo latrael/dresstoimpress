@@ -9,9 +9,10 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. Everything here is o
 ## Switching to plain Flutter (Fri ~9:10 PM)
 
 FlutterFlow needs a paid plan for API calls, so we're rebuilding in **plain Flutter**: free, the same widgets you designed with, and it runs in Chrome on your laptop with no Xcode. **Read [`docs/app-plan.md`](docs/app-plan.md)**: setup, who builds which tab, and the timeline.
-- A starter is coming in the `flutter-starter` PR (folder `app/`). It has the API client and models for every route, a Settings screen for URL + key, and a first Quick Browse feed following your spec: vertical pages, photo paging inside the picture only, size chips, Add to Cart, heart = wishlist, no `/swipe`.
-- **You own the Feed tab:** Quick Browse polish, product page, try-on, complete-the-look sheet, onboarding, look and feel.
-- Nabil does Cart/Checkout + Fit Check; I do Closet, Profile (Style DNA) and the Fit Score badge. My Mac builds the iPhone version for the demo.
+- **You own the whole app (`app/`).** Nabil and I stay on our backends.
+- A starter is coming in the `flutter-starter` PR. It wires **all 5 tabs** to the live backend with plain UI: Quick Browse per your spec (vertical pages, photo paging inside the picture only, size chips, Add to Cart, heart = wishlist, no `/swipe`), the product page with try-on and complete-the-look, Cart → checkout, Fit Check, Closet and Profile/Style DNA. You restyle and polish it instead of building from zero.
+- Order: Feed → Cart/checkout (Sat noon checkpoint) → try-on/complete-the-look → Fit Check → Closet/Profile.
+- I keep `app/lib/core` in sync with the backend, so ask me for any missing call or field. My Mac builds the iPhone version for the demo.
 - Your FlutterFlow layout spec and fixtures are the design reference. Rebuild the screens from them.
 - **Web images:** load product photos via `GET /img?url=<image_url>` on our backend (no key). Retailer image servers don't always allow web apps to load them directly.
 

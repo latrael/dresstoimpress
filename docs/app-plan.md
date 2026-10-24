@@ -24,56 +24,54 @@ app/lib/
   core/        config.dart (URL + key, saved on device) · api.dart (one method per route) · models.dart
   components/  shared widgets (price label, size chips, Fit Score badge, network image)
   features/
-    feed/      Quick Browse + product page + try-on      → Ryan
-    cart/      cart, checkout, orders                    → Nabil
-    fitcheck/  posts, create, detail, tags, shop the fit → Nabil
-    closet/    grid, upload, duplicate prompt            → Adam
-    profile/   Style DNA, settings, onboarding           → Adam (onboarding: Ryan)
+    feed/      Quick Browse + product page + try-on + complete the look
+    cart/      cart, checkout, orders
+    fitcheck/  posts, create, detail, tags, shop the fit
+    closet/    grid, upload, duplicate prompt
+    profile/   Style DNA, settings, onboarding
+  (all of app/ → Ryan; core/ kept in sync by Adam)
 ```
 
-**Rules, so nobody's work crosses:**
-- **Only edit files in your own `features/` folder.** Need a new API method or model field? Add it in `core/` in a small PR and tag Adam, or ask him. He keeps `core/` in sync with the backend.
+**Rules:**
+- **Ryan edits `app/`.** If a call or field is missing, ask Adam: he keeps `core/` in sync with the backend.
 - **Branches:** `app/<you>-<thing>` → PR into `staging`. Before every PR: `flutter analyze` is clean, and it runs in Chrome against the live backend.
 - **Never call `/swipe` for photo paging or vertical browsing** (Ryan's rule). Save = `PUT /wishlist/...`. Cart = `POST /cart/.../items`.
 - **Packages:** only `http`, `shared_preferences` and `image_picker` unless the team agrees on more.
 
-## Who builds what, in order
+## Who builds what
 
-### Ryan: Feed tab (the demo's core)
-1. **Quick Browse:**
-   - Vertical `PageView` over `GET /feed?user_id=u_demo&limit=20`.
-   - Each page: picture section (horizontal `PageView` over `images[]`, starting only inside the picture; dots hidden for 1 image), brand + name + price (sale price with the original struck through), AI `reason` (hide when empty), description (hide when null).
-   - Size chips from `sizes` (grey out `in_stock: false`; pre-select from `POST /size`) and **Add to Cart** (`POST /cart/{user}/items {product_id, size, qty: 1}`; show the 422 `detail`).
-   - Heart: `PUT` / `DELETE /wishlist/{user}/items/{id}`, initialised from `GET /wishlist/{user}/ids`.
-2. **Try it on:** a button → `POST /tryon {user_id, product_ids: [id]}`. ~5 s, so show a loader. When `mode == "collage"`, label the result "Outfit board".
-3. **Complete the look:** a button → `POST /complete-look {user_id, product_id}`. A sheet lists the items (closet pieces marked "yours"), shows `new_items_total_usd`, and offers "Add all". Put the Fit Score badge on it: `POST /ai/fit-score {product_ids, closet_item_ids}`.
-4. **Onboarding:** height/weight (for `/size`) and the full-body photo (`POST /users/{id}/body-photo`, multipart `file`).
-5. Look and feel: theme, fonts, icon.
+**Ryan owns the whole app (`app/`).** Adam and Nabil stay on their backend tracks. That's fewer hand-offs, one consistent UI, and no merge fights.
+- **The starter does the heavy lifting.** The `flutter-starter` PR wires all 5 tabs to the live backend with plain Material UI: Feed (Quick Browse), Cart/Checkout/Orders, Fit Check, Closet, Profile/Style DNA, plus the product page, try-on, complete-the-look and the Fit Score badge.
+- **Ryan restyles and polishes it to his spec** instead of building from scratch.
 
-### Nabil: Cart + Fit Check tabs (his routes)
-1. **Cart:** `GET /cart/{user}`, grouped by store with subtotals and a total; remove with `DELETE /cart/{user}/items/{id}?size=`.
-2. **Checkout:** `POST /checkout/{user}`, then a receipt showing each purchase's `status`: `paid`, or `nessie_failed` with a retry. On **409**, `detail` is an object: show `detail.message` and keep the cart. Then `GET /orders/{user}`.
-3. **Fit Check feed:** `GET /fitcheck/feed?user_id=` → photo, caption, author, like (`POST .../like`), comment count.
-4. **Create a post:** image_picker → multipart `POST /fitcheck` (`user_id`, `file`, `caption`). The AI pre-fills tags; the owner edits them with `PATCH /fitcheck/{id}/tags`.
-5. **Post detail:** tags, comments, the **Fit Score badge** (`POST /ai/fit-score {items: post.tagged}`), and **"Shop this fit"** (`GET /fitcheck/{id}/shop?user_id=`): cards with `reason` and Add to Cart.
+### Ryan: the app, in this order
+1. **Feed / Quick Browse + product page.** Match his wireframe: picture section, dots, info, description, size chips, Add to Cart, heart. No `/swipe` for paging or browsing.
+2. **Cart → checkout `paid`** (the Saturday-noon checkpoint).
+3. **Try it on + Complete the look** (the AI moments judges see).
+4. **Fit Check:** feed, post, "Shop this fit".
+5. **Closet, Profile / Style DNA, onboarding.**
+6. Look and feel: theme, fonts, icon. Empty, loading and error states.
 
-### Adam: core + Closet + Profile + shared AI pieces
-1. Keep `core/api.dart` and `models.dart` in sync with the backend, and review `core/` PRs.
-2. **Closet:** `GET /closet/{user}` grid; upload via image_picker → `POST /closet/upload`. If `duplicate_of` is set: "Looks like you already have this" → **Keep both** / **Remove** (`DELETE /closet/{user}/{id}`).
-3. **Profile:** the Style DNA card (`GET /users/{id}/style`: headline, style shares, palette swatches from `hex`, formality, price ranges) with a "Use these budgets" button (`POST /users/{id}/style/apply`), plus Settings.
-4. **Fit Score badge** widget (`score` + `verdict`; tap shows `notes`), used by Ryan and Nabil.
-5. Builds and runs the iPhone version on his Mac for the demo.
+### Adam: AI backend (his track)
+- AI routes and quality. He keeps `app/lib/core` (API + models) in sync whenever a backend route changes, and adds anything Ryan asks for.
+- Hosts the backend (Mac + tunnel) and builds and runs the iPhone version for the demo.
+
+### Nabil: commerce backend (his track)
+- `/feed` should prefer ranked cards, so every card has a reason. Add fuller Fit Check seed tags (category, color, pattern, style_tags), and keep Nessie checkout solid.
+- Owns the README for sponsor judges (Apify, Capital One / Nessie), the Devpost write-up and the demo script.
+
+**Backup rule:** if the noon checkpoint is at risk, Adam or Nabil take one whole tab from Ryan's list, agreed in the group chat. Never a half-shared screen.
 
 ## Timeline
 
 | When | Goal |
 | --- | --- |
-| **Fri night** | Starter merged to `staging`. Everyone runs it in Chrome against the live backend and starts their tab 1 task. |
-| **Sat noon** | **End-to-end:** feed → size → add to cart → checkout `paid`, in Chrome and on a phone (Ryan + Nabil). Closet upload works (Adam). |
+| **Fri night** | Starter merged to `staging`. Ryan runs it in Chrome against the live backend and starts the feed polish. |
+| **Sat noon** | **End-to-end:** feed → size → add to cart → checkout `paid`, in Chrome and on a phone. |
 | **Sat evening** | Try-on, complete the look, Fit Check post + shop the fit, Style DNA, Fit Score. Real fits photographed at the venue. |
 | **Sat night** | Polish, empty/error states, demo script, Devpost write-up. |
 | **Sun morning** | Feature freeze, record a backup demo video, submit. |
 
 ## Paste-in brief for your coding agent
 
-> Repo `latrael/dresstoimpress`, branch from `staging`. The app is a plain Flutter project in `app/` (packages: http, shared_preferences, image_picker only). Read `docs/app-plan.md`, `app/README.md`, `ADAM_TO_RYAN.md`, `NABIL_TO_RYAN.md` and `RYAN_TO_NABIL.md` first. My part: **<your section above>**. Only edit `app/lib/features/<my folder>/` (and `components/` for shared widgets I own). Use the API client in `core/`. If a call or field is missing, tell me instead of editing `core/`. Never call `/swipe` for photo paging or vertical browsing. Never put the backend URL or key in code. Load product images through the backend's `/img?url=` helper in `core/`. Run `flutter analyze` and test in Chrome (`flutter run -d chrome`) before each PR into `staging`.
+> Repo `latrael/dresstoimpress`, branch from `staging`. The app is a plain Flutter project in `app/` (packages: http, shared_preferences, image_picker only). Read `docs/app-plan.md`, `app/README.md`, `ADAM_TO_RYAN.md`, `NABIL_TO_RYAN.md` and `RYAN_TO_NABIL.md` first. I own the whole app; work in the order in the plan. Use the API client in `core/`. If a backend call or field is missing, tell me so I can ask Adam, instead of guessing. Never call `/swipe` for photo paging or vertical browsing. Never put the backend URL or key in code. Load product images through the backend's `/img?url=` helper in `core/`. Run `flutter analyze` and test in Chrome (`flutter run -d chrome`) before each PR into `staging`.

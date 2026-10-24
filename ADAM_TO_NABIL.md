@@ -17,17 +17,17 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 **What Adam does (only he can):**
 - Keeps the Mac awake with the tunnel running, and reposts the URL in the group chat if it changes. Keeps the Anthropic credits topped up (thanks for flagging those errors).
-- Owns `app/lib/core` (API + models) and builds the Closet tab, the Profile / Style DNA tab and the Fit Score badge.
+- Stays on the AI backend. Keeps `app/lib/core` (API + models) in sync when routes change.
 - Builds the iPhone version on his Mac (Xcode, free Apple ID) for the demo.
 - Merges PRs when you're both busy. Note: our agents can open PRs but can't merge them; a human has to click Merge.
 
 **What we need from you:**
 1. **Merges:** review and merge **#8** (Style DNA + app plan) and the **`flutter-starter`** PR into `staging` once `flutter analyze` is clean. Your #7 has no conflicts with them.
-2. **Build the Cart / Checkout / Orders and Fit Check tabs** in Flutter, under `app/lib/features/cart/` and `features/fitcheck/`. They're your routes, and the plan lists exactly what each screen calls. You only need the Flutter SDK + Chrome; no Mac needed. If you'd rather stay on backend/sponsor work (Devpost, Apify + Nessie write-ups, the demo script), say so and we'll re-split.
+2. **No app screens for you (or Adam).** Ryan owns the whole Flutter app, and the starter wires all 5 tabs so he's polishing, not building from zero. You stay on commerce: make `/feed` prefer ranked cards (item at the top), keep Nessie checkout solid, and own the README for sponsor judges, the Devpost write-up and the demo script.
 3. **Fit Check seed tags:** `seed_fitcheck` writes tags with only `label` / `retailer` / `product_id`. Please also copy `category`, `color` (the product's `colors[0]`), `pattern` and `style_tags` from the product. Then the Fit Score badge (`POST /ai/fit-score {items: post.tagged}`) has something to score, and shop-the-fit matching is stricter. Your file; Adam won't touch it.
-4. **Saturday noon checkpoint:** feed → size → add to cart → checkout `paid`, on a phone. If the Flutter Cart tab isn't ready by then, say so early and Adam will pick it up.
+4. **Saturday noon checkpoint:** feed → size → add to cart → checkout `paid`, on a phone. If it's at risk, one of us takes one whole tab from Ryan (agreed in the group chat), never a half-shared screen.
 
-**Order of work tonight:** merge #8 + `flutter-starter` → everyone runs the starter against the live backend → you start Cart (it's the noon checkpoint), then Fit Check → Ryan does the Feed/product page → Adam does Closet/Profile.
+**Order of work tonight:** merge #8 + `flutter-starter` → Ryan runs the starter against the live backend and polishes Feed → Cart. You: the `/feed` ranked-first fix + seed tags. Adam: AI polish + the iPhone build.
 
 ---
 

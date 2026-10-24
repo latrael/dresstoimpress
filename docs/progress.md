@@ -9,6 +9,14 @@
 
 ## Overnight log (Adam's session, every 20 min)
 
+- **2:05:**
+  - **Fallback drill** on a copy of the data, port 8001, Apify off:
+    - **Claude down → Gemini text: smoke 10/10** (Gemini wrote the reasons).
+    - **Claude + Gemini down → rules + outfit board: smoke 10/10.** Every feed card still has a reason, and try-on returns `mode: collage`.
+    - The only hard failure is closet / outfit photo tagging, which needs at least one AI provider. Its error is now a plain message (PR #15).
+  - **⚠️ Mistake:** `reset_demo` ran against the **shared** store instead of the drill copy, so u_demo's cart, swipes, wishlist and the feed cache were cleared at 2:00. That's the clean demo state anyway, but it wasn't intended.
+  - **Tunnel:** still down (waiting for Adam, 8:45).
+  - **Ryan's agent:** confirmed the plan and is working `ryan.md`; its live checks are blocked by the tunnel.
 - **2:15:**
   - **⚠️ Shared tunnel down since ~1:25** (quick-tunnel hostname dropped by Cloudflare). The server is fine locally. **Adam restarts cloudflared at 8:45**; his session then reads the new hostname from cloudflared's local metrics, sets `PUBLIC_BASE`, restarts and smoke-tests.
   - **PR #15** now also rewrites stored image URLs to the new address at startup.

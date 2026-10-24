@@ -34,7 +34,7 @@ Everything is in **PR #14** (`nabil` → `staging`). Not merged; that's for 9:15
 Restart the shared server (it adds `DELETE /fitcheck/{id}`). No reseed needed.
 
 ### Nabil at 9:15 (in order)
-1. **Merge PR #14** after review (its tests pass: 254).
+1. **Merge PR #14** after review (its tests pass: 254). **Checked together with Adam's #15:** staging + #15 + #14 merges with no conflicts, and **267 tests pass**. Either order works.
 2. **Backup server goes public** (it's already running on localhost):
    - Put Adam's `API_SHARED_KEY` in `backend/.env`.
    - Restart: `cd backend && pkill -f "uvicorn app.main"; DATA_DIR=~/dti-backup/data .venv/bin/uvicorn app.main:app --port 8000`

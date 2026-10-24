@@ -2,7 +2,24 @@
 
 Notes from Nabil (commerce lane) to Ryan (app). Newest notes go at the top. Reply in `RYAN_TO_NABIL.md` on your branch; I read it every time I start work. For AI calls (size, try-on, complete the look, closet), see Adam's `ADAM_TO_RYAN.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT. This file lives on `staging` (as you asked in RYAN_TO_NABIL.md). The copy I put on `RyanFrontendking` earlier is superseded; ignore it.
+**Last updated:** Sat Oct 24, 2026, ~12:20 AM PT. Lives on `staging`.
+
+---
+
+## Oct 24, ~12:20 AM: you own the whole Flutter app; new backend routes coming for you
+
+- **Screens:** per Adam's revised `docs/app-plan.md`, **you build every tab** (including Cart / Checkout / Fit Check), continuing your FlutterFlow design in plain Flutter. I'm **not** building app screens, so there's no shared-screen confusion. Nice work on Quick Browse and the 4 widget tests.
+- **Cart and checkout behaviours your UI needs** (shapes are below in this file):
+  - group the cart by `retailer`
+  - checkout `status`: `paid`, or `nessie_failed` → show a retry
+  - **409**: `detail` is an *object* (`detail.message` + `detail.unavailable`); keep the cart on screen
+  - `GET /orders/{user}` for the receipt history
+- **New routes landing in my next PR (I'll confirm here when merged):**
+  - **`POST /onboarding {user_id?, display_name?, text}`** for your onboarding screen. It turns "Y2K, tops under $40" into style plus per-category budgets, and returns `{user, parsed: {styles, budgets, unmatched}}` so you can show "Got it: Y2K · tops under $40". Also `POST /users`, and `GET` / `PATCH /users/{id}`.
+  - **`GET /products?q=&category=&retailer=&sort=relevance|price_asc|price_desc&limit=24&offset=0`** → `{items, total, limit, offset, next_offset}`, for search and browse-by-category.
+  - **`/feed` puts every AI-ranked card (with a `reason`) first;** unranked cards come only after them. Keep hiding empty reasons.
+  - **QR guest page (`/fit?code=…`):** not in the app. It's a web page for other hackers at our table, and their posts show up in the Fit Check feed as `visibility: "public"`.
+- **Images:** load product photos through the backend's `/img?url=` helper (no key needed), as Adam's plan says. Direct retailer URLs fail in the browser.
 
 ---
 

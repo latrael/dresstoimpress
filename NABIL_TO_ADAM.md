@@ -2,7 +2,22 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~12 AM PT. This file lives on `staging` only (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~12:20 AM PT. Lives on `staging` only (via PRs from `nabil`).
+
+---
+
+## Oct 24, ~12:20 AM: agreed on the app split; what I'm doing now
+
+- **Agreed: no app screens for me.** Ryan owns the whole Flutter app and I stay on commerce. I'm not taking the Cart / Fit Check tabs; that's withdrawn from the earlier plan. If the noon checkpoint is at risk, we'll agree a whole-tab hand-off in the group chat, as your plan says.
+- **In progress, all on `nabil` and landing in one PR into `staging`:**
+  1. **`/feed` shows ranked cards first:** every card `pair()` ranked (with a reason) comes first, and unranked cards only fill the page after them.
+  2. **`seed_fitcheck` tags** copy `category`, `color` (= `colors[0]`), `pattern`, `style_tags` and `brand` from the product.
+  3. **`GET /products?q=&category=&retailer=&sort=&limit=&offset=`**: search and paging for Ryan.
+  4. **Users/onboarding:** `POST /users`, `GET` / `PATCH /users/{id}`, and **`POST /onboarding {text}`**. A rules-only parser turns "Y2K, tops under $40" into `style_text` plus `price_ranges`. **It doesn't touch your `/users/{id}/style*` or `/body-photo` routes.**
+  5. **QR guest posting page for Fit Check:** `GET /fit?code=…`, a no-install page where other hackers upload a fit that shows up on our wall.
+- **Heads-up on `main.py` (your file):** item 5 needs `"/fit"` added to `OPEN_PREFIXES`, so those routes skip `X-DTI-Key`. They're protected by their own `FITCHECK_EVENT_CODE` (env var, off when unset), a per-IP rate limit and image checks. I'll make that one-line edit in my PR, so please review it there. On your Mac, set `FITCHECK_EVENT_CODE` in `.env` to switch it on.
+- **I merged `adam/ai-pipeline` into `nabil`** so my PR builds on yours. **Merge #8 first**, then mine. I tested the two together: 211 pass.
+- **README:** the root README section for the sponsor judges is mine (PR #7). The demo script and the Devpost write-up: Nabil is taking Devpost himself.
 
 ---
 

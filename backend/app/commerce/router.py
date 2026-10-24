@@ -43,6 +43,11 @@ class CartAdd(BaseModel):
     qty: int = Field(1, ge=1)
 
 
+class CartSizeChange(BaseModel):
+    size: str
+    new_size: str
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -259,6 +264,18 @@ def _check_size(p: dict, size: str) -> None:
         raise HTTPException(422, msg)
 
 
+def _unavailable_reason(p: Optional[dict], size: str) -> Optional[str]:
+    """Short reason a cart line can't be bought right now (None = buyable); the app shows it as-is."""
+    if not p:
+        return "no longer available"  # product dropped from the catalog
+    s = next((s for s in _sizes(p) if s.get("name") == size), None)
+    if not s:
+        return "size no longer offered"
+    if not _size_ok(s) or not p.get("in_stock", True):
+        return "size sold out"
+    return None
+
+
 def _cart(user_id: str) -> dict:
     return store.get("carts", user_id) or {"user_id": user_id, "items": []}
 
@@ -269,23 +286,36 @@ def _add_to_cart(user_id: str, product_id: str, size: str, qty: int) -> dict:
     if item:
         item["qty"] += qty
     else:
-        cart["items"].append({"product_id": product_id, "size": size, "qty": qty, "added_at": _now()})
+        # name is kept on the line so the cart can still say what it was if the product leaves the catalog
+        cart["items"].append({"product_id": product_id, "size": size, "qty": qty, "added_at": _now(),
+                              "name": (store.get("products", product_id) or {}).get("name", "")})
     store.put("carts", user_id, cart)
     return cart
 
 
+def _line_name(i: dict, p: Optional[dict]) -> str:
+    return (p or {}).get("name") or i.get("name") or i["product_id"]
+
+
 def _grouped(user_id: str) -> dict:
+    """Buyable lines grouped by retailer. Lines that can't be bought go to `unavailable` (available: false,
+    unavailable_reason, no price toward the totals) so the user sees them and can remove them.
+    `count` covers every line, so a cart holding only unavailable items isn't shown as empty."""
     groups: dict[str, dict] = {}
+    unavailable, count = [], 0
     for i in _cart(user_id)["items"]:
+        count += i["qty"]
         p = store.get("products", i["product_id"])
-        if not p:
-            continue  # product dropped from the catalog
+        if reason := _unavailable_reason(p, i["size"]):
+            unavailable.append({**i, "name": _line_name(i, p), "product": p, "available": False,
+                                "unavailable_reason": reason})
+            continue
         g = groups.setdefault(p["retailer"], {"retailer": p["retailer"], "items": [], "subtotal_usd": 0.0})
-        g["items"].append({**i, "product": p})
+        g["items"].append({**i, "product": p, "available": True})
         g["subtotal_usd"] = round(g["subtotal_usd"] + _price(p) * i["qty"], 2)
     gs = list(groups.values())
     return {"user_id": user_id, "groups": gs, "total_usd": round(sum(g["subtotal_usd"] for g in gs), 2),
-            "count": sum(i["qty"] for g in gs for i in g["items"])}
+            "count": count, "unavailable": unavailable}
 
 
 @router.post("/cart/{user_id}/items")
@@ -306,6 +336,29 @@ def cart_remove(user_id: str, product_id: str, size: Optional[str] = None):
     cart = _cart(user_id)
     cart["items"] = [i for i in cart["items"]
                      if not (i["product_id"] == product_id and (size is None or i["size"] == size))]
+    store.put("carts", user_id, cart)
+    return _grouped(user_id)
+
+
+@router.patch("/cart/{user_id}/items/{product_id}")
+def cart_change_size(user_id: str, product_id: str, req: CartSizeChange):
+    """Moves the `size` line to `new_size` with the same qty, merging into an existing `new_size` line.
+    One store write, so it can't half-fail. Same size = no-op. 404 no such line, 409 new_size not buyable."""
+    cart = _cart(user_id)
+    line = next((i for i in cart["items"] if i["product_id"] == product_id and i["size"] == req.size), None)
+    if not line:
+        raise HTTPException(404, f"size {req.size} of {product_id} is not in the cart")
+    if req.new_size == req.size:
+        return _grouped(user_id)
+    p = store.get("products", product_id)
+    if msg := (_size_problem(p, req.new_size) if p else f"{_line_name(line, p)} is no longer available"):
+        raise HTTPException(409, msg)
+    target = next((i for i in cart["items"] if i["product_id"] == product_id and i["size"] == req.new_size), None)
+    if target:
+        target["qty"] += line["qty"]
+        cart["items"].remove(line)
+    else:
+        line["size"] = req.new_size
     store.put("carts", user_id, cart)
     return _grouped(user_id)
 
@@ -331,14 +384,15 @@ def _pay(user_id: str, purchase: dict) -> None:
 @router.post("/checkout/{user_id}")
 def checkout(user_id: str):
     """One Nessie purchase per retailer (`paid`), or `pending_nessie` when NESSIE_API_KEY isn't set.
-    409 {message, unavailable: [{product_id, size}]} if any item went out of stock; nothing is charged."""
+    409 {message, unavailable: [{product_id, size, name, reason}]} if any item can't be bought (sold out or
+    gone from the catalog): nothing is charged or skipped, and the cart is kept so the user can remove them."""
     bad, msgs = [], []
     for i in _cart(user_id)["items"]:  # stock may have changed since add: charge nothing, keep the cart
         p = store.get("products", i["product_id"])
-        msg = _size_problem(p, i["size"]) if p else f"{i['product_id']} is no longer available"
-        if msg:
-            bad.append({"product_id": i["product_id"], "size": i["size"]})
-            msgs.append(msg)
+        if reason := _unavailable_reason(p, i["size"]):
+            name = _line_name(i, p)
+            bad.append({"product_id": i["product_id"], "size": i["size"], "name": name, "reason": reason})
+            msgs.append(_size_problem(p, i["size"]) if p else f"{name} is no longer available")
     if bad:
         raise HTTPException(409, {"message": "; ".join(msgs), "unavailable": bad})
     cart = _grouped(user_id)

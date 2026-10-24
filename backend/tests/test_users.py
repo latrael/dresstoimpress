@@ -17,6 +17,13 @@ ALL = ["top", "bottom", "outerwear", "shoes", "dress", "accessory"]
      {"shoes": [50, 120], "dress": [42, 78]}),
     ("gym fits, hoodies < 35, bags max $80", ["athleisure"], {"top": [0, 35], "accessory": [0, 80]}),
     ("under $30 tees", [], {"top": [0, 30]}),
+    # Ryan's onboarding price maximums (tops / bottoms / jackets / shoes); jackets = the catalog's "outerwear"
+    ("tops under $30, jackets max 80", [], {"top": [0, 30], "outerwear": [0, 80]}),
+    ("y2k, regular fit, tops under $30.0, bottoms under $45.5, jackets under $80.0, shoes under $120.0", ["y2k"],
+     {"top": [0, 30], "bottom": [0, 45.5], "outerwear": [0, 80], "shoes": [0, 120]}),  # the app's exact text
+    ("top max $30; bottom up to 50; jacket at most 80; shoe no more than 90", [],
+     {"top": [0, 30], "bottom": [0, 50], "outerwear": [0, 80], "shoes": [0, 90]}),
+    ("max $30 for tops, coats below 100, boots <= 150", [], {"top": [0, 30], "outerwear": [0, 100], "shoes": [0, 150]}),
 ])
 def test_parse_prefs(text, styles, budgets):
     from app.commerce.users import parse_prefs

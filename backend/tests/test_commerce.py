@@ -194,9 +194,95 @@ def test_checkout_409_when_stock_changed(client):
     r = client.post("/checkout/u_409")
     assert r.status_code == 409
     assert r.json()["detail"] == {"message": f"size M is sold out for {p['name']}",
-                                  "unavailable": [{"product_id": "uniqlo-flaky", "size": "M"}]}
+                                  "unavailable": [{"product_id": "uniqlo-flaky", "size": "M", "name": p["name"],
+                                                   "reason": "size sold out"}]}
     assert client.get("/cart/u_409").json()["count"] == 2  # cart kept
     assert not store.list("orders", user_id="u_409")       # nothing charged
+
+
+def test_dropped_product_shown_removable_and_named_at_checkout(client):
+    from app.store import store
+    store.put("users", "u_gone", {"id": "u_gone", "price_ranges": RANGES})
+    store.put("products", "asos-gone", {**store.get("products", "asos-demo-1"), "id": "asos-gone", "name": "Gone halter"})
+    client.post("/cart/u_gone/items", json={"product_id": "asos-gone", "size": "M", "qty": 2})
+    client.post("/cart/u_gone/items", json={"product_id": "hm-demo-1", "size": "M"})
+    store.delete("products", "asos-gone")  # left the catalog after it was carted
+
+    cart = client.get("/cart/u_gone").json()
+    assert [i["product_id"] for g in cart["groups"] for i in g["items"]] == ["hm-demo-1"]
+    assert cart["groups"][0]["items"][0]["available"] is True
+    assert cart["total_usd"] == 12.99 and cart["count"] == 3  # no price for the gone item, still counted
+    [gone] = cart["unavailable"]
+    assert (gone["product_id"], gone["size"], gone["qty"], gone["name"]) == ("asos-gone", "M", 2, "Gone halter")
+    assert gone["available"] is False and gone["unavailable_reason"] == "no longer available"
+    assert gone["product"] is None
+
+    r = client.post("/checkout/u_gone")  # named, not silently skipped
+    assert r.status_code == 409
+    assert r.json()["detail"] == {"message": "Gone halter is no longer available", "unavailable": [
+        {"product_id": "asos-gone", "size": "M", "name": "Gone halter", "reason": "no longer available"}]}
+    assert not store.list("orders", user_id="u_gone")
+    r = client.patch("/cart/u_gone/items/asos-gone", json={"size": "M", "new_size": "L"})
+    assert r.status_code == 409 and r.json()["detail"] == "Gone halter is no longer available"
+
+    cart = client.delete("/cart/u_gone/items/asos-gone", params={"size": "M"}).json()
+    assert cart["unavailable"] == [] and cart["count"] == 1
+    assert client.post("/checkout/u_gone").status_code == 200
+
+
+def test_sold_out_size_listed_unavailable(client):
+    from app.store import store
+    store.put("users", "u_so", {"id": "u_so", "price_ranges": RANGES})
+    p = {**store.get("products", "hm-demo-1"), "id": "hm-flaky"}
+    store.put("products", "hm-flaky", p)
+    client.post("/cart/u_so/items", json={"product_id": "hm-flaky", "size": "S"})
+    store.put("products", "hm-flaky", {**p, "sizes": [{"name": "S", "in_stock": False}]})
+    cart = client.get("/cart/u_so").json()
+    assert cart["groups"] == [] and cart["total_usd"] == 0 and cart["count"] == 1
+    assert cart["unavailable"][0]["unavailable_reason"] == "size sold out"
+    assert cart["unavailable"][0]["product"]["id"] == "hm-flaky"
+    store.put("products", "hm-flaky", {**p, "sizes": [{"name": "M", "in_stock": True}]})
+    assert client.get("/cart/u_so").json()["unavailable"][0]["unavailable_reason"] == "size no longer offered"
+
+
+def _lines(cart):
+    return sorted((i["product_id"], i["size"], i["qty"]) for g in cart["groups"] for i in g["items"])
+
+
+def test_change_size_keeps_qty(client):
+    client.post("/cart/u_sz/items", json={"product_id": "hm-demo-1", "size": "M", "qty": 3})
+    client.post("/cart/u_sz/items", json={"product_id": "zara-demo-1", "size": "M"})
+    r = client.patch("/cart/u_sz/items/hm-demo-1", json={"size": "M", "new_size": "L"})
+    assert r.status_code == 200
+    assert _lines(r.json()) == [("hm-demo-1", "L", 3), ("zara-demo-1", "M", 1)]
+    assert r.json() == client.get("/cart/u_sz").json()  # same shape as GET /cart
+    assert r.json()["total_usd"] == round(3 * 12.99 + 59.90, 2)
+
+
+def test_change_size_merges_into_existing_line(client):
+    from app.store import store
+    client.post("/cart/u_merge/items", json={"product_id": "hm-demo-1", "size": "S", "qty": 2})
+    client.post("/cart/u_merge/items", json={"product_id": "hm-demo-1", "size": "M", "qty": 1})
+    cart = client.patch("/cart/u_merge/items/hm-demo-1", json={"size": "S", "new_size": "M"}).json()
+    assert _lines(cart) == [("hm-demo-1", "M", 3)] and cart["count"] == 3
+    assert len(store.get("carts", "u_merge")["items"]) == 1
+
+
+def test_change_size_errors_and_noop(client):
+    from app.store import store
+    client.post("/cart/u_szerr/items", json={"product_id": "hm-demo-1", "size": "M", "qty": 2})
+    before = store.get("carts", "u_szerr")
+    url = "/cart/u_szerr/items/hm-demo-1"
+    r = client.patch(url, json={"size": "M", "new_size": "XL"})  # XL is sold out in the seed
+    assert r.status_code == 409 and r.json()["detail"] == "size XL is sold out for Cropped baby tee"
+    r = client.patch(url, json={"size": "M", "new_size": "XXXL"})
+    assert r.status_code == 409 and r.json()["detail"] == "size XXXL is not offered for Cropped baby tee"
+    assert client.patch(url, json={"size": "S", "new_size": "L"}).status_code == 404     # no S line
+    assert client.patch("/cart/u_szerr/items/zara-demo-1", json={"size": "M", "new_size": "L"}).status_code == 404
+    assert client.patch(url, json={"size": "M"}).status_code == 422
+    r = client.patch(url, json={"size": "M", "new_size": "M"})
+    assert r.status_code == 200 and _lines(r.json()) == [("hm-demo-1", "M", 2)]
+    assert store.get("carts", "u_szerr") == before  # nothing above changed the cart
 
 
 def test_feed_ranked_cards_first(client, monkeypatch):

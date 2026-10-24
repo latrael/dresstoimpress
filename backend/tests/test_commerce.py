@@ -107,3 +107,93 @@ def test_interleave_dedupes_styles_and_mixes_stores():
                        mk("c", "hm", "bottom", "Mom Jeans"), mk("d", "hm", "top", "Tee"),
                        mk("e", "uniqlo", "top", "Supima Tee")])
     assert [p["id"] for p in out] == ["a", "e", "d", "c"]
+
+
+# ---------- wishlist (independent of swipes) ----------
+
+def test_wishlist_put_is_idempotent_and_keeps_feed(client, monkeypatch):
+    from app.ai import memory
+    from app.store import store
+    calls = []
+    monkeypatch.setattr(memory, "record_swipe", lambda u, p, a: calls.append((u, p["id"], a)))
+    for _ in range(2):
+        r = client.put("/wishlist/u_wish/items/hm-demo-1")
+        assert r.status_code == 200 and r.json() == {"user_id": "u_wish", "product_id": "hm-demo-1", "saved": True}
+    assert calls == [("u_wish", "hm-demo-1", "wishlist")]
+    assert len(store.list("wishlist", user_id="u_wish")) == 1 and not store.list("swipes", user_id="u_wish")
+    store.put("users", "u_wish", {"id": "u_wish", "price_ranges": RANGES})
+    assert "hm-demo-1" in {c["id"] for c in client.get("/feed", params={"user_id": "u_wish"}).json()}
+
+    client.put("/wishlist/u_wish/items/uniqlo-demo-1")
+    assert client.get("/wishlist/u_wish/ids").json() == ["uniqlo-demo-1", "hm-demo-1"]  # newest first
+    items = client.get("/wishlist/u_wish").json()
+    assert [p["id"] for p in items] == ["uniqlo-demo-1", "hm-demo-1"] and items[0]["name"]
+
+
+def test_wishlist_delete_is_idempotent(client):
+    client.put("/wishlist/u_del/items/hm-demo-1")
+    for _ in range(2):
+        r = client.delete("/wishlist/u_del/items/hm-demo-1")
+        assert r.status_code == 200 and r.json()["saved"] is False
+    assert client.get("/wishlist/u_del/ids").json() == []
+    assert client.delete("/wishlist/u_del/items/never-saved").json()["saved"] is False
+
+
+def test_wishlist_unknown_product_404(client):
+    r = client.put("/wishlist/u_wish/items/nope")
+    assert r.status_code == 404 and r.json() == {"detail": "unknown product"}
+
+
+def test_legacy_swipe_save_dismisses_and_wishlists(client):
+    from app.store import store
+    store.put("users", "u_leg", {"id": "u_leg", "price_ranges": RANGES})
+    client.post("/swipe", json={"user_id": "u_leg", "product_id": "zara-demo-1", "action": "save"})
+    assert "zara-demo-1" not in {c["id"] for c in client.get("/feed", params={"user_id": "u_leg"}).json()}
+    assert client.get("/wishlist/u_leg/ids").json() == ["zara-demo-1"]
+    client.put("/wishlist/u_leg/items/zara-demo-1")  # both sources: still one entry
+    assert [p["id"] for p in client.get("/wishlist/u_leg").json()] == ["zara-demo-1"]
+
+    # a save from before the wishlist collection (swipe only) still shows, and DELETE removes it
+    store.put("swipes", "u_leg:asos-demo-1", {"user_id": "u_leg", "product_id": "asos-demo-1",
+                                              "action": "wishlist", "swipe": "save", "at": "2020-01-01T00:00:00+00:00"})
+    assert client.get("/wishlist/u_leg/ids").json() == ["zara-demo-1", "asos-demo-1"]
+    client.delete("/wishlist/u_leg/items/asos-demo-1")
+    assert client.get("/wishlist/u_leg/ids").json() == ["zara-demo-1"]
+    assert "asos-demo-1" not in {c["id"] for c in client.get("/feed", params={"user_id": "u_leg"}).json()}
+
+
+def test_feed_passes_smaller_k(client, monkeypatch):
+    from app.commerce import router
+    seen = {}
+
+    def fake_pair(uid, cands, k):
+        seen.update(n=len(cands), k=k)
+        return []
+    monkeypatch.setattr(router, "pair", fake_pair)
+    cards = client.get("/feed", params={"user_id": "u_feed", "limit": 5}).json()
+    assert seen == {"n": 4, "k": 10} and len(cards) == 4  # unranked top-up still fills the page
+    client.get("/feed", params={"user_id": "u_feed", "limit": 20})
+    assert seen["k"] == 24
+
+
+def test_size_error_names_product(client):
+    r = client.post("/cart/u_cart/items", json={"product_id": "zara-sold-out", "size": "M"})
+    assert r.status_code == 422 and r.json() == {"detail": "size M is sold out for Gone tee"}
+    r = client.post("/cart/u_cart/items", json={"product_id": "hm-demo-1", "size": "XXXL"})
+    assert r.json()["detail"] == "size XXXL is not offered for Cropped baby tee"
+
+
+def test_checkout_409_when_stock_changed(client):
+    from app.store import store
+    store.put("users", "u_409", {"id": "u_409", "price_ranges": RANGES})
+    p = {**store.get("products", "uniqlo-demo-1"), "id": "uniqlo-flaky"}
+    store.put("products", "uniqlo-flaky", p)
+    client.post("/cart/u_409/items", json={"product_id": "uniqlo-flaky", "size": "M"})
+    client.post("/cart/u_409/items", json={"product_id": "hm-demo-1", "size": "M"})
+    store.put("products", "uniqlo-flaky", {**p, "sizes": [{"name": "M", "in_stock": False}]})
+    r = client.post("/checkout/u_409")
+    assert r.status_code == 409
+    assert r.json()["detail"] == {"message": f"size M is sold out for {p['name']}",
+                                  "unavailable": [{"product_id": "uniqlo-flaky", "size": "M"}]}
+    assert client.get("/cart/u_409").json()["count"] == 2  # cart kept
+    assert not store.list("orders", user_id="u_409")       # nothing charged

@@ -1,11 +1,13 @@
 """Commerce: /feed /products /swipe /cart /wishlist /checkout /orders (Nabil).
 
-Collections: products (ingest/live_search/seed), swipes ("{user}:{product}"), carts (doc id = user_id),
-orders, nessie (cached Nessie ids, see nessie.py). Swipe actions are mapped to the memory vocabulary
+Collections: products (ingest/live_search/seed), swipes ("{user}:{product}"), wishlist ("{user}:{product}",
+independent of swipes so saving never dismisses from the feed), carts (doc id = user_id), orders, nessie
+(cached Nessie ids, see nessie.py). Swipe actions are mapped to the memory vocabulary
 (cart / wishlist / discard) before storing, so ai.memory and ai.service.pair read them as-is.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
@@ -111,8 +113,9 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
     if not cands:
         return []
 
-    # rank a wider pool than we show, so de-duping styles and mixing stores still fills the page
-    ranked = pair(user_id, list(cands), k=min(50, limit * 3))
+    # Claude sees up to 50 candidates (pair caps it) but writes ~24 reasons (one per ranked item, the slow
+    # part); the unranked rest tops up the page so de-duping styles and mixing stores still fills it
+    ranked = pair(user_id, list(cands), k=min(24, limit * 2))
     picked = [{**cands[r.product_id], "reason": r.reason, "score": r.score, "pairs_with": r.pairs_with}
               for r in ranked if r.product_id in cands]
     seen = {p["id"] for p in picked}
@@ -138,6 +141,8 @@ def swipe(req: SwipeRequest):
         "swipe": req.action, "size": req.size, "at": _now(),
     })
     memory.record_swipe(req.user_id, p, action)
+    if req.action == "save":  # legacy save: still dismisses (swipe above) and joins the wishlist
+        _save(req.user_id, req.product_id)
     in_cart = False
     if req.action == "like" and req.size:
         _add_to_cart(req.user_id, req.product_id, req.size, 1)
@@ -145,20 +150,78 @@ def swipe(req: SwipeRequest):
     return {"user_id": req.user_id, "product_id": req.product_id, "action": req.action, "in_cart": in_cart}
 
 
+def _delete(collection: str, doc_id: str) -> None:
+    if hasattr(store, "db"):  # FirestoreStore
+        store.db.collection(collection).document(doc_id).delete()
+        return
+    with store._lock:  # JsonStore has no delete; edit the file directly (as scripts/load_products.py)
+        data = store._load(collection)
+        if data.pop(doc_id, None) is not None:
+            store._path(collection).write_text(json.dumps(data, indent=2))
+
+
+def _save(user_id: str, product_id: str) -> None:
+    store.put("wishlist", f"{user_id}:{product_id}", {"user_id": user_id, "product_id": product_id, "saved_at": _now()})
+
+
+def _legacy_save(user_id: str, product_id: str) -> Optional[dict]:
+    """Pre-wishlist saves only exist as swipes with action=wishlist; `unsaved` marks a DELETE."""
+    s = store.get("swipes", f"{user_id}:{product_id}")
+    return s if s and s.get("action") == "wishlist" and not s.get("unsaved") else None
+
+
+def _saved(user_id: str) -> list[dict]:
+    """[{product_id, saved_at}] newest first: wishlist docs plus legacy swipe saves, de-duplicated."""
+    rows = {s["product_id"]: s["at"] for s in store.list("swipes", user_id=user_id, action="wishlist")
+            if not s.get("unsaved")}
+    rows.update({w["product_id"]: w["saved_at"] for w in store.list("wishlist", user_id=user_id)})
+    return [{"product_id": pid, "saved_at": at} for pid, at in sorted(rows.items(), key=lambda r: r[1], reverse=True)]
+
+
+@router.put("/wishlist/{user_id}/items/{product_id}")
+def wishlist_put(user_id: str, product_id: str):
+    """Ensure saved (idempotent). No swipe record, so the product stays in the feed."""
+    p = _product(product_id)
+    if not store.get("wishlist", f"{user_id}:{product_id}"):
+        if not _legacy_save(user_id, product_id):
+            memory.record_swipe(user_id, p, "wishlist")  # first save only
+        _save(user_id, product_id)
+    return {"user_id": user_id, "product_id": product_id, "saved": True}
+
+
+@router.delete("/wishlist/{user_id}/items/{product_id}")
+def wishlist_delete(user_id: str, product_id: str):
+    """Ensure unsaved (idempotent). A legacy swipe save stays a swipe (still dismissed) but leaves the wishlist."""
+    _delete("wishlist", f"{user_id}:{product_id}")
+    if s := _legacy_save(user_id, product_id):
+        store.put("swipes", f"{user_id}:{product_id}", {**s, "unsaved": True})
+    return {"user_id": user_id, "product_id": product_id, "saved": False}
+
+
 @router.get("/wishlist/{user_id}")
 def wishlist(user_id: str):
-    saves = sorted(store.list("swipes", user_id=user_id, action="wishlist"), key=lambda s: s["at"], reverse=True)
-    return [p for s in saves if (p := store.get("products", s["product_id"]))]
+    return [p for s in _saved(user_id) if (p := store.get("products", s["product_id"]))]
+
+
+@router.get("/wishlist/{user_id}/ids")
+def wishlist_ids(user_id: str):
+    return [p["id"] for p in wishlist(user_id)]  # same set as GET /wishlist (skips dropped products)
 
 
 # ---------- cart ----------
 
-def _check_size(p: dict, size: str) -> None:
+def _size_problem(p: dict, size: str) -> Optional[str]:
     s = next((s for s in _sizes(p) if s.get("name") == size), None)
     if not s:
-        raise HTTPException(422, f"size {size} not offered")
+        return f"size {size} is not offered for {p.get('name', p['id'])}"
     if not _size_ok(s) or not p.get("in_stock", True):
-        raise HTTPException(422, f"size {size} sold out")
+        return f"size {size} is sold out for {p.get('name', p['id'])}"
+    return None
+
+
+def _check_size(p: dict, size: str) -> None:
+    if msg := _size_problem(p, size):
+        raise HTTPException(422, msg)
 
 
 def _cart(user_id: str) -> dict:
@@ -231,7 +294,17 @@ def _pay(user_id: str, purchase: dict) -> None:
 
 @router.post("/checkout/{user_id}")
 def checkout(user_id: str):
-    """One Nessie purchase per retailer (`paid`), or `pending_nessie` when NESSIE_API_KEY isn't set."""
+    """One Nessie purchase per retailer (`paid`), or `pending_nessie` when NESSIE_API_KEY isn't set.
+    409 {message, unavailable: [{product_id, size}]} if any item went out of stock; nothing is charged."""
+    bad, msgs = [], []
+    for i in _cart(user_id)["items"]:  # stock may have changed since add: charge nothing, keep the cart
+        p = store.get("products", i["product_id"])
+        msg = _size_problem(p, i["size"]) if p else f"{i['product_id']} is no longer available"
+        if msg:
+            bad.append({"product_id": i["product_id"], "size": i["size"]})
+            msgs.append(msg)
+    if bad:
+        raise HTTPException(409, {"message": "; ".join(msgs), "unavailable": bad})
     cart = _grouped(user_id)
     if not cart["groups"]:
         raise HTTPException(400, "cart is empty")

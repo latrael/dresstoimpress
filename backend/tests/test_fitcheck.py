@@ -37,7 +37,8 @@ def test_create_with_tags(client):
     p = _post(client, "u_a", caption="fit", tagged=[{"label": "baggy jeans", "product_id": "hm-demo-1"}])
     assert p["id"].startswith("fc_") and p["visibility"] == "friends"
     assert p["tagged"] == [{"label": "baggy jeans", "retailer": None, "product_id": "hm-demo-1",
-                            "closet_item_id": None}]
+                            "closet_item_id": None, "category": None, "color": None, "pattern": None,
+                            "style_tags": [], "brand": None}]
     assert p["author"] == {"id": "u_a", "display_name": "Ana"}
     assert (p["like_count"], p["liked_by_me"], p["comment_count"]) == (0, False, 0)
 
@@ -45,7 +46,10 @@ def test_create_with_tags(client):
 def test_create_without_tags_prefills(client):
     p = _post(client, "u_a")
     assert [t["label"] for t in p["tagged"]] == ["light-wash baggy jeans", "white baby tee"]
-    assert set(p["tagged"][0]) == {"label", "retailer", "product_id", "closet_item_id"}
+    t = p["tagged"][0]  # stored as /ai/tag-fit returns it, so shop_fit can match strictly
+    assert (t["category"], t["color"], t["pattern"], t["style_tags"]) == ("bottom", "light blue", "solid", ["y2k"])
+    assert set(t) == {"label", "retailer", "product_id", "closet_item_id", "category", "color", "pattern",
+                      "style_tags", "brand"}
 
 
 def test_tag_failure_never_500s(client, monkeypatch):
@@ -110,10 +114,13 @@ def test_comments(client):
 def test_edit_tags_owner_only(client):
     p = _post(client, "u_a")
     url = f"/fitcheck/{p['id']}/tags"
-    new = [{"label": "black cargos", "retailer": "zara"}]
+    new = [{"label": "black cargos", "retailer": "zara", "category": "bottom", "color": "black",
+            "style_tags": ["streetwear"]}]
     assert client.patch(url, json={"user_id": "u_b", "tagged": new}).status_code == 403
     r = client.patch(url, json={"user_id": "u_a", "tagged": new})
-    assert r.status_code == 200 and r.json()["tagged"][0]["label"] == "black cargos"
+    t = r.json()["tagged"][0]
+    assert r.status_code == 200 and (t["label"], t["category"], t["color"]) == ("black cargos", "bottom", "black")
+    assert t["style_tags"] == ["streetwear"]
     assert client.patch("/fitcheck/fc_missing/tags", json={"user_id": "u_a", "tagged": new}).status_code == 404
 
 

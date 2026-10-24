@@ -74,7 +74,7 @@ Shapes:
 - FYI: H&M images show a person wearing the item. Uniqlo images are garment-only, so Uniqlo items are the safest for try-on demos.
 
 ### Ryan
-- **Feed cards:** `image_url`, `name`, `brand`, `price_usd`, `retailer` and `sizes` are always present. Show `sale_price_usd` struck through when it isn't null.
+- **Feed cards:** `image_url`, `name`, `brand`, `price_usd`, `retailer` and `sizes` are always present. When `sale_price_usd` isn't null, it's the price to charge and show; strike through the original `price_usd` next to it. (Corrected: this was reversed before.)
 - **Size picker** before add-to-cart: grey out sizes where `in_stock: false`.
 - **Cart and checkout confirmation:** group by `retailer` (H&M and Uniqlo for the demo).
 - Real products should be in the store tonight. Until then, `python -m scripts.seed_demo` gives you mock data in the same shape.

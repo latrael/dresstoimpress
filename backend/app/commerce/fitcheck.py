@@ -83,7 +83,7 @@ def _auto_tags(photo_url: str) -> list[dict]:
     if not photo_url.startswith(("http://", "https://")):
         return []
     try:
-        return [FitTag(label=t["label"], retailer=t.get("retailer")).model_dump() for t in service.tag_fit(photo_url)]
+        return [FitTag(**t).model_dump() for t in service.tag_fit(photo_url)]  # keep category/color/... for shop_fit
     except Exception as e:  # noqa: BLE001
         log.warning("tag_fit failed for %s: %s", photo_url, e)
         return []

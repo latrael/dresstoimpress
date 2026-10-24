@@ -2,7 +2,7 @@
 
 What Nabil and Ryan need from the AI layer. Newest changes at the top of the changelog. Full detail: [`docs/progress.md`](docs/progress.md); field names: [`docs/schema.md`](docs/schema.md).
 
-**Last updated:** Fri Oct 23, 2026, 7:40 PM PT. Branch: `adam/ai-pipeline`, merged into `staging`.
+**Last updated:** Fri Oct 23, 2026, 7:55 PM PT. Branch: `adam/ai-pipeline`, merged into `staging`.
 
 ---
 
@@ -10,7 +10,7 @@ What Nabil and Ryan need from the AI layer. Newest changes at the top of the cha
 
 - **All AI endpoints are built and tested (67 tests)** and verified on real models: tagging, pairing, Fit Check tagging and shopping, size advice.
 - **Claude Haiku is live**; spend so far is under $0.01, with a hard $5 cap and caching everywhere.
-- **Try-on is blocked** on Google billing for image models; everything else works.
+- **AI try-on works** (Gemini Flash Lite image, ~5 s, body and pose unchanged); if images ever fail it falls back to an outfit board.
 - **The AI code reads both product shapes**, so nothing breaks while ingest moves to the unified schema.
 
 ## Endpoints
@@ -21,7 +21,7 @@ What Nabil and Ryan need from the AI layer. Newest changes at the top of the cha
 | POST | `/products/tag` | Nabil (ingest) | product tags + legacy `tags` object |
 | POST | `/pair` | Nabil (`/feed`) | `[{id, product_id, score, reason, pairs_with}]`, best first |
 | POST | `/size` | Ryan (size picker) | `{size, confidence, reason}` |
-| POST | `/tryon` | Ryan | `{image_url, cached}` (blocked on Google billing) |
+| POST | `/tryon` | Ryan | `{image_url, cached, mode}` (`ai` or `collage` fallback) |
 | POST | `/ai/tag-fit` | Ryan / Nabil (Fit Check) | items seen in an outfit photo |
 | POST | `/ai/shop-fit` | Nabil (`/fitcheck/{id}/shop`) | buyable products + reasons |
 | POST | `/users/{id}/body-photo` | Ryan (onboarding) | `{body_photo_url}` |
@@ -39,11 +39,11 @@ What Nabil and Ryan need from the AI layer. Newest changes at the top of the cha
 - Body photo upload in onboarding (`/users/{id}/body-photo`).
 
 ## Blockers
-- Google billing for try-on images.
 - Moss keys (Starter Pack) for style memory; falls back to swipe history meanwhile.
 - A shared backend URL (tunnel or deploy) so the app can reach the API.
 
 ## Changelog
+- **Oct 23, 7:55 PM:** Google billing cleared: real AI try-on verified (4.6 s). Outfit-board fallback, `/complete-look`.
 - **Oct 23, 7:40 PM:** Unified schema on `staging`; `/size` and rules fallback (drafted in Gemini); Claude thinking disabled for JSON tasks (fixed cut-off pairing replies).
 - **Oct 23, 7:30 PM:** Fit photo tagging, strict item matching, live store search, `/products/tag`, compat layer for NABIL.md's shape.
 - **Oct 23, 7:05 PM:** Closet labels, natural reasons, cost controls (Haiku default, caches, $5 cap), Gemini fallback.

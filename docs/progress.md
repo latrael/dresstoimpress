@@ -14,7 +14,7 @@ The backend skeleton and the whole AI pipeline are built, tested (22 tests) and 
 | Shop the fit (`/ai/shop-fit`) | Done | Strict matching (same type + category); live store search via Apify when nothing matches (needs `APIFY_TOKEN`) |
 | Fit photo auto-tagging (`/ai/tag-fit`) | Done, live | Lists every item in an outfit photo, e.g. "red graphic t-shirt", "oversized black jacket" |
 | Style memory (Moss) | Done, needs Moss keys | Falls back to swipe history until then |
-| Try-on (`/tryon`) | Built, blocked | Google project billing still processing; images return 403 |
+| Try-on (`/tryon`) | Done, live | Gemini Flash Lite image, ~5 s, keeps body and pose; outfit-board fallback if images fail |
 | Cost controls | Done | Haiku default, caching, $5 cap, `GET /ai/usage`; real cost so far < $0.01 |
 | Gemini fallback | Done | If Claude fails (credits, network), tagging/pairing use Gemini automatically |
 | Commerce: Apify feed, cart, Nessie checkout, Fit Check backend | Not started | Nabil |
@@ -49,7 +49,6 @@ Nabil's proposal (branch `nabil`, `NABIL.md`) differs from `backend/app/models.p
 
 ## Blockers
 
-1. **Google billing for try-on images.** The new Gemini project ("DRESStoIMPRESS") is locked while Google processes the billing account. Adam is waiting; retry with `python /tmp/gem_img.py` or any `/tryon` call.
 2. **Apify token** for live item search (same token Nabil uses for ingest; `APIFY_TOKEN` in `.env`).
 3. **Moss keys** from the Cal Hacks Moss Starter Pack (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`).
 4. **Shared backend URL.** The server runs on Adam's Mac at `localhost:8000`; it needs a tunnel or deploy so the app can reach it.

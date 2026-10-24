@@ -226,7 +226,17 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     out.sort(key=lambda r: r.score, reverse=True)
-    return out[:k] or _fallback(cands, ranges, k, closet, user.get("style_text", ""))
+    out = out[:k]
+    if not out:
+        return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
+    if len(out) < k:
+        # Claude often ranks fewer than asked; top up with rules-based picks (free) so every feed
+        # card gets a reason, ranked below Claude's picks
+        have, floor = {r.product_id for r in out}, min(r.score for r in out)
+        rest = [p for p in cands if p["id"] not in have]
+        for r in _fallback(rest, ranges, k - len(out), closet, user.get("style_text", "")):
+            out.append(r.model_copy(update={"score": round(min(r.score, floor) * 0.99, 4)}))
+    return out
 
 
 # ---------- Fit Check: shop the fit ----------

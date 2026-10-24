@@ -72,6 +72,7 @@ class User(BaseModel):
     price_ranges: dict[str, list[float]] = {}
     body_photo_url: Optional[str] = None
     friends: list[str] = []
+    body_profile: Optional[dict] = None  # set by POST /users/{id}/body-scan (estimated inches); /size reads it
 
 
 # ---- AI endpoint requests / responses ----
@@ -127,11 +128,26 @@ class ShopFitRequest(BaseModel):
 
 class SizeRequest(BaseModel):
     product_id: str
-    height_cm: float
-    weight_kg: float
+    height_cm: Optional[float] = None   # optional with user_id: falls back to the user's body scan
+    weight_kg: Optional[float] = None
+    user_id: Optional[str] = None       # fills missing height / weight / waist from body_profile
     fit: Literal["slim", "regular", "oversized"] = "regular"
     shoe_us: Optional[float] = None
     waist_in: Optional[float] = None
+
+
+class BodyProfileUpdate(BaseModel):
+    """PATCH /users/{id}/body-profile: measurements the user typed (onboarding / profile). Only the
+    fields sent change; a field sent as null is cleared. Lengths in cm (stored as inches)."""
+    height_cm: Optional[float] = Field(None, ge=120, le=230)
+    weight_kg: Optional[float] = Field(None, ge=30, le=250)
+    waist_cm: Optional[float] = Field(None, ge=50, le=150)
+    chest_cm: Optional[float] = Field(None, ge=60, le=160)
+    hip_cm: Optional[float] = Field(None, ge=65, le=165)
+    inseam_cm: Optional[float] = Field(None, ge=55, le=100)
+    shoe_us: Optional[float] = Field(None, ge=3, le=18)
+    fit: Optional[Literal["slim", "regular", "oversized"]] = None
+    usual_sizes: Optional[dict[Category, str]] = None  # e.g. {"top": "M", "bottom": "32/32"}
 
 
 class CompleteLookRequest(BaseModel):

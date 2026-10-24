@@ -456,7 +456,7 @@ class ProductPage {
 /// A user (backend `User`): /users, /users/{id}, /onboarding, /style/apply.
 class AppUser {
   const AppUser({required this.id, required this.displayName, this.styleText = '', this.priceRanges = const {},
-      this.bodyPhotoUrl, this.friends = const []});
+      this.bodyPhotoUrl, this.friends = const [], this.bodyProfile});
 
   final String id;
   final String displayName;
@@ -464,6 +464,7 @@ class AppUser {
   final Map<String, List<double>> priceRanges; // category -> [min, max]
   final String? bodyPhotoUrl;
   final List<String> friends;
+  final BodyProfile? bodyProfile; // null until the user does a body scan
 
   factory AppUser.fromJson(Json j) => AppUser(
         id: _str(j['id']),
@@ -472,7 +473,62 @@ class AppUser {
         priceRanges: _ranges(j['price_ranges']),
         bodyPhotoUrl: _strN(j['body_photo_url']),
         friends: _strs(j['friends']),
+        bodyProfile: j['body_profile'] is Map ? BodyProfile.fromJson(_obj(j['body_profile'])) : null,
       );
+}
+
+/// The user's body profile (lengths in inches): typed via PATCH /users/{id}/body-profile and/or estimated
+/// by POST /users/{id}/body-scan. Any number may be null. [source]: "manual" (typed), "ai" (read from the
+/// photo) or "estimate" (height/weight formula). [manual] lists the fields the user typed.
+class BodyProfile {
+  const BodyProfile({required this.heightCm, this.weightKg, this.chestIn, this.waistIn, this.hipIn, this.inseamIn,
+      this.build, required this.source, this.fullBody, this.note = '', this.scannedAt, this.shoeUs, this.fit,
+      this.usualSizes = const {}, this.manual = const []});
+
+  final double heightCm;
+  final double? weightKg;
+  final double? chestIn;
+  final double? waistIn;
+  final double? hipIn;
+  final double? inseamIn;
+  final String? build; // slim | average | athletic | curvy | broad
+  final String source;
+  final bool? fullBody; // false: the photo wasn't one standing person head to feet
+  final String note; // short fit tip, or a hint to retake the photo
+  final String? scannedAt;
+  final double? shoeUs;
+  final String? fit; // slim | regular | oversized
+  final Map<String, String> usualSizes; // category -> usual size
+  final List<String> manual;
+
+  factory BodyProfile.fromJson(Json j) => BodyProfile(
+        heightCm: _dbl(j['height_cm']),
+        weightKg: _dblN(j['weight_kg']),
+        chestIn: _dblN(j['chest_in']),
+        waistIn: _dblN(j['waist_in']),
+        hipIn: _dblN(j['hip_in']),
+        inseamIn: _dblN(j['inseam_in']),
+        build: _strN(j['build']),
+        source: _str(j['source'], 'estimate'),
+        fullBody: _boolN(j['full_body']),
+        note: _str(j['note']),
+        scannedAt: _strN(j['scanned_at']),
+        shoeUs: _dblN(j['shoe_us']),
+        fit: _strN(j['fit']),
+        usualSizes: {for (final e in _obj(j['usual_sizes']).entries) e.key: _str(e.value)},
+        manual: _strs(j['manual']),
+      );
+}
+
+/// POST /users/{id}/body-scan.
+class BodyScanResult {
+  const BodyScanResult({required this.bodyPhotoUrl, required this.profile});
+
+  final String bodyPhotoUrl;
+  final BodyProfile profile;
+
+  factory BodyScanResult.fromJson(Json j) =>
+      BodyScanResult(bodyPhotoUrl: _str(j['body_photo_url']), profile: BodyProfile.fromJson(_obj(j['body_profile'])));
 }
 
 /// POST /onboarding: the saved user plus what the rules parser understood.

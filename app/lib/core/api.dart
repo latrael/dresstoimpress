@@ -118,6 +118,7 @@ class Api {
           {double? heightCm, double? weightKg, String fit = 'regular', double? shoeUs, double? waistIn}) async =>
       SizeAdvice.fromJson(await _send('POST', '/size', body: {
         'product_id': productId,
+        'user_id': _user, // the backend fills a missing waist (and height/weight) from the user's body scan
         'height_cm': heightCm ?? settings.heightCm,
         'weight_kg': weightKg ?? settings.weightKg,
         'fit': fit,
@@ -195,6 +196,32 @@ class Api {
 
   Future<String> uploadBodyPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       _str((await _upload('/users/${_seg(_user)}/body-photo', {}, bytes, mimeType))['body_photo_url']);
+
+  /// POST /closet/digitize ("digitize wardrobe"): one photo of several clothes (flat lay, rack, mirror
+  /// selfie) -> one tagged closet item per garment, each cropped to its own image. Items that look like
+  /// something already in the closet come back with [ClosetItem.duplicateOf] set.
+  Future<List<ClosetItem>> digitizeCloset(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
+      _listOf(await _upload('/closet/digitize', {'user_id': _user}, bytes, mimeType), ClosetItem.fromJson);
+
+  /// PATCH /users/{id}/body-profile: measurements the user typed (onboarding / profile), saved on the
+  /// server so they follow the user to any device; [AppUser.bodyProfile] returns them. Only the fields
+  /// passed change. Lengths in cm (the profile stores inches). Typed values win over a body scan.
+  /// [usualSizes] maps a category ("top", "bottom", "shoes", ...) to the user's usual size; /size falls
+  /// back to it. 422 (ApiError) for impossible values.
+  Future<BodyProfile> updateBodyProfile({double? heightCm, double? weightKg, double? waistCm, double? chestCm,
+          double? hipCm, double? inseamCm, double? shoeUs, String? fit, Map<String, String>? usualSizes}) async =>
+      BodyProfile.fromJson(await _send('PATCH', '/users/${_seg(_user)}/body-profile', body: {
+        'height_cm': heightCm, 'weight_kg': weightKg, 'waist_cm': waistCm, 'chest_cm': chestCm, 'hip_cm': hipCm,
+        'inseam_cm': inseamCm, 'shoe_us': shoeUs, 'fit': fit, 'usual_sizes': usualSizes,
+      }));
+
+  /// POST /users/{id}/body-scan: full-body photo + height (weight optional) -> estimated measurements,
+  /// saved on the user and used by [sizeAdvice]. The photo also becomes the try-on photo.
+  /// 422 (ApiError) for a height outside 120-230 cm or weight outside 30-250 kg.
+  Future<BodyScanResult> bodyScan(List<int> bytes,
+          {required double heightCm, double? weightKg, String mimeType = 'image/jpeg'}) async =>
+      BodyScanResult.fromJson(await _upload('/users/${_seg(_user)}/body-scan',
+          {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType));
 
   // ------------------------------------------------------------ Fit Check (Nabil)
 

@@ -121,11 +121,12 @@ Closet (what they already own): {closet_json}
 Catalog candidates (in stock, your_size = the size we would order for them): {products_json}
 
 Build {count} different complete outfits. Each needs a top and a bottom (or a dress) plus shoes;
-outerwear and one accessory are optional. Build each outfit around at least one closet piece when the
-closet has anything usable, and fill the rest from the catalog candidates. Use every must-include id.
+outerwear and one accessory are optional. These are fits with new clothes: every outfit MUST add 1-2 new
+pieces from the catalog candidates; the rest can come from the closet. Build each outfit around at least
+one closet piece when the closet has anything usable. Use every must-include id.
 Return only a JSON array of {count} objects:
 {{"name": 2-4 word vibe name, "reason": 1-2 sentences, casual second person, that name the build or a
 measurement (e.g. "slim build, 30.5 in waist") and the closet piece the look is built around,
 "pieces": [{{"slot": "top"|"bottom"|"shoes"|"outerwear"|"dress"|"accessory", "id": closet or catalog id}}]}}
 Use only ids from the closet or the candidates, one piece per slot. Never comment on weight or attractiveness."""
-FIT_CREATOR_VERSION = "v1"  # bump when FIT_CREATOR changes so cached fits are rebuilt
+FIT_CREATOR_VERSION = "v2"  # bump when FIT_CREATOR changes so cached fits are rebuilt

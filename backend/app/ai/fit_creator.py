@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import time
 
 from ..store import store
@@ -89,13 +90,29 @@ def _buyable(p: dict) -> bool:
     return bool(p.get("in_stock", True)) and (not sizes or any(s.get("in_stock", s.get("inStock", True)) for s in sizes))
 
 
-def _dept_ok(p: dict, shop_for) -> bool:
-    try:
-        from ..commerce.router import _dept_ok as dept_ok
+_NOT_FOR_MEN = re.compile(r"earring|hoop|bralette|bikini|dress|skirt|heels|handbag|purse", re.I)
+_NOT_FOR_WOMEN = re.compile(r"boxer|necktie|cufflink", re.I)
 
-        return dept_ok(p, shop_for)
-    except Exception:  # noqa: BLE001 - same 3-line rule as the feed
-        return shop_for not in ("men", "women") or p.get("department") in (shop_for, "unisex", None)
+
+def _dept_ok(p: dict, shop_for) -> bool:
+    """Same shop_for rule as the feed, for every slot: "men" gets men + unisex, "women" gets women + unisex,
+    "both"/None gets everything. Unknown department passes only for non-accessories (null-department
+    accessories like "Hoop Earrings" were leaking into men's fits), and accessory names that are clearly
+    for the other department are dropped too."""
+    if shop_for not in ("men", "women"):
+        return True
+    dept = p.get("department")
+    accessory = p.get("category") == "accessory"
+    if dept is None:
+        if accessory:
+            return False
+    elif dept not in (shop_for, "unisex"):
+        return False
+    if accessory:
+        rx = _NOT_FOR_MEN if shop_for == "men" else _NOT_FOR_WOMEN
+        if rx.search(str(p.get("name") or "")):
+            return False
+    return True
 
 
 def _price(p: dict) -> float:
@@ -168,8 +185,9 @@ def _missing(pieces: list[dict]) -> list[str]:
 
 
 def _best_for_slot(slot: str, pieces: list[dict], closet: list[dict], catalog: list[dict],
-                   style_text: str, remaining: float | None) -> dict | None:
-    """Rules fill for one empty slot: best closet piece (score >= 0.5), else best catalog piece in budget."""
+                   style_text: str, remaining: float | None, catalog_only: bool = False) -> dict | None:
+    """Rules fill for one empty slot: best closet piece (score >= 0.5), else best catalog piece in budget
+    (in-your-size first). `catalog_only` skips the closet."""
     used = {_pid(p) for p in pieces}
     ctx = [_as_closet_shape(p["closet_item"] or p["product"], p["source"]) for p in pieces]
 
@@ -185,15 +203,35 @@ def _best_for_slot(slot: str, pieces: list[dict], closet: list[dict], catalog: l
                     "style_tags": it.get("style_tags") or [], "pattern": it.get("pattern"),
                     "formality": it.get("formality")}
             sc = score_product(prod, ctx, style_text=style_text)["score"] if ctx else 0.5
-            ranked.append((sc, -_price(it), it))
-        ranked.sort(key=lambda r: (r[0], r[1]), reverse=True)
-        return ranked[0][2] if ranked and ranked[0][0] >= floor else None
+            ranked.append((sc, it.get("in_your_size") is True, -_price(it), it))
+        ranked.sort(key=lambda r: r[:3], reverse=True)
+        return ranked[0][3] if ranked and ranked[0][0] >= floor else None
 
-    hit = best(closet, "closet", 0.5)
-    if hit:
-        return _piece(hit, "closet")
+    if not catalog_only:
+        hit = best(closet, "closet", 0.5)
+        if hit:
+            return _piece(hit, "closet")
     hit = best(catalog, "catalog", 0.0)
     return _piece(hit, "catalog") if hit else None
+
+
+NEW_PIECE_SLOTS = ("top", "outerwear", "shoes")
+
+
+def _ensure_new(pieces: list[dict], catalog: list[dict], style_text: str, budget_usd: float | None) -> list[dict] | None:
+    """Fits are "fits with new clothes": when every piece is from the closet, swap one slot (top, else outerwear,
+    else shoes) for the best-scoring in-size catalog candidate. None when the catalog has nothing for any of them."""
+    if any(p["source"] == "catalog" for p in pieces):
+        return pieces
+    have = {p["slot"] for p in pieces}
+    for slot in NEW_PIECE_SLOTS:
+        if slot not in have and slot != "outerwear":
+            continue  # don't add a top to a dress fit; outerwear may be added since it's optional
+        rest = [p for p in pieces if p["slot"] != slot]
+        added = _best_for_slot(slot, rest, [], catalog, style_text, budget_usd, catalog_only=True)
+        if added is not None:
+            return rest + [added]
+    return None
 
 
 def _fill(pieces: list[dict], closet: list[dict], catalog: list[dict], style_text: str,
@@ -276,7 +314,9 @@ def rules_fits(key: str, user: dict, closet: list[dict], catalog: list[dict], co
             item = by_id.get(it["id"])
             if item and it["category"] not in {p["slot"] for p in pieces}:
                 pieces.append(_piece(item, it["source"]))
-        pieces = _fill(pieces, rest, catalog, style_text, budget_usd)
+        pieces = _ensure_new(_fill(pieces, rest, catalog, style_text, budget_usd), catalog, style_text, budget_usd)
+        if pieces is None:
+            continue
         sig = frozenset(_pid(p) for p in pieces)
         if not _complete(pieces) or sig in seen:
             continue
@@ -329,6 +369,9 @@ def ai_fits(key: str, user: dict, closet: list[dict], catalog: list[dict], count
             slots.add(hit[1].get("category"))
             pieces.append(_piece(hit[1], hit[0]))
         pieces = _fill(_with_must(pieces, must), closet, catalog, style_text, budget_usd)
+        pieces = _ensure_new(pieces, catalog, style_text, budget_usd)  # closet-only fits get one new piece
+        if pieces is None:
+            continue
         sig = frozenset(_pid(p) for p in pieces)
         if not _complete(pieces) or sig in seen:
             continue

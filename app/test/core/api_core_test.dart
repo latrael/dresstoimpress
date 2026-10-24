@@ -34,6 +34,17 @@ void main() {
     expect(api.imageUrl('https://image.hm.com/a.jpg'), 'https://image.hm.com/a.jpg'); // unchanged contract
   });
 
+  test('our own photos saved under an old server address load from the current one', () {
+    final api = _api([], (_) => {});
+    const old = 'https://dead-tunnel.trycloudflare.com/static/uploads/ab12.jpg';
+    expect(api.imageUrl(old), 'https://dti.example/static/uploads/ab12.jpg');
+    expect(api.imageProxyUrl(old), 'https://dti.example/static/uploads/ab12.jpg');
+    expect(api.imageProxyUrl('http://localhost:8000/static/tryon/t1.png'), 'https://dti.example/static/tryon/t1.png');
+    // other hosts' /static paths and retailer images are left alone
+    expect(api.imageUrl('https://cdn.example.com/static/css/x.png'), 'https://cdn.example.com/static/css/x.png');
+    expect(api.imageUrl('https://image.hm.com/static/uploads/a.jpg?w=1'), 'https://image.hm.com/static/uploads/a.jpg?w=1');
+  });
+
   test('searchProducts sends the query and parses a page', () async {
     final seen = <http.Request>[];
     final api = _api(seen, (_) => {

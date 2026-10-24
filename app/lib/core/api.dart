@@ -31,8 +31,18 @@ class Api {
 
   String get _user => settings.userId;
 
-  /// Absolute URL for an image the server returns ("/static/..." paths get the base URL).
-  String imageUrl(String url) => url.startsWith('/') ? '${settings.base}$url' : url;
+  /// Absolute URL for an image the server returns ("/static/..." paths get the base URL). Our own photos
+  /// (uploads, try-ons) saved under an older server address are loaded from the current one.
+  String imageUrl(String url) => url.startsWith('/') ? '${settings.base}$url' : _ownImage(url);
+
+  // Uploads and try-ons are stored with the server address current when they were saved. The tunnel
+  // URL changes (and the backup server has its own), so always load them from the connected server.
+  static final _ownStatic = RegExp(r'^https?://[^/?#]+(/static/(?:uploads|tryon)/[^?#]+)$');
+
+  String _ownImage(String url) {
+    final m = _ownStatic.firstMatch(url);
+    return m == null || settings.base.isEmpty ? url : '${settings.base}${m.group(1)}';
+  }
 
   /// Retailer image hosts the backend's `GET /img?url=` will re-serve (same list as backend/app/main.py).
   static const imageProxyHosts = {
@@ -43,6 +53,8 @@ class Api {
   /// `GET /img?url=` (no key; retailer servers refuse direct loads from a web app); anything else as-is.
   String imageProxyUrl(String url) {
     if (url.startsWith('/')) return '${settings.base}$url';
+    final own = _ownImage(url);
+    if (own != url) return own;
     final u = Uri.tryParse(url);
     if (u == null || u.scheme != 'https' || !imageProxyHosts.contains(u.host)) return url;
     return Uri.parse('${settings.base}/img').replace(queryParameters: {'url': url}).toString();

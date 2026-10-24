@@ -12,11 +12,16 @@ def test_reset_demo_only_touches_that_user(tmp_path, monkeypatch):
         store.put("orders", f"o_{u}", {"id": f"o_{u}", "user_id": u})
         store.put("carts", u, {"user_id": u, "items": [{"product_id": "p3", "size": "M", "qty": 1}]})
         store.put("closet_items", f"ci_{u}", {"id": f"ci_{u}", "user_id": u})
+    store.put("fitcheck_posts", "fc1", {"id": "fc1", "user_id": "u_other", "likes": ["u_demo", "u_other"],
+                                        "comments": [{"user_id": "u_demo", "text": "fire"},
+                                                     {"user_id": "u_other", "text": "thx"}]})
     store.put("pair_cache", "abc", {"at": 0, "raw": []})
     store.put("tryon_cache", "t1", {"url": "x"})
 
     counts = reset_demo.reset("u_demo")
-    assert counts == {"swipes": 1, "wishlist": 1, "cart_items": 1}
+    assert counts == {"swipes": 1, "wishlist": 1, "fitcheck_likes": 1, "fitcheck_comments": 1, "cart_items": 1}
+    post = store.get("fitcheck_posts", "fc1")
+    assert post["likes"] == ["u_other"] and [c["text"] for c in post["comments"]] == ["thx"]
     assert store.list("swipes", user_id="u_demo") == [] and store.list("wishlist", user_id="u_demo") == []
     assert store.get("carts", "u_demo")["items"] == []
     assert store.get("orders", "o_u_demo") and store.get("closet_items", "ci_u_demo")  # kept

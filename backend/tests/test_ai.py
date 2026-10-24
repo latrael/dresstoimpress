@@ -406,3 +406,17 @@ def test_to_canonical_rejects_unknown_category_and_adds_gallery():
     q = to_canonical({**base, "category": "top", "description": "Soft cotton tee.",
                       "images": [{"url": "https://i/1.jpg"}, {"url": "https://i/m.jpg", "kind": "retailer_model"}]})
     assert [i["kind"] for i in q["images"]] == ["product", "retailer_model"] and q["description"] == "Soft cotton tee."
+
+
+def test_static_serves_images_not_the_database(client):
+    from app.store import store
+    store.put("users", "u_secret", {"id": "u_secret"})
+    assert client.get("/static/users.json").status_code == 404
+
+
+def test_shared_key_guard(client, monkeypatch):
+    monkeypatch.setenv("API_SHARED_KEY", "s3cret")
+    assert client.get("/ai/usage").status_code == 401
+    assert client.get("/ai/usage", headers={"X-DTI-Key": "wrong"}).status_code == 401
+    assert client.get("/ai/usage", headers={"X-DTI-Key": "s3cret"}).status_code == 200
+    assert client.get("/health").status_code == 200  # open

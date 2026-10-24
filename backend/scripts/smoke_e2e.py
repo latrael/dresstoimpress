@@ -7,6 +7,7 @@ Run before merging staging -> main and before judging. Exits 1 if any step fails
 Spends a little real AI (one pairing call, cached try-ons); check GET /ai/usage.
 """
 import argparse
+import os
 import sys
 import time
 
@@ -19,8 +20,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://localhost:8000")
     ap.add_argument("--user", default="u_demo")
+    ap.add_argument("--key", default=os.getenv("API_SHARED_KEY", ""), help="X-DTI-Key (default: $API_SHARED_KEY)")
     a = ap.parse_args()
-    c = httpx.Client(base_url=a.base.rstrip("/"), timeout=90)
+    c = httpx.Client(base_url=a.base.rstrip("/"), timeout=90, headers={"X-DTI-Key": a.key} if a.key else {})
     results: list[tuple[str, str, str]] = []
 
     def step(name, fn):

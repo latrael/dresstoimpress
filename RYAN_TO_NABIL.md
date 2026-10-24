@@ -1,38 +1,42 @@
 # RYAN_TO_NABIL.md
 
-Ryan's frontend handoff. Read and reply through **staging**. Implementation branch: `RyanFrontendking` (Ryan explicitly requested keeping this branch).
+Updated October 23, 2026 (Pacific). Handoffs on staging; implementation on `RyanFrontendking`.
 
-## Plain Flutter pivot — October 23, 2026
+## Ownership and latest review
 
-Ryan explicitly authorized moving from FlutterFlow to plain Flutter. Read staging `NABIL_TO_RYAN.md` (latest ~11:15 PM notes) and `ADAM_TO_RYAN.md`, plus the newer `ADAM_TO_RYAN.md` and `docs/app-plan.md` on `adam/ai-pipeline` at b413f61. Nabil's branch handoff matches staging. Adam's newer plan assigns Ryan Feed, Nabil Cart/Fit Check, Adam core/Closet/Profile/shared AI.
+Ryan owns all app screens and all design. Adam is AI/backend hosting + core; Nabil is commerce backend. The old split-screen assignment is withdrawn. Read all distinct Markdown versions across staging, Adam, Nabil, flutter-starter and Ryan. Latest Nabil reread at e2ea844 includes the data-only reference and /fit approval request.
 
-Flutter 3.47.6 and Dart 3.13.5 installed on Ryan's Mac as a standalone SDK. Xcode/Android setup deferred. Browser preview works without Xcode.
+## App progress
 
-## Implemented in Ryan's lane
+Merged staging and shared Flutter starter into Ryan's branch, retaining his accepted Quick Browse layout and using both original PDF pages as references. Home grid, persistent search over loaded suggestions, live Feed + wishlist adapter, cart add/remove/grouped totals, explicit sandbox checkout UI, receipts/status handling and order history implemented. Initial Social feed/shop entry wired, with full Social still pending. No backend/core files edited.
 
-`app/lib/features/feed/quick_browse.dart`: bounded horizontal photo PageView and position dots, vertical product browsing, product description/fallback, optional pairing reason, sale price, product-defined sizes, unavailable-size blocking, Add to Cart, explicit heart and photo double-tap save. No `/swipe` calls. Keeps selection when cart errors occur. API and image URL callbacks injected; no duplicate core client or app shell.
+Eight Flutter tests pass and analyze is clean. Tests cover original gestures plus shared API integration/no browsing /swipe, checkout 409/cart retention, partial account read failure and image proxy URL preservation. Desktop mouse dragging also verified in the actual browser. Switching products resets photo/size, including returning to a prior product.
 
-Four Flutter widget tests pass (gesture boundaries/dots; size/cart validation; vertical browse/new-product state/single-image dots; double-tap save/cart error retention). `flutter analyze` is clean in an isolated preview project. Browser confirmed size S -> Add to Cart -> Cart (1). This is mock behavior, not a live integration result.
+## Live checks passed
 
-## Acknowledged — original five backend requests satisfied
+Ryan supplied the private connection details directly; entered in device-local settings only. No values in source, Git or this handoff.
 
-Nabil confirms gallery ingest, descriptions/nulls, consistent Product fields across feed/detail/wishlist/cart, idempotent wishlist and route documentation. No further schema changes requested.
+- Health 200/ok, authenticated feed limit=5 returned five cards with gallery/size arrays, image proxy returned JPEG.
+- Actual app loads live photos, descriptions/fallbacks, product sizes and pairing reasons.
+- Saved a real feed product, selected size M, added it, saw the correct H&M group and total in cart, removed it, then unsaved it. Original cart/wishlist membership restored. Saving and browsing did not dismiss the product.
+- **No live checkout submitted.** The checkout UI is implemented and the stock-change 409 path is tested with controlled API responses. Phone checkout remains a team checkpoint.
 
-- H&M has 2–6 images, all retailer_model; description null. Do not infer garment/model ordering from that flag.
-- Uniqlo has 1 image; hide dots. Show actual description when present.
-- Price prefers sale_price_usd with price_usd struck through.
-- Save uses wishlist PUT/DELETE and must not remove feed items.
-- Cart POST remains `{product_id,size,qty:1}`; preserve selection on 422.
-- Checkout 409 detail is an object and preserves the cart. Nabil owns that UI.
+The original five gallery/description/wishlist requests remain acknowledged as complete. No schema change requested.
 
-## Integration still pending
+## Outstanding commerce/core coordination
 
-Adam's announced `flutter-starter` branch / app shell was not in remote heads at the time of this check. Our files are limited to the Feed feature and its tests; a disposable preview shell lives outside Git. Integrate these with core's models, wishlist/cart APIs and image helper when the starter is published. Direct retailer photos fail in browser, as Adam warned: production must use `/img?url=` through core.
+Your newer product search/paging and users/onboarding routes are not yet methods in the published shared Dart core. Asked Adam to add them; current search filters loaded suggestions and does not claim full-catalog or natural-language matching.
 
-Private backend URL and X-DTI-Key remain private and are not committed. No live requests or checkout verified on Ryan's machine. Need Settings -> health/feed connection once shared starter and private settings are available.
+Api.imageUrl in starter 1b4aff2 resolves /static but does not proxy retailer images. Current app wraps the documented /img route; asked Adam for the intended core helper. No new transport was introduced.
 
-Remaining Ryan work: live Feed adapter, size advice, product detail, try-on (label collage as Outfit board), complete-the-look/Fit Score, onboarding, and phone verification. FlutterFlow pages are an earlier design draft, not the active implementation.
+Checkout receipts distinguish paid / nessie_failed / pending_nessie. There is no documented per-purchase retry endpoint, so the app doesn't silently repeat a successful store payment when another failed. Please document a safe retry contract if that is needed.
 
-## Coordination
+## /fit decision status
 
-All new handoffs go to staging. Implementation PRs target staging, never main. No additional packages or core changes introduced. The original wireframe and `frontend/QUICK_BROWSE.md` remain the design reference; their FlutterFlow-specific status paragraphs are historical.
+Your public guest page proposal was read. **Ryan has not explicitly approved enabling it.** Keep it off until his visual review/decision; this handoff does not give that approval. Continue backend work independently.
+
+## Remaining Ryan work
+
+Size assistance, personal try-on slide (collage labeled Outfit board), complete-look/Fit Score, full product details, onboarding, full Fit Check/Closet/Profile, and iPhone/live-checkout verification. User explicitly allows Xcode to come later on his machine.
+
+Implementation PRs go to staging only. Private connection details and service credentials must never enter public docs or Git.

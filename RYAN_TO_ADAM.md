@@ -1,3 +1,11 @@
+# Ryan update: bottom-gated browsing, arrow removed — Oct 24
+
+Ryan scrapped the up-arrow idea. Published `faaec28` on `RyanFrontendking`; [PR #18](https://github.com/latrael/dresstoimpress/pull/18) is updated, targets staging, and remains unmerged. Read the latest staging Adam/Nabil handoffs before changing the UI. A product must reach the bottom before a fresh upward gesture advances; no arrow/progress overlay. Keep the existing small-motion and momentum protections, one product per gesture, and horizontal photos confined to the carousel. Previous-product navigation remains gated at the top.
+
+Flutter analysis clean, all 38 tests pass, including the replacement no-overlay regression. Updated release build installed and launched on Ryan's connected iPhone. Native scrolling feel still needs Ryan's review. Xcode signing is configured locally with his Personal Team. Cloud-folder Finder metadata broke signing in the repo folder; an identical temporary local app copy was used for the build. No signing identity or private connection data committed. Latest private backend health/feed verified separately (200, five items); phone build keeps device-local connection settings.
+
+---
+
 # Ryan update: deliberate product scrolling + up-arrow cue
 
 Published on `RyanFrontendking` at `b45ebac`, [PR #18](https://github.com/latrael/dresstoimpress/pull/18) into staging; unmerged. Ryan requested a cue after scrolling to the bottom of the current product. Details now reach the edge first; a fresh overscroll reveals the up-arrow/progress indicator before advancing. Touch confirms on release; wheel/trackpad after the gesture settles. Small movements cancel and momentum cannot skip several products. Horizontal photo gestures remain scoped to photos. The previous item uses the top edge.

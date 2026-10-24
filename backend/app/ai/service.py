@@ -30,7 +30,7 @@ class NotClothing(Exception):
 
 def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
     if text_mock():
-        raw = {"category": "top", "color": "black", "pattern": "solid",
+        raw = {"label": "black tee", "category": "top", "color": "black", "pattern": "solid",
                "style_tags": ["streetwear"], "formality": 2}
     else:
         # same photo tagged twice (retries, re-uploads) costs nothing the second time
@@ -58,6 +58,7 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
         style_tags=list(raw.get("style_tags", []))[:5],
         formality=min(5, max(1, int(raw.get("formality", 3)))),
         source="photo",
+        label=" ".join(str(raw.get("label", "")).split()[:5]),
     )
     store.put("closet_items", item.id, item.model_dump())
     return item
@@ -130,8 +131,9 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
     if text_mock() or not closet:
         return _fallback(cands, ranges, k)
 
-    slim_closet = [{k2: c[k2] for k2 in ("id", "category", "color", "pattern", "style_tags")}
-                   for c in closet]
+    slim_closet = [{"id": c["id"], "label": c.get("label") or f'{c["color"]} {c["category"]}',
+                    "category": c["category"], "color": c["color"], "pattern": c["pattern"],
+                    "style_tags": c["style_tags"]} for c in closet]
     slim_cands = [{"id": p["id"], "name": p["name"], "brand": p["brand"],
                    "category": p["category"], "price_usd": p.get("sale_price_usd") or p["price_usd"],
                    "colors": p.get("colors", []), "style_tags": p.get("style_tags", [])}
@@ -171,6 +173,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             reason=" ".join(str(r.get("reason", "")).split()[:8]) or "pairs with your closet",
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
+    out.sort(key=lambda r: r.score, reverse=True)
     return out[:k] or _fallback(cands, ranges, k)
 
 

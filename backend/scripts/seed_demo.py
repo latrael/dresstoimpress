@@ -23,7 +23,7 @@ for cid, cat, color, tags, seed in closet:
     store.put("closet_items", cid, {
         "id": cid, "user_id": "u_demo", "image_url": IMG.format(seed.replace(" ", "")),
         "category": cat, "color": color, "pattern": "solid", "style_tags": tags,
-        "formality": 2, "source": "seed",
+        "formality": 2, "source": "seed", "label": seed,
     })
 
 products = [

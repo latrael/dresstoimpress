@@ -10,7 +10,7 @@ You're helping build **dresstoimpress** at Cal Hacks 13.0 (SF, Oct 23–25, 2026
 
 **Shared data contract (field names are fixed):**
 - Product: `id, retailer (zara|hm|asos|uniqlo|mango), name, brand, category (top|bottom|outerwear|shoes|dress|accessory), price_usd, sale_price_usd, colors[], sizes[], in_stock, image_url, product_url, style_tags[]`
-- ClosetItem: `id, user_id, image_url, category, color, pattern (solid|striped|plaid|graphic|floral|other), style_tags[], formality (1-5), source`
+- ClosetItem: `id, user_id, image_url, category, color, pattern (solid|striped|plaid|graphic|floral|other), style_tags[], formality (1-5), source, label` (label = short name like "black cargo pants")
 - User: `id, display_name, style_text, price_ranges {category: [min, max]}, body_photo_url, friends[]`
 - Style tags vocabulary: y2k, streetwear, minimalist, preppy, athleisure, vintage, business, boho, grunge, classic
 

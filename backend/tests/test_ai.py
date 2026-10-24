@@ -190,3 +190,18 @@ def test_claude_failure_falls_back_to_gemini(client, monkeypatch):
     monkeypatch.setattr(llm, "gemini_json", lambda *a, **k: {"category": "top"})
     assert llm.ai_json("x") == {"category": "top"}
     assert "credit balance" in llm.usage()["last_claude_error"]
+
+
+def test_tag_sets_label(client):
+    r = client.post("/closet/tag", json={"user_id": "u_demo", "image_url": "https://x/label.jpg"})
+    assert r.json()["label"] == "black tee"
+
+
+def test_pair_sorted_by_score(client, monkeypatch):
+    from app.ai import service
+    monkeypatch.setattr(service, "ai_json", lambda p, **k: [
+        {"product_id": "uniqlo-demo-1", "score": 0.4, "reason": "a", "pairs_with": []},
+        {"product_id": "asos-demo-1", "score": 0.95, "reason": "b", "pairs_with": []}])
+    monkeypatch.setattr(service, "text_mock", lambda: False)
+    got = service.pair("u_demo", ["uniqlo-demo-1", "asos-demo-1"])
+    assert [r.product_id for r in got] == ["asos-demo-1", "uniqlo-demo-1"]

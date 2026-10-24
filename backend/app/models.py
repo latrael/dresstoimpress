@@ -40,6 +40,7 @@ class ClosetItem(BaseModel):
     style_tags: list[str] = []
     formality: int = Field(3, ge=1, le=5)
     source: Literal["photo", "receipt", "seed"] = "photo"
+    label: str = ""  # short plain name, e.g. "black cargo pants" (optional, added Fri night)
 
 
 class User(BaseModel):

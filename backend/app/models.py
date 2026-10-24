@@ -72,6 +72,7 @@ class User(BaseModel):
     price_ranges: dict[str, list[float]] = {}
     body_photo_url: Optional[str] = None
     friends: list[str] = []
+    body_profile: Optional[dict] = None  # set by POST /users/{id}/body-scan (estimated inches); /size reads it
 
 
 # ---- AI endpoint requests / responses ----
@@ -127,8 +128,9 @@ class ShopFitRequest(BaseModel):
 
 class SizeRequest(BaseModel):
     product_id: str
-    height_cm: float
-    weight_kg: float
+    height_cm: Optional[float] = None   # optional with user_id: falls back to the user's body scan
+    weight_kg: Optional[float] = None
+    user_id: Optional[str] = None       # fills missing height / weight / waist from body_profile
     fit: Literal["slim", "regular", "oversized"] = "regular"
     shoe_us: Optional[float] = None
     waist_in: Optional[float] = None

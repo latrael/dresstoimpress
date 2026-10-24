@@ -60,3 +60,32 @@ Return only a JSON array, at most 8 items, most prominent first:
   "style_tags": up to 3 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
   "brand": visible brand name or null (only if a logo or text is clearly readable; never guess)}]
 Ignore phones, mirrors, furniture and background. If there is no person or clothing, return []."""
+
+
+# ---- Digitize wardrobe: one photo of several clothes -> separate closet items (with crop boxes) ----
+DIGITIZE = """You are digitizing someone's wardrobe from one photo: clothes laid flat on a bed or floor,
+hanging on a rack or chair, or worn in a mirror selfie.
+List every separate clothing item or pair of shoes you can clearly see, at most 8, biggest first.
+Return only a JSON array:
+[{"label": 2-4 word plain name, e.g. "black cargo pants",
+  "category": "top" | "bottom" | "outerwear" | "shoes" | "dress" | "accessory",
+  "color": main color in plain words,
+  "pattern": "solid" | "striped" | "plaid" | "graphic" | "floral" | "other",
+  "style_tags": up to 3 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
+  "formality": 1-5 (1 loungewear, 5 black tie),
+  "box": [x_min, y_min, x_max, y_max] as fractions 0-1 of the image width and height, tight around that one item}]
+Count a pair of shoes as one item. Ignore faces, skin, furniture, hangers and background.
+If there is no clothing, return []."""
+
+# ---- Body scan: full-body photo + height -> estimated measurements for size advice ----
+BODY_SCAN = """You estimate body measurements from one full-body photo, only to recommend clothing sizes.
+The person is {height_cm} cm tall{weight_part}. Use that height as the scale: compare shoulder width,
+chest, waist, hips and leg length against it.
+Return only a JSON object:
+{{"full_body_visible": true or false (one person standing, head to feet in frame),
+  "build": "slim" | "average" | "athletic" | "curvy" | "broad",
+  "chest_in": number, "waist_in": number, "hip_in": number, "inseam_in": number,
+  "note": at most 10 words of fit advice, e.g. "long legs, pick longer inseams"}}
+Measurements in inches, rounded to the nearest 0.5. If it is not one standing person in full view,
+set full_body_visible to false and every number to null.
+Never comment on attractiveness, weight or health."""

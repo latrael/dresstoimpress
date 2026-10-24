@@ -105,4 +105,53 @@ void main() {
     expect(p.items, isEmpty);
     expect((p.total, p.nextOffset), (0, null));
   });
+
+  test('digitizeCloset uploads one photo and returns every garment', () async {
+    final seen = <http.Request>[];
+    final api = _api(seen, (_) => [
+          {'id': 'ci_1', 'user_id': 'u_demo', 'image_url': '/static/uploads/a.jpg', 'category': 'bottom',
+           'color': 'black', 'label': 'black cargo pants'},
+          {'id': 'ci_2', 'user_id': 'u_demo', 'image_url': '/static/uploads/b.jpg', 'category': 'top',
+           'color': 'white', 'label': 'white baby tee', 'duplicate_of': 'ci_0'},
+        ]);
+    final items = await api.digitizeCloset([1, 2, 3]);
+    final r = seen.single;
+    expect((r.method, r.url.path), ('POST', '/closet/digitize'));
+    expect(r.body, contains('name="user_id"\r\n\r\nu_demo'));
+    expect(r.body, contains('Content-Type: image/jpeg'));
+    expect(items.map((i) => i.label), ['black cargo pants', 'white baby tee']);
+    expect(items.last.duplicateOf, 'ci_0');
+  });
+
+  test('bodyScan sends height and weight and parses the profile', () async {
+    final seen = <http.Request>[];
+    final api = _api(seen, (_) => {
+          'body_photo_url': 'https://dti.example/static/uploads/me.jpg',
+          'body_profile': {'height_cm': 178, 'weight_kg': 72, 'chest_in': 40, 'waist_in': 31.5, 'hip_in': null,
+                           'inseam_in': 32, 'build': 'athletic', 'source': 'ai', 'full_body': true,
+                           'note': 'Long legs, pick longer inseams', 'scanned_at': '2026-10-24T21:30:00+00:00'},
+        });
+    final res = await api.bodyScan([1, 2], heightCm: 178, weightKg: 72);
+    final r = seen.single;
+    expect(r.url.path, '/users/u_demo/body-scan');
+    expect(r.body, contains('name="height_cm"\r\n\r\n178.0'));
+    expect(r.body, contains('name="weight_kg"\r\n\r\n72.0'));
+    expect(res.bodyPhotoUrl, endsWith('/me.jpg'));
+    expect((res.profile.waistIn, res.profile.hipIn, res.profile.source), (31.5, null, 'ai'));
+    expect(res.profile.fullBody, isTrue);
+
+    final noWeight = _api(<http.Request>[], (_) => {'body_photo_url': 'x', 'body_profile': {'height_cm': 170}});
+    expect((await noWeight.bodyScan([1], heightCm: 170)).profile.source, 'estimate');
+  });
+
+  test('AppUser carries the body scan; sizeAdvice sends the user id', () async {
+    final u = AppUser.fromJson({..._user, 'body_profile': {'height_cm': 170, 'waist_in': 30, 'source': 'estimate'}});
+    expect(u.bodyProfile?.waistIn, 30);
+    expect(AppUser.fromJson(_user).bodyProfile, isNull);
+
+    final seen = <http.Request>[];
+    final api = _api(seen, (_) => {'size': 'M', 'confidence': 'high', 'reason': 'x'});
+    await api.sizeAdvice('hm:1:black');
+    expect((jsonDecode(seen.single.body) as Map)['user_id'], 'u_demo');
+  });
 }

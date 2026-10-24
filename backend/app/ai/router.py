@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
@@ -70,6 +71,46 @@ async def body_photo(user_id: str, file: UploadFile = File(...)):
     user["body_photo_url"] = url
     store.put("users", user_id, user)
     return {"body_photo_url": url}
+
+
+@router.post("/closet/digitize", response_model=list[ClosetItem])
+async def closet_digitize(user_id: str = Form(...), file: UploadFile = File(...)):
+    """Digitize wardrobe: one photo of several clothes (flat lay, rack, mirror selfie) -> one closet
+    item per garment, each cropped to its own image. Falls back to one item for the whole photo."""
+    from ..static_urls import local_static_path
+    from .digitize import digitize, upright_jpeg
+
+    url = await _save_upload(file)
+    path = local_static_path(url, DATA_DIR)
+    upright = upright_jpeg(path) if path else None
+    if upright:
+        url = url.rsplit("/", 1)[0] + "/" + upright.name
+        path = upright
+    try:
+        items = digitize(user_id, url, path)
+    except Exception as e:  # noqa: BLE001
+        raise _ai_down("wardrobe scan", e)
+    return items or [closet_tag(TagRequest(user_id=user_id, image_url=url))]
+
+
+@router.post("/users/{user_id}/body-scan")
+async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm: float = Form(...),
+                          weight_kg: Optional[float] = Form(None)):
+    """Body scan: full-body photo + height (weight optional) -> estimated measurements saved as
+    body_profile (used by /size) and the photo saved as the try-on photo."""
+    from .body_scan import HEIGHT_CM, WEIGHT_KG, scan
+
+    if not HEIGHT_CM[0] <= height_cm <= HEIGHT_CM[1]:
+        raise HTTPException(422, "height_cm must be between 120 and 230")
+    if weight_kg is not None and not WEIGHT_KG[0] <= weight_kg <= WEIGHT_KG[1]:
+        raise HTTPException(422, "weight_kg must be between 30 and 250")
+    url = await _save_upload(file)
+    profile = scan(url, height_cm, weight_kg)
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["body_photo_url"] = url
+    user["body_profile"] = profile
+    store.put("users", user_id, user)
+    return {"body_photo_url": url, "body_profile": profile}
 
 
 @router.get("/users/{user_id}/style")
@@ -180,8 +221,13 @@ def size(req: SizeRequest):
     product = get_product(req.product_id)
     if not product:
         raise HTTPException(404, "unknown product")
-    return recommend_size(product, req.height_cm, req.weight_kg, fit=req.fit,
-                          shoe_us=req.shoe_us, waist_in=req.waist_in)
+    scan = ((store.get("users", req.user_id) or {}).get("body_profile") or {}) if req.user_id else {}
+    height = req.height_cm or scan.get("height_cm")
+    weight = req.weight_kg or scan.get("weight_kg")
+    if not height or not weight:
+        raise HTTPException(422, "add your height and weight (or do a body scan with both)")
+    return recommend_size(product, height, weight, fit=req.fit,
+                          shoe_us=req.shoe_us, waist_in=req.waist_in or scan.get("waist_in"))
 
 
 @router.post("/complete-look")

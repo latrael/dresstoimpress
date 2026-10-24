@@ -106,6 +106,7 @@ class Api {
           {double? heightCm, double? weightKg, String fit = 'regular', double? shoeUs, double? waistIn}) async =>
       SizeAdvice.fromJson(await _send('POST', '/size', body: {
         'product_id': productId,
+        'user_id': _user, // the backend fills a missing waist (and height/weight) from the user's body scan
         'height_cm': heightCm ?? settings.heightCm,
         'weight_kg': weightKg ?? settings.weightKg,
         'fit': fit,
@@ -183,6 +184,20 @@ class Api {
 
   Future<String> uploadBodyPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       _str((await _upload('/users/${_seg(_user)}/body-photo', {}, bytes, mimeType))['body_photo_url']);
+
+  /// POST /closet/digitize ("digitize wardrobe"): one photo of several clothes (flat lay, rack, mirror
+  /// selfie) -> one tagged closet item per garment, each cropped to its own image. Items that look like
+  /// something already in the closet come back with [ClosetItem.duplicateOf] set.
+  Future<List<ClosetItem>> digitizeCloset(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
+      _listOf(await _upload('/closet/digitize', {'user_id': _user}, bytes, mimeType), ClosetItem.fromJson);
+
+  /// POST /users/{id}/body-scan: full-body photo + height (weight optional) -> estimated measurements,
+  /// saved on the user and used by [sizeAdvice]. The photo also becomes the try-on photo.
+  /// 422 (ApiError) for a height outside 120-230 cm or weight outside 30-250 kg.
+  Future<BodyScanResult> bodyScan(List<int> bytes,
+          {required double heightCm, double? weightKg, String mimeType = 'image/jpeg'}) async =>
+      BodyScanResult.fromJson(await _upload('/users/${_seg(_user)}/body-scan',
+          {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType));
 
   // ------------------------------------------------------------ Fit Check (Nabil)
 

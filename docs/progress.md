@@ -1,6 +1,6 @@
 # dresstoimpress — progress and direction
 
-Last updated: Fri Oct 23, 7:20 PM PT. Branch: `adam/ai-pipeline` (Adam's AI lane). `main` has only the README so far.
+Last updated: Fri Oct 23, 7:30 PM PT. Branch: `adam/ai-pipeline` (Adam's AI lane). `main` has only the README so far.
 
 ## Where we are
 
@@ -11,7 +11,8 @@ The backend skeleton and the whole AI pipeline are built, tested (22 tests) and 
 | FastAPI skeleton + shared data contract | Done | `backend/app/main.py`, `backend/app/models.py` |
 | Closet tagging (`/closet/tag`, `/closet/upload`) | Done, live on Claude Haiku | e.g. "black leather moto jacket" → outerwear, grunge/streetwear, ~3 s |
 | Pairing (`/pair`) | Done, live | Budget-first, sorted, reasons like "Perfect Y2K top for your baggy jeans" |
-| Shop the fit (`/ai/shop-fit`) | Done | Matches Fit Check tags to products, ranks vs viewer's closet |
+| Shop the fit (`/ai/shop-fit`) | Done | Strict matching (same type + category); live store search via Apify when nothing matches (needs `APIFY_TOKEN`) |
+| Fit photo auto-tagging (`/ai/tag-fit`) | Done, live | Lists every item in an outfit photo, e.g. "red graphic t-shirt", "oversized black jacket" |
 | Style memory (Moss) | Done, needs Moss keys | Falls back to swipe history until then |
 | Try-on (`/tryon`) | Built, blocked | Google project billing still processing; images return 403 |
 | Cost controls | Done | Haiku default, caching, $5 cap, `GET /ai/usage`; real cost so far < $0.01 |
@@ -19,11 +20,26 @@ The backend skeleton and the whole AI pipeline are built, tested (22 tests) and 
 | Commerce: Apify feed, cart, Nessie checkout, Fit Check backend | Not started | Nabil |
 | iPhone app (FlutterFlow) | Not started in repo | Ryan |
 
+## Who owns what (no overlap)
+
+| Area | Owner | Not touched by |
+| --- | --- | --- |
+| `backend/app/ai/*`, `scripts/eval_tagger.py`, `scripts/precompute_tryons.py`, `docs/` | Adam | Nabil, Ryan |
+| Main product ingest from Apify (category pages → `products`), `/feed`, `/swipe`, `/cart`, `/checkout`, Fit Check posts storage, Devpost | Nabil | Adam, Ryan |
+| FlutterFlow app, Figma, Notability, demo video, slides | Ryan | Adam, Nabil |
+| `backend/app/models.py` (shared contract) | Shared: announce in group chat before changing | |
+
+Boundaries:
+- Adam's live search (`app/ai/finder.py`) only looks up **items from Fit Check posts** that the catalog doesn't have. It writes them to `products` with `source: "live_search"` and the same Product fields. Nabil's ingest stays the main source of the feed.
+- `/feed` (Nabil) calls `ai.service.pair()`; `/swipe` (Nabil) calls `ai.memory.record_swipe()`; `GET /fitcheck/{post_id}/shop` (Nabil) returns `ai.service.shop_fit(viewer_id, post["tagged"])`. Adam doesn't edit those routes.
+- Gemini-drafted modules (size advisor, outfit rules) land in `backend/app/ai/` via Adam.
+
 ## Blockers
 
 1. **Google billing for try-on images.** The new Gemini project ("DRESStoIMPRESS") is locked while Google processes the billing account. Adam is waiting; retry with `python /tmp/gem_img.py` or any `/tryon` call.
-2. **Moss keys** from the Cal Hacks Moss Starter Pack (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`).
-3. **Shared backend URL.** The server runs on Adam's Mac at `localhost:8000`; it needs a tunnel or deploy so the app can reach it.
+2. **Apify token** for live item search (same token Nabil uses for ingest; `APIFY_TOKEN` in `.env`).
+3. **Moss keys** from the Cal Hacks Moss Starter Pack (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`).
+4. **Shared backend URL.** The server runs on Adam's Mac at `localhost:8000`; it needs a tunnel or deploy so the app can reach it.
 
 ## Next (timeline, Pacific)
 

@@ -91,4 +91,9 @@ class FitTag(BaseModel):
 
 class ShopFitRequest(BaseModel):
     viewer_id: str
-    tagged: list[FitTag]
+    tagged: list[FitTag] = []
+    photo_url: Optional[str] = None  # if set and tagged is empty, items are auto-tagged from the photo
+
+
+class TagFitRequest(BaseModel):
+    image_url: str

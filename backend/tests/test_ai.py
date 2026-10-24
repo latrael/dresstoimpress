@@ -205,3 +205,67 @@ def test_pair_sorted_by_score(client, monkeypatch):
     monkeypatch.setattr(service, "text_mock", lambda: False)
     got = service.pair("u_demo", ["uniqlo-demo-1", "asos-demo-1"])
     assert [r.product_id for r in got] == ["asos-demo-1", "uniqlo-demo-1"]
+
+
+def test_tag_fit_mock(client):
+    r = client.post("/ai/tag-fit", json={"image_url": "https://x/fit.jpg"})
+    assert r.status_code == 200
+    labels = [t["label"] for t in r.json()]
+    assert labels == ["light-wash baggy jeans", "white baby tee"]
+
+
+def test_tag_fit_rejects_file_url(client):
+    assert client.post("/ai/tag-fit", json={"image_url": "file:///etc/passwd"}).status_code == 400
+
+
+def test_tag_fit_maps_brand_and_drops_junk(client, monkeypatch):
+    from app.ai import service
+    monkeypatch.setattr(service, "text_mock", lambda: False)
+    monkeypatch.setattr(service, "ai_json", lambda p, **k: [
+        {"label": "denim jacket", "category": "outerwear", "brand": "Zara"},
+        {"label": ""}, "junk", {"label": "cap", "category": "hat"}])
+    got = service.tag_fit("https://x/brand.jpg")
+    assert got[0]["retailer"] == "zara" and got[0]["category"] == "outerwear"
+    assert len(got) == 2 and got[1]["category"] == "accessory"
+
+
+def test_shop_fit_from_photo(client):
+    r = client.post("/ai/shop-fit", json={"viewer_id": "u_demo", "photo_url": "https://x/fit2.jpg"})
+    assert r.status_code == 200
+    assert "hm-demo-1" in {p["id"] for p in r.json()}  # "white baby tee" -> Cropped baby tee
+
+
+def test_finder_rejects_wrong_type_and_category():
+    from app.ai.finder import best_matches, match_score
+    tee = {"id": "t", "name": "Cropped baby tee", "category": "top", "colors": ["white"], "retailer": "hm"}
+    hoodie = {"id": "h", "name": "Cropped hoodie", "category": "top", "colors": ["mustard"], "retailer": "asos"}
+    jeans = {"id": "j", "name": "Baggy jeans", "category": "bottom", "colors": ["light blue"], "retailer": "zara"}
+    tag = {"label": "cropped pullover hoodie", "category": "top", "color": "mustard yellow"}
+    assert match_score(tag, tee) == 0            # same "cropped", wrong type
+    assert match_score(tag, jeans) == 0          # wrong category
+    assert best_matches(tag, [tee, hoodie, jeans]) == [hoodie]
+
+
+def test_finder_live_search_normalizes(monkeypatch):
+    import httpx
+    from app.ai import finder
+
+    class R:
+        def raise_for_status(self): pass
+        def json(self):
+            return [{"site": "asos", "name": "ASOS DESIGN oversized hoodie in mustard", "price": "$42.00",
+                     "image": "https://img/x.jpg", "url": "https://asos.com/p/1", "sizes": ["S", "M"]},
+                    {"site": "asos", "name": "no price"}]
+    sent = {}
+    monkeypatch.setenv("APIFY_TOKEN", "t")
+    monkeypatch.setattr(httpx, "post", lambda url, **k: sent.update(k) or R())
+    got = finder.live_search({"label": "oversized hoodie", "color": "mustard", "category": "top"})
+    assert len(got) == 1 and got[0]["price_usd"] == 42.0 and got[0]["retailer"] == "asos"
+    assert "mustard+oversized+hoodie" in sent["json"]["asosCategoryUrl"]
+    assert got[0]["id"] == finder.live_search({"label": "oversized hoodie", "color": "mustard"})[0]["id"]  # cached, stable id
+
+
+def test_finder_no_token_no_live_search(monkeypatch):
+    from app.ai import finder
+    monkeypatch.delenv("APIFY_TOKEN", raising=False)
+    assert finder.live_search({"label": "hoodie"}) == []

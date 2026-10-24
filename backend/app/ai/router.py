@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, TagRequest,
+from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, TagFitRequest, TagRequest,
                       TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
@@ -79,7 +79,27 @@ def pair(req: PairRequest):
 def shop_fit(req: ShopFitRequest):
     """AI half of GET /fitcheck/{post_id}/shop: Nabil's route loads the post and passes its `tagged` here
     (or calls service.shop_fit directly). Returns Products + reason, pairs_with, score, matched_tag."""
-    return service.shop_fit(req.viewer_id, [t.model_dump() for t in req.tagged])
+    tagged = [t.model_dump() for t in req.tagged]
+    if not tagged and req.photo_url:
+        if not req.photo_url.startswith(("http://", "https://")):
+            raise HTTPException(400, "photo_url must be http(s)")
+        try:
+            tagged = service.tag_fit(req.photo_url)
+        except BadModelOutput as e:
+            raise HTTPException(502, f"fit tagger failed: {e}")
+    return service.shop_fit(req.viewer_id, tagged)
+
+
+@router.post("/ai/tag-fit")
+def tag_fit(req: TagFitRequest):
+    """Items visible in an outfit photo -> Fit Check tags. Ryan: call after a post is created
+    to pre-fill tags; Nabil: store them as the post's `tagged`."""
+    if not req.image_url.startswith(("http://", "https://")):
+        raise HTTPException(400, "image_url must be http(s)")
+    try:
+        return service.tag_fit(req.image_url)
+    except BadModelOutput as e:
+        raise HTTPException(502, f"fit tagger failed: {e}")
 
 
 @router.get("/ai/usage")

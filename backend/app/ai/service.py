@@ -212,10 +212,12 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
     Each result is a Product plus `reason`, `pairs_with`, and `matched_tag` (the post label it answers).
     Tags with no product match yet are skipped; Nabil can run Apify for that retailer and call again.
     """
+    from .finder import find_products
+
     products = store.list("products")
     matched: dict[str, str] = {}
     for tag in tagged:
-        for p in _match_tag(tag, products):
+        for p in find_products(tag, products):
             matched.setdefault(p["id"], tag.get("label", ""))
     if not matched:
         return []
@@ -232,3 +234,42 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
                     "matched_tag": label})
     out.sort(key=lambda d: d["score"], reverse=True)
     return out
+
+
+# ---------- Fit Check: auto-tag an outfit photo ----------
+
+BRAND_TO_RETAILER = {"zara": "zara", "h&m": "hm", "hm": "hm", "asos": "asos", "uniqlo": "uniqlo",
+                     "mango": "mango"}
+
+
+def tag_fit(image_url: str) -> list[dict]:
+    """Items visible in an outfit photo, shaped as Fit Check tags (label, retailer?) plus
+    category/color/pattern/style_tags/brand. Feed the result to shop_fit() as `tagged`."""
+    if text_mock():
+        raw = [{"label": "light-wash baggy jeans", "category": "bottom", "color": "light blue",
+                "pattern": "solid", "style_tags": ["y2k"], "brand": None},
+               {"label": "white baby tee", "category": "top", "color": "white", "pattern": "solid",
+                "style_tags": ["y2k"], "brand": None}]
+    else:
+        key = "fit-" + hashlib.sha256(image_url.encode()).hexdigest()[:24]
+        hit = store.get("tag_cache", key)
+        if hit:
+            raw = hit["items"]
+        else:
+            raw = ai_json(prompts.FIT_TAGGER, image_url=image_url, max_tokens=700, model=CLAUDE_TAG_MODEL)
+            store.put("tag_cache", key, {"items": raw})
+    out = []
+    for r in raw if isinstance(raw, list) else []:
+        if not isinstance(r, dict) or not r.get("label"):
+            continue
+        brand = r.get("brand") or None
+        out.append({
+            "label": " ".join(str(r["label"]).split()[:5]),
+            "retailer": BRAND_TO_RETAILER.get(str(brand).lower()) if brand else None,
+            "brand": brand,
+            "category": r.get("category") if r.get("category") in CATEGORIES else "accessory",
+            "color": str(r.get("color", "")),
+            "pattern": r.get("pattern", "other"),
+            "style_tags": list(r.get("style_tags", []))[:3],
+        })
+    return out[:8]

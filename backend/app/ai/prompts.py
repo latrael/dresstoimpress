@@ -28,3 +28,14 @@ and fit the style and price ranges.
 Return only a JSON array of objects:
 {{"product_id": str, "score": number 0-1, "reason": at most 8 words, casual second person, naming the closet item by its label, e.g. "goes with your black cargo pants", "pairs_with": [closet item ids]}}
 Use only product ids from the candidates."""
+
+FIT_TAGGER = """You are a fashion cataloguer. The image is an outfit photo (mirror selfie, street photo, or flat-lay).
+List every clothing item and accessory you can clearly see that someone could buy.
+Return only a JSON array, at most 8 items, most prominent first:
+[{"label": 2-4 word plain name, e.g. "light-wash baggy jeans",
+  "category": "top" | "bottom" | "outerwear" | "shoes" | "dress" | "accessory",
+  "color": main color in plain words,
+  "pattern": "solid" | "striped" | "plaid" | "graphic" | "floral" | "other",
+  "style_tags": up to 3 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
+  "brand": visible brand name or null (only if a logo or text is clearly readable; never guess)}]
+Ignore phones, mirrors, furniture and background. If there is no person or clothing, return []."""

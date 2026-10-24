@@ -140,5 +140,13 @@ class CompleteLookRequest(BaseModel):
     budget_usd: Optional[float] = None  # total for new items incl. the anchor
 
 
+class FitScoreRequest(BaseModel):
+    """Any mix: raw items (a Fit Check post's `tagged`), catalog products, closet items."""
+    items: list[dict] = []
+    product_ids: list[str] = []
+    closet_item_ids: list[str] = []
+
+
 class TagFitRequest(BaseModel):
     image_url: str
+    hint: Optional[str] = None  # /products/tag only: the product name, for photos of a model in a full outfit

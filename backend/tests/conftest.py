@@ -6,7 +6,11 @@ URL) or API keys in .env from turning requests into 401s, wrong URLs, or real pa
 Tests that need one of these set it themselves with monkeypatch.
 """
 import os
+import tempfile
 
+# Safety net: anything that imports app.store before a test sets DATA_DIR gets a temp dir,
+# never the real backend/data/ the shared demo server reads.
+os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="dti-tests-"))
 os.environ["API_SHARED_KEY"] = ""
 os.environ["MOCK_AI"] = "1"
 os.environ["PUBLIC_BASE"] = "http://localhost:8000"

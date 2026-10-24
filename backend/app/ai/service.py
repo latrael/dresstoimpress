@@ -30,20 +30,24 @@ class NotClothing(Exception):
 
 # ---------- /closet/tag ----------
 
-def tag_image(image_url: str) -> dict:
-    """Raw tagger output for one garment image (cached per URL). Raises NotClothing."""
+def tag_image(image_url: str, hint: str | None = None) -> dict:
+    """Raw tagger output for one garment image (cached per URL + hint). Raises NotClothing.
+
+    `hint` = what the photo is selling (product name). Retailer photos often show a model in a
+    whole outfit; the hint makes the tagger describe that one item, not the model's jeans."""
+    hint = " ".join(str(hint or "").split())[:120]
     if text_mock():
         raw = {"label": "black tee", "category": "top", "color": "black", "pattern": "solid",
                "style_tags": ["streetwear"], "formality": 2}
     else:
         # same photo tagged twice (retries, re-uploads) costs nothing the second time
-        key = hashlib.sha256(image_url.encode()).hexdigest()[:24]
+        key = hashlib.sha256((image_url + ("|" + hint if hint else "")).encode()).hexdigest()[:24]
         hit = store.get("tag_cache", key)
         if hit:
             raw = hit
         else:
-            raw = ai_json(prompts.TAGGER, image_url=image_url, max_tokens=200,
-                              model=CLAUDE_TAG_MODEL)
+            prompt = prompts.TAGGER + (prompts.TAGGER_HINT.format(hint=hint) if hint else "")
+            raw = ai_json(prompt, image_url=image_url, max_tokens=200, model=CLAUDE_TAG_MODEL)
             if isinstance(raw, dict):
                 store.put("tag_cache", key, raw)
 
@@ -288,12 +292,13 @@ def tag_fit(image_url: str) -> list[dict]:
 
 
 
-def tag_product(image_url: str) -> dict:
+def tag_product(image_url: str, hint: str | None = None) -> dict:
     """Tags for a catalog product image (Nabil's ingest). Same vocabulary as closet items so
-    pairing compares like with like. Returns contract fields plus NABIL.md's `tags` object."""
+    pairing compares like with like. Returns contract fields plus NABIL.md's `tags` object.
+    Pass the product name as `hint` for photos of a model wearing a full outfit."""
     from .compat import to_nabil_tags
 
-    raw = tag_image(image_url)
+    raw = tag_image(image_url, hint)
     item = {
         "label": " ".join(str(raw.get("label", "")).split()[:5]),
         "category": raw.get("category") if raw.get("category") in CATEGORIES else "top",

@@ -304,3 +304,21 @@ def test_products_tag_returns_nabil_tags(client):
     assert r.status_code == 200
     t = r.json()["tags"]
     assert t["category"] == "tops" and t["formality"] == "casual" and t["style"] == ["streetwear"]
+
+
+def test_size_endpoint_reads_both_schemas(client):
+    from app.store import store
+    r = client.post("/size", json={"product_id": "zara-demo-1", "height_cm": 175, "weight_kg": 68})
+    assert r.status_code == 200 and r.json()["size"] == "L"  # base M, Zara runs small
+    store.put("products", NABIL_PRODUCT["id"], NABIL_PRODUCT)  # sizes S (in stock), M (sold out)
+    r = client.post("/size", json={"product_id": NABIL_PRODUCT["id"], "height_cm": 175, "weight_kg": 68})
+    assert r.json()["size"] == "S"  # never a sold-out size
+    assert client.post("/size", json={"product_id": "nope", "height_cm": 1, "weight_kg": 1}).status_code == 404
+
+
+def test_fallback_uses_outfit_rules(client, monkeypatch):
+    from app.ai import service
+    monkeypatch.setattr(service, "text_mock", lambda: True)  # force the no-AI path
+    got = service.pair("u_demo", ["hm-demo-1", "zara-demo-1", "mango-demo-1"])
+    assert got[-1].product_id == "mango-demo-1"  # over budget goes last
+    assert got[0].reason.startswith("goes with your")  # names a closet item now

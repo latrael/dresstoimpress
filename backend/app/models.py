@@ -96,5 +96,14 @@ class ShopFitRequest(BaseModel):
     photo_url: Optional[str] = None  # if set and tagged is empty, items are auto-tagged from the photo
 
 
+class SizeRequest(BaseModel):
+    product_id: str
+    height_cm: float
+    weight_kg: float
+    fit: Literal["slim", "regular", "oversized"] = "regular"
+    shoe_us: Optional[float] = None
+    waist_in: Optional[float] = None
+
+
 class TagFitRequest(BaseModel):
     image_url: str

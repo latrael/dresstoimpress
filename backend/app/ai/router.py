@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, TagFitRequest, TagRequest,
+from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, SizeRequest, TagFitRequest, TagRequest,
                       TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
@@ -119,3 +119,16 @@ def tag_fit(req: TagFitRequest):
 def ai_usage():
     """Running AI spend estimate. Check it from a browser during the hackathon."""
     return {**usage(), "budget_usd": AI_BUDGET_USD, "max_tryons": MAX_TRYONS}
+
+
+@router.post("/size")
+def size(req: SizeRequest):
+    """'We pick your size': {size, confidence, reason}. Only returns sizes in stock for that product."""
+    from .compat import get_product
+    from .sizing import recommend_size
+
+    product = get_product(req.product_id)
+    if not product:
+        raise HTTPException(404, "unknown product")
+    return recommend_size(product, req.height_cm, req.weight_kg, fit=req.fit,
+                          shoe_us=req.shoe_us, waist_in=req.waist_in)

@@ -115,10 +115,17 @@ def _in_budget(p: dict, ranges: dict) -> bool:
     return not r or r[0] <= price <= r[1]
 
 
-def _fallback(cands: list[dict], ranges: dict, k: int) -> list[PairResult]:
-    ranked = sorted(cands, key=lambda p: (not _in_budget(p, ranges), p["price_usd"]))
-    return [PairResult(product_id=p["id"], id=p["id"], score=0.5, reason="fits your style and budget",
-                       pairs_with=[]) for p in ranked[:k]]
+def _fallback(cands: list[dict], ranges: dict, k: int, closet: list[dict] | None = None,
+              style_text: str = "") -> list[PairResult]:
+    """No-AI ranking (Claude off, over budget, or bad output): in-budget first, then the
+    outfit rules scorer (category fit, color harmony, patterns, style overlap)."""
+    from .outfit_rules import rank
+
+    in_budget = [p for p in cands if _in_budget(p, ranges)]
+    over = [p for p in cands if not _in_budget(p, ranges)]
+    ranked = rank(in_budget, closet or [], style_text, k) + rank(over, closet or [], style_text, k)
+    return [PairResult(product_id=r["product_id"], id=r["product_id"], score=r["score"],
+                       reason=r["reason"], pairs_with=r["pairs_with"]) for r in ranked[:k]]
 
 
 def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult]:
@@ -137,7 +144,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         return []
 
     if text_mock() or not closet:
-        return _fallback(cands, ranges, k)
+        return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
 
     slim_closet = [{"id": c["id"], "label": c.get("label") or f'{c["color"]} {c["category"]}',
                     "category": c["category"], "color": c["color"], "pattern": c["pattern"],
@@ -166,7 +173,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         try:
             raw = ai_json(prompt, max_tokens=1200, model=CLAUDE_PAIR_MODEL)
         except BadModelOutput:
-            return _fallback(cands, ranges, k)
+            return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
         store.put("pair_cache", ckey, {"at": time.time(), "raw": raw})
 
     valid_ids = {p["id"] for p in cands}
@@ -183,7 +190,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     out.sort(key=lambda r: r.score, reverse=True)
-    return out[:k] or _fallback(cands, ranges, k)
+    return out[:k] or _fallback(cands, ranges, k, closet, user.get("style_text", ""))
 
 
 # ---------- Fit Check: shop the fit ----------

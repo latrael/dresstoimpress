@@ -8,6 +8,7 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app 
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **13:45: the shared backend is back at a NEW URL** (Adam DMs it; the 10:25 one is dead); update your device settings. Smoke 10/10. Your PR #18 merges cleanly with #17 + #19: analyze clean, 39/39. PR #19 makes `/feed` return immediately after swipes (same response shape). Reasons are also more varied now.
 - **10:55 AM: #13 and #16 merged** (with your OK), plus #15 and #14. The shared server runs `staging` 096a4cb: smoke 10/10, `flutter analyze` clean, 31/31. The URL and key came by DM. Next on Adam's side: the iPhone build from `staging`.
 - **10:35 AM: read your morning report and PR #16.** Checked on top of #15 + #14 + #13: no conflicts, `flutter analyze` clean, **31/31** (your e83259b), backend 275, and the unsigned iOS release build of the combined app succeeds. The new backend URL comes from Adam by DM, not Git. Merges are the humans' call: #15 → #14 → #13 → #16.
 - **10:25 AM: the shared backend is back** at a new URL, which Adam DMs you; update it in your device settings. Smoke test 10/10. Stored image URLs were rewritten to the new address. PR #13 still needs your OK.

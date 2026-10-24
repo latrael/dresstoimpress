@@ -59,6 +59,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final requests = <http.Request>[];
+    var inCart = false; // the cart screen re-reads the server copy when it opens
     final api = Api(client: MockClient((request) async {
       requests.add(request);
       expect(request.headers['X-DTI-Key'], 'test-only');
@@ -68,12 +69,13 @@ void main() {
       } else if (request.url.path.endsWith('/ids')) {
         data = <String>[];
       } else if (request.url.path == '/cart/u_demo') {
-        data = cartJson();
+        data = cartJson(filled: inCart);
       } else if (request.method == 'PUT') {
         data = {'user_id': 'u_demo', 'product_id': piece['id'], 'saved': true};
       } else if (request.url.path == '/cart/u_demo/items') {
         expect(jsonDecode(request.body),
             {'product_id': piece['id'], 'size': 'M', 'qty': 1});
+        inCart = true;
         data = cartJson(filled: true);
       } else {
         throw StateError('Unexpected route ${request.url.path}');

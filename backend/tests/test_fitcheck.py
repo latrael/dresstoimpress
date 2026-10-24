@@ -38,7 +38,7 @@ def test_create_with_tags(client):
     assert p["id"].startswith("fc_") and p["visibility"] == "friends"
     assert p["tagged"] == [{"label": "baggy jeans", "retailer": None, "product_id": "hm-demo-1",
                             "closet_item_id": None, "category": None, "color": None, "pattern": None,
-                            "style_tags": [], "brand": None}]
+                            "style_tags": [], "brand": None, "box": None}]
     assert p["author"] == {"id": "u_a", "display_name": "Ana"}
     assert (p["like_count"], p["liked_by_me"], p["comment_count"]) == (0, False, 0)
 
@@ -49,7 +49,7 @@ def test_create_without_tags_prefills(client):
     t = p["tagged"][0]  # stored as /ai/tag-fit returns it, so shop_fit can match strictly
     assert (t["category"], t["color"], t["pattern"], t["style_tags"]) == ("bottom", "light blue", "solid", ["y2k"])
     assert set(t) == {"label", "retailer", "product_id", "closet_item_id", "category", "color", "pattern",
-                      "style_tags", "brand"}
+                      "style_tags", "brand", "box"}
 
 
 def test_tag_failure_never_500s(client, monkeypatch):

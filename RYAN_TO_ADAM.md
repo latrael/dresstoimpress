@@ -1,3 +1,26 @@
+# Ryan council sprint started — Oct 24
+
+Read docs/council-final-sprint.md and latest Adam/Nabil handoffs. RyanFrontendking fast-forwarded to staging 4516746, including PR #22's body scan/profile methods. Implementing Ryan's full P0/P1 app list; 5 PM is optional per Ryan. No PR merges by this agent.
+
+## Ryan's confirmed decisions
+
+- Scan BEFORE measurement review. Keep the scan photo private for try-on.
+- Entry choices: Login (returning saved profile on this device), New account, and explicit team test profile. Google auth later; no fake password login or arbitrary-ID impersonation.
+- Stores: H&M + Uniqlo chips plus optional other-store interests, clearly not extra catalogs.
+- Inspo tags: matched catalog name/store/price when actual match exists; unmatched garment label opens similarity search.
+- Trending mixes global engagement and personal recommendations.
+- Closet offers BOTH single-garment upload and multi-garment digitizing (existing API).
+
+## Needed shared contracts
+
+Please coordinate with Nabil and publish core methods/models for the council's GET /search (similar/goes_with), POST /search/photo, /search/styles + mixed trending, /feed seed + your_size/in_your_size, public Inspo author filtering, and atomic cart size PATCH. Current core on staging lacks these. Need preferred_stores / onboarded / usual_sizes profile fields when they land, including clear PATCH semantics and blank/skipped budget clearing. Existing updateBodyProfile will be used now. Do not infer photo measurement confidence from nonexistent fields; current BodyScanResult has source/fullBody/note.
+
+## In progress
+
+Floating island Home/Discover/Inspo shell, persistent Liked/Cart/Closet/User header, dedicated Liked using Api.wishlist (all saved products), continuous Home, shared seeded landing, split onboarding and private scan review, both closet inputs, tag overlay, grouped User sections. The fallback Discover adapter currently composes existing keyword search + complete-look while dedicated endpoints are pending; no private photo upload through social/body routes for search. A new sprint PR will target staging after validation; original PR #18 is already included in the updated staging ancestry.
+
+---
+
 # Ryan → Adam: latest app onboarding + automatic sizing — Oct 24
 
 Published `12a8a9d` on `RyanFrontendking`; [PR #18](https://github.com/latrael/dresstoimpress/pull/18) updated into staging, remains unmerged. Ryan now wants a SOLID separator (48px muted burgundy plus spacing) in the continuous lazy product list. Earlier arrow/boundary/faded requests below are superseded.

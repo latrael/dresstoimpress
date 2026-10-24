@@ -424,11 +424,11 @@ def tag_fit(image_url: str) -> list[dict]:
     category/color/pattern/style_tags/brand. Feed the result to shop_fit() as `tagged`."""
     if text_mock():
         raw = [{"label": "light-wash baggy jeans", "category": "bottom", "color": "light blue",
-                "pattern": "solid", "style_tags": ["y2k"], "brand": None},
+                "pattern": "solid", "style_tags": ["y2k"], "brand": None, "box": [0.25, 0.5, 0.75, 0.95]},
                {"label": "white baby tee", "category": "top", "color": "white", "pattern": "solid",
-                "style_tags": ["y2k"], "brand": None}]
+                "style_tags": ["y2k"], "brand": None, "box": [0.28, 0.2, 0.72, 0.5]}]
     else:
-        key = "fit-" + hashlib.sha256(image_url.encode()).hexdigest()[:24]
+        key = f"fit{prompts.FIT_TAGGER_VERSION}-" + hashlib.sha256(image_url.encode()).hexdigest()[:24]
         hit = store.get("tag_cache", key)
         if hit:
             raw = hit["items"]
@@ -448,8 +448,23 @@ def tag_fit(image_url: str) -> list[dict]:
             "color": str(r.get("color", "")),
             "pattern": r.get("pattern", "other"),
             "style_tags": _style_tags(r, 3),
+            "box": fit_box(r.get("box")),
         })
     return out[:8]
+
+
+def fit_box(box) -> list[float] | None:
+    """A tag's pin box as [x0, y0, x1, y1] fractions of the photo (0-1, rounded), or None when the model
+    gave no usable box. 0-1000 boxes are rescaled; pixel boxes can't be (no image size here) and drop."""
+    from .digitize import normalize_box
+
+    try:
+        if box is None or max(float(v) for v in box) > 1000:
+            return None
+    except (TypeError, ValueError):
+        return None
+    b = normalize_box(box, 1, 1)
+    return [round(v, 3) for v in b] if b else None
 
 
 

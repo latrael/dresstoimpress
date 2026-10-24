@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Category = Literal["top", "bottom", "outerwear", "shoes", "dress", "accessory"]
 Retailer = Literal["zara", "hm", "asos", "uniqlo", "mango"]
@@ -122,6 +122,24 @@ class FitTag(BaseModel):
     pattern: Optional[str] = None
     style_tags: list[str] = []
     brand: Optional[str] = None
+    # Where the item is in the post photo, for Inspo pins: [x_min, y_min, x_max, y_max] as 0-1 fractions
+    # of the image. Set by the AI tagger; optional (old posts and hand-added tags have none). An
+    # invalid box is dropped (None), never an error.
+    box: Optional[list[float]] = None
+
+    @field_validator("box", mode="before")
+    @classmethod
+    def _valid_box(cls, v):
+        try:
+            x0, y0, x1, y1 = (float(n) for n in v)
+        except (TypeError, ValueError):
+            return None
+        ok = 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1
+        return [x0, y0, x1, y1] if ok else None
+
+
+class VibeRequest(BaseModel):
+    q: str = Field(max_length=200)
 
 
 class ShopFitRequest(BaseModel):

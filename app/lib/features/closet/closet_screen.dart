@@ -41,6 +41,34 @@ class _ClosetScreenState extends State<ClosetScreen> {
     }
   }
 
+  /// Digitize wardrobe: one photo of several pieces (flat lay, rack, mirror selfie) adds each one.
+  Future<void> scanSeveral() async {
+    setState(() {
+      busy = true;
+      message = null;
+    });
+    try {
+      final photo = await widget.picker();
+      if (photo == null) return;
+      final added = await widget.api
+          .digitizeCloset(photo.bytes, mimeType: photo.mimeType);
+      if (mounted) {
+        final dupes = added.where((i) => i.duplicateOf != null).length;
+        setState(() {
+          message = added.isEmpty
+              ? 'No clothing found in that photo. Try a clearer shot.'
+              : 'Added ${added.length} piece${added.length == 1 ? '' : 's'}: ${added.map((i) => i.label ?? i.category).join(', ')}.'
+                  '${dupes > 0 ? ' $dupes may already be in your closet.' : ''}';
+          items = widget.api.closet();
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => message = featureError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> remove(ClosetItem item) async {
     final confirmed = await showDialog<bool>(
         context: context,
@@ -88,12 +116,18 @@ class _ClosetScreenState extends State<ClosetScreen> {
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text(
-                  'Add a photo of a garment you own. It is uploaded to your connected server and tagged for outfit suggestions.'),
+                  'Add a photo of one garment, or scan a photo of several (a flat lay, your rack, a mirror selfie) to add each piece. Photos are uploaded to your connected server and tagged for outfit suggestions.'),
               const SizedBox(height: 12),
-              FilledButton.icon(
-                  onPressed: busy ? null : upload,
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                  label: Text(busy ? 'Working…' : 'Add a piece')),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                FilledButton.icon(
+                    onPressed: busy ? null : upload,
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(busy ? 'Working…' : 'Add a piece')),
+                OutlinedButton.icon(
+                    onPressed: busy ? null : scanSeveral,
+                    icon: const Icon(Icons.document_scanner_outlined),
+                    label: const Text('Scan several pieces')),
+              ]),
               if (message != null) Text(message!),
             ])),
         Expanded(

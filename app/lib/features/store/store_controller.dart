@@ -193,6 +193,19 @@ class StoreController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Re-reads the cart from the server (opening the cart, or after an error left it uncertain).
+  Future<void> refreshCart() async {
+    if (demo) return;
+    try {
+      cart = await api.cart();
+      accountWarning = null;
+    } catch (_) {
+      accountWarning ??=
+          'Cart could not be refreshed. Retry before making changes.';
+    }
+    notifyListeners();
+  }
+
   Future<void> remove(String id, String size) async {
     if (!demo) {
       cart = await api.removeFromCart(id, size: size);

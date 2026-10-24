@@ -24,6 +24,39 @@ class _CartScreenState extends State<CartScreen> {
   Set<String> unavailable = {};
   CheckoutResult? receipt;
 
+  @override
+  void initState() {
+    super.initState();
+    widget.store.refreshCart(); // the server copy wins over what was added minutes ago
+  }
+
+  Future<void> retry(String retailer) async {
+    final order = receipt;
+    if (order == null) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final updated =
+          await widget.store.api.retryOrder(order.orderId, retailer: retailer);
+      if (mounted) setState(() => receipt = updated);
+    } on ApiError catch (e) {
+      if (mounted) {
+        setState(() => error = e.status == 503
+            ? 'Payments are not configured on this server.'
+            : 'Retry could not be confirmed. Check order history before trying again.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Retry could not be confirmed. Check order history before trying again.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> remove(CartItem item) async {
     setState(() {
       busy = true;
@@ -32,6 +65,7 @@ class _CartScreenState extends State<CartScreen> {
     try {
       await widget.store.remove(item.productId, item.size);
     } catch (_) {
+      await widget.store.refreshCart();
       if (mounted) {
         setState(() => error = 'Could not remove this item. Please try again.');
       }
@@ -113,6 +147,7 @@ class _CartScreenState extends State<CartScreen> {
       final result = await widget.store.checkout();
       if (mounted) setState(() => receipt = result);
     } on ApiError catch (e) {
+      await widget.store.refreshCart();
       if (mounted) {
         setState(() {
           error = e.message;
@@ -121,6 +156,7 @@ class _CartScreenState extends State<CartScreen> {
         });
       }
     } catch (_) {
+      await widget.store.refreshCart();
       if (mounted) {
         setState(() => error =
             'Order status could not be confirmed. Check order history before trying again.');
@@ -172,17 +208,48 @@ class _CartScreenState extends State<CartScreen> {
                           ListTile(
                               contentPadding: EdgeInsets.zero,
                               title: Text(retailerName(p.retailer)),
-                              trailing: Text(dollars(p.amountUsd)),
+                              trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(dollars(p.amountUsd)),
+                                    if (!widget.store.demo &&
+                                        (p.status == 'nessie_failed' ||
+                                            p.status == 'pending_nessie'))
+                                      TextButton(
+                                          onPressed: busy
+                                              ? null
+                                              : () => retry(p.retailer),
+                                          child: Text(busy
+                                              ? 'Retrying…'
+                                              : 'Retry payment')),
+                                  ]),
                               subtitle: Text(p.status == 'paid'
                                   ? 'Paid in Nessie sandbox'
                                   : p.status == 'demo'
                                       ? 'Demo only'
                                       : p.status == 'pending_nessie'
                                           ? 'Payment pending — not paid'
-                                          : 'Payment failed — check with the team before retrying')),
+                                          : 'Payment failed — not charged. You can retry this store only.')),
                         const SizedBox(height: 12),
-                        Text('Total ${dollars(receipt!.totalUsd)}',
-                            style: Theme.of(context).textTheme.titleLarge),
+                        Builder(builder: (context) {
+                          final paid = receipt!.purchases
+                              .where((p) => p.status == 'paid' || p.status == 'demo')
+                              .fold<double>(0, (s, p) => s + p.amountUsd);
+                          final allPaid = paid >= receipt!.totalUsd - 0.005;
+                          return Text(
+                              allPaid
+                                  ? 'Total ${dollars(receipt!.totalUsd)}'
+                                  : 'Paid ${dollars(paid)} of ${dollars(receipt!.totalUsd)}',
+                              style: Theme.of(context).textTheme.titleLarge);
+                        }),
+                        if (error != null)
+                          Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Text(error!,
+                                  style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error))),
                       ] else if (cart.count == 0) ...[
                         const SizedBox(height: 80),
                         const Icon(Icons.shopping_bag_outlined, size: 48),

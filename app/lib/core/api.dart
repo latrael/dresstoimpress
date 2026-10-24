@@ -112,6 +112,13 @@ class Api {
 
   Future<List<Order>> orders() async => _listOf(await _send('GET', '/orders/${_seg(_user)}'), Order.fromJson);
 
+  /// POST /orders/{id}/retry: re-attempts only this order's unpaid store purchases (`nessie_failed` /
+  /// `pending_nessie`), or just [retailer]'s. Paid purchases are never charged again, so it is safe to
+  /// repeat. Returns the updated receipt. ApiError 503 when payments aren't configured on the server.
+  Future<CheckoutResult> retryOrder(String orderId, {String? retailer}) async => CheckoutResult.fromJson(
+      await _send('POST', '/orders/${_seg(orderId)}/retry',
+          query: {'user_id': _user, if (retailer != null) 'retailer': retailer}));
+
   // ------------------------------------------------------------ AI (Adam)
 
   Future<SizeAdvice> sizeAdvice(String productId,
@@ -197,6 +204,11 @@ class Api {
   Future<String> uploadBodyPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       _str((await _upload('/users/${_seg(_user)}/body-photo', {}, bytes, mimeType))['body_photo_url']);
 
+  /// DELETE /users/{id}/body-photo: forgets the private try-on / body-scan photo and deletes the file.
+  /// Measurements from a body scan stay. False when there was no photo (safe to repeat).
+  Future<bool> deleteBodyPhoto() async =>
+      (await _send('DELETE', '/users/${_seg(_user)}/body-photo'))['deleted'] == true;
+
   /// POST /closet/digitize ("digitize wardrobe"): one photo of several clothes (flat lay, rack, mirror
   /// selfie) -> one tagged closet item per garment, each cropped to its own image. Items that look like
   /// something already in the closet come back with [ClosetItem.duplicateOf] set.
@@ -222,6 +234,11 @@ class Api {
           {required double heightCm, double? weightKg, String mimeType = 'image/jpeg'}) async =>
       BodyScanResult.fromJson(await _upload('/users/${_seg(_user)}/body-scan',
           {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType));
+
+  /// POST /ai/vibe (Discover): a sentence ("fit for a rooftop party") -> catalog filters: styles and
+  /// categories from the catalog vocabularies, colors and item keywords. Never 502s (keyword rules
+  /// fallback). ApiError 422 for an empty or >200-character query.
+  Future<VibeQuery> vibe(String q) async => VibeQuery.fromJson(await _send('POST', '/ai/vibe', body: {'q': q}));
 
   // ------------------------------------------------------------ Fit Check (Nabil)
 

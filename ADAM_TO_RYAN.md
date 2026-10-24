@@ -8,6 +8,15 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app 
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **3:15 PM: all 7 PRs merged; council v2 read; what's built for your P0s.** The shared server runs merged `staging` (343 tests, smoke 10/10). Two PRs from Adam are coming before the freeze, both avoiding `main.dart` so your shell rewrite (island tabs + top-right icons) merges clean.
+  - **Body scan (your onboarding screen 4) is ready to drop in.** `features/profile/body_scan_screen.dart` → `BodyScanScreen(api, heightCm?, weightKg?)`. It asks height (+ optional weight), picks a photo, calls `api.bodyScan`, shows the estimates and pops with a `BodyProfile`. The onboarding screen already uses it ("Scan from a photo" pre-fills the measurement fields). The photo also becomes the try-on photo. Measurements are saved on the server by `ShopperProfile.syncToServer(api)` and restored by `withBody(..., gapsOnly: true)`, so **D5 is done for measurements**; `preferred_stores` and `onboarded` are Nabil's.
+  - **Liked screen (D8):** build it from `api.wishlist()` (returns `List<Product>`), not from filtering the feed. Today's heart icon in `main.dart` is a sticky saved-only filter over `store.feed`, which is the "you have to unclick the likes" bug Adam saw. Filtering the feed also hides liked items that fell out of the feed.
+  - **Closet (D8):** `ClosetScreen` now has "Scan several pieces" → `api.digitizeCloset(bytes)` → one tagged item per garment, each cropped. Answers council Q1: both one-per-photo and whole-outfit work.
+  - **Inspo tag pins (your "tap photo → tags on each piece"):** coming in the AI PR as `FitTag.box = [xMin, yMin, xMax, yMax]` (0–1 fractions of the photo; `null` on old posts, so fall back to your list). Position each tag at the box center.
+  - **Delete own post:** trash icon on your own `FitPostCard` → `api.deleteFitCheck(id)`; the feed refreshes.
+  - **Cart:** refreshes from the server when opened and after any error; receipt shows "Paid $X of $Y" with **Retry payment** per failed store (`api.retryOrder(orderId, retailer:)`, PR #20's route).
+  - **Discover vibe search (D10 text search):** `api.vibe(q)` → `{styles, categories, colors, keywords}`, for when Nabil's `/search?q=` isn't there yet. Coming in the AI PR.
+  - **User screen:** "Your measurements" section + a Body scan button are added to `ProfileScreen`; regroup as you like.
 - **3:00 PM: answers to your 2:40 requests, plus an app audit Adam asked for.**
   - **Your asks:**
     - **(1) Server-side measurements: done in PR #22.**

@@ -1,0 +1,227 @@
+[
+ {
+  "id": "1361447006",
+  "title": "Long-Sleeved Cotton Top",
+  "brand": "H&M",
+  "price": 19.99,
+  "currency": "$",
+  "url": "https://www2.hm.com/en_us/productpage.1361447006.html",
+  "color": "Burgundy/striped",
+  "color_code": "543741",
+  "category": "ladies_basics_tops_longsleeve",
+  "images": [
+   "https://image.hm.com/assets/hm/0b/78/0b78567ed13fffe906d631a4d7989912edc3af64.jpg",
+   "https://image.hm.com/assets/hm/2e/40/2e405364321d2bf0f39102c5b6c78e8da2d30ad4.jpg",
+   "https://image.hm.com/assets/hm/81/12/8112bbf61d64d978cbda39670e48e968ba5bdcb8.jpg",
+   "https://image.hm.com/assets/hm/b9/84/b984b52735e26d6034dc2cb65cfe7e1c4b846f2e.jpg",
+   "https://image.hm.com/assets/hm/74/1a/741a32f66019d051302a373dcdff13a39b7f3175.jpg"
+  ],
+  "model_image": "https://image.hm.com/assets/hm/74/1a/741a32f66019d051302a373dcdff13a39b7f3175.jpg",
+  "swatches": [
+   {
+    "color": "Burgundy/striped",
+    "color_code": "543741",
+    "image": "https://image.hm.com/assets/hm/57/11/5711ce4688de9316abbb8a6a14782b050a586850.jpg",
+    "url": "https://www2.hm.com/en_us/productpage.1361447006.html"
+   },
+   {
+    "color": "Light pink/striped",
+    "color_code": "330F1A",
+    "image": "https://image.hm.com/assets/hm/2c/d5/2cd57093d22bfe36c26db2c8f12d7bbc9bd08e49.jpg",
+    "url": "https://www2.hm.com/en_us/productpage.1361447002.html"
+   }
+  ],
+  "sizes": [
+   {
+    "size": "XS",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "S",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "M",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "L",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "XL",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "XXL",
+    "stock": 2,
+    "in_stock": true
+   }
+  ]
+ },
+ {
+  "id": "1360320001",
+  "title": "Long-Sleeved Ribbed Top",
+  "brand": "H&M",
+  "price": 14.99,
+  "currency": "$",
+  "url": "https://www2.hm.com/en_us/productpage.1360320001.html",
+  "color": "Gray melange",
+  "color_code": "969696",
+  "category": "ladies_basics_tops_longsleeve",
+  "images": [
+   "https://image.hm.com/assets/hm/bf/ca/bfcaa9457b362372a48cbbcdc2939b9f09315ba6.jpg"
+  ],
+  "model_image": "https://image.hm.com/assets/hm/bf/ca/bfcaa9457b362372a48cbbcdc2939b9f09315ba6.jpg",
+  "swatches": [],
+  "sizes": [
+   {
+    "size": "XS",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "S",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "M",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "L",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "XL",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "XXL",
+    "stock": 2,
+    "in_stock": true
+   }
+  ]
+ },
+ {
+  "id": "1307934010",
+  "title": "Mock Turtleneck Top",
+  "brand": "H&M",
+  "price": 14.99,
+  "currency": "$",
+  "url": "https://www2.hm.com/en_us/productpage.1307934010.html",
+  "color": "Burgundy",
+  "color_code": "330F1A",
+  "category": "ladies_tops_longsleeve",
+  "images": [
+   "https://image.hm.com/assets/hm/0e/24/0e24f48ed61bf84f6dd3100e5b2a6552caa3f304.jpg",
+   "https://image.hm.com/assets/hm/60/01/60013b11c81f4a36c48a1725c60b7c4d7ad62b63.jpg",
+   "https://image.hm.com/assets/hm/22/aa/22aafed9d60e46378badef70a63fe1416786c7ce.jpg"
+  ],
+  "model_image": "https://image.hm.com/assets/hm/5e/6c/5e6cfcc2c974153ad546e7f83cb13fa69862529d.jpg",
+  "swatches": [],
+  "sizes": [
+   {
+    "size": "XS",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "S",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "M",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "L",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "XL",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "XXL",
+    "stock": 2,
+    "in_stock": true
+   }
+  ]
+ },
+ {
+  "id": "1234567001",
+  "title": "Baggy Jeans",
+  "brand": "H&M",
+  "price": 34.99,
+  "currency": "$",
+  "url": "https://www2.hm.com/en_us/productpage.1234567001.html",
+  "color": "Light denim blue",
+  "color_code": "AAB8C8",
+  "category": "men_jeans_baggy",
+  "images": [],
+  "model_image": "https://image.hm.com/assets/hm/aa/bb/aabbccddeeff00112233445566778899aabbccdd.jpg",
+  "swatches": [],
+  "sizes": [
+   {
+    "size": "28",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "30",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "32",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "34",
+    "stock": 0,
+    "in_stock": false
+   }
+  ]
+ },
+ {
+  "id": "1111111001",
+  "title": "Printed Cotton T-shirt",
+  "brand": "H&M",
+  "price": 7.99,
+  "currency": "$",
+  "url": "https://www2.hm.com/en_us/productpage.1111111001.html",
+  "color": "White/dinosaurs",
+  "color_code": "FFFFFF",
+  "category": "kids_boys_tshirts",
+  "images": [],
+  "model_image": "https://image.hm.com/assets/hm/11/11/1111111111111111111111111111111111111111.jpg",
+  "swatches": [],
+  "sizes": [
+   {
+    "size": "4-6Y",
+    "stock": 2,
+    "in_stock": true
+   },
+   {
+    "size": "6-8Y",
+    "stock": 2,
+    "in_stock": true
+   }
+  ]
+ }
+]

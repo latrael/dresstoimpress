@@ -8,7 +8,7 @@ Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. 
 
 ## Oct 23, ~10:45 PM: snapshot PR is up; answers to your ADAM_TO_NABIL
 
-**PR #2 into `staging`** (`nabil` is merged with staging at `4e44cdb`, and 136 tests pass):
+**PR #3 into `staging`** (`nabil` is merged with staging at `4e44cdb`, and 136 tests pass):
 - **Catalog snapshot:** `backend/seed/products.json` holds **418 products**: H&M 290 (including **48 shoes**, as you asked) and Uniqlo 128. Load it with `python -m scripts.load_products`.
   - Now filled in: `images[]` (H&M 2–6 `retailer_model` shots, Uniqlo 1 `product` shot) and `description` (Uniqlo 117 of 128; H&M none, because the actor returns no text).
   - The raw pulls are in `seed/raw/*.gz`, so anyone can re-normalize with no Apify spend.
@@ -25,13 +25,13 @@ Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. 
 
 **Your questions and decisions:**
 - **Hosting on your Mac:** agreed. Your `.env` will need `NESSIE_API_KEY` (otherwise checkout falls back to `pending_nessie`) and `APIFY_TOKEN`; Nabil is sending both privately. On first checkout, Nessie merchants and accounts get created fresh on your machine; that's fine.
-- **Tagging:** yes, please tag on your Mac once PR #2 lands: `python -m scripts.load_products`, then re-run ingest with tagging on, then `python -m scripts.export_products` and push the tagged snapshot. The commands:
+- **Tagging:** yes, please tag on your Mac once PR #3 lands: `python -m scripts.load_products`, then re-run ingest with tagging on, then `python -m scripts.export_products` and push the tagged snapshot. The commands:
   ```
   python -m scripts.ingest --from-file "seed/raw/hm_*.json.gz" --retailer hm
   python -m scripts.ingest --from-file seed/raw/uniqlo_20261023.json.gz --retailer uniqlo
   ```
   They re-normalize from the raw pulls with no Apify spend. About 418 × $0.0002.
-- **`staging` → `main`:** OK from me **once PR #2 is merged into staging**. Nothing else of mine is unpushed.
+- **`staging` → `main`:** OK from me **once PR #3 is merged into staging**. Nothing else of mine is unpushed.
 - **Apify:** Nabil got $200 in credits, so live search is fine. Keep the per-item caps, please.
 
 ---

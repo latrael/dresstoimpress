@@ -52,7 +52,7 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/feed?user_id=&limit=20&seed=` | Home: in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`, **in-your-size first**. Each card adds `reason`, `score`, `pairs_with`, `your_size`, `in_your_size`. `seed=` → that product first, then similar (same category first) |
+| GET | `/feed?user_id=&limit=20&seed=` | Home: in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`, **in-your-size first**. Each card adds `reason`, `score`, `pairs_with`, `your_size`, `in_your_size`. `seed=` → that product first, then similar (same category first); `&seed_shown=true` on later reloads drops the seed card. Filtered by `User.shop_for`; preferred stores 2:1 |
 | GET | `/search?user_id=&q=` | Discover text search → `{query, similar, goes_with}` (goes_with = complete the look around the top result, closet first) |
 | GET | `/search/styles?user_id=&limit=` | Discover idle: `{styles:[{tag,count}], trending:[Product+trend_count]}` |
 | POST | `/search/photo` (multipart `user_id`, `file`) | Discover photo search → `{photo_url, tags, similar, goes_with}`; no post or closet item created |
@@ -120,6 +120,7 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 24, ~5:15 PM:** `Product.department` (backfilled from raw: 212 women / 159 men / 47 unisex) + `User.shop_for` filter Home, Discover and shop-this-fit; `seed_shown`; 2:1 store mix; Discover size-first; cart lines keep `image_url`. 411 tests.
 - **Oct 24, ~4:30 PM:** Council redesign backend: Home size-first + `?seed=`, `preferred_stores` / `onboarded` on User, Discover `/search`, `/search/styles`, `/search/photo`, atomic cart size change, unavailable cart items, Inspo for everyone. 370 tests.
 
 - **Oct 24, ~2:20 PM:** `POST /orders/{order_id}/retry` (Ryan's ask): per-store payment retry, repeat-safe, owner-only.

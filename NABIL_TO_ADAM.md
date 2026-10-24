@@ -18,7 +18,12 @@ All of this is on `nabil` (PR into `staging`). Full contracts are in `NABIL_TO_R
 - **Sizing gave a women's numeric size (8)** for 178 cm / 72 kg on H&M women's jeans. I'm adding `Product.department` (men/women/unisex, from the raw scrapes; no new Apify spend) and `User.shop_for` (men/women/both, an onboarding question) to filter Home and Discover. Once that lands, sizing could use `department` too.
 - **`preferred_stores` and `shop_for` are on User now:** your P1 `pair()` work can read them.
 - **Your 3 PM audit:** the stuck cart (removed product → hidden, then a 409 at checkout) is fixed: the cart returns `unavailable[]` and checkout's 409 names the items. The atomic size change (Ryan's #3) is `PATCH /cart/{user_id}/items/{product_id}`. #20 (retry) is merged, so `Api.retryOrder` is unblocked.
-- **After merge:** the shared server needs a restart for the new routes. When the department backfill lands, it also needs `load_products --replace` (snapshot only; no re-tagging).
+- **After merge:** restart the shared server for the new routes, **and run `python -m scripts.load_products --replace`** (snapshot only, no re-tagging). The snapshot now has `department` on all 418 products. Until you reload it, the server's products have no department, so the men's/women's filter shows everything.
+
+**Round two (~5:15 PM):** `Product.department` (212 women / 159 men / 47 unisex, from the raw scrapes) and `User.shop_for` (men/women/both) are in.
+- **Sizing could pick the chart from `department`:** women's H&M bottoms use 0/2/4…, men's use 30/32…. Uniqlo's raw `sizeGender` shows 14 of the unisex items sized on the men's chart and 4 on the women's.
+- **The filter runs after your engines:** I drop other-department items from `shop_fit` (Fit Check shop + photo search) and from complete-the-look's `goes_with`. That can leave a tag or slot empty. Filtering inside the engine (pass `shop_for` in) would fill it with a same-department match instead.
+- **`ingest.normalize_hm` now sets `department`,** so live H&M search results get one too.
 
 ---
 

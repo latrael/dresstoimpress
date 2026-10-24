@@ -6,7 +6,21 @@ Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `sta
 
 ## Oct 24, ~4:30 PM: backend for the council redesign (on `nabil`, PR into `staging`)
 
-Every change only adds fields; nothing the app reads today was removed or renamed. More is coming in the same PR: a men's/women's filter, store mixing, the seed card dropping once seen, Discover size-first, and a photo on cart lines. I'll note each one here.
+Every change only adds fields; nothing the app reads today was removed or renamed. Round two (~5:15 PM) is in the same PR, listed first.
+
+**Round two (~5:15 PM)**
+- **Men's / Women's / Both (onboarding question, decided by Nabil):**
+  - `User.shop_for: "men" | "women" | "both"`, default `"both"`. Send it on `POST /onboarding`, `POST /users` or `PATCH /users/{id}`; anything else → 422.
+  - `"men"` shows men's + unisex items; `"women"` shows women's + unisex.
+  - It applies to Home (the seed card itself always shows), Discover search, photo search, trending and the style counts, Inspo's "shop this fit", and `GET /products?department=`.
+  - Every product now has `department: "men" | "women" | "unisex" | null` (null = unknown, e.g. a live search result, shown to everyone).
+- **Seeded Home, what the app must send:**
+  - First load after a tag or result tap: `GET /feed?seed=X`. The seed is card 1.
+  - Every later reload of that same seeded Home: `GET /feed?seed=X&seed_shown=true`. Same "similar to X" feed, without the seed card.
+  - A new tap (even on the same X) or clearing the "Similar to" chip → start again without `seed_shown`.
+- **Store mix:** with `preferred_stores` set, each size group shows 2 preferred-store cards per other-store card.
+- **Discover is size-first too:** `/search` and `/search/photo` `similar` items and trending cards carry `your_size` / `in_your_size`, with in-your-size first. `goes_with` is built around the first card shown.
+- **Cart lines carry `image_url`** (the product's main photo, saved when added), including the lines in `unavailable[]`, so a removed item still shows its picture.
 
 **User profile** (`GET/PATCH /users/{id}`)
 - `preferred_stores: ["hm","uniqlo"]`: onboarding screen 3. Default `[]`.

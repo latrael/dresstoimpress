@@ -277,11 +277,12 @@ def fetch_image(url: str) -> tuple[bytes, str]:
     if url.startswith(marker):
         path = safe(url[len(marker):])
         return path.read_bytes(), _guess_mime(path.name)
-    local = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/") + marker
-    if url.startswith(local):
-        path = safe(url[len(local):])
-        if path.exists():
-            return path.read_bytes(), _guess_mime(path.name)
+    from ..static_urls import local_static_path
+
+    # our own uploads / try-ons, whatever host the URL names (old tunnel, localhost, current tunnel)
+    path = local_static_path(url, DATA_DIR)
+    if path is not None:
+        return path.read_bytes(), _guess_mime(path.name)
 
     r = httpx.get(url, timeout=20, follow_redirects=True, headers=_UA)
     r.raise_for_status()

@@ -48,7 +48,7 @@ Pick the {k} candidates that best complete outfits with items already in the clo
 and fit the style and price ranges.
 Return only a JSON array of objects:
 {{"product_id": str, "score": number 0-1, "reason": at most 8 words, casual second person, naming the closet item by its label, e.g. "goes with your black cargo pants", "pairs_with": [closet item ids]}}
-Use only product ids from the candidates."""
+Use only product ids from the candidates. Only mention closet items that are in the closet list, by their label; never invent closet items."""
 
 FIT_TAGGER = """You are a fashion cataloguer. The image is an outfit photo (mirror selfie, street photo, or flat-lay).
 List every clothing item and accessory you can clearly see that someone could buy.

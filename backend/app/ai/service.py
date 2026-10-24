@@ -90,9 +90,13 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
 
 # ---------- /tryon ----------
 
-def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str]) -> str:
+def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str], body: str = "") -> str:
+    """Cache key. Includes which body photo was used (its path, not host, so a tunnel change keeps the
+    cache) so a new body photo never serves try-ons of the old one."""
+    from urllib.parse import urlparse
+
     raw = (prompts.TRYON_VERSION + "|" + user_id + "|" + ",".join(sorted(product_ids)) + "|"
-           + ",".join(sorted(closet_ids)))
+           + ",".join(sorted(closet_ids)) + "|" + (urlparse(body).path if body else ""))
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
@@ -102,14 +106,13 @@ COLLAGE_RETRY_SECONDS = int(os.getenv("COLLAGE_RETRY_SECONDS", "600"))
 def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> tuple[str, bool, str]:
     """Returns (image_url, cached, mode). mode "ai" = Gemini try-on; "collage" = outfit board
     fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS)."""
-    key = _tryon_key(user_id, product_ids, closet_item_ids)
+    user = store.get("users", user_id) or {}
+    body = user.get("body_photo_url")
+    key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
     hit = store.get("tryon_cache", key)
     if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
                 or mock_mode("GEMINI_API_KEY")):
         return hit["image_url"], True, hit.get("mode", "ai")
-
-    user = store.get("users", user_id) or {}
-    body = user.get("body_photo_url")
 
     pieces = [p for pid in product_ids if (p := get_product(pid))]
     pieces += [c for cid in closet_item_ids if (c := store.get("closet_items", cid))]
@@ -149,6 +152,50 @@ def _in_budget(p: dict, ranges: dict) -> bool:
     r = ranges.get(p["category"])
     price = p.get("sale_price_usd") or p["price_usd"]
     return not r or r[0] <= price <= r[1]
+
+
+_REASON_STOP = {"for", "and", "with", "to", "that", "in", "on", "a", "an", "the", "or", "so", "as", "like", "into"}
+_REASON_GENERIC = {"look", "looks", "style", "vibe", "vibes", "outfit", "outfits", "fit", "fits", "closet", "wardrobe",
+                   "pieces", "piece", "items", "item", "aesthetic", "go-to", "go-tos", "favorite", "favorites", "own"}
+_PARTNER = {"top": "bottom", "outerwear": "bottom", "bottom": "top", "shoes": "bottom", "dress": "shoes",
+            "accessory": "top"}
+
+
+def _unknown_closet_ref(reason: str, closet: list[dict]) -> bool:
+    """True when the reason says "your <thing>" and <thing> isn't anything in the closet (a made-up item)."""
+    import re
+
+    from .colors import _COLOR_WORDS
+    from .finder import item_type
+
+    labels = [(c.get("label") or f'{c.get("color", "")} {c.get("category", "")}').lower() for c in closet]
+    label_words = {w for lbl in labels for w in re.findall(r"[a-z0-9-]+", lbl)}
+    label_types = {item_type(lbl) for lbl in labels} - {None}
+    for m in re.finditer(r"\byour\s+([a-z0-9 -]+)", reason.lower()):
+        nouns = []
+        for w in re.findall(r"[a-z0-9-]+", m.group(1))[:5]:
+            if w in _REASON_STOP:
+                break
+            if w not in _COLOR_WORDS and w not in _REASON_GENERIC and len(w) > 2:
+                nouns.append(w)
+        if nouns and not any(w in label_words or w.rstrip("s") in label_words
+                             or item_type(w) in label_types or item_type(w.rstrip("s")) in label_types
+                             for w in nouns):
+            return True
+    return False
+
+
+def _safe_reason(r: PairResult, product: dict, closet: list[dict]) -> PairResult:
+    """Replace a reason that names a closet item the user doesn't have with one that names a real item."""
+    if not closet or not _unknown_closet_ref(r.reason, closet):
+        return r
+    by_id = {c["id"]: c for c in closet}
+    item = next((by_id[c] for c in r.pairs_with if c in by_id), None)
+    if item is None:
+        want = _PARTNER.get(product.get("category"), "bottom")
+        item = next((c for c in closet if c.get("category") == want), closet[0])
+    label = item.get("label") or f'{item.get("color", "")} {item.get("category", "")}'.strip()
+    return r.model_copy(update={"reason": f"pairs with your {label}", "pairs_with": [item["id"]]})
 
 
 def _fallback(cands: list[dict], ranges: dict, k: int, closet: list[dict] | None = None,
@@ -225,6 +272,8 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             reason=" ".join(str(r.get("reason", "")).split()[:12]).rstrip(".") or "pairs with your closet",
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
+    by_id = {p["id"]: p for p in cands}
+    out = [_safe_reason(r, by_id[r.product_id], closet) for r in out]
     out.sort(key=lambda r: r.score, reverse=True)
     out = out[:k]
     if not out:
@@ -236,6 +285,8 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         rest = [p for p in cands if p["id"] not in have]
         for r in _fallback(rest, ranges, k - len(out), closet, user.get("style_text", "")):
             out.append(r.model_copy(update={"score": round(min(r.score, floor) * 0.99, 4)}))
+    # budget-first: anything in the user's price range ranks above anything outside it
+    out.sort(key=lambda r: (not _in_budget(by_id.get(r.product_id) or get_product(r.product_id), ranges), -r.score))
     return out
 
 
@@ -256,9 +307,18 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
     # items that need a live store search take ~5 s each: run them side by side, keep post order
     with ThreadPoolExecutor(max(1, min(4, len(tagged)))) as ex:
         found = list(ex.map(lambda t: find_products(t, products), tagged))
-    for tag, hits in zip(tagged, found):
-        for p in hits:
-            matched.setdefault(p["id"], tag.get("label", ""))
+    from .finder import match_score
+
+    order: dict[str, tuple[int, float]] = {}
+    for i, (tag, hits) in enumerate(zip(tagged, found)):
+        seen_styles = set()
+        for p in sorted(hits, key=lambda h: -match_score(tag, h)):  # exact item first
+            style = (p.get("retailer"), (p.get("name") or "").lower())
+            if style in seen_styles or p["id"] in matched:
+                continue  # one card per style: colour variants of the same item collapse
+            seen_styles.add(style)
+            matched[p["id"]] = tag.get("label", "")
+            order[p["id"]] = (i, -match_score(tag, p))
     if not matched:
         return []
 
@@ -272,7 +332,8 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
                     "pairs_with": r.pairs_with if r else [],
                     "score": r.score if r else 0.0,
                     "matched_tag": label})
-    out.sort(key=lambda d: d["score"], reverse=True)
+    # the post's items in post order, closest match first; closet fit only breaks ties
+    out.sort(key=lambda d: (*order[d["id"]], -d["score"]))
     return out
 
 

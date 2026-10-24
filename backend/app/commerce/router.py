@@ -79,6 +79,12 @@ def _buyable(p: dict) -> bool:
     return p.get("in_stock", True) and (not sizes or any(_size_ok(s) for s in sizes))
 
 
+def _dept_ok(p: dict, shop_for: Optional[str]) -> bool:
+    """User.shop_for filter: "men" / "women" also get unisex and unknown-department items (e.g. live search
+    results); "both" or missing gets everything."""
+    return shop_for not in ("men", "women") or p.get("department") in (shop_for, "unisex", None)
+
+
 def _price(p: dict) -> float:
     return float(p.get("sale_price_usd") or p.get("price_usd") or 0)
 
@@ -203,6 +209,7 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
          seed: Optional[str] = None):
     """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with and
     your_size/in_your_size. In-your-size items come first, then preferred stores; nothing is hidden for size.
+    Only the user's shop_for department (+ unisex/unknown) is shown.
     `seed` (product id, 404 if unknown): that product first even if swiped, then similar items (see _seeded)."""
     seed_p = _product(seed) if seed else None
     user = store.get("users", user_id) or {}
@@ -211,7 +218,8 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
     swiped = _swiped(user_id)
     where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
     cands = {p["id"]: p for p in store.list("products", **where)
-             if p["id"] not in swiped and p["id"] != seed and _buyable(p) and _in_budget(p, ranges)}
+             if p["id"] not in swiped and p["id"] != seed and _buyable(p) and _in_budget(p, ranges)
+             and _dept_ok(p, user.get("shop_for"))}
 
     def boosted(p: dict) -> bool:
         return str(p.get("retailer", "")).lower() in preferred
@@ -251,14 +259,15 @@ def _hits(p: dict, words: list[str]) -> Optional[int]:
 @router.get("/products")
 def search_products(q: str = "", category: Optional[str] = None, retailer: Optional[str] = None,
                     in_stock: bool = True, sort: Literal["relevance", "price_asc", "price_desc"] = "relevance",
-                    limit: int = 24, offset: int = 0):
-    """Catalog search: every word of `q` must match somewhere; `next_offset` is null on the last page."""
+                    limit: int = 24, offset: int = 0, department: Optional[Literal["men", "women", "both"]] = None):
+    """Catalog search: every word of `q` must match somewhere; `next_offset` is null on the last page.
+    `department` (pass the user's shop_for): men/women also keep unisex and unknown items; none/both = all."""
     limit, offset = max(1, min(limit, 100)), max(0, offset)
     words = q.lower().split()
     where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
     rows = []
     for p in store.list("products", **where):
-        if in_stock and not _buyable(p):
+        if (in_stock and not _buyable(p)) or not _dept_ok(p, department):
             continue
         if (hits := _hits(p, words)) is not None:
             rows.append((hits, p))

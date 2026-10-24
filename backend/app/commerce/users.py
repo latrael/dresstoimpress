@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import Annotated, Optional, get_args
+from typing import Annotated, Literal, Optional, get_args
 
 from fastapi import APIRouter, HTTPException
 from pydantic import AfterValidator, BaseModel, Field
@@ -99,6 +99,7 @@ class UserPatch(BaseModel):
     friends: Optional[list[str]] = None
     preferred_stores: Optional[list[str]] = None
     onboarded: Optional[bool] = None
+    shop_for: Optional[Literal["men", "women", "both"]] = None
 
 
 class Onboarding(BaseModel):

@@ -18,13 +18,17 @@ from ..ai.llm import BadModelOutput
 from ..ai.router import _ai_down, _save_upload, complete_look_route
 from ..models import CompleteLookRequest, StyleTag
 from ..store import store
-from .router import _buyable, _dedupe, feed, search_products
+from .router import _buyable, _dedupe, _dept_ok, feed, search_products
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["search"])
 
 SIMILAR_LIMIT = 24
 STYLE_TAGS = set(get_args(StyleTag))
+
+
+def _shop_for(user_id: str):
+    return (store.get("users", user_id) or {}).get("shop_for")
 
 
 def _goes_with(user_id: str, anchor_id: str) -> list[dict]:
@@ -36,13 +40,13 @@ def _goes_with(user_id: str, anchor_id: str) -> list[dict]:
     except Exception as e:  # noqa: BLE001
         log.warning("complete-look failed for %s: %s", anchor_id, e)
         return []
-    out = []
+    out, shop_for = [], _shop_for(user_id)
     for it in look.get("items") or []:
         if it.get("source") == "closet":
             c = store.get("closet_items", it["id"])
             if c and c.get("user_id") == user_id:
                 out.append({**c, "from_closet": True, "reason": it.get("reason", "")})
-        elif (p := store.get("products", it["id"])) and _buyable(p):
+        elif (p := store.get("products", it["id"])) and _buyable(p) and _dept_ok(p, shop_for):
             out.append({**p, "from_closet": False, "reason": it.get("reason", "")})
     return out
 
@@ -55,7 +59,7 @@ def search(user_id: str, q: str = ""):
     around the #1 result. A blank query returns empty sections (the app shows chips + trending instead)."""
     if not q.strip():
         return {"query": q, "similar": [], "goes_with": []}
-    similar = _dedupe(search_products(q=q, limit=100)["items"])[:SIMILAR_LIMIT]
+    similar = _dedupe(search_products(q=q, limit=100, department=_shop_for(user_id))["items"])[:SIMILAR_LIMIT]
     return {"query": q, "similar": similar, "goes_with": _goes_with(user_id, similar[0]["id"]) if similar else []}
 
 
@@ -87,9 +91,11 @@ def _trend_counts() -> Counter:
 @router.get("/search/styles")
 def styles(user_id: str, limit: int = 8):
     """Style chips (catalog style tags with in-stock counts, most common first) + trending products
-    (most saved/carted/ordered across users, `trend_count`), topped up from this user's /feed (`trend_count` 0)."""
+    (most saved/carted/ordered across users, `trend_count`), topped up from this user's /feed (`trend_count` 0).
+    Both only count/show the user's shop_for department (+ unisex/unknown)."""
     limit = max(1, min(limit, 50))
-    buyable = [p for p in store.list("products") if _buyable(p)]
+    shop_for = _shop_for(user_id)
+    buyable = [p for p in store.list("products") if _buyable(p) and _dept_ok(p, shop_for)]
     tags = Counter(t for p in buyable for t in set(p.get("style_tags") or []) if t in STYLE_TAGS)
     chips = [{"tag": t, "count": n} for t, n in sorted(tags.items(), key=lambda r: (-r[1], r[0]))]
 
@@ -121,10 +127,10 @@ async def search_photo(user_id: str = Form(...), file: UploadFile = File(...)):
         matches = service.shop_fit(user_id, tags) if tags else []
     except BadModelOutput as e:
         raise _ai_down("photo search", e)
-    similar = []
+    similar, shop_for = [], _shop_for(user_id)
     for m in matches:  # shop_fit returns the AI's product view; send the stored card like /search does
         p = store.get("products", m["id"])
-        if p and _buyable(p):
+        if p and _buyable(p) and _dept_ok(p, shop_for):
             similar.append({**p, "reason": m.get("reason", ""), "pairs_with": m.get("pairs_with", []),
                             "score": m.get("score", 0.0), "matched_tag": m.get("matched_tag", "")})
     return {"photo_url": photo_url, "tags": tags, "similar": similar,

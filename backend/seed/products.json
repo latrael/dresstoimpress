@@ -100,7 +100,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:0941666092:black",
@@ -199,7 +200,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:0967955181:black-campioni-del-mondo",
@@ -266,7 +268,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0967955193:white-florida",
@@ -341,7 +344,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0967955195:white-only-getting-started",
@@ -416,7 +420,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0967955204:black-spring-rally",
@@ -483,7 +488,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819001:black",
@@ -562,7 +568,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819007:light-gray-melange",
@@ -641,7 +648,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819114:plum",
@@ -708,7 +716,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819116:dark-gray",
@@ -787,7 +796,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819117:navy-blue",
@@ -866,7 +876,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819133:dark-gray",
@@ -941,7 +952,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819135:dark-green",
@@ -1016,7 +1028,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819136:white",
@@ -1091,7 +1104,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0970819137:light-khaki-green",
@@ -1166,7 +1180,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0972640188:black-scarface",
@@ -1232,7 +1247,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:0972640205:white-kodak",
@@ -1307,7 +1323,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1034065219:white-finca-olivetta",
@@ -1374,7 +1391,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1045459070:dark-denim-gray",
@@ -1473,7 +1491,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1045459078:dark-denim-blue",
@@ -1576,7 +1595,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1045459080:denim-blue",
@@ -1674,7 +1694,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1045459083:black",
@@ -1772,7 +1793,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1045459086:dark-brown",
@@ -1870,7 +1892,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1065654078:burgundy-california",
@@ -1949,7 +1972,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1117750016:black-pulp-fiction",
@@ -2016,7 +2040,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1117750029:dark-blue-nba",
@@ -2086,7 +2111,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1159823110:black-nascar",
@@ -2157,7 +2183,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1159823111:white-pink-floyd",
@@ -2228,7 +2255,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1208972013:light-dusty-pink-beige",
@@ -2303,7 +2331,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1208972014:dusty-blue",
@@ -2378,7 +2407,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1222670060:dark-brown",
@@ -2465,7 +2495,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1238685001:black",
@@ -2536,7 +2567,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1238685002:brown",
@@ -2607,7 +2639,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1238685004:brown",
@@ -2678,7 +2711,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1240562001:black",
@@ -2753,7 +2787,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1251491007:dark-taupe",
@@ -2824,7 +2859,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1252606015:dark-denim-gray",
@@ -2923,7 +2959,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1252606016:denim-blue",
@@ -3022,7 +3059,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1252606018:denim-blue",
@@ -3117,7 +3155,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1260555016:burgundy",
@@ -3188,7 +3227,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1267555056:dark-blue-le-marais-acad-mie",
@@ -3259,7 +3299,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1267555062:black-nyc-studio",
@@ -3318,7 +3359,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1267555063:gray-minimaliste",
@@ -3389,7 +3431,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1273075011:beige-white",
@@ -3464,7 +3507,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1273075013:brown-leopard-print",
@@ -3539,7 +3583,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1273075019:light-beige-blue",
@@ -3614,7 +3659,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1273075022:red",
@@ -3689,7 +3735,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1273088001:beige",
@@ -3760,7 +3807,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1274497001:black",
@@ -3839,7 +3887,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1288081004:dark-brown",
@@ -3914,7 +3963,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1289931001:white",
@@ -3985,7 +4035,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1289931008:beige",
@@ -4056,7 +4107,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1289931011:dark-gray",
@@ -4123,7 +4175,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1289931012:brown",
@@ -4189,7 +4242,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1290772007:black-nirvana",
@@ -4260,7 +4314,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1290785001:black",
@@ -4331,7 +4386,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1290785003:dark-brown",
@@ -4402,7 +4458,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1290785004:black",
@@ -4473,7 +4530,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1291799001:black",
@@ -4556,7 +4614,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1291799002:dark-brown",
@@ -4635,7 +4694,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1291799004:dark-brown",
@@ -4710,7 +4770,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1295349002:black",
@@ -4784,7 +4845,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1295349003:black",
@@ -4863,7 +4925,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1301290002:dark-brown",
@@ -4930,7 +4993,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1302636008:light-pink",
@@ -5001,7 +5065,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1303122001:gray-leopard-print",
@@ -5068,7 +5133,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1304459001:black",
@@ -5143,7 +5209,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1304459013:black",
@@ -5218,7 +5285,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1304549001:black",
@@ -5293,7 +5361,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1304549002:gray-melange",
@@ -5368,7 +5437,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1304549011:navy-blue",
@@ -5443,7 +5513,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1306773008:white-terminator",
@@ -5518,7 +5589,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1307254002:black",
@@ -5596,7 +5668,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1307319010:denim-black",
@@ -5691,7 +5764,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1307934005:white",
@@ -5766,7 +5840,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1307934010:burgundy",
@@ -5837,7 +5912,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1308010007:black",
@@ -5916,7 +5992,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1309974018:dark-denim-blue",
@@ -6031,7 +6108,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1310629001:black",
@@ -6113,7 +6191,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1310629006:dark-brown",
@@ -6195,7 +6274,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1311162001:black-zebra-print",
@@ -6274,7 +6354,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1311438001:beige-melange",
@@ -6341,7 +6422,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1311438002:cream",
@@ -6408,7 +6490,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1311674001:denim-black",
@@ -6534,7 +6617,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1311674004:light-denim-blue",
@@ -6661,7 +6745,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1311674007:denim-blue",
@@ -6788,7 +6873,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1311677001:black",
@@ -6915,7 +7001,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1311677005:light-denim-blue",
@@ -7042,7 +7129,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1312658001:light-brown",
@@ -7117,7 +7205,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1314217010:denim-black",
@@ -7240,7 +7329,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1314276007:light-gray-melange",
@@ -7315,7 +7405,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1318375001:charcoal-gray",
@@ -7390,7 +7481,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1318394001:black",
@@ -7469,7 +7561,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1320536002:brown",
@@ -7548,7 +7641,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1320613003:brown-color-block",
@@ -7619,7 +7713,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1323075003:washed-denim-blue",
@@ -7714,7 +7809,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1323075005:light-denim-blue",
@@ -7809,7 +7905,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1323075019:dusty-beige",
@@ -7904,7 +8001,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1325873003:white",
@@ -7971,7 +8069,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1326630011:brown",
@@ -8057,7 +8156,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1329256002:gray-melange",
@@ -8136,7 +8236,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1329256006:dark-brown",
@@ -8195,7 +8296,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1332879003:dark-denim-blue",
@@ -8290,7 +8392,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1334940008:dark-plum-purple",
@@ -8361,7 +8464,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1335068001:dark-khaki-green",
@@ -8436,7 +8540,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1336394001:medium-denim-blue",
@@ -8566,7 +8671,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1336394005:black",
@@ -8697,7 +8803,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1336394006:light-denim-blue",
@@ -8828,7 +8935,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1336394011:dark-denim-blue",
@@ -8954,7 +9062,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1336394013:dark-brown",
@@ -9080,7 +9189,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1336975001:black",
@@ -9175,7 +9285,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1336975003:dark-denim-blue",
@@ -9274,7 +9385,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1337538003:washed-denim-black",
@@ -9369,7 +9481,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1338515002:white",
@@ -9436,7 +9549,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1338515004:black",
@@ -9504,7 +9618,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1338515005:burgundy",
@@ -9571,7 +9686,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1339935001:dark-brown",
@@ -9646,7 +9762,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1339935002:black",
@@ -9721,7 +9838,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1340618001:taupe",
@@ -9796,7 +9914,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1340618003:white",
@@ -9871,7 +9990,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1340674002:denim-black",
@@ -9998,7 +10118,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1340674003:denim-gray",
@@ -10124,7 +10245,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1340674009:washed-dark-denim-blue",
@@ -10251,7 +10373,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1340906002:burgundy",
@@ -10334,7 +10457,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1340916001:bright-red",
@@ -10409,7 +10533,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1340933001:light-beige",
@@ -10484,7 +10609,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1341159001:light-taupe",
@@ -10554,7 +10680,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1341159002:dark-taupe",
@@ -10624,7 +10751,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1341159004:burgundy",
@@ -10695,7 +10823,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1341570001:black",
@@ -10770,7 +10899,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1341914003:dark-brown",
@@ -10848,7 +10978,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1341914005:black",
@@ -10930,7 +11061,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1342229001:black",
@@ -11005,7 +11137,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1342229002:dark-brown",
@@ -11080,7 +11213,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1342534001:dark-beige",
@@ -11155,7 +11289,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1342668003:lilac-heart",
@@ -11230,7 +11365,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1343925002:black",
@@ -11305,7 +11441,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1344244002:denim-black",
@@ -11404,7 +11541,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344370001:black",
@@ -11471,7 +11609,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344370002:dark-green",
@@ -11538,7 +11677,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344382001:black",
@@ -11609,7 +11749,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344382002:dark-khaki-green",
@@ -11684,7 +11825,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344382003:dark-brown",
@@ -11743,7 +11885,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344386001:dark-khaki-green",
@@ -11818,7 +11961,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344439004:dark-brown",
@@ -11885,7 +12029,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344627001:black-guns-n-roses",
@@ -11957,7 +12102,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344846001:pink-melange",
@@ -12032,7 +12178,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1344863001:dark-khaki-green",
@@ -12103,7 +12250,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1344863002:light-blue",
@@ -12178,7 +12326,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1344863003:black",
@@ -12252,7 +12401,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1344928020:dark-brown-field-archives",
@@ -12323,7 +12473,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1344928021:white-club-sports",
@@ -12394,7 +12545,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1345672001:dark-taupe",
@@ -12469,7 +12621,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1345672002:black",
@@ -12536,7 +12689,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1345672003:burgundy",
@@ -12611,7 +12765,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346043001:black-metallica",
@@ -12682,7 +12837,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1346357008:gray",
@@ -12765,7 +12921,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346427001:cream",
@@ -12835,7 +12992,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346567002:lilac",
@@ -12910,7 +13068,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346573001:brown",
@@ -12989,7 +13148,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346599001:dark-brown",
@@ -13055,7 +13215,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346599004:light-beige",
@@ -13125,7 +13286,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346599006:light-dusty-pink",
@@ -13192,7 +13354,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346599009:bright-blue",
@@ -13262,7 +13425,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1346610002:taupe",
@@ -13328,7 +13492,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1347084002:light-beige-melange",
@@ -13398,7 +13563,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1347084005:dark-brown",
@@ -13465,7 +13631,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1347201006:dark-denim-blue",
@@ -13556,7 +13723,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1347502002:black",
@@ -13627,7 +13795,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1348295008:beige",
@@ -13726,7 +13895,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1348388001:burgundy",
@@ -13801,7 +13971,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1348388002:black",
@@ -13876,7 +14047,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1348411002:black",
@@ -13943,7 +14115,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1349409004:denim-white",
@@ -14013,7 +14186,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1349409011:denim-blue",
@@ -14100,7 +14274,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1349409015:denim-black",
@@ -14187,7 +14362,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1349710003:light-beige",
@@ -14258,7 +14434,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1350758001:dark-purple",
@@ -14317,7 +14494,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1351025002:dark-purple",
@@ -14392,7 +14570,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1351025003:dark-brown",
@@ -14463,7 +14642,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1351031001:dark-purple",
@@ -14538,7 +14718,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1351031002:dark-brown",
@@ -14613,7 +14794,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352044001:dark-denim-blue",
@@ -14684,7 +14866,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1352044003:denim-blue",
@@ -14755,7 +14938,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1352080003:dark-gray-light-pink",
@@ -14818,7 +15002,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352154004:cream",
@@ -14893,7 +15078,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352161002:light-blue",
@@ -14972,7 +15158,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352190005:dusty-pink",
@@ -15046,7 +15233,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352257001:purple",
@@ -15117,7 +15305,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352257002:black",
@@ -15192,7 +15381,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352257003:gray-melange",
@@ -15267,7 +15457,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1352386007:dark-brown-leopard-print",
@@ -15354,7 +15545,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1353285002:dark-taupe",
@@ -15425,7 +15617,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1353470001:cream-athletic-dept",
@@ -15496,7 +15689,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1353470004:cream-las-vegas",
@@ -15567,7 +15761,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1354431002:light-turquoise",
@@ -15642,7 +15837,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1354458001:light-yellow",
@@ -15717,7 +15913,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1354604001:black",
@@ -15788,7 +15985,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1354604006:dark-blue",
@@ -15847,7 +16045,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1354821001:navy-blue",
@@ -15914,7 +16113,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1354893001:brown",
@@ -15981,7 +16181,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1354978001:dark-blue-las-vegas",
@@ -16044,7 +16245,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1354978003:washed-black-bushwick",
@@ -16115,7 +16317,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1354978004:dark-green",
@@ -16178,7 +16381,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1355131002:dark-brown",
@@ -16249,7 +16453,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1355359001:black",
@@ -16320,7 +16525,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1355359002:dark-brown",
@@ -16395,7 +16601,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1355360001:dark-brown",
@@ -16466,7 +16673,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1355360002:black",
@@ -16537,7 +16745,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1355447002:dark-taupe",
@@ -16604,7 +16813,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1355912001:dark-brown",
@@ -16675,7 +16885,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1356658001:dark-gray",
@@ -16741,7 +16952,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1356784002:dark-gray-melange",
@@ -16811,7 +17023,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1357259001:black",
@@ -16882,7 +17095,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1357712004:beige-leopard-print",
@@ -16978,7 +17192,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1357764001:cream-cond-nast-traveler",
@@ -17049,7 +17264,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1357808001:light-denim-blue",
@@ -17148,7 +17364,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1357904001:black",
@@ -17203,7 +17420,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1357967001:black",
@@ -17274,7 +17492,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1357967002:dark-brown",
@@ -17349,7 +17568,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1358034001:washed-denim-blue",
@@ -17448,7 +17668,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1358034002:denim-black",
@@ -17547,7 +17768,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1358034004:denim-gray",
@@ -17634,7 +17856,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1358328002:dark-denim-blue",
@@ -17721,7 +17944,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1359054004:navy-blue",
@@ -17785,7 +18009,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1359411001:black",
@@ -17852,7 +18077,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359480002:dark-brown",
@@ -17927,7 +18153,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1359485001:white-nirvana",
@@ -17990,7 +18217,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359485002:black-nirvana",
@@ -18053,7 +18281,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359485003:washed-black-nirvana",
@@ -18116,7 +18345,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359486001:cream-nirvana",
@@ -18179,7 +18409,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359489001:black-nirvana",
@@ -18242,7 +18473,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359561001:black",
@@ -18309,7 +18541,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359561002:light-beige",
@@ -18380,7 +18613,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359581002:taupe-melange",
@@ -18443,7 +18677,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1359881002:black",
@@ -18506,7 +18741,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360134001:black",
@@ -18581,7 +18817,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360320001:gray-melange",
@@ -18656,7 +18893,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360320003:burgundy-striped",
@@ -18730,7 +18968,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360320006:white",
@@ -18801,7 +19040,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360442001:black-paisley",
@@ -18868,7 +19108,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360442002:burgundy-polka-dot",
@@ -18935,7 +19176,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360570001:dark-plum-purple",
@@ -18994,7 +19236,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360570002:black",
@@ -19052,7 +19295,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360881001:navy-blue",
@@ -19127,7 +19371,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360881004:burgundy",
@@ -19198,7 +19443,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360881005:powder-pink",
@@ -19269,7 +19515,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360881007:dark-green",
@@ -19344,7 +19591,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1360893002:navy-blue-nyc",
@@ -19412,7 +19660,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1361123001:black",
@@ -19487,7 +19736,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1361447002:light-pink-striped",
@@ -19562,7 +19812,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1361447005:plum-purple-striped",
@@ -19633,7 +19884,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1361447006:burgundy-striped",
@@ -19707,7 +19959,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1361995001:white-alta-valley-idaho",
@@ -19778,7 +20031,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1361995002:dark-taupe-field-goods",
@@ -19849,7 +20103,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1362002002:white-alpine",
@@ -19911,7 +20166,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1362127001:denim-blue-floral",
@@ -19982,7 +20238,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1362338002:light-gray-melange",
@@ -20061,7 +20318,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1362346001:light-beige",
@@ -20120,7 +20378,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1362346002:burgundy",
@@ -20187,7 +20446,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1362346003:black",
@@ -20254,7 +20514,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1363602002:white-scream",
@@ -20325,7 +20586,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1363603001:black-scream",
@@ -20396,7 +20658,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1363603002:charcoal-gray-it",
@@ -20467,7 +20730,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1363605001:raspberry-red-scream",
@@ -20537,7 +20801,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1364285004:burgundy",
@@ -20611,7 +20876,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1364296001:black",
@@ -20678,7 +20944,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1364426001:dark-blue-white-striped",
@@ -20745,7 +21012,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1364613001:black-university-of-florida",
@@ -20804,7 +21072,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1364613002:cream-unc",
@@ -20863,7 +21132,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1365041002:black",
@@ -20937,7 +21207,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1365041003:burgundy",
@@ -21012,7 +21283,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1365080001:black",
@@ -21079,7 +21351,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1365233001:black-flowers",
@@ -21150,7 +21423,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1365703001:dusty-blue-melange",
@@ -21217,7 +21491,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1366617001:black",
@@ -21284,7 +21559,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1367859001:black",
@@ -21354,7 +21630,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1368065001:black",
@@ -21421,7 +21698,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1368403002:black",
@@ -21492,7 +21770,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1369161003:light-taupe",
@@ -21562,7 +21841,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1370524001:cream",
@@ -21629,7 +21909,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1370524002:black",
@@ -21692,7 +21973,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1370906002:burgundy",
@@ -21763,7 +22045,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1371478001:dark-brown",
@@ -21830,7 +22113,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1372132001:black-brooklyn",
@@ -21901,7 +22185,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1372132002:light-gray-melange-brooklyn",
@@ -21972,7 +22257,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1372135001:black",
@@ -22028,7 +22314,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "hm:1374579002:mustard-yellow",
@@ -22094,7 +22381,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1375254002:burgundy",
@@ -22164,7 +22452,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "hm:1380000001:black",
@@ -22231,7 +22520,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E422992-000:dark-brown",
@@ -22298,7 +22588,8 @@
    }
   ],
   "description": "This unisex Crew Neck T-Shirt from the Uniqlo U collection is designed as a modern essential, balancing a clean silhouette with thoughtful fabric choice for everyday wear across seasons. Crafted from heavyweight cotton jersey made with thick yarn, it offers a smooth surface and a structured look that works well on its own in warm weather or as a reliable layering piece when temperatures drop, reflecting a refined, universal approach to a classic T-shirt.\n- Heavyweight cotton jersey fabric made with thick yarn creates a durable, structured feel that holds its shape through repeated wear.\n- The smooth finish and classic crew neck deliver a timeless silhouette suitable for casual outfits, travel, and daily routines.\n- Binding at the collar helps the neckline maintain its shape wear after wear.\n- A neckline inspired by vintage military T-shirt designs introduces subtle character while keeping the overall design minimal.\n- The unisex men’s sizing offers a fit that is not too loose and not too tight, pairing easily with straight-leg jeans, chinos, or tailored pants.\n- The mid-weight fabric makes this T-shirt adaptable for different weather, worn alone in warmer months or layered under overshirts, cardigans, or jackets.\n- Compared with lightweight cotton T-shirts, the heavier jersey provides a more substantial drape and a cleaner, more defined outline.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, with careful attention to fabric, texture, and refined color selection.\n- A versatile wardrobe staple that supports a wide range of styling, from relaxed weekend looks to polished but casual outfits.\n-This style was previously sold as U Crew Neck T-Shirt.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E422992-000:gray",
@@ -22365,7 +22656,8 @@
    }
   ],
   "description": "This unisex Crew Neck T-Shirt from the Uniqlo U collection is designed as a modern essential, balancing a clean silhouette with thoughtful fabric choice for everyday wear across seasons. Crafted from heavyweight cotton jersey made with thick yarn, it offers a smooth surface and a structured look that works well on its own in warm weather or as a reliable layering piece when temperatures drop, reflecting a refined, universal approach to a classic T-shirt.\n- Heavyweight cotton jersey fabric made with thick yarn creates a durable, structured feel that holds its shape through repeated wear.\n- The smooth finish and classic crew neck deliver a timeless silhouette suitable for casual outfits, travel, and daily routines.\n- Binding at the collar helps the neckline maintain its shape wear after wear.\n- A neckline inspired by vintage military T-shirt designs introduces subtle character while keeping the overall design minimal.\n- The unisex men’s sizing offers a fit that is not too loose and not too tight, pairing easily with straight-leg jeans, chinos, or tailored pants.\n- The mid-weight fabric makes this T-shirt adaptable for different weather, worn alone in warmer months or layered under overshirts, cardigans, or jackets.\n- Compared with lightweight cotton T-shirts, the heavier jersey provides a more substantial drape and a cleaner, more defined outline.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, with careful attention to fabric, texture, and refined color selection.\n- A versatile wardrobe staple that supports a wide range of styling, from relaxed weekend looks to polished but casual outfits.\n-This style was previously sold as U Crew Neck T-Shirt.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E422992-000:white",
@@ -22432,7 +22724,8 @@
    }
   ],
   "description": "This unisex Crew Neck T-Shirt from the Uniqlo U collection is designed as a modern essential, balancing a clean silhouette with thoughtful fabric choice for everyday wear across seasons. Crafted from heavyweight cotton jersey made with thick yarn, it offers a smooth surface and a structured look that works well on its own in warm weather or as a reliable layering piece when temperatures drop, reflecting a refined, universal approach to a classic T-shirt.\n- Heavyweight cotton jersey fabric made with thick yarn creates a durable, structured feel that holds its shape through repeated wear.\n- The smooth finish and classic crew neck deliver a timeless silhouette suitable for casual outfits, travel, and daily routines.\n- Binding at the collar helps the neckline maintain its shape wear after wear.\n- A neckline inspired by vintage military T-shirt designs introduces subtle character while keeping the overall design minimal.\n- The unisex men’s sizing offers a fit that is not too loose and not too tight, pairing easily with straight-leg jeans, chinos, or tailored pants.\n- The mid-weight fabric makes this T-shirt adaptable for different weather, worn alone in warmer months or layered under overshirts, cardigans, or jackets.\n- Compared with lightweight cotton T-shirts, the heavier jersey provides a more substantial drape and a cleaner, more defined outline.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, with careful attention to fabric, texture, and refined color selection.\n- A versatile wardrobe staple that supports a wide range of styling, from relaxed weekend looks to polished but casual outfits.\n-This style was previously sold as U Crew Neck T-Shirt.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E424873-000:black",
@@ -22495,7 +22788,8 @@
    }
   ],
   "description": "This women’s Crew Neck T-Shirt from the Uniqlo U collection is built around the concept of Unique Comfort, expressing a refined approach to everyday wear through fabric, fit, and proportion. Made from cotton with an interlock-knit jersey construction, it has a clean, smooth surface and a soft yet structured mid-weight feel that works well across seasons. Designed with a regular, balanced fit that is neither too tight nor too loose, the straight silhouette creates a versatile foundation that can be worn on its own in mild weather or layered comfortably as temperatures shift. Designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, this piece reflects UNIQLO’s ongoing exploration of what a universal T-shirt should be, combining thoughtful design with functional simplicity.\n- Made from cotton with an interlock-knit jersey weave for a smooth finish and refined texture.\n- Designed around the Unique Comfort concept, emphasizing ease of wear with clean, intentional lines.\n- Features a classic crew neck and straight silhouette with a regular, balanced fit that is neither too tight nor too loose.\n- Mid-weight fabric offers more structure than lightweight T-shirts while remaining suitable for layering in transitional weather.\n- Developed through repeated testing to refine the shape, proportions, and overall feel for daily wear.\n- Part of the Uniqlo U collection designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, focused on modern interpretations of essential items.\n- Compared with the men’s version, which emphasizes thicker yarn and a more structured feel, the women’s style prioritizes a smoother interlock fabric and balanced proportions.\n- Finished in carefully selected colors, chosen through multiple trials to complement the fabric texture and silhouette.\n- This style was previously sold as U Crew Neck T-Shirt.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E424873-000:pink",
@@ -22558,7 +22852,8 @@
    }
   ],
   "description": "This women’s Crew Neck T-Shirt from the Uniqlo U collection is built around the concept of Unique Comfort, expressing a refined approach to everyday wear through fabric, fit, and proportion. Made from cotton with an interlock-knit jersey construction, it has a clean, smooth surface and a soft yet structured mid-weight feel that works well across seasons. Designed with a regular, balanced fit that is neither too tight nor too loose, the straight silhouette creates a versatile foundation that can be worn on its own in mild weather or layered comfortably as temperatures shift. Designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, this piece reflects UNIQLO’s ongoing exploration of what a universal T-shirt should be, combining thoughtful design with functional simplicity.\n- Made from cotton with an interlock-knit jersey weave for a smooth finish and refined texture.\n- Designed around the Unique Comfort concept, emphasizing ease of wear with clean, intentional lines.\n- Features a classic crew neck and straight silhouette with a regular, balanced fit that is neither too tight nor too loose.\n- Mid-weight fabric offers more structure than lightweight T-shirts while remaining suitable for layering in transitional weather.\n- Developed through repeated testing to refine the shape, proportions, and overall feel for daily wear.\n- Part of the Uniqlo U collection designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, focused on modern interpretations of essential items.\n- Compared with the men’s version, which emphasizes thicker yarn and a more structured feel, the women’s style prioritizes a smoother interlock fabric and balanced proportions.\n- Finished in carefully selected colors, chosen through multiple trials to complement the fabric texture and silhouette.\n- This style was previously sold as U Crew Neck T-Shirt.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E424873-000:white",
@@ -22621,7 +22916,8 @@
    }
   ],
   "description": "This women’s Crew Neck T-Shirt from the Uniqlo U collection is built around the concept of Unique Comfort, expressing a refined approach to everyday wear through fabric, fit, and proportion. Made from cotton with an interlock-knit jersey construction, it has a clean, smooth surface and a soft yet structured mid-weight feel that works well across seasons. Designed with a regular, balanced fit that is neither too tight nor too loose, the straight silhouette creates a versatile foundation that can be worn on its own in mild weather or layered comfortably as temperatures shift. Designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, this piece reflects UNIQLO’s ongoing exploration of what a universal T-shirt should be, combining thoughtful design with functional simplicity.\n- Made from cotton with an interlock-knit jersey weave for a smooth finish and refined texture.\n- Designed around the Unique Comfort concept, emphasizing ease of wear with clean, intentional lines.\n- Features a classic crew neck and straight silhouette with a regular, balanced fit that is neither too tight nor too loose.\n- Mid-weight fabric offers more structure than lightweight T-shirts while remaining suitable for layering in transitional weather.\n- Developed through repeated testing to refine the shape, proportions, and overall feel for daily wear.\n- Part of the Uniqlo U collection designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, focused on modern interpretations of essential items.\n- Compared with the men’s version, which emphasizes thicker yarn and a more structured feel, the women’s style prioritizes a smoother interlock fabric and balanced proportions.\n- Finished in carefully selected colors, chosen through multiple trials to complement the fabric texture and silhouette.\n- This style was previously sold as U Crew Neck T-Shirt.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E455365-000:black",
@@ -22688,7 +22984,8 @@
    }
   ],
   "description": "This unisex T-shirt is designed as a refined everyday essential with a clean silhouette and balanced proportions. Made from 100% SUPIMA® cotton, it features a fine, smooth texture created by long fibers that contribute to a polished surface and consistent color appearance. Careful adjustments to the neckline, body width, and sleeve length result in a balanced shape that differs from oversized styles, making it suitable for wearing on its own in warm weather or layered under a shirt, jacket, or mid-weight fleece piece as temperatures change. Thoughtful collar width and precise stitching complement the fabric texture for a timeless look that works across casual and more styled outfits.\n- Made from 100% SUPIMA® cotton with long fibers that create a fine, smooth fabric surface.\n- The fabric offers a clean appearance and consistent coloring compared to standard cotton T-shirts.\n- Classic silhouette provides a balanced fit that differs from oversized styles.\n- Adjusted neckline, body width, and sleeve length support a clean, proportioned shape.\n- Sleek collar width and neat stitching enhance the overall structure and finish.\n- Suitable for warm weather wear or layered styling across seasons.\n- Unisex design follows men’s sizing, resulting in a straightforward fit across a range of body types.\n- Designed as a timeless wardrobe piece that pairs easily with denim, straight-leg pants, or tailored layers.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E455365-000:gray",
@@ -22755,7 +23052,8 @@
    }
   ],
   "description": "This unisex T-shirt is designed as a refined everyday essential with a clean silhouette and balanced proportions. Made from 100% SUPIMA® cotton, it features a fine, smooth texture created by long fibers that contribute to a polished surface and consistent color appearance. Careful adjustments to the neckline, body width, and sleeve length result in a balanced shape that differs from oversized styles, making it suitable for wearing on its own in warm weather or layered under a shirt, jacket, or mid-weight fleece piece as temperatures change. Thoughtful collar width and precise stitching complement the fabric texture for a timeless look that works across casual and more styled outfits.\n- Made from 100% SUPIMA® cotton with long fibers that create a fine, smooth fabric surface.\n- The fabric offers a clean appearance and consistent coloring compared to standard cotton T-shirts.\n- Classic silhouette provides a balanced fit that differs from oversized styles.\n- Adjusted neckline, body width, and sleeve length support a clean, proportioned shape.\n- Sleek collar width and neat stitching enhance the overall structure and finish.\n- Suitable for warm weather wear or layered styling across seasons.\n- Unisex design follows men’s sizing, resulting in a straightforward fit across a range of body types.\n- Designed as a timeless wardrobe piece that pairs easily with denim, straight-leg pants, or tailored layers.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E455365-000:white",
@@ -22822,7 +23120,8 @@
    }
   ],
   "description": "This unisex T-shirt is designed as a refined everyday essential with a clean silhouette and balanced proportions. Made from 100% SUPIMA® cotton, it features a fine, smooth texture created by long fibers that contribute to a polished surface and consistent color appearance. Careful adjustments to the neckline, body width, and sleeve length result in a balanced shape that differs from oversized styles, making it suitable for wearing on its own in warm weather or layered under a shirt, jacket, or mid-weight fleece piece as temperatures change. Thoughtful collar width and precise stitching complement the fabric texture for a timeless look that works across casual and more styled outfits.\n- Made from 100% SUPIMA® cotton with long fibers that create a fine, smooth fabric surface.\n- The fabric offers a clean appearance and consistent coloring compared to standard cotton T-shirts.\n- Classic silhouette provides a balanced fit that differs from oversized styles.\n- Adjusted neckline, body width, and sleeve length support a clean, proportioned shape.\n- Sleek collar width and neat stitching enhance the overall structure and finish.\n- Suitable for warm weather wear or layered styling across seasons.\n- Unisex design follows men’s sizing, resulting in a straightforward fit across a range of body types.\n- Designed as a timeless wardrobe piece that pairs easily with denim, straight-leg pants, or tailored layers.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E457517-000:gray",
@@ -22889,7 +23188,8 @@
    }
   ],
   "description": "Our men’s \"AIRism\" Cotton T-Shirt is a sleeveless, regular-fit tank top designed for warm-weather wear and easy layering, featuring a smooth fabric that creates a sleek silhouette plus side slits for a subtle style accent and added easy movement.\n- A sleek, streamlined silhouette that looks polished on its own or layered under an open shirt or light jacket.\n- Smooth, quick-drying \"AIRism\" functionality is blended with cotton for high-performance comfort.\n- Regular fit tank top with a classic crew neck makes this sleeveless style simple to pair with shorts, straight-leg jeans, or relaxed pants.\n- Side slits add a modern detail and allow comfortable movement during day-to-day wear.\n- The 00 White color is slightly sheer depending on lighting and layering.\n- Compared to a standard cotton tank top, this style has added comfort with \"AIRism\" features.\n- Crafted with recycled material ratios varying by item and referenced on the tag or care label.\n- Clothing using recycled materials is part of our effort to support the reduction of waste and use of new materials. Ratios of recycled material vary by item. Please check “Materials” on the price tag or care label for details.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E457517-000:green",
@@ -22956,7 +23256,8 @@
    }
   ],
   "description": "Our men’s \"AIRism\" Cotton T-Shirt is a sleeveless, regular-fit tank top designed for warm-weather wear and easy layering, featuring a smooth fabric that creates a sleek silhouette plus side slits for a subtle style accent and added easy movement.\n- A sleek, streamlined silhouette that looks polished on its own or layered under an open shirt or light jacket.\n- Smooth, quick-drying \"AIRism\" functionality is blended with cotton for high-performance comfort.\n- Regular fit tank top with a classic crew neck makes this sleeveless style simple to pair with shorts, straight-leg jeans, or relaxed pants.\n- Side slits add a modern detail and allow comfortable movement during day-to-day wear.\n- The 00 White color is slightly sheer depending on lighting and layering.\n- Compared to a standard cotton tank top, this style has added comfort with \"AIRism\" features.\n- Crafted with recycled material ratios varying by item and referenced on the tag or care label.\n- Clothing using recycled materials is part of our effort to support the reduction of waste and use of new materials. Ratios of recycled material vary by item. Please check “Materials” on the price tag or care label for details.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E457517-000:white",
@@ -23023,7 +23324,8 @@
    }
   ],
   "description": "Our men’s \"AIRism\" Cotton T-Shirt is a sleeveless, regular-fit tank top designed for warm-weather wear and easy layering, featuring a smooth fabric that creates a sleek silhouette plus side slits for a subtle style accent and added easy movement.\n- A sleek, streamlined silhouette that looks polished on its own or layered under an open shirt or light jacket.\n- Smooth, quick-drying \"AIRism\" functionality is blended with cotton for high-performance comfort.\n- Regular fit tank top with a classic crew neck makes this sleeveless style simple to pair with shorts, straight-leg jeans, or relaxed pants.\n- Side slits add a modern detail and allow comfortable movement during day-to-day wear.\n- The 00 White color is slightly sheer depending on lighting and layering.\n- Compared to a standard cotton tank top, this style has added comfort with \"AIRism\" features.\n- Crafted with recycled material ratios varying by item and referenced on the tag or care label.\n- Clothing using recycled materials is part of our effort to support the reduction of waste and use of new materials. Ratios of recycled material vary by item. Please check “Materials” on the price tag or care label for details.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E461420-000:blue",
@@ -23086,7 +23388,8 @@
    }
   ],
   "description": "Our men’s Stretch Easy Ankle Pants | Denim are designed to balance everyday comfort with a clean, authentic look that works across seasons. Featuring a relaxed, tapered silhouette and an easy ankle length, this style offers the versatility of casual denim with the comfort of easy pants, perfect for indoor or outdoor wear. The stretch denim fabric supports natural movement, while the elastic waist with an adjustable drawstring delivers a secure yet flexible fit. With simple lines and practical details, these pants pair easily with T‑shirts, button‑down shirts, mid‑weight fleece, or layered outerwear, making them a dependable option for daily wear, travel, or relaxed settings. Compared with traditional rigid jeans, they feel easier to move in, while offering a more structured appearance than lounge or jogger styles.\n- Stretch denim fabric supports easy movement for walking, commuting, and everyday activities.\n- Authentic denim look delivers a clean, casual appearance suitable for indoor and outdoor wear.\n- Relaxed, tapered silhouette creates a comfortable fit with a streamlined finish at the ankle.\n- Easy ankle-length pairs well with sneakers, casual shoes, or boots across mild to cool weather.\n- Elastic waistband with drawstring allows adjustable comfort without disrupting clean lines.\n- Regular fit offers a balanced alternative to slim jeans when you want more ease, or to wider styles when you prefer a neater profile.\n- Designed with pockets for practical daily use, supporting carry of small essentials.\n- Works well with lightweight tops in warmer conditions or layered with French terry, mid‑weight fleece, or jackets in cooler seasons.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E461420-000:gray",
@@ -23149,7 +23452,8 @@
    }
   ],
   "description": "Our men’s Stretch Easy Ankle Pants | Denim are designed to balance everyday comfort with a clean, authentic look that works across seasons. Featuring a relaxed, tapered silhouette and an easy ankle length, this style offers the versatility of casual denim with the comfort of easy pants, perfect for indoor or outdoor wear. The stretch denim fabric supports natural movement, while the elastic waist with an adjustable drawstring delivers a secure yet flexible fit. With simple lines and practical details, these pants pair easily with T‑shirts, button‑down shirts, mid‑weight fleece, or layered outerwear, making them a dependable option for daily wear, travel, or relaxed settings. Compared with traditional rigid jeans, they feel easier to move in, while offering a more structured appearance than lounge or jogger styles.\n- Stretch denim fabric supports easy movement for walking, commuting, and everyday activities.\n- Authentic denim look delivers a clean, casual appearance suitable for indoor and outdoor wear.\n- Relaxed, tapered silhouette creates a comfortable fit with a streamlined finish at the ankle.\n- Easy ankle-length pairs well with sneakers, casual shoes, or boots across mild to cool weather.\n- Elastic waistband with drawstring allows adjustable comfort without disrupting clean lines.\n- Regular fit offers a balanced alternative to slim jeans when you want more ease, or to wider styles when you prefer a neater profile.\n- Designed with pockets for practical daily use, supporting carry of small essentials.\n- Works well with lightweight tops in warmer conditions or layered with French terry, mid‑weight fleece, or jackets in cooler seasons.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E465185-000:dark-brown",
@@ -23216,7 +23520,8 @@
    }
   ],
   "description": "This unisex oversized T-shirt is designed as a versatile everyday essential with a relaxed, modern silhouette and clean lines. Made from a cotton-blend fabric that incorporates \"AIRism\" functionality, it maintains the appearance of cotton with a smooth, fine-textured surface that feels cool to the touch when worn. The oversized cut with half-length sleeves and dropped shoulders creates an easy profile compared to a standard T-shirt, while the narrow crew neck adds structure for refined styling, whether worn on its own in warm weather or layered under an open shirt, jacket, or mid-weight fleece piece across seasons.\n- Oversized fit with dropped shoulders creates a relaxed silhouette compared to a regular-fit T-shirt.\n- Half-length sleeves provide added coverage and visual balance for casual wear and transitional styling.\n- Cotton-blend fabric incorporating \"AIRism\" features for the look of cotton with smooth, quick-drying functionality.\n- The fabric feels cool to the touch for added freshness.\n- Narrow crew neck supports clean, refined styling when worn alone or layered.\n- Unisex design follows men’s sizing, resulting in a roomier fit across a wide range of body types.\n- Designed with attention to color, proportion, and balanced sizing for versatile everyday styling.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran.\n- The fabric is not sheer.\n- Clothing using recycled materials is part of our effort to support the reduction of waste and use of new materials. Ratios of recycled material vary by item. Please check “Materials” on the price tag or care label for details.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E465185-000:light-gray",
@@ -23283,7 +23588,8 @@
    }
   ],
   "description": "This unisex oversized T-shirt is designed as a versatile everyday essential with a relaxed, modern silhouette and clean lines. Made from a cotton-blend fabric that incorporates \"AIRism\" functionality, it maintains the appearance of cotton with a smooth, fine-textured surface that feels cool to the touch when worn. The oversized cut with half-length sleeves and dropped shoulders creates an easy profile compared to a standard T-shirt, while the narrow crew neck adds structure for refined styling, whether worn on its own in warm weather or layered under an open shirt, jacket, or mid-weight fleece piece across seasons.\n- Oversized fit with dropped shoulders creates a relaxed silhouette compared to a regular-fit T-shirt.\n- Half-length sleeves provide added coverage and visual balance for casual wear and transitional styling.\n- Cotton-blend fabric incorporating \"AIRism\" features for the look of cotton with smooth, quick-drying functionality.\n- The fabric feels cool to the touch for added freshness.\n- Narrow crew neck supports clean, refined styling when worn alone or layered.\n- Unisex design follows men’s sizing, resulting in a roomier fit across a wide range of body types.\n- Designed with attention to color, proportion, and balanced sizing for versatile everyday styling.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran.\n- The fabric is not sheer.\n- Clothing using recycled materials is part of our effort to support the reduction of waste and use of new materials. Ratios of recycled material vary by item. Please check “Materials” on the price tag or care label for details.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E465185-000:white",
@@ -23350,7 +23656,8 @@
    }
   ],
   "description": "This unisex oversized T-shirt is designed as a versatile everyday essential with a relaxed, modern silhouette and clean lines. Made from a cotton-blend fabric that incorporates \"AIRism\" functionality, it maintains the appearance of cotton with a smooth, fine-textured surface that feels cool to the touch when worn. The oversized cut with half-length sleeves and dropped shoulders creates an easy profile compared to a standard T-shirt, while the narrow crew neck adds structure for refined styling, whether worn on its own in warm weather or layered under an open shirt, jacket, or mid-weight fleece piece across seasons.\n- Oversized fit with dropped shoulders creates a relaxed silhouette compared to a regular-fit T-shirt.\n- Half-length sleeves provide added coverage and visual balance for casual wear and transitional styling.\n- Cotton-blend fabric incorporating \"AIRism\" features for the look of cotton with smooth, quick-drying functionality.\n- The fabric feels cool to the touch for added freshness.\n- Narrow crew neck supports clean, refined styling when worn alone or layered.\n- Unisex design follows men’s sizing, resulting in a roomier fit across a wide range of body types.\n- Designed with attention to color, proportion, and balanced sizing for versatile everyday styling.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran.\n- The fabric is not sheer.\n- Clothing using recycled materials is part of our effort to support the reduction of waste and use of new materials. Ratios of recycled material vary by item. Please check “Materials” on the price tag or care label for details.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E465734-000:gray",
@@ -23413,7 +23720,8 @@
    }
   ],
   "description": "- Slightly relaxed basic cut.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465734-000:off-white",
@@ -23476,7 +23784,8 @@
    }
   ],
   "description": "- Slightly relaxed basic cut.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465734-000:red",
@@ -23539,7 +23848,8 @@
    }
   ],
   "description": "- Slightly relaxed basic cut.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465735-000:beige",
@@ -23601,7 +23911,8 @@
    }
   ],
   "description": "Elevate your cold-weather wardrobe with Women's Cashmere Turtleneck Sweaters for winter crafted with exceptional softness, a flattering modern fit, and effortless luxury. Our 100% cashmere collection is hand-washable, and available in rich colors perfect for layering or wearing solo.​\n- 100% Cashmere: Soft warmth for effortless luxury.​\n- Modern Fit: Cut to flatter with comfort.​\n- Easy Care: Delicate yet durable and hand-washable.​​\n- Rich Colors: A palette that's easy to layer or wear by itself​.​\n- Timeless Staple: Designed as a refined and versatile essential to wear year after year​.​",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465735-000:dark-gray",
@@ -23664,7 +23975,8 @@
    }
   ],
   "description": "Elevate your cold-weather wardrobe with Women's Cashmere Turtleneck Sweaters for winter crafted with exceptional softness, a flattering modern fit, and effortless luxury. Our 100% cashmere collection is hand-washable, and available in rich colors perfect for layering or wearing solo.​\n- 100% Cashmere: Soft warmth for effortless luxury.​\n- Modern Fit: Cut to flatter with comfort.​\n- Easy Care: Delicate yet durable and hand-washable.​​\n- Rich Colors: A palette that's easy to layer or wear by itself​.​\n- Timeless Staple: Designed as a refined and versatile essential to wear year after year​.​",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465735-000:off-white",
@@ -23726,7 +24038,8 @@
    }
   ],
   "description": "Elevate your cold-weather wardrobe with Women's Cashmere Turtleneck Sweaters for winter crafted with exceptional softness, a flattering modern fit, and effortless luxury. Our 100% cashmere collection is hand-washable, and available in rich colors perfect for layering or wearing solo.​\n- 100% Cashmere: Soft warmth for effortless luxury.​\n- Modern Fit: Cut to flatter with comfort.​\n- Easy Care: Delicate yet durable and hand-washable.​​\n- Rich Colors: A palette that's easy to layer or wear by itself​.​\n- Timeless Staple: Designed as a refined and versatile essential to wear year after year​.​",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465736-000:beige",
@@ -23789,7 +24102,8 @@
    }
   ],
   "description": "Elevate your cold-weather wardrobe with Women's Cashmere V-Neck Sweater for winter crafted with exceptional softness, a flattering modern fit, and effortless luxury. Our 100% cashmere collection is hand-washable, and available in rich colors perfect for layering or wearing solo.\n- 100% Cashmere: Soft warmth for effortless luxury.\n- Modern Fit: Cut to flatter with comfort.\n- Easy Care: Delicate yet durable and hand-washable.\n- Rich Colors: A palette that's easy to layer or wear by itself.\n- Timeless Staple: Designed as a refined and versatile essential to wear year after year.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465736-000:gray",
@@ -23852,7 +24166,8 @@
    }
   ],
   "description": "Elevate your cold-weather wardrobe with Women's Cashmere V-Neck Sweater for winter crafted with exceptional softness, a flattering modern fit, and effortless luxury. Our 100% cashmere collection is hand-washable, and available in rich colors perfect for layering or wearing solo.\n- 100% Cashmere: Soft warmth for effortless luxury.\n- Modern Fit: Cut to flatter with comfort.\n- Easy Care: Delicate yet durable and hand-washable.\n- Rich Colors: A palette that's easy to layer or wear by itself.\n- Timeless Staple: Designed as a refined and versatile essential to wear year after year.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465736-000:off-white",
@@ -23915,7 +24230,8 @@
    }
   ],
   "description": "Elevate your cold-weather wardrobe with Women's Cashmere V-Neck Sweater for winter crafted with exceptional softness, a flattering modern fit, and effortless luxury. Our 100% cashmere collection is hand-washable, and available in rich colors perfect for layering or wearing solo.\n- 100% Cashmere: Soft warmth for effortless luxury.\n- Modern Fit: Cut to flatter with comfort.\n- Easy Care: Delicate yet durable and hand-washable.\n- Rich Colors: A palette that's easy to layer or wear by itself.\n- Timeless Staple: Designed as a refined and versatile essential to wear year after year.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465760-000:gray",
@@ -23978,7 +24294,8 @@
    }
   ],
   "description": "A sleek, cropped women’s Mini T-Shirt designed for a modern, very fitted silhouette with clean lines that style easily from day to night. This baby tee–inspired design features a mini length and close-to-body shape for a streamlined look, while the cotton-blend fabric offers a smooth, natural texture. Matching fabric trim at the crew neckline keeps the finish neat, making it easy to wear on its own or layer under jackets, cardigans, or an oversized shirt for everyday styling.\n- Cropped mini length creates a modern silhouette that pairs well with high-rise straight-leg jeans, skirts, or wide-leg pants.\n- Very fitted shape delivers a sleek profile compared to a standard-length T-shirt.\n- Cotton blend fabric provides a smooth, natural texture suitable for year-round wear and seasonal layering.\n- Classic crew neck with matching fabric trim offers a clean neckline finish for polished casual outfits.\n- Short sleeves support versatile styling in warm weather and layer smoothly under lightweight jackets or mid-weight fleece pieces.\n- The 01 Off White color is slightly sheer depending on lighting and layering.\n- Minimalist design transitions easily from casual denim looks to more styled outfits with tailored layers.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465760-000:white",
@@ -24041,7 +24358,8 @@
    }
   ],
   "description": "A sleek, cropped women’s Mini T-Shirt designed for a modern, very fitted silhouette with clean lines that style easily from day to night. This baby tee–inspired design features a mini length and close-to-body shape for a streamlined look, while the cotton-blend fabric offers a smooth, natural texture. Matching fabric trim at the crew neckline keeps the finish neat, making it easy to wear on its own or layer under jackets, cardigans, or an oversized shirt for everyday styling.\n- Cropped mini length creates a modern silhouette that pairs well with high-rise straight-leg jeans, skirts, or wide-leg pants.\n- Very fitted shape delivers a sleek profile compared to a standard-length T-shirt.\n- Cotton blend fabric provides a smooth, natural texture suitable for year-round wear and seasonal layering.\n- Classic crew neck with matching fabric trim offers a clean neckline finish for polished casual outfits.\n- Short sleeves support versatile styling in warm weather and layer smoothly under lightweight jackets or mid-weight fleece pieces.\n- The 01 Off White color is slightly sheer depending on lighting and layering.\n- Minimalist design transitions easily from casual denim looks to more styled outfits with tailored layers.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E465760-000:wine",
@@ -24104,7 +24422,8 @@
    }
   ],
   "description": "A sleek, cropped women’s Mini T-Shirt designed for a modern, very fitted silhouette with clean lines that style easily from day to night. This baby tee–inspired design features a mini length and close-to-body shape for a streamlined look, while the cotton-blend fabric offers a smooth, natural texture. Matching fabric trim at the crew neckline keeps the finish neat, making it easy to wear on its own or layer under jackets, cardigans, or an oversized shirt for everyday styling.\n- Cropped mini length creates a modern silhouette that pairs well with high-rise straight-leg jeans, skirts, or wide-leg pants.\n- Very fitted shape delivers a sleek profile compared to a standard-length T-shirt.\n- Cotton blend fabric provides a smooth, natural texture suitable for year-round wear and seasonal layering.\n- Classic crew neck with matching fabric trim offers a clean neckline finish for polished casual outfits.\n- Short sleeves support versatile styling in warm weather and layer smoothly under lightweight jackets or mid-weight fleece pieces.\n- The 01 Off White color is slightly sheer depending on lighting and layering.\n- Minimalist design transitions easily from casual denim looks to more styled outfits with tailored layers.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E469292-000:black",
@@ -24171,7 +24490,8 @@
    }
   ],
   "description": "- Relaxed cut with a roomy fit in the body, shoulders, and sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E469292-000:gray",
@@ -24238,7 +24558,8 @@
    }
   ],
   "description": "- Relaxed cut with a roomy fit in the body, shoulders, and sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E469292-000:red",
@@ -24305,7 +24626,8 @@
    }
   ],
   "description": "- Relaxed cut with a roomy fit in the body, shoulders, and sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E469292-001:black",
@@ -24372,7 +24694,8 @@
    }
   ],
   "description": "- Relaxed cut with a roomy fit in the body, shoulders, and sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E469292-001:navy",
@@ -24438,7 +24761,8 @@
    }
   ],
   "description": "- Relaxed cut with a roomy fit in the body, shoulders, and sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E470143-000:gray",
@@ -24501,7 +24825,8 @@
    }
   ],
   "description": "Stay cozy and stylish with this Women's Soft Knitted Fleece T-Shirt | Long Sleeve, designed for comfort whether you're lounging at home or layering up for cooler days. Its sweatshirt-inspired silhouette offers a relaxed silhouette that moves with you, while the knit-like texture adds visual warmth and softness. Easy to care for and versatile enough to wear solo or under outerwear, this fleece tee is a staple for transitional weather and everyday wear.\n- Soft fleece with a knit-like texture and color.\n- Relaxed silhouette for easy layering.\n- Crew neck design for classic styling.\n- Sweatshirt-style cut suitable for indoor and outdoor wear.\n- Machine washable for everyday convenience.\n- Available in multiple colors and sizes.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E470143-000:off-white",
@@ -24564,7 +24889,8 @@
    }
   ],
   "description": "Stay cozy and stylish with this Women's Soft Knitted Fleece T-Shirt | Long Sleeve, designed for comfort whether you're lounging at home or layering up for cooler days. Its sweatshirt-inspired silhouette offers a relaxed silhouette that moves with you, while the knit-like texture adds visual warmth and softness. Easy to care for and versatile enough to wear solo or under outerwear, this fleece tee is a staple for transitional weather and everyday wear.\n- Soft fleece with a knit-like texture and color.\n- Relaxed silhouette for easy layering.\n- Crew neck design for classic styling.\n- Sweatshirt-style cut suitable for indoor and outdoor wear.\n- Machine washable for everyday convenience.\n- Available in multiple colors and sizes.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E470143-000:red",
@@ -24627,7 +24953,8 @@
    }
   ],
   "description": "Stay cozy and stylish with this Women's Soft Knitted Fleece T-Shirt | Long Sleeve, designed for comfort whether you're lounging at home or layering up for cooler days. Its sweatshirt-inspired silhouette offers a relaxed silhouette that moves with you, while the knit-like texture adds visual warmth and softness. Easy to care for and versatile enough to wear solo or under outerwear, this fleece tee is a staple for transitional weather and everyday wear.\n- Soft fleece with a knit-like texture and color.\n- Relaxed silhouette for easy layering.\n- Crew neck design for classic styling.\n- Sweatshirt-style cut suitable for indoor and outdoor wear.\n- Machine washable for everyday convenience.\n- Available in multiple colors and sizes.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E479000-000:blue",
@@ -24706,7 +25033,8 @@
    }
   ],
   "description": "Our women’s Barrel Jeans are high‑waist, barrel‑leg denim jeans designed to deliver modern shape with everyday comfort. Made from a soft cotton‑blend denim, they feel smooth and wearable year‑round while maintaining clean structure.\nA gently curved leg with volume through the sides creates the signature barrel silhouette, tapering neatly at the hem for a sculpted look that adds dimension without bulk. With a slightly high rise and loose, tapered fit, these jeans offer a refined alternative to straight‑leg or wide‑leg styles—balancing relaxed comfort with a modern outline for all‑season wear.\nFit & Fabric\n- Fit: Loose\n- Rise: High\n- Silhouette: Softly curved barrel shape with tapered leg\n- Inseam: 31\"\n- Fabric: Soft cotton‑blend denim with a smooth feel\nWhat are barrel jeans?\nBarrel jeans feature a curved leg with volume at the sides and a tapered hem, creating a sculpted, modern silhouette.\nHow do barrel jeans fit compared to straight‑leg or wide‑leg jeans?\n- They offer more shape than straight‑leg jeans and a more controlled, tapered finish than wide‑leg styles, balancing structure with relaxed comfort.\nDo these jeans have a high waist?\n- Yes. They feature a slightly high rise that defines the waist and supports the curved silhouette.\nAre these jeans comfortable for everyday wear?\n- Yes. The cotton‑blend denim is soft and wearable, making them comfortable for all‑day, year‑round use.\n- \"Products labeled as 'Baggy Curve Jeans' on the product tag have been renamed to 'Baggy Barrel Leg Jeans.'\"",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E479000-000:dark-gray",
@@ -24785,7 +25113,8 @@
    }
   ],
   "description": "Our women’s Barrel Jeans are high‑waist, barrel‑leg denim jeans designed to deliver modern shape with everyday comfort. Made from a soft cotton‑blend denim, they feel smooth and wearable year‑round while maintaining clean structure.\nA gently curved leg with volume through the sides creates the signature barrel silhouette, tapering neatly at the hem for a sculpted look that adds dimension without bulk. With a slightly high rise and loose, tapered fit, these jeans offer a refined alternative to straight‑leg or wide‑leg styles—balancing relaxed comfort with a modern outline for all‑season wear.\nFit & Fabric\n- Fit: Loose\n- Rise: High\n- Silhouette: Softly curved barrel shape with tapered leg\n- Inseam: 31\"\n- Fabric: Soft cotton‑blend denim with a smooth feel\nWhat are barrel jeans?\nBarrel jeans feature a curved leg with volume at the sides and a tapered hem, creating a sculpted, modern silhouette.\nHow do barrel jeans fit compared to straight‑leg or wide‑leg jeans?\n- They offer more shape than straight‑leg jeans and a more controlled, tapered finish than wide‑leg styles, balancing structure with relaxed comfort.\nDo these jeans have a high waist?\n- Yes. They feature a slightly high rise that defines the waist and supports the curved silhouette.\nAre these jeans comfortable for everyday wear?\n- Yes. The cotton‑blend denim is soft and wearable, making them comfortable for all‑day, year‑round use.\n- \"Products labeled as 'Baggy Curve Jeans' on the product tag have been renamed to 'Baggy Barrel Leg Jeans.'\"",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E479000-000:gray",
@@ -24864,7 +25193,8 @@
    }
   ],
   "description": "Our women’s Barrel Jeans are high‑waist, barrel‑leg denim jeans designed to deliver modern shape with everyday comfort. Made from a soft cotton‑blend denim, they feel smooth and wearable year‑round while maintaining clean structure.\nA gently curved leg with volume through the sides creates the signature barrel silhouette, tapering neatly at the hem for a sculpted look that adds dimension without bulk. With a slightly high rise and loose, tapered fit, these jeans offer a refined alternative to straight‑leg or wide‑leg styles—balancing relaxed comfort with a modern outline for all‑season wear.\nFit & Fabric\n- Fit: Loose\n- Rise: High\n- Silhouette: Softly curved barrel shape with tapered leg\n- Inseam: 31\"\n- Fabric: Soft cotton‑blend denim with a smooth feel\nWhat are barrel jeans?\nBarrel jeans feature a curved leg with volume at the sides and a tapered hem, creating a sculpted, modern silhouette.\nHow do barrel jeans fit compared to straight‑leg or wide‑leg jeans?\n- They offer more shape than straight‑leg jeans and a more controlled, tapered finish than wide‑leg styles, balancing structure with relaxed comfort.\nDo these jeans have a high waist?\n- Yes. They feature a slightly high rise that defines the waist and supports the curved silhouette.\nAre these jeans comfortable for everyday wear?\n- Yes. The cotton‑blend denim is soft and wearable, making them comfortable for all‑day, year‑round use.\n- \"Products labeled as 'Baggy Curve Jeans' on the product tag have been renamed to 'Baggy Barrel Leg Jeans.'\"",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E480045-000:beige",
@@ -24927,7 +25257,8 @@
    }
   ],
   "description": "- Recommended Minimum Temperature approx. -5℉\n- The “Minimum Comfortable Temperature” is an estimated guideline based on simulations conducted under controlled test conditions by an independent third-party testing organization. It indicates the lowest ambient temperature at which the garment can be worn comfortably. *Individual comfort levels may vary. Please adjust your clothing as needed based on your personal conditions and environment.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E480045-000:black",
@@ -24990,7 +25321,8 @@
    }
   ],
   "description": "- Recommended Minimum Temperature approx. -5℉\n- The “Minimum Comfortable Temperature” is an estimated guideline based on simulations conducted under controlled test conditions by an independent third-party testing organization. It indicates the lowest ambient temperature at which the garment can be worn comfortably. *Individual comfort levels may vary. Please adjust your clothing as needed based on your personal conditions and environment.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E480045-000:brown",
@@ -25053,7 +25385,8 @@
    }
   ],
   "description": "- Recommended Minimum Temperature approx. -5℉\n- The “Minimum Comfortable Temperature” is an estimated guideline based on simulations conducted under controlled test conditions by an independent third-party testing organization. It indicates the lowest ambient temperature at which the garment can be worn comfortably. *Individual comfort levels may vary. Please adjust your clothing as needed based on your personal conditions and environment.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E482280-000:blue",
@@ -25132,7 +25465,8 @@
    }
   ],
   "description": "Our women’s Barrel Jeans are high‑waist, barrel‑leg denim jeans designed to deliver modern shape with everyday comfort. Made from a soft cotton‑blend denim, they feel smooth and wearable year‑round while maintaining clean structure.\nA gently curved leg with volume through the sides creates the signature barrel silhouette, tapering neatly at the hem for a sculpted look that adds dimension without bulk. With a slightly high rise and loose, tapered fit, these jeans offer a refined alternative to straight‑leg or wide‑leg styles—balancing relaxed comfort with a modern outline for all‑season wear.\nFit & Fabric\n- Fit: Loose\n- Rise: High\n- Silhouette: Softly curved barrel shape with tapered leg\n- Inseam: 31\"\n- Fabric: Soft cotton‑blend denim with a smooth feel\nWhat are barrel jeans?\nBarrel jeans feature a curved leg with volume at the sides and a tapered hem, creating a sculpted, modern silhouette.\nHow do barrel jeans fit compared to straight‑leg or wide‑leg jeans?\n- They offer more shape than straight‑leg jeans and a more controlled, tapered finish than wide‑leg styles, balancing structure with relaxed comfort.\nDo these jeans have a high waist?\n- Yes. They feature a slightly high rise that defines the waist and supports the curved silhouette.\nAre these jeans comfortable for everyday wear?\n- Yes. The cotton‑blend denim is soft and wearable, making them comfortable for all‑day, year‑round use.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E482299-000:dark-gray",
@@ -25199,7 +25533,8 @@
    }
   ],
   "description": "This men’s \"DRY-EX\" T-Shirt is designed as a versatile high-performance essential that balances a clean look with practical function for active days and everyday wear. The regular-fit silhouette and smooth, subtly glossy fabric create a refined appearance that works on its own in warm weather or as a base layer, while thoughtfully placed mesh adds breezy comfort. Simple in design and easy to style, it suits workouts, travel, commuting, and casual layering across hot and transitional weather.\n- Features \"DRY-EX\" for quick-absorbing and fast-drying performance suited to active wear and warm climates.\n- Regular fit offers balanced body width and sleeve length for natural movement and a streamlined silhouette.\n- Fine-textured fabric with a smooth surface and subtle sheen creates a cleaner look than typical athletic T-shirts.\n- Mesh panels at the sides and center back are support airflow in areas prone to overheating.\n- Pique-style knit construction resists clinging during wear and maintains coverage even after sweating.\n- Seam-minimized design at the cuffs and hem creates a smooth finish and reduces bulk when layering.\n- Lightweight feel makes it suitable for summer wear, indoor training, and seasonal transitions with a light outer layer.\n- The 00 White color is slightly sheer depending on lighting and layering.\n- Compared with standard cotton T-shirts, this style dries faster and feels less heavy during extended wear.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E482299-000:green",
@@ -25266,7 +25601,8 @@
    }
   ],
   "description": "This men’s \"DRY-EX\" T-Shirt is designed as a versatile high-performance essential that balances a clean look with practical function for active days and everyday wear. The regular-fit silhouette and smooth, subtly glossy fabric create a refined appearance that works on its own in warm weather or as a base layer, while thoughtfully placed mesh adds breezy comfort. Simple in design and easy to style, it suits workouts, travel, commuting, and casual layering across hot and transitional weather.\n- Features \"DRY-EX\" for quick-absorbing and fast-drying performance suited to active wear and warm climates.\n- Regular fit offers balanced body width and sleeve length for natural movement and a streamlined silhouette.\n- Fine-textured fabric with a smooth surface and subtle sheen creates a cleaner look than typical athletic T-shirts.\n- Mesh panels at the sides and center back are support airflow in areas prone to overheating.\n- Pique-style knit construction resists clinging during wear and maintains coverage even after sweating.\n- Seam-minimized design at the cuffs and hem creates a smooth finish and reduces bulk when layering.\n- Lightweight feel makes it suitable for summer wear, indoor training, and seasonal transitions with a light outer layer.\n- The 00 White color is slightly sheer depending on lighting and layering.\n- Compared with standard cotton T-shirts, this style dries faster and feels less heavy during extended wear.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E482299-000:white",
@@ -25333,7 +25669,8 @@
    }
   ],
   "description": "This men’s \"DRY-EX\" T-Shirt is designed as a versatile high-performance essential that balances a clean look with practical function for active days and everyday wear. The regular-fit silhouette and smooth, subtly glossy fabric create a refined appearance that works on its own in warm weather or as a base layer, while thoughtfully placed mesh adds breezy comfort. Simple in design and easy to style, it suits workouts, travel, commuting, and casual layering across hot and transitional weather.\n- Features \"DRY-EX\" for quick-absorbing and fast-drying performance suited to active wear and warm climates.\n- Regular fit offers balanced body width and sleeve length for natural movement and a streamlined silhouette.\n- Fine-textured fabric with a smooth surface and subtle sheen creates a cleaner look than typical athletic T-shirts.\n- Mesh panels at the sides and center back are support airflow in areas prone to overheating.\n- Pique-style knit construction resists clinging during wear and maintains coverage even after sweating.\n- Seam-minimized design at the cuffs and hem creates a smooth finish and reduces bulk when layering.\n- Lightweight feel makes it suitable for summer wear, indoor training, and seasonal transitions with a light outer layer.\n- The 00 White color is slightly sheer depending on lighting and layering.\n- Compared with standard cotton T-shirts, this style dries faster and feels less heavy during extended wear.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E482766-000:beige",
@@ -25400,7 +25737,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E482766-000:dark-gray",
@@ -25467,7 +25805,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E482766-000:off-white",
@@ -25534,7 +25873,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E482868-000:black",
@@ -25617,7 +25957,8 @@
    }
   ],
   "description": "These Men’s Baggy Jeans deliver a relaxed, voluminous straight‑leg silhouette crafted from 100% cotton denim, offering a naturally soft feel and comfortable year‑round wear. Innovative laser processing creates realistic whiskers and fading for a worn‑in look that feels lived‑in without sacrificing the clean lines and streamlined finish UNIQLO denim is known for. The loose fit provides laid‑back ease while maintaining structure, making these an ideal alternative to slim or tapered jeans when you want more room and a modern, on-trend shape.\n- 100% cotton denim with a naturally soft, breathable feel suitable for all‑season wear.\n- Voluminous straight‑leg silhouette creates a distinctive baggy look with relaxed movement.\n- Laser‑processed whiskers and fading offer a realistic broken‑in finish with visual depth.\n- Loose fit from hip to hem for a roomy, comfortable shape compared to straight‑leg or tapered denim.\n- Clean lines and subtle detailing maintain a refined look despite the oversized proportions.\n- With pockets for practical everyday carry without interrupting the silhouette.\n- Easy to pair with oversized tees, workwear layers, mid‑weight fleece, or structured jackets.\n- A great option when you want more volume than classic straight‑leg jeans but prefer more definition than wide‑leg styles.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E482868-000:blue",
@@ -25700,7 +26041,8 @@
    }
   ],
   "description": "These Men’s Baggy Jeans deliver a relaxed, voluminous straight‑leg silhouette crafted from 100% cotton denim, offering a naturally soft feel and comfortable year‑round wear. Innovative laser processing creates realistic whiskers and fading for a worn‑in look that feels lived‑in without sacrificing the clean lines and streamlined finish UNIQLO denim is known for. The loose fit provides laid‑back ease while maintaining structure, making these an ideal alternative to slim or tapered jeans when you want more room and a modern, on-trend shape.\n- 100% cotton denim with a naturally soft, breathable feel suitable for all‑season wear.\n- Voluminous straight‑leg silhouette creates a distinctive baggy look with relaxed movement.\n- Laser‑processed whiskers and fading offer a realistic broken‑in finish with visual depth.\n- Loose fit from hip to hem for a roomy, comfortable shape compared to straight‑leg or tapered denim.\n- Clean lines and subtle detailing maintain a refined look despite the oversized proportions.\n- With pockets for practical everyday carry without interrupting the silhouette.\n- Easy to pair with oversized tees, workwear layers, mid‑weight fleece, or structured jackets.\n- A great option when you want more volume than classic straight‑leg jeans but prefer more definition than wide‑leg styles.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E482868-000:dark-gray",
@@ -25783,7 +26125,8 @@
    }
   ],
   "description": "These Men’s Baggy Jeans deliver a relaxed, voluminous straight‑leg silhouette crafted from 100% cotton denim, offering a naturally soft feel and comfortable year‑round wear. Innovative laser processing creates realistic whiskers and fading for a worn‑in look that feels lived‑in without sacrificing the clean lines and streamlined finish UNIQLO denim is known for. The loose fit provides laid‑back ease while maintaining structure, making these an ideal alternative to slim or tapered jeans when you want more room and a modern, on-trend shape.\n- 100% cotton denim with a naturally soft, breathable feel suitable for all‑season wear.\n- Voluminous straight‑leg silhouette creates a distinctive baggy look with relaxed movement.\n- Laser‑processed whiskers and fading offer a realistic broken‑in finish with visual depth.\n- Loose fit from hip to hem for a roomy, comfortable shape compared to straight‑leg or tapered denim.\n- Clean lines and subtle detailing maintain a refined look despite the oversized proportions.\n- With pockets for practical everyday carry without interrupting the silhouette.\n- Easy to pair with oversized tees, workwear layers, mid‑weight fleece, or structured jackets.\n- A great option when you want more volume than classic straight‑leg jeans but prefer more definition than wide‑leg styles.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E483281-000:light-blue",
@@ -25845,7 +26188,8 @@
    }
   ],
   "description": "Our women’s Ultra Stretch \"AIRism\" UV Protection Full‑Zip Hoodie features a sleek, slim silhouette that delivers clean lines and functional layering for everyday wear and active use. The fitted profile layers smoothly over lightweight tops without bulk, making it suitable for mild to warm weather and transitional seasons. Smooth “AIRism” fabric is woven into the design to maintain a refined surface feel and easy wear throughout the day, while built‑in UV protection adds practical coverage for time spent outdoors. A high neckline and streamlined hood with a visor detail provide additional coverage and a sporty look, offering a lighter and more streamlined alternative to oversized hoodies for travel, casual outings, or daily routines.\n- Slim-fit silhouette creates a streamlined profile with a modern, sporty appearance.\n- Smooth \"AIRism\" fabric is woven into the design for a clean surface feel and easy layering.\n- Built‑in UV protection provides added coverage for outdoor and warm‑weather wear.\n- High-neck design offers extra coverage while maintaining clean, minimal lines.\n- Full‑zip front allows easy on‑and‑off layering as conditions change.\n- Ultra Stretch construction supports natural movement during everyday activities.\n- Hood features a visor detail that adds functional coverage and a sporty finish.\n- Compared with relaxed hoodies, this style feels lighter and more refined for warm‑weather layering.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E483281-000:light-gray",
@@ -25907,7 +26251,8 @@
    }
   ],
   "description": "Our women’s Ultra Stretch \"AIRism\" UV Protection Full‑Zip Hoodie features a sleek, slim silhouette that delivers clean lines and functional layering for everyday wear and active use. The fitted profile layers smoothly over lightweight tops without bulk, making it suitable for mild to warm weather and transitional seasons. Smooth “AIRism” fabric is woven into the design to maintain a refined surface feel and easy wear throughout the day, while built‑in UV protection adds practical coverage for time spent outdoors. A high neckline and streamlined hood with a visor detail provide additional coverage and a sporty look, offering a lighter and more streamlined alternative to oversized hoodies for travel, casual outings, or daily routines.\n- Slim-fit silhouette creates a streamlined profile with a modern, sporty appearance.\n- Smooth \"AIRism\" fabric is woven into the design for a clean surface feel and easy layering.\n- Built‑in UV protection provides added coverage for outdoor and warm‑weather wear.\n- High-neck design offers extra coverage while maintaining clean, minimal lines.\n- Full‑zip front allows easy on‑and‑off layering as conditions change.\n- Ultra Stretch construction supports natural movement during everyday activities.\n- Hood features a visor detail that adds functional coverage and a sporty finish.\n- Compared with relaxed hoodies, this style feels lighter and more refined for warm‑weather layering.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E483281-000:white",
@@ -25970,7 +26315,8 @@
    }
   ],
   "description": "Our women’s Ultra Stretch \"AIRism\" UV Protection Full‑Zip Hoodie features a sleek, slim silhouette that delivers clean lines and functional layering for everyday wear and active use. The fitted profile layers smoothly over lightweight tops without bulk, making it suitable for mild to warm weather and transitional seasons. Smooth “AIRism” fabric is woven into the design to maintain a refined surface feel and easy wear throughout the day, while built‑in UV protection adds practical coverage for time spent outdoors. A high neckline and streamlined hood with a visor detail provide additional coverage and a sporty look, offering a lighter and more streamlined alternative to oversized hoodies for travel, casual outings, or daily routines.\n- Slim-fit silhouette creates a streamlined profile with a modern, sporty appearance.\n- Smooth \"AIRism\" fabric is woven into the design for a clean surface feel and easy layering.\n- Built‑in UV protection provides added coverage for outdoor and warm‑weather wear.\n- High-neck design offers extra coverage while maintaining clean, minimal lines.\n- Full‑zip front allows easy on‑and‑off layering as conditions change.\n- Ultra Stretch construction supports natural movement during everyday activities.\n- Hood features a visor detail that adds functional coverage and a sporty finish.\n- Compared with relaxed hoodies, this style feels lighter and more refined for warm‑weather layering.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E485671-000:light-blue",
@@ -26033,7 +26379,8 @@
    }
   ],
   "description": "- Versatile silhouette with raglan sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E485671-000:pink",
@@ -26095,7 +26442,8 @@
    }
   ],
   "description": "- Versatile silhouette with raglan sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E485671-000:wine",
@@ -26158,7 +26506,8 @@
    }
   ],
   "description": "- Versatile silhouette with raglan sleeves.\n- UPF50+ / JIS L 1925 : 2019",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E485672-000:dark-brown",
@@ -26221,7 +26570,8 @@
    }
   ],
   "description": "Our Women's Pocketable UV Protection Parka is a lightweight, easy‑to‑layer outerwear piece designed for everyday versatility, offering a relaxed, oversized silhouette with a smooth, supple texture. Built for transitional weather, it provides UV protection and a water‑repellent finish suited for light rain, while the brimmed hood adds extra coverage. The packable design and included storage pouch make it convenient for commuting, travel, and outdoor activities where adaptable layering is essential.\n- Relaxed oversized silhouette with raglan sleeves for natural movement and comfortable layering.\n- Lightweight fabric with a supple feel and water‑repellent finish for protection during light rain (effect is not permanent).\n- Brimmed hood delivers added coverage in changing weather.\n- Includes a handy storage pouch for compact carry during travel or on‑the‑go use.\n- UPF50+ UV protection aligned with JIS L 1925 : 2019\n- Practical pockets for everyday convenience.\n- Clean, streamlined design suitable for casual outfits, outdoor walks, or active days.\n- Compared with heavier jackets, this parka offers an easy alternative for mild‑to‑warm conditions when flexible layering is preferred.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E486116-000:black",
@@ -26288,7 +26638,8 @@
    }
   ],
   "description": "- Drawstring at The hem allows you to adjust The silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E486116-000:gray",
@@ -26355,7 +26706,8 @@
    }
   ],
   "description": "- Drawstring at The hem allows you to adjust The silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E486116-000:olive",
@@ -26422,7 +26774,8 @@
    }
   ],
   "description": "- Drawstring at The hem allows you to adjust The silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E486167-000:beige",
@@ -26489,7 +26842,8 @@
    }
   ],
   "description": "- Roomy, relaxed silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E486167-000:black",
@@ -26556,7 +26910,8 @@
    }
   ],
   "description": "- Roomy, relaxed silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E486167-000:blue",
@@ -26623,7 +26978,8 @@
    }
   ],
   "description": "- Roomy, relaxed silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E486172-000:black",
@@ -26686,7 +27042,8 @@
    }
   ],
   "description": "- Double-weave material made by weaving two layers of fabric at the same time, with fewer needle holes, making it harder for rain and wind to penetrate.\n-Double-layered material prevents padding from coming out, and features an anti-static lining.\n- Recommended Minimum Temperature approx. 32℉\n- The “Minimum Comfortable Temperature” is an estimated guideline based on simulations conducted under controlled test conditions by an independent third-party testing organization. It indicates the lowest ambient temperature at which the garment can be worn comfortably. *Individual comfort levels may vary. Please adjust your clothing as needed based on your personal conditions and environment.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E486172-000:off-white",
@@ -26749,7 +27106,8 @@
    }
   ],
   "description": "- Double-weave material made by weaving two layers of fabric at the same time, with fewer needle holes, making it harder for rain and wind to penetrate.\n-Double-layered material prevents padding from coming out, and features an anti-static lining.\n- Recommended Minimum Temperature approx. 32℉\n- The “Minimum Comfortable Temperature” is an estimated guideline based on simulations conducted under controlled test conditions by an independent third-party testing organization. It indicates the lowest ambient temperature at which the garment can be worn comfortably. *Individual comfort levels may vary. Please adjust your clothing as needed based on your personal conditions and environment.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E486172-000:orange",
@@ -26812,7 +27170,8 @@
    }
   ],
   "description": "- Double-weave material made by weaving two layers of fabric at the same time, with fewer needle holes, making it harder for rain and wind to penetrate.\n-Double-layered material prevents padding from coming out, and features an anti-static lining.\n- Recommended Minimum Temperature approx. 32℉\n- The “Minimum Comfortable Temperature” is an estimated guideline based on simulations conducted under controlled test conditions by an independent third-party testing organization. It indicates the lowest ambient temperature at which the garment can be worn comfortably. *Individual comfort levels may vary. Please adjust your clothing as needed based on your personal conditions and environment.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E487206-000:blue",
@@ -26895,7 +27254,8 @@
    }
   ],
   "description": "Our Men’s Straight Jeans combine the ease of a regular straight‑leg silhouette with the authentic character of 100% cotton denim, pre‑washed for a subtle fade that delivers an effortless, lived‑in look.\nDesigned in collaboration with JW ANDERSON, they feature branded front buttons that add a refined design touch while keeping the style clean and versatile. The straight cut from waist to hem offers balanced proportions that pair easily with oversized tees, mid‑weight fleece, or structured outerwear for year‑round wear.\n- 100% cotton denim with an authentic texture and a pre‑washed, subtly faded finish for everyday casual styling.\n- Straight cut from waist to hem creates a timeless, easy‑to‑wear silhouette suitable for all seasons.\n- JW ANDERSON logo front buttons add a distinctive yet understated design detail.\n- Regular fit provides relaxed comfort without appearing baggy or tight.\n- With pockets for practical daily functionality.\n- A great alternative to slim jeans when you want more ease, or to wide‑leg denim when you prefer a cleaner, streamlined shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E487206-000:gray",
@@ -26978,7 +27338,8 @@
    }
   ],
   "description": "Our Men’s Straight Jeans combine the ease of a regular straight‑leg silhouette with the authentic character of 100% cotton denim, pre‑washed for a subtle fade that delivers an effortless, lived‑in look.\nDesigned in collaboration with JW ANDERSON, they feature branded front buttons that add a refined design touch while keeping the style clean and versatile. The straight cut from waist to hem offers balanced proportions that pair easily with oversized tees, mid‑weight fleece, or structured outerwear for year‑round wear.\n- 100% cotton denim with an authentic texture and a pre‑washed, subtly faded finish for everyday casual styling.\n- Straight cut from waist to hem creates a timeless, easy‑to‑wear silhouette suitable for all seasons.\n- JW ANDERSON logo front buttons add a distinctive yet understated design detail.\n- Regular fit provides relaxed comfort without appearing baggy or tight.\n- With pockets for practical daily functionality.\n- A great alternative to slim jeans when you want more ease, or to wide‑leg denim when you prefer a cleaner, streamlined shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E487206-000:natural",
@@ -27061,7 +27422,8 @@
    }
   ],
   "description": "Our Men’s Straight Jeans combine the ease of a regular straight‑leg silhouette with the authentic character of 100% cotton denim, pre‑washed for a subtle fade that delivers an effortless, lived‑in look.\nDesigned in collaboration with JW ANDERSON, they feature branded front buttons that add a refined design touch while keeping the style clean and versatile. The straight cut from waist to hem offers balanced proportions that pair easily with oversized tees, mid‑weight fleece, or structured outerwear for year‑round wear.\n- 100% cotton denim with an authentic texture and a pre‑washed, subtly faded finish for everyday casual styling.\n- Straight cut from waist to hem creates a timeless, easy‑to‑wear silhouette suitable for all seasons.\n- JW ANDERSON logo front buttons add a distinctive yet understated design detail.\n- Regular fit provides relaxed comfort without appearing baggy or tight.\n- With pockets for practical daily functionality.\n- A great alternative to slim jeans when you want more ease, or to wide‑leg denim when you prefer a cleaner, streamlined shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E487207-000:black",
@@ -27128,7 +27490,8 @@
    }
   ],
   "description": "- wide-leg pants curve gently at the sides.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487207-000:brown",
@@ -27195,7 +27558,8 @@
    }
   ],
   "description": "- wide-leg pants curve gently at the sides.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487396-000:beige",
@@ -27258,7 +27622,8 @@
    }
   ],
   "description": "- Regular length.\n- Cuffs make it easy to roll up the sleeves.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487396-000:black",
@@ -27321,7 +27686,8 @@
    }
   ],
   "description": "- Regular length.\n- Cuffs make it easy to roll up the sleeves.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487396-000:wine",
@@ -27384,7 +27750,8 @@
    }
   ],
   "description": "- Regular length.\n- Cuffs make it easy to roll up the sleeves.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487514-000:gray",
@@ -27443,7 +27810,8 @@
    }
   ],
   "description": "- Shallow V-neck and short length.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487514-000:pink",
@@ -27502,7 +27870,8 @@
    }
   ],
   "description": "- Shallow V-neck and short length.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487514-000:red",
@@ -27561,7 +27930,8 @@
    }
   ],
   "description": "- Shallow V-neck and short length.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487520-000:natural",
@@ -27620,7 +27990,8 @@
    }
   ],
   "description": "- Statement argyle pattern.\n- Short length can be worn alone or layered over shirts or blouses.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487520-000:navy",
@@ -27679,7 +28050,8 @@
    }
   ],
   "description": "- Statement argyle pattern.\n- Short length can be worn alone or layered over shirts or blouses.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487520-000:pink",
@@ -27738,7 +28110,8 @@
    }
   ],
   "description": "- Statement argyle pattern.\n- Short length can be worn alone or layered over shirts or blouses.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487603-000:black",
@@ -27801,7 +28174,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487603-000:light-gray",
@@ -27864,7 +28238,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487603-000:navy",
@@ -27927,7 +28302,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487742-000:gray",
@@ -28010,7 +28386,8 @@
    }
   ],
   "description": "Our Men’s Straight Jeans combine the ease of a regular straight‑leg silhouette with the authentic character of 100% cotton denim, pre‑washed for a subtle fade that delivers an effortless, lived‑in look.\nDesigned in collaboration with JW ANDERSON, they feature branded front buttons that add a refined design touch while keeping the style clean and versatile. The straight cut from waist to hem offers balanced proportions that pair easily with oversized tees, mid‑weight fleece, or structured outerwear for year‑round wear.\n- 100% cotton denim with an authentic texture and a pre‑washed, subtly faded finish for everyday casual styling.\n- Straight cut from waist to hem creates a timeless, easy‑to‑wear silhouette suitable for all seasons.\n- JW ANDERSON logo front buttons add a distinctive yet understated design detail.\n- Regular fit provides relaxed comfort without appearing baggy or tight.\n- With pockets for practical daily functionality.\n- A great alternative to slim jeans when you want more ease, or to wide‑leg denim when you prefer a cleaner, streamlined shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E487742-000:natural",
@@ -28093,7 +28470,8 @@
    }
   ],
   "description": "Our Men’s Straight Jeans combine the ease of a regular straight‑leg silhouette with the authentic character of 100% cotton denim, pre‑washed for a subtle fade that delivers an effortless, lived‑in look.\nDesigned in collaboration with JW ANDERSON, they feature branded front buttons that add a refined design touch while keeping the style clean and versatile. The straight cut from waist to hem offers balanced proportions that pair easily with oversized tees, mid‑weight fleece, or structured outerwear for year‑round wear.\n- 100% cotton denim with an authentic texture and a pre‑washed, subtly faded finish for everyday casual styling.\n- Straight cut from waist to hem creates a timeless, easy‑to‑wear silhouette suitable for all seasons.\n- JW ANDERSON logo front buttons add a distinctive yet understated design detail.\n- Regular fit provides relaxed comfort without appearing baggy or tight.\n- With pockets for practical daily functionality.\n- A great alternative to slim jeans when you want more ease, or to wide‑leg denim when you prefer a cleaner, streamlined shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E487832-000:black",
@@ -28156,7 +28534,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487832-000:gray",
@@ -28219,7 +28598,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487832-000:off-white",
@@ -28282,7 +28662,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487855-000:beige",
@@ -28341,7 +28722,8 @@
    }
   ],
   "description": "- Relaxed silhouette.\n- *Due to the nature of the material, this product is prone to shedding. Thank you for your understanding.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487855-000:black",
@@ -28400,7 +28782,8 @@
    }
   ],
   "description": "- Relaxed silhouette.\n- *Due to the nature of the material, this product is prone to shedding. Thank you for your understanding.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487855-000:purple",
@@ -28459,7 +28842,8 @@
    }
   ],
   "description": "- Relaxed silhouette.\n- *Due to the nature of the material, this product is prone to shedding. Thank you for your understanding.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487908-000:black",
@@ -28522,7 +28906,8 @@
    }
   ],
   "description": "- Moderately slim fit creates a flattering silhouette.\n- Works well on its own or layered.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487908-000:light-gray",
@@ -28585,7 +28970,8 @@
    }
   ],
   "description": "- Moderately slim fit creates a flattering silhouette.\n- Works well on its own or layered.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487908-000:off-white",
@@ -28648,7 +29034,8 @@
    }
   ],
   "description": "- Moderately slim fit creates a flattering silhouette.\n- Works well on its own or layered.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E487931-000:black",
@@ -28711,7 +29098,8 @@
    }
   ],
   "description": "- Relaxed silhouette.\n- *Due to the nature of the material, this product is prone to shedding. Thank you for your understanding.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487931-000:dark-gray",
@@ -28774,7 +29162,8 @@
    }
   ],
   "description": "- Relaxed silhouette.\n- *Due to the nature of the material, this product is prone to shedding. Thank you for your understanding.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487931-000:yellow",
@@ -28837,7 +29226,8 @@
    }
   ],
   "description": "- Relaxed silhouette.\n- *Due to the nature of the material, this product is prone to shedding. Thank you for your understanding.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487962-000:black",
@@ -28904,7 +29294,8 @@
    }
   ],
   "description": "- Boxy silhouette and short length for a trendy vibe.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487962-000:dark-gray",
@@ -28971,7 +29362,8 @@
    }
   ],
   "description": "- Boxy silhouette and short length for a trendy vibe.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E487962-000:white",
@@ -29038,7 +29430,8 @@
    }
   ],
   "description": "- Boxy silhouette and short length for a trendy vibe.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488230-000:black",
@@ -29097,7 +29490,8 @@
    }
   ],
   "description": "- Ribbed binding at the collar helps the neckline keep its shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488230-000:brown",
@@ -29156,7 +29550,8 @@
    }
   ],
   "description": "- Ribbed binding at the collar helps the neckline keep its shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488230-000:gray",
@@ -29215,7 +29610,8 @@
    }
   ],
   "description": "- Ribbed binding at the collar helps the neckline keep its shape.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488397-000:blue",
@@ -29278,7 +29674,8 @@
    }
   ],
   "description": "- Distinctive three-dimensional barrel-leg silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488397-000:dark-gray",
@@ -29341,7 +29738,8 @@
    }
   ],
   "description": "- Distinctive three-dimensional barrel-leg silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488450-000:blue",
@@ -29404,7 +29802,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488450-000:navy",
@@ -29467,7 +29866,8 @@
    }
   ],
   "description": null,
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488562-000:black",
@@ -29530,7 +29930,8 @@
    }
   ],
   "description": "- Ribbed hem creates a voluminous silhouette at the back.\n- Ribbed cuffs help keep cold air out.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488562-000:olive",
@@ -29593,7 +29994,8 @@
    }
   ],
   "description": "- Ribbed hem creates a voluminous silhouette at the back.\n- Ribbed cuffs help keep cold air out.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488562-000:wine",
@@ -29656,7 +30058,8 @@
    }
   ],
   "description": "- Ribbed hem creates a voluminous silhouette at the back.\n- Ribbed cuffs help keep cold air out.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E488684-000:navy",
@@ -29739,7 +30142,8 @@
    }
   ],
   "description": "- Straight cut with a regular fit.\n- JW ANDERSON logo laser printed on the back pocket.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E488743-000:black",
@@ -29822,7 +30226,8 @@
    }
   ],
   "description": "- Wide-leg pants in a stylish curved silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488743-000:navy",
@@ -29905,7 +30310,8 @@
    }
   ],
   "description": "- Wide-leg pants in a stylish curved silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488743-000:olive",
@@ -29988,7 +30394,8 @@
    }
   ],
   "description": "- Wide-leg pants in a stylish curved silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488774-000:black",
@@ -30055,7 +30462,8 @@
    }
   ],
   "description": "- Sleek, regular fit.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488774-000:brown",
@@ -30122,7 +30530,8 @@
    }
   ],
   "description": "- Sleek, regular fit.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E488774-000:orange",
@@ -30189,7 +30598,8 @@
    }
   ],
   "description": "- Sleek, regular fit.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E489040-000:navy",
@@ -30252,7 +30662,8 @@
    }
   ],
   "description": "- Longer length, long sleeves, and fitted cut create a sleek, slender silhouette.\n- Subtle multi-striped pattern adds a stylish accent to any look.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E489040-000:off-white",
@@ -30314,7 +30725,8 @@
    }
   ],
   "description": "- Longer length, long sleeves, and fitted cut create a sleek, slender silhouette.\n- Subtle multi-striped pattern adds a stylish accent to any look.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E489367-000:blue",
@@ -30397,7 +30809,8 @@
    }
   ],
   "description": "- Straight cut with a regular fit.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "men"
  },
  {
   "id": "uniqlo:E489372-000:brown",
@@ -30460,7 +30873,8 @@
    }
   ],
   "description": "- Cropped length and fitted silhouette create a sleek, modern look.\n- Stylish and comfortable for everyday wear.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E489372-000:navy",
@@ -30523,7 +30937,8 @@
    }
   ],
   "description": "- Cropped length and fitted silhouette create a sleek, modern look.\n- Stylish and comfortable for everyday wear.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E489565-000:blue",
@@ -30606,7 +31021,8 @@
    }
   ],
   "description": "- Wide-leg pants in a stylish curved silhouette.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "unisex"
  },
  {
   "id": "uniqlo:E494100-000:beige",
@@ -30685,7 +31101,8 @@
    }
   ],
   "description": "- High waist. Gently curved silhouette with volume at the outer sides.\n- Moderate laser processing creates an aged wash effect.\n- Perfect for casual styling.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  },
  {
   "id": "uniqlo:E494100-000:brown",
@@ -30764,6 +31181,7 @@
    }
   ],
   "description": "- High waist. Gently curved silhouette with volume at the outer sides.\n- Moderate laser processing creates an aged wash effect.\n- Perfect for casual styling.",
-  "source": "ingest"
+  "source": "ingest",
+  "department": "women"
  }
 ]

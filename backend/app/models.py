@@ -162,6 +162,9 @@ class SizeRequest(BaseModel):
     fit: Literal["slim", "regular", "oversized"] = "regular"
     shoe_us: Optional[float] = None
     waist_in: Optional[float] = None
+    chest_in: Optional[float] = None    # these also fall back to body_profile (chest/bust, hip, inseam)
+    hip_in: Optional[float] = None
+    inseam_in: Optional[float] = None
 
 
 class BodyProfileUpdate(BaseModel):

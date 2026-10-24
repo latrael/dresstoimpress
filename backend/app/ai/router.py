@@ -372,7 +372,9 @@ def size(req: SizeRequest):
             return known
         raise HTTPException(422, "add your height and weight (or do a body scan with both)")
     out = recommend_size(product, height, weight, fit=fit, shoe_us=req.shoe_us or scan.get("shoe_us"),
-                         waist_in=req.waist_in or scan.get("waist_in"))
+                         waist_in=req.waist_in or scan.get("waist_in"),
+                         chest_in=req.chest_in or scan.get("chest_in"), hip_in=req.hip_in or scan.get("hip_in"),
+                         inseam_in=req.inseam_in or scan.get("inseam_in"), usual_size=usual)
     if not out.get("size") and usual:
         out = _usual_size(product, usual) or out
     return out

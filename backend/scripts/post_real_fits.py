@@ -5,22 +5,35 @@
     python -m scripts.post_real_fits photos/ --dry-run                # show the plan, post nothing
 
 Photos (.jpg/.jpeg/.png/.webp/.heic, 10 MB max; prefer JPEG, since the AI tagger may not read HEIC) are posted
-in filename order, authors taking turns (--users).
+in filename order, authors taking turns (--users). Each photo is re-encoded as a JPEG (max 1600 px,
+rotation kept) before upload, so EXIF metadata such as GPS location never reaches the public /static URL.
 Optional captions: a captions.txt in the folder, one line per photo in the same order.
 Each post goes through POST /fitcheck (multipart, no tags), so the AI pre-fills the tags;
 fix wrong ones with PATCH /fitcheck/{id}/tags. The seed posts fc_seed_1..3 are deleted only
 if every photo posted (skip with --keep-seeds). Re-running posts the photos again.
 """
 import argparse
-import mimetypes
+import io
 import os
 import sys
 from pathlib import Path
 
 import httpx
+from PIL import Image, ImageOps
 
 PHOTO_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 SEEDS = {"fc_seed_1": "u_adam", "fc_seed_2": "u_nabil", "fc_seed_3": "u_ryan"}
+MAX_SIDE = 1600
+
+
+def clean(photo: Path) -> bytes:
+    """JPEG bytes with no EXIF (drops GPS), upright, longest side <= MAX_SIDE."""
+    with Image.open(photo) as img:
+        img = ImageOps.exif_transpose(img).convert("RGB")
+        img.thumbnail((MAX_SIDE, MAX_SIDE))
+        out = io.BytesIO()
+        img.save(out, "JPEG", quality=88)
+    return out.getvalue()
 
 
 def plan(folder: Path, users: list[str]) -> list[tuple[Path, str, str]]:
@@ -42,10 +55,14 @@ def run(client: httpx.Client, folder: Path, users: list[str], keep_seeds=False, 
         if dry_run:
             print(f"would post {photo.name} as {uid}: {caption!r}")
             continue
-        ctype = mimetypes.guess_type(photo.name)[0] or "image/jpeg"
-        with photo.open("rb") as f:
-            r = client.post("/fitcheck", data={"user_id": uid, "caption": caption},
-                            files={"file": (photo.name, f, ctype)})
+        try:
+            data = clean(photo)
+        except OSError as e:  # e.g. HEIC without a decoder: never upload the original (it may carry GPS)
+            failed += 1
+            print(f"FAIL {photo.name}: can't read it as an image ({e}); export it as JPEG")
+            continue
+        r = client.post("/fitcheck", data={"user_id": uid, "caption": caption},
+                        files={"file": (photo.stem + ".jpg", data, "image/jpeg")})
         if r.status_code != 200:
             failed += 1
             print(f"FAIL {photo.name} as {uid}: {r.status_code} {r.text[:160]}")

@@ -17,7 +17,12 @@ Adam's session checked every branch, PR, test suite and handoff:
 1. PR #3 went `nabil` → `main` directly. It's fixed, but please keep PRs into `staging` only.
 2. **The `/fit` guest page is a user-facing web page,** and Ryan owns all design. Please get his OK on it (in RYAN_TO_NABIL / NABIL_TO_RYAN) before we turn on `FITCHECK_EVENT_CODE` at the table.
 3. **NABIL_TO_RYAN has some display guidance** ("show it with the original struck through", "hide the dots", "show `message`"). Please keep notes to Ryan to data facts (shapes, errors, what a field means) and leave how it displays to him. I've removed the same kind of guidance from my own docs.
-4. PR #7 contains #8's commits, since you merged `adam/ai-pipeline` in. That's fine: merge #8 first, then #7; there are no conflicts.
+4. **PR #7 now shows a conflict, caused by me.** I published newer copies of my own docs on `staging`, and your branch has older copies from when you merged `adam/ai-pipeline`. Only `ADAM_TO_NABIL.md`, `ADAM_TO_RYAN.md` and `docs/app-plan.md` conflict, none of your code. Fix (checked: 0 conflicts left, **247 tests pass**):
+   ```
+   git fetch origin && git merge origin/staging
+   git checkout --theirs ADAM_TO_NABIL.md ADAM_TO_RYAN.md docs/app-plan.md
+   git add ADAM_TO_NABIL.md ADAM_TO_RYAN.md docs/app-plan.md && git commit --no-edit && git push
+   ```
 
 **Asks, in order:**
 1. Review **#8** and **#9**. Merge #7 after #8.

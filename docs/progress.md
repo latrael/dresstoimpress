@@ -34,7 +34,7 @@
 | 4 | Ryan's handoff still lists the old split (Ryan = Feed, Nabil = Cart/Fit Check, Adam = Closet/Profile) | Current: Ryan owns all screens; Adam and Nabil stay on the backend. Communicated in ADAM_TO_RYAN. |
 | 5 | Nabil's **public `/fit` guest page** is a user-facing web page outside the app, so its design is in Ryan's area | Needs Ryan's OK. Security reviewed and fine: off unless `FITCHECK_EVENT_CODE` is set, rate-limited, guest cap, AI tagging under the budget cap, escaped output. |
 | 6 | `RyanFrontendking` is 62 commits behind `staging` | Ryan merges `staging` (and #9) in before his PR. His files don't overlap with anyone's. |
-| 7 | PR #7 contains PR #8's commits (Nabil merged `adam/ai-pipeline` in) | Harmless. Merge #8 then #7; there are no conflicts. |
+| 7 | PR #7 contains PR #8's commits (Nabil merged `adam/ai-pipeline` in), and after Adam published newer handoffs on `staging` it **conflicts on 3 of Adam's doc files** | Nabil merges `staging` and takes `staging`'s copies of those 3 files; exact commands in ADAM_TO_NABIL. Checked: 0 conflicts, 247 tests pass. |
 | 8 | Feed: 5 of 8 cards come back with a reason | Backend half done (#8: `pair()` always returns reasons). Nabil's ranked-first `/feed` is in #7. |
 | 9 | Two tag passes collided (#5 vs #6) | Resolved: kept the name-hinted snapshot (0 vs 37 wrong labels). |
 | 10 | Anthropic "credit balance too low" during Nabil's tag pass | Adam checks / tops up. |
@@ -53,7 +53,7 @@
 7. **Optional cleanup:** `brew cleanup` (2.3 GB), `git worktree remove ~/dti-ios`, `git branch -D ios-starter`.
 
 ### Nabil
-1. Review #8 and #9; merge #7 once #8 is in.
+1. Merge `staging` into `nabil` (3 doc conflicts, commands in ADAM_TO_NABIL). Review #8 and #9; merge #7 once #8 is in.
 2. Ask Ryan about the `/fit` guest page. It's a user-facing surface, so it's his call.
 3. Keep NABIL_TO_RYAN to data facts (shapes, errors, meanings). How things display is Ryan's decision.
 4. Devpost write-up, the README for sponsor judges (Apify, Capital One / Nessie) and the demo script.

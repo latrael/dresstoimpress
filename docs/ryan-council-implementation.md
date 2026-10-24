@@ -54,7 +54,8 @@ council methods/models and Nabil's routes. The 17:00 cutoff is optional per Ryan
 81 Flutter tests, including ten new council-flow checks, pass; Flutter analysis clean.
 Release web build passes. Private health/feed/search-styles checks and browser Home,
 Discover, images and catalog-to-seeded-Home navigation succeeded. The signed iPhone
-release built and launched with devicectl after Flutter’s launcher failed; a real
+release built and installed. The final launch was blocked because the iPhone is
+locked; unlock it and open Niche. An earlier checkpoint launched through devicectl. A real
 on-device walkthrough of camera/scan/cart is still needed. No credentials or private
 photos are committed. Test image uploads use synthetic fixtures and mocked endpoints;
 no live body-photo/social upload or live payment was performed by the agent.

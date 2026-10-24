@@ -520,6 +520,29 @@ class BodyProfile {
       );
 }
 
+/// POST /ai/vibe: what a Discover search sentence means, as catalog filters.
+class VibeQuery {
+  const VibeQuery(
+      {this.styles = const [], this.categories = const [], this.colors = const [], this.keywords = const [],
+      this.source = 'rules'});
+
+  final List<String> styles; // y2k | streetwear | minimalist | preppy | athleisure | vintage | business | boho | grunge | classic
+  final List<String> categories; // top | bottom | outerwear | shoes | dress | accessory
+  final List<String> colors;
+  final List<String> keywords; // short item words, e.g. "satin shirt"
+  final String source; // ai | rules
+
+  bool get isEmpty => styles.isEmpty && categories.isEmpty && colors.isEmpty && keywords.isEmpty;
+
+  factory VibeQuery.fromJson(Json j) => VibeQuery(
+        styles: _strs(j['styles']),
+        categories: _strs(j['categories']),
+        colors: _strs(j['colors']),
+        keywords: _strs(j['keywords']),
+        source: _str(j['source'], 'rules'),
+      );
+}
+
 /// POST /users/{id}/body-scan.
 class BodyScanResult {
   const BodyScanResult({required this.bodyPhotoUrl, required this.profile});
@@ -619,6 +642,7 @@ class FitTag {
     this.pattern,
     this.styleTags = const [],
     this.brand,
+    this.box,
   });
 
   final String label;
@@ -631,6 +655,11 @@ class FitTag {
   final List<String> styleTags;
   final String? brand;
 
+  /// Where the item sits in the post photo, for Inspo pins: [xMin, yMin, xMax, yMax] as 0-1 fractions
+  /// of the image width/height (pin at the center: ((x0+x1)/2, (y0+y1)/2)). Null on old posts and
+  /// hand-added tags.
+  final List<double>? box;
+
   factory FitTag.fromJson(Json j) => FitTag(
         label: _str(j['label']),
         retailer: _strN(j['retailer']),
@@ -641,7 +670,14 @@ class FitTag {
         pattern: _strN(j['pattern']),
         styleTags: _strs(j['style_tags']),
         brand: _strN(j['brand']),
+        box: _box(j['box']),
       );
+
+  static List<double>? _box(dynamic v) {
+    if (v is! List || v.length != 4 || v.any((e) => e is! num)) return null;
+    final b = [for (final e in v) (e as num).toDouble()];
+    return b[0] < b[2] && b[1] < b[3] && b.every((e) => e >= 0 && e <= 1) ? b : null;
+  }
 
   Json toJson() => {
         'label': label,
@@ -653,6 +689,7 @@ class FitTag {
         if (pattern != null) 'pattern': pattern,
         'style_tags': styleTags,
         if (brand != null) 'brand': brand,
+        if (box != null) 'box': box,
       };
 }
 

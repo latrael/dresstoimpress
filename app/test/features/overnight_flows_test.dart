@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -95,11 +96,13 @@ Future<void> mount(WidgetTester tester, Widget child) async {
 
 Future<void> tap(WidgetTester tester, String text) async {
   await tester.ensureVisible(find.text(text).last);
+  await tester.pumpAndSettle();
   await tester.tap(find.text(text).last);
   await tester.pumpAndSettle();
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   test(
       'catalog search pages beyond feed and keeps results after next-page failure',
       () async {
@@ -199,8 +202,18 @@ void main() {
                   );
                 })));
     for (final id in ['a', 'b', 'c']) {
-      await tap(tester, 'Try it on');
-      expect(find.text('Outfit board · collage, not a photo of you'),
+      final product = find.byKey(ValueKey('details-$id'));
+      final tryOn =
+          find.descendant(of: product, matching: find.text('Try it on'));
+      await tester.ensureVisible(tryOn);
+      await tester.pumpAndSettle();
+      await tester.tap(tryOn);
+      await tester.pumpAndSettle();
+      expect(
+          find.descendant(
+              of: product,
+              matching:
+                  find.text('Outfit board · collage, not a photo of you')),
           findsOneWidget);
       expect(
           tester
@@ -208,8 +221,13 @@ void main() {
               .controller!
               .page,
           1);
+      await tester.ensureVisible(find.descendant(
+          of: product, matching: find.text('Retailer description')));
+      await tester.pumpAndSettle();
       await tester.drag(
-          find.text('Retailer description').last, const Offset(250, 0));
+          find.descendant(
+              of: product, matching: find.text('Retailer description')),
+          const Offset(250, 0));
       await tester.pumpAndSettle();
       expect(
           tester
@@ -217,11 +235,6 @@ void main() {
               .controller!
               .page,
           1);
-      if (id != 'c') {
-        await tester.drag(
-            find.byKey(ValueKey('details-$id')), const Offset(0, -1500));
-        await tester.pumpAndSettle();
-      }
     }
     expect(generated, ['a', 'b', 'c']);
   });
@@ -317,7 +330,7 @@ void main() {
     var refreshed = false;
     final api = mockApi((r) async {
       expect(r.url.path, '/onboarding');
-      expect(jsonDecode(r.body)['text'], r'Y2K tops under $40');
+      expect(jsonDecode(r.body)['text'], r'Y2K tops under $40, regular fit');
       return json({
         'user': {
           ...user(),
@@ -343,9 +356,13 @@ void main() {
             }));
     await tester.enterText(find.widgetWithText(TextField, 'Style and budget'),
         r'Y2K tops under $40');
+    await tester.scrollUntilVisible(find.text('Save preferences'), 500,
+        scrollable: find.byType(Scrollable).first);
     await tap(tester, 'Save preferences');
-    expect(find.text(r'top · $0–$40'), findsOneWidget);
     expect(refreshed, true);
+    await tester.scrollUntilVisible(find.text(r'top · $0–$40'), 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text(r'top · $0–$40'), findsOneWidget);
   });
   testWidgets('Fit Check like and comment reflect only successful responses',
       (tester) async {

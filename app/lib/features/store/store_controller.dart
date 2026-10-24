@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/api.dart';
 import '../../core/models.dart';
+import '../profile/shopper_profile.dart';
 
 /// App state and adapters; the shared client remains the only API transport.
 class StoreController extends ChangeNotifier {
@@ -18,6 +19,95 @@ class StoreController extends ChangeNotifier {
   Set<String> saved = {};
   Cart cart = const Cart(userId: 'u_demo', groups: [], totalUsd: 0, count: 0);
   int _generation = 0;
+
+  int sizingRevision = 0;
+  ShopperProfile profile = const ShopperProfile();
+  final Map<String, Future<String?>> _sizes = {};
+  Future<void> loadProfile() async {
+    profile = await ShopperProfile.load(api.settings.userId);
+    _sizes.clear();
+    sizingRevision++;
+    notifyListeners();
+  }
+
+  Future<String?> automaticSize(String id) async {
+    try {
+      return await _cachedSize(id);
+    } catch (_) {
+      _sizes.remove(id);
+      rethrow;
+    }
+  }
+
+  Future<String?> _cachedSize(String id) => _sizes.putIfAbsent(id, () async {
+        final product = feed.where((p) => p.id == id).firstOrNull?.product ??
+            (demo ? null : await api.product(id));
+        if (product == null || product.inStock == false) return null;
+        final available =
+            product.sizes.where((s) => s.available).map((s) => s.name).toList();
+        if (available.length == 1 &&
+            ['ONE SIZE', 'ONESIZE', 'OS']
+                .contains(available.single.toUpperCase())) {
+          return available.single;
+        }
+        if (!demo && profile.heightCm != null && profile.weightKg != null) {
+          final advice = await api.sizeAdvice(id,
+              heightCm: profile.heightCm,
+              weightKg: profile.weightKg,
+              fit: profile.fit,
+              waistIn: profile.waistCm == null ? null : profile.waistCm! / 2.54,
+              shoeUs: profile.shoeUs);
+          if (advice.size != null && available.contains(advice.size)) {
+            return advice.size;
+          }
+        }
+        // An explicit usual size is a fallback, never an invented measurement.
+        final match =
+            available.where((s) => s.toUpperCase() == profile.usualSize);
+        return profile.usualSize.isNotEmpty && match.isNotEmpty
+            ? match.first
+            : null;
+      });
+
+  Future<void> changeSize(CartItem item, String size) async {
+    if (size == item.size) return;
+    if (demo) {
+      final product = item.product!;
+      if (!product.sizes.any((s) => s.name == size && s.available)) {
+        throw StateError('Size unavailable');
+      }
+      final items = [
+        for (final g in cart.groups)
+          for (final i in g.items)
+            if (i.productId != item.productId || i.size != item.size) i
+      ];
+      final index = items
+          .indexWhere((i) => i.productId == item.productId && i.size == size);
+      final qty = item.qty + (index < 0 ? 0 : items.removeAt(index).qty);
+      items.add(CartItem(
+          productId: item.productId, size: size, qty: qty, product: product));
+      _setDemoCart(items);
+      notifyListeners();
+      return;
+    }
+    if (accountWarning != null) throw Exception(accountWarning);
+    try {
+      // Keep the old line until adding the requested replacement succeeds.
+      cart = await api.addToCart(item.productId, size, qty: item.qty);
+      cart = await api.removeFromCart(item.productId, size: item.size);
+    } catch (_) {
+      try {
+        cart = await api.cart();
+      } catch (_) {
+        accountWarning =
+            'Cart could not be confirmed. Retry before making changes.';
+      }
+      throw StateError(
+          'Size change could not be confirmed. Review your cart before retrying.');
+    } finally {
+      notifyListeners();
+    }
+  }
 
   Future<void> load() async {
     final generation = ++_generation;
@@ -65,6 +155,7 @@ class StoreController extends ChangeNotifier {
 
   Future<void> useMode(bool isDemo) async {
     demo = isDemo;
+    await loadProfile();
     feed = [];
     saved = {};
     cart = Cart(

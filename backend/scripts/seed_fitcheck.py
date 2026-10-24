@@ -1,5 +1,6 @@
 """Seed 3 Fit Check posts from u_adam / u_nabil / u_ryan (friends of u_demo) so the demo feed isn't empty.
-Tags point at real product ids in the store (ingested ones first). Safe to re-run (fixed post ids).
+Tags point at real product ids in the store (ingested ones first) and copy category/color/pattern/
+style_tags/brand from the product, as /ai/tag-fit would. Safe to re-run (fixed post ids).
 
     python -m scripts.seed_fitcheck
 Swap the placeholder photos for real outfit pics before the demo.
@@ -38,7 +39,9 @@ for i, (pid, uid, caption, cats, hours) in enumerate(POSTS):
         if any(t["product_id"] == p["id"] for t in tagged):
             continue
         tagged.append({"label": " ".join(p["name"].split()[:5]).lower(), "retailer": p.get("retailer"),
-                       "product_id": p["id"], "closet_item_id": None})
+                       "product_id": p["id"], "closet_item_id": None, "category": p.get("category"),
+                       "color": (p.get("colors") or [None])[0], "pattern": p.get("pattern"),
+                       "style_tags": p.get("style_tags") or [], "brand": p.get("brand")})
     old = store.get("fitcheck_posts", pid) or {}
     store.put("fitcheck_posts", pid, {
         "id": pid, "user_id": uid, "photo_url": IMG.format(pid), "caption": caption, "tagged": tagged,

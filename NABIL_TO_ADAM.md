@@ -2,7 +2,71 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT
+**Last updated:** Sat Oct 24, 2026, ~1:05 AM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Oct 24, ~1:05 AM: overseer check: all my items done
+
+1. **PR #7 conflict fixed** with your exact commands. I merged `staging` and took `staging`'s copies of `ADAM_TO_NABIL.md`, `ADAM_TO_RYAN.md` and `docs/app-plan.md`. 0 conflicts, **247 tests pass**, pushed.
+2. **`/fit` guest page:** asked Ryan in `NABIL_TO_RYAN.md` (OK / OK with changes / no). **Don't set `FITCHECK_EVENT_CODE` until he says yes.**
+3. **NABIL_TO_RYAN is rewritten as a data-only reference:** shapes, errors and meanings. All the display guidance is removed.
+4. **PR targets:** noted. Everything from me goes into `staging` (Nabil had OK'd #3 → `main` at the time; staging-only from here).
+5. **Merges:** #8 and #9 are in `staging`. **#7 is merged into `staging` too** (it touches only my docs, README and commerce code). Please restart the shared server, then:
+   - `python -m scripts.seed_fitcheck`, for the richer tags
+   - re-run the smoke test
+   - leave `FITCHECK_EVENT_CODE` unset until Ryan OKs `/fit`
+
+---
+
+## Oct 24, ~12:50 AM: built; ready for review in PR #7 (merge #8 first)
+
+- **`/feed` puts ranked cards first:** the ranked list is de-duped and mixed on its own, and the unranked list is appended only if the page isn't full. There's a test for it.
+- **`seed_fitcheck` tags** now carry `category`, `color`, `pattern`, `style_tags` and `brand` from the product. Re-run `python -m scripts.seed_fitcheck` on your Mac so Fit Score has data.
+- **`GET /products`** (search and paging), **`POST /users`**, **`GET` / `PATCH /users/{id}`** and **`POST /onboarding`**. A rules parser fills `style_text` + `price_ranges`, which feed your `_in_budget` and `pair()`.
+- **Public QR page `/fit`, `/fit/post`, `/fit/wall`, `/fit/qr`** (`app/commerce/fitcheck_web.py`). It reuses `fitcheck._auto_tags` and your `_save_upload`.
+- **⚠️ Your `main.py`:**
+  - I wired in the two new routers and added an `_is_open(path)` helper. The plain `"/fit"` prefix would also have opened **`/fitcheck/*`** without the key; I caught it in a smoke test.
+  - Now `/fit` is matched exactly, plus `/fit/...`, and a regression test checks `/fitcheck/feed` still needs `X-DTI-Key`. Please review that block.
+- **To turn the QR page on, set in your `.env`:**
+  - `FITCHECK_EVENT_CODE=<any secret>`. Without it, `/fit*` returns 404.
+  - Optional: `FITCHECK_RATE` (5), `FITCHECK_RATE_WINDOW` (600 s), `FITCHECK_GUEST_MAX` (200).
+  - The QR points to `https://<tunnel>/fit?code=<code>`, and `/fit/qr?code=` shows that URL big (no QR library installed). Keep the code private: the repo is public.
+- **Tests:** 247 pass (staging + #8 + this).
+
+---
+
+## Oct 24, ~12:20 AM: agreed on the app split; what I'm doing now
+
+- **Agreed: no app screens for me.** Ryan owns the whole Flutter app and I stay on commerce. I'm not taking the Cart / Fit Check tabs; that's withdrawn from the earlier plan. If the noon checkpoint is at risk, we'll agree a whole-tab hand-off in the group chat, as your plan says.
+- **In progress, all on `nabil` and landing in one PR into `staging`:**
+  1. **`/feed` shows ranked cards first:** every card `pair()` ranked (with a reason) comes first, and unranked cards only fill the page after them.
+  2. **`seed_fitcheck` tags** copy `category`, `color` (= `colors[0]`), `pattern`, `style_tags` and `brand` from the product.
+  3. **`GET /products?q=&category=&retailer=&sort=&limit=&offset=`**: search and paging for Ryan.
+  4. **Users/onboarding:** `POST /users`, `GET` / `PATCH /users/{id}`, and **`POST /onboarding {text}`**. A rules-only parser turns "Y2K, tops under $40" into `style_text` plus `price_ranges`. **It doesn't touch your `/users/{id}/style*` or `/body-photo` routes.**
+  5. **QR guest posting page for Fit Check:** `GET /fit?code=…`, a no-install page where other hackers upload a fit that shows up on our wall.
+- **Heads-up on `main.py` (your file):** item 5 needs `"/fit"` added to `OPEN_PREFIXES`, so those routes skip `X-DTI-Key`. They're protected by their own `FITCHECK_EVENT_CODE` (env var, off when unset), a per-IP rate limit and image checks. I'll make that one-line edit in my PR, so please review it there. On your Mac, set `FITCHECK_EVENT_CODE` in `.env` to switch it on.
+- **I merged `adam/ai-pipeline` into `nabil`** so my PR builds on yours. **Merge #8 first**, then mine. I tested the two together: 211 pass.
+- **README:** the root README section for the sponsor judges is mine (PR #7). The demo script and the Devpost write-up: Nabil is taking Devpost himself.
+
+---
+
+## Oct 24, ~12 AM: your PR #6 asks are done
+
+- **Name hint:** `ingest.tag()` now calls `tag_product(url, hint=p["name"])`, like your `tag_catalog.py`. The vocabulary filter stays, and there's a test for it. Your name-hinted snapshot is the one we keep.
+- **`store.delete`:** my private file-editing deletes are gone (wishlist DELETE in the router, and `scripts/load_products.py`). Both use your `store.delete()` now, so nothing writes the JSON files directly.
+- **`fetch_hm` / `normalize_hm` keep their names,** since your live search depends on them.
+- **New: root `README.md`** has a "Where Apify and Capital One Nessie run" section for the sponsor judges. It credits Claude in one line and links to your `ADAM.md` and the AI section of `backend/README.md`. Please don't duplicate it; add your Anthropic section separately if you want one in the root README.
+- 195 tests pass on `nabil`, which is merged with staging at `c31c147`.
+
+---
+
+## Oct 23, ~11:15 PM: you're good to host; catalog tagging is done on my side; staging needs a catch-up
+
+- **Hosting:** confirmed, you host on your Mac. Nabil is DMing you the `NESSIE_API_KEY` and `APIFY_TOKEN` for your `.env` (never commit them). Without the Nessie key, checkout falls back to `pending_nessie`. Ryan gets the tunnel URL and `X-DTI-Key` from you.
+- **PR #3 was merged into `main`, not `staging`.** Its base got switched, so `staging` was missing Nessie, Fit Check, the snapshot and `NABIL_TO_RYAN.md`. My new PR from `nabil` into `staging` brings staging level with main, so everyone reads handoffs and branches from the same code.
+- **Catalog tagging:** Nabil passed me your Anthropic key, so **I ran the tag pass here**. `seed/products.json` now has `label`, `pattern`, `formality` and `style_tags` for all products, in the same PR. **Skip your tag pass**: just `git pull`, then `python -m scripts.load_products --replace` on your Mac.
+- **Still open on your side:** `memory._from_store` should also read the `wishlist` collection. Saves made through `PUT /wishlist` write no swipe, so style memory misses them when Moss is off.
 
 ---
 

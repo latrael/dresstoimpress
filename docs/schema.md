@@ -28,7 +28,7 @@ Source of truth: `backend/app/models.py` → `Product`. Use these exact names.
 | `sale_price_usd` | number or null | `null` | |
 | `currency` | string | `USD` | always USD for now |
 | `colors` | string[] | `["ivory"]` | |
-| `sizes` | `{name, in_stock}[]` | `[{"name": "S", "in_stock": true}, {"name": "M", "in_stock": false}]` | sold-out sizes kept and greyed out (Nabil's idea), **snake_case** `in_stock` |
+| `sizes` | `{name, in_stock}[]` | `[{"name": "S", "in_stock": true}, {"name": "M", "in_stock": false}]` | sold-out sizes are kept with `in_stock: false`; **snake_case** `in_stock` |
 | `in_stock` | bool | `true` | any size in stock |
 | `image_url` | string | | |
 | `product_url` | string | | |
@@ -105,3 +105,8 @@ store.put("products", p["id"], p)
 ## Other shapes
 
 `ClosetItem`, `User`, `FitTag`, `PairResult` (`id` = `product_id`) are in `backend/app/models.py`. Size advice: `POST /size {product_id, height_cm, weight_kg, fit, shoe_us?, waist_in?}`.
+
+- `ClosetItem.duplicate_of: string | null` (added Oct 23, 8:45 PM): set by `/closet/upload` and `/closet/tag` when the new item looks like one already in that closet (same category, color, pattern, garment type, similar label). Optional; old items read as null.
+- `TagFitRequest.hint: string | null`: `/products/tag` only, the product name, for photos of a model in a full outfit.
+- `FitScoreRequest {items: [FitTag-like dicts], product_ids: [], closet_item_ids: []}` → `POST /ai/fit-score` → `{score, verdict, notes, breakdown: {color, pattern, formality, completeness}}`.
+- Colors: free text everywhere. `app.ai.colors.normalize_color(text)` maps it to `{name, family, hex}` (31 names, families neutral / earth / warm / cool / unknown) when code needs to compare colors.

@@ -1,0 +1,878 @@
+[
+  {
+    "id": "hm:0941666081:denim-blue",
+    "retailer": "hm",
+    "name": "Mom Slim-Fit High-Waist Ankle Jeans",
+    "brand": "H&M",
+    "category": "bottom",
+    "price_usd": 34.99,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Denim blue"
+    ],
+    "sizes": [
+      {
+        "name": "0",
+        "in_stock": false
+      },
+      {
+        "name": "2",
+        "in_stock": true
+      },
+      {
+        "name": "4",
+        "in_stock": true
+      },
+      {
+        "name": "6",
+        "in_stock": true
+      },
+      {
+        "name": "8",
+        "in_stock": true
+      },
+      {
+        "name": "10",
+        "in_stock": true
+      },
+      {
+        "name": "12",
+        "in_stock": true
+      },
+      {
+        "name": "14",
+        "in_stock": true
+      },
+      {
+        "name": "16",
+        "in_stock": true
+      },
+      {
+        "name": "18",
+        "in_stock": true
+      },
+      {
+        "name": "20",
+        "in_stock": true
+      },
+      {
+        "name": "22",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.hm.com/assets/hm/6f/4b/6f4b2ca037f5bf08ecae90140c54d6cb2e907cbb.jpg?imwidth=657",
+    "product_url": "https://www2.hm.com/en_us/productpage.0941666081.html",
+    "style_tags": [
+      "classic",
+      "minimalist",
+      "athleisure"
+    ],
+    "pattern": "solid",
+    "formality": 2,
+    "label": "dark wash high-waist ankle jeans",
+    "scraped_at": "2026-10-24T03:09:40+00:00",
+    "images": [
+      {
+        "url": "https://image.hm.com/assets/hm/6f/4b/6f4b2ca037f5bf08ecae90140c54d6cb2e907cbb.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/91/c2/91c27798130158062298ec6880a0fce7e98b154c.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/37/22/37224200981812ca85d4a083c063fd469fd757f4.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/3a/87/3a874da554f454477272fe17db4ecb1c4dc28dd2.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/30/00/3000fa23be81e99cc2d84bf9a82185a192930ee2.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/01/1e/011e6a404f7b6d0dd0066b4c7e84c03866a2c95a.jpg?imwidth=657",
+        "kind": "retailer_model"
+      }
+    ],
+    "description": null,
+    "source": "ingest"
+  },
+  {
+    "id": "hm:0941666092:black",
+    "retailer": "hm",
+    "name": "Mom Slim-Fit High-Waist Ankle Jeans",
+    "brand": "H&M",
+    "category": "bottom",
+    "price_usd": 34.99,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Black"
+    ],
+    "sizes": [
+      {
+        "name": "0",
+        "in_stock": true
+      },
+      {
+        "name": "2",
+        "in_stock": true
+      },
+      {
+        "name": "4",
+        "in_stock": true
+      },
+      {
+        "name": "6",
+        "in_stock": true
+      },
+      {
+        "name": "8",
+        "in_stock": true
+      },
+      {
+        "name": "10",
+        "in_stock": true
+      },
+      {
+        "name": "12",
+        "in_stock": true
+      },
+      {
+        "name": "14",
+        "in_stock": true
+      },
+      {
+        "name": "16",
+        "in_stock": true
+      },
+      {
+        "name": "18",
+        "in_stock": true
+      },
+      {
+        "name": "20",
+        "in_stock": true
+      },
+      {
+        "name": "22",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.hm.com/assets/hm/a8/ae/a8ae07644a4bcf58530cc96d8a9fd33fd175a6ce.jpg?imwidth=657",
+    "product_url": "https://www2.hm.com/en_us/productpage.0941666092.html",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "grunge"
+    ],
+    "pattern": "solid",
+    "formality": 2,
+    "label": "black high-waist ankle jeans",
+    "scraped_at": "2026-10-24T03:09:40+00:00",
+    "images": [
+      {
+        "url": "https://image.hm.com/assets/hm/a8/ae/a8ae07644a4bcf58530cc96d8a9fd33fd175a6ce.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/32/5b/325b4fd4b49ac2eb4d0610e3e942362e2ac8735f.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/45/74/4574dbee1b59fcafa9ca1f6e87c11413465d4acf.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/af/7f/af7f83bf16f65abd8bf438cd377f1d05aff37e42.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/1f/84/1f840673d6bf828bc1c208c653db314bbfef2a4a.jpg?imwidth=657",
+        "kind": "retailer_model"
+      }
+    ],
+    "description": null,
+    "source": "ingest"
+  },
+  {
+    "id": "hm:0967955181:black-campioni-del-mondo",
+    "retailer": "hm",
+    "name": "Relaxed Fit Printed T-shirt",
+    "brand": "H&M",
+    "category": "top",
+    "price_usd": 12.99,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Black/Campioni Del Mondo"
+    ],
+    "sizes": [
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.hm.com/assets/hm/94/37/9437b3c6b7e0a84ef2e7902f09a044a49e82250e.jpg?imwidth=657",
+    "product_url": "https://www2.hm.com/en_us/productpage.0967955181.html",
+    "style_tags": [
+      "streetwear",
+      "y2k",
+      "athleisure"
+    ],
+    "pattern": "graphic",
+    "formality": 2,
+    "label": "black graphic t-shirt",
+    "scraped_at": "2026-10-24T03:09:40+00:00",
+    "images": [
+      {
+        "url": "https://image.hm.com/assets/hm/94/37/9437b3c6b7e0a84ef2e7902f09a044a49e82250e.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/50/a0/50a061c668268ff58a2047e7846d94861638a635.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/88/2c/882cffedb0214ef7f3fbd3243b83cfe1592538fe.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/a6/45/a6459eb4ff34fb929d779124fe17a33ddeb21403.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/f9/a7/f9a7339b87937aad52d3b5424002a8c510723594.jpg?imwidth=657",
+        "kind": "retailer_model"
+      }
+    ],
+    "description": null,
+    "source": "ingest"
+  },
+  {
+    "id": "hm:0967955193:white-florida",
+    "retailer": "hm",
+    "name": "Relaxed Fit Printed T-shirt",
+    "brand": "H&M",
+    "category": "top",
+    "price_usd": 12.99,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "White/Florida"
+    ],
+    "sizes": [
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.hm.com/assets/hm/8f/18/8f185eaee23e060f6a05b37a6622027af833f84c.jpg?imwidth=657",
+    "product_url": "https://www2.hm.com/en_us/productpage.0967955193.html",
+    "style_tags": [
+      "streetwear",
+      "athleisure",
+      "classic"
+    ],
+    "pattern": "graphic",
+    "formality": 1,
+    "label": "white graphic t-shirt",
+    "scraped_at": "2026-10-24T03:09:40+00:00",
+    "images": [
+      {
+        "url": "https://image.hm.com/assets/hm/8f/18/8f185eaee23e060f6a05b37a6622027af833f84c.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/76/7d/767d72fa1305d6838f38c9c05347391152292616.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/03/da/03dab5080a0ed69e7a5db31388945f36d6dcdd3c.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/0d/73/0d7334a7b99f880dd2937ec8fc610fe8c927a3fc.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/72/b2/72b25a7432b7dfc23f55cd78cf101d190dee22c9.jpg?imwidth=657",
+        "kind": "retailer_model"
+      }
+    ],
+    "description": null,
+    "source": "ingest"
+  },
+  {
+    "id": "hm:0967955195:white-only-getting-started",
+    "retailer": "hm",
+    "name": "Relaxed Fit Printed T-shirt",
+    "brand": "H&M",
+    "category": "top",
+    "price_usd": 12.99,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "White/Only Getting Started"
+    ],
+    "sizes": [
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": false
+      },
+      {
+        "name": "M",
+        "in_stock": false
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": false
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.hm.com/assets/hm/4e/f9/4ef9192f5a5c52b3f3c988c0cd1698c15e0df9b6.jpg?imwidth=657",
+    "product_url": "https://www2.hm.com/en_us/productpage.0967955195.html",
+    "style_tags": [
+      "streetwear",
+      "athleisure",
+      "minimalist"
+    ],
+    "pattern": "graphic",
+    "formality": 1,
+    "label": "white graphic t-shirt",
+    "scraped_at": "2026-10-24T03:09:40+00:00",
+    "images": [
+      {
+        "url": "https://image.hm.com/assets/hm/4e/f9/4ef9192f5a5c52b3f3c988c0cd1698c15e0df9b6.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/b7/40/b740f6b7a1733b100780a4bd2a4ec9a99a5c350e.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/99/45/9945c8bf04cb1c87210353ce77376f80f9e8ac5c.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/9c/f3/9cf3a353db95f66aafbf122e7f78ad483d6ed4e2.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/48/bf/48bf7c0c6d5a0e20b56f5c22b4508ec7ef935bc5.jpg?imwidth=657",
+        "kind": "retailer_model"
+      }
+    ],
+    "description": null,
+    "source": "ingest"
+  },
+  {
+    "id": "hm:0967955204:black-spring-rally",
+    "retailer": "hm",
+    "name": "Relaxed Fit Printed T-shirt",
+    "brand": "H&M",
+    "category": "top",
+    "price_usd": 12.99,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Black/Spring Rally"
+    ],
+    "sizes": [
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.hm.com/assets/hm/cc/d4/ccd40850592b25469d6fbbac573187069023e4f7.jpg?imwidth=657",
+    "product_url": "https://www2.hm.com/en_us/productpage.0967955204.html",
+    "style_tags": [
+      "streetwear",
+      "athleisure",
+      "vintage"
+    ],
+    "pattern": "graphic",
+    "formality": 1,
+    "label": "black graphic t-shirt",
+    "scraped_at": "2026-10-24T03:09:40+00:00",
+    "images": [
+      {
+        "url": "https://image.hm.com/assets/hm/cc/d4/ccd40850592b25469d6fbbac573187069023e4f7.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/84/24/84248d3dbdeb34009df92f7833120ea34933f487.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/98/82/988290b282935f4decf5b21110238e8c8907e196.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/70/03/7003003784ae0f9ca77c4c5dbd8496612b8b4ae1.jpg?imwidth=657",
+        "kind": "retailer_model"
+      },
+      {
+        "url": "https://image.hm.com/assets/hm/b3/5a/b35a9eca5f4c16284567cbb76f8da48aed0726d8.jpg?imwidth=657",
+        "kind": "retailer_model"
+      }
+    ],
+    "description": null,
+    "source": "ingest"
+  },
+  {
+    "id": "uniqlo:E422992-000:dark-brown",
+    "retailer": "uniqlo",
+    "name": "Crew Neck T-Shirt",
+    "brand": "Uniqlo",
+    "category": "top",
+    "price_usd": 24.9,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Dark Brown"
+    ],
+    "sizes": [
+      {
+        "name": "XXS",
+        "in_stock": true
+      },
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      },
+      {
+        "name": "3XL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_38_422992_3x4.jpg",
+    "product_url": "https://www.uniqlo.com/us/en/products/E422992-000/00?colorDisplayCode=38",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "streetwear"
+    ],
+    "pattern": "solid",
+    "formality": 1,
+    "label": "brown crew neck t-shirt",
+    "scraped_at": "2026-10-24T03:09:41+00:00",
+    "images": [
+      {
+        "url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_38_422992_3x4.jpg",
+        "kind": "product"
+      }
+    ],
+    "description": "This unisex Crew Neck T-Shirt from the Uniqlo U collection is designed as a modern essential, balancing a clean silhouette with thoughtful fabric choice for everyday wear across seasons. Crafted from heavyweight cotton jersey made with thick yarn, it offers a smooth surface and a structured look that works well on its own in warm weather or as a reliable layering piece when temperatures drop, reflecting a refined, universal approach to a classic T-shirt.\n- Heavyweight cotton jersey fabric made with thick yarn creates a durable, structured feel that holds its shape through repeated wear.\n- The smooth finish and classic crew neck deliver a timeless silhouette suitable for casual outfits, travel, and daily routines.\n- Binding at the collar helps the neckline maintain its shape wear after wear.\n- A neckline inspired by vintage military T-shirt designs introduces subtle character while keeping the overall design minimal.\n- The unisex men\u2019s sizing offers a fit that is not too loose and not too tight, pairing easily with straight-leg jeans, chinos, or tailored pants.\n- The mid-weight fabric makes this T-shirt adaptable for different weather, worn alone in warmer months or layered under overshirts, cardigans, or jackets.\n- Compared with lightweight cotton T-shirts, the heavier jersey provides a more substantial drape and a cleaner, more defined outline.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, with careful attention to fabric, texture, and refined color selection.\n- A versatile wardrobe staple that supports a wide range of styling, from relaxed weekend looks to polished but casual outfits.\n-This style was previously sold as U Crew Neck T-Shirt.",
+    "source": "ingest"
+  },
+  {
+    "id": "uniqlo:E422992-000:gray",
+    "retailer": "uniqlo",
+    "name": "Crew Neck T-Shirt",
+    "brand": "Uniqlo",
+    "category": "top",
+    "price_usd": 24.9,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Gray"
+    ],
+    "sizes": [
+      {
+        "name": "XXS",
+        "in_stock": true
+      },
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      },
+      {
+        "name": "3XL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_03_422992_3x4.jpg",
+    "product_url": "https://www.uniqlo.com/us/en/products/E422992-000/00?colorDisplayCode=03",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "athleisure"
+    ],
+    "pattern": "solid",
+    "formality": 1,
+    "label": "crew neck t-shirt",
+    "scraped_at": "2026-10-24T03:09:41+00:00",
+    "images": [
+      {
+        "url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_03_422992_3x4.jpg",
+        "kind": "product"
+      }
+    ],
+    "description": "This unisex Crew Neck T-Shirt from the Uniqlo U collection is designed as a modern essential, balancing a clean silhouette with thoughtful fabric choice for everyday wear across seasons. Crafted from heavyweight cotton jersey made with thick yarn, it offers a smooth surface and a structured look that works well on its own in warm weather or as a reliable layering piece when temperatures drop, reflecting a refined, universal approach to a classic T-shirt.\n- Heavyweight cotton jersey fabric made with thick yarn creates a durable, structured feel that holds its shape through repeated wear.\n- The smooth finish and classic crew neck deliver a timeless silhouette suitable for casual outfits, travel, and daily routines.\n- Binding at the collar helps the neckline maintain its shape wear after wear.\n- A neckline inspired by vintage military T-shirt designs introduces subtle character while keeping the overall design minimal.\n- The unisex men\u2019s sizing offers a fit that is not too loose and not too tight, pairing easily with straight-leg jeans, chinos, or tailored pants.\n- The mid-weight fabric makes this T-shirt adaptable for different weather, worn alone in warmer months or layered under overshirts, cardigans, or jackets.\n- Compared with lightweight cotton T-shirts, the heavier jersey provides a more substantial drape and a cleaner, more defined outline.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, with careful attention to fabric, texture, and refined color selection.\n- A versatile wardrobe staple that supports a wide range of styling, from relaxed weekend looks to polished but casual outfits.\n-This style was previously sold as U Crew Neck T-Shirt.",
+    "source": "ingest"
+  },
+  {
+    "id": "uniqlo:E422992-000:white",
+    "retailer": "uniqlo",
+    "name": "Crew Neck T-Shirt",
+    "brand": "Uniqlo",
+    "category": "top",
+    "price_usd": 24.9,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "White"
+    ],
+    "sizes": [
+      {
+        "name": "XXS",
+        "in_stock": true
+      },
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      },
+      {
+        "name": "3XL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_00_422992_3x4.jpg",
+    "product_url": "https://www.uniqlo.com/us/en/products/E422992-000/00?colorDisplayCode=00",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "athleisure"
+    ],
+    "pattern": "solid",
+    "formality": 1,
+    "label": "white crew neck t-shirt",
+    "scraped_at": "2026-10-24T03:09:41+00:00",
+    "images": [
+      {
+        "url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/422992/item/usgoods_00_422992_3x4.jpg",
+        "kind": "product"
+      }
+    ],
+    "description": "This unisex Crew Neck T-Shirt from the Uniqlo U collection is designed as a modern essential, balancing a clean silhouette with thoughtful fabric choice for everyday wear across seasons. Crafted from heavyweight cotton jersey made with thick yarn, it offers a smooth surface and a structured look that works well on its own in warm weather or as a reliable layering piece when temperatures drop, reflecting a refined, universal approach to a classic T-shirt.\n- Heavyweight cotton jersey fabric made with thick yarn creates a durable, structured feel that holds its shape through repeated wear.\n- The smooth finish and classic crew neck deliver a timeless silhouette suitable for casual outfits, travel, and daily routines.\n- Binding at the collar helps the neckline maintain its shape wear after wear.\n- A neckline inspired by vintage military T-shirt designs introduces subtle character while keeping the overall design minimal.\n- The unisex men\u2019s sizing offers a fit that is not too loose and not too tight, pairing easily with straight-leg jeans, chinos, or tailored pants.\n- The mid-weight fabric makes this T-shirt adaptable for different weather, worn alone in warmer months or layered under overshirts, cardigans, or jackets.\n- Compared with lightweight cotton T-shirts, the heavier jersey provides a more substantial drape and a cleaner, more defined outline.\n- Included in the Uniqlo U collection, designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, with careful attention to fabric, texture, and refined color selection.\n- A versatile wardrobe staple that supports a wide range of styling, from relaxed weekend looks to polished but casual outfits.\n-This style was previously sold as U Crew Neck T-Shirt.",
+    "source": "ingest"
+  },
+  {
+    "id": "uniqlo:E424873-000:black",
+    "retailer": "uniqlo",
+    "name": "Crew Neck T-Shirt",
+    "brand": "Uniqlo",
+    "category": "top",
+    "price_usd": 19.9,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Black"
+    ],
+    "sizes": [
+      {
+        "name": "XXS",
+        "in_stock": true
+      },
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/424873/item/usgoods_09_424873_3x4.jpg",
+    "product_url": "https://www.uniqlo.com/us/en/products/E424873-000/00?colorDisplayCode=09",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "athleisure"
+    ],
+    "pattern": "solid",
+    "formality": 1,
+    "label": "dark grey crew neck t-shirt",
+    "scraped_at": "2026-10-24T03:09:41+00:00",
+    "images": [
+      {
+        "url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/424873/item/usgoods_09_424873_3x4.jpg",
+        "kind": "product"
+      }
+    ],
+    "description": "This women\u2019s Crew Neck T-Shirt from the Uniqlo U collection is built around the concept of Unique Comfort, expressing a refined approach to everyday wear through fabric, fit, and proportion. Made from cotton with an interlock-knit jersey construction, it has a clean, smooth surface and a soft yet structured mid-weight feel that works well across seasons. Designed with a regular, balanced fit that is neither too tight nor too loose, the straight silhouette creates a versatile foundation that can be worn on its own in mild weather or layered comfortably as temperatures shift. Designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, this piece reflects UNIQLO\u2019s ongoing exploration of what a universal T-shirt should be, combining thoughtful design with functional simplicity.\n- Made from cotton with an interlock-knit jersey weave for a smooth finish and refined texture.\n- Designed around the Unique Comfort concept, emphasizing ease of wear with clean, intentional lines.\n- Features a classic crew neck and straight silhouette with a regular, balanced fit that is neither too tight nor too loose.\n- Mid-weight fabric offers more structure than lightweight T-shirts while remaining suitable for layering in transitional weather.\n- Developed through repeated testing to refine the shape, proportions, and overall feel for daily wear.\n- Part of the Uniqlo U collection designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, focused on modern interpretations of essential items.\n- Compared with the men\u2019s version, which emphasizes thicker yarn and a more structured feel, the women\u2019s style prioritizes a smoother interlock fabric and balanced proportions.\n- Finished in carefully selected colors, chosen through multiple trials to complement the fabric texture and silhouette.\n- This style was previously sold as U Crew Neck T-Shirt.",
+    "source": "ingest"
+  },
+  {
+    "id": "uniqlo:E424873-000:pink",
+    "retailer": "uniqlo",
+    "name": "Crew Neck T-Shirt",
+    "brand": "Uniqlo",
+    "category": "top",
+    "price_usd": 19.9,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "Pink"
+    ],
+    "sizes": [
+      {
+        "name": "XXS",
+        "in_stock": true
+      },
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/424873/item/usgoods_10_424873_3x4.jpg",
+    "product_url": "https://www.uniqlo.com/us/en/products/E424873-000/00?colorDisplayCode=10",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "athleisure"
+    ],
+    "pattern": "solid",
+    "formality": 2,
+    "label": "cream crew neck t-shirt",
+    "scraped_at": "2026-10-24T03:09:41+00:00",
+    "images": [
+      {
+        "url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/424873/item/usgoods_10_424873_3x4.jpg",
+        "kind": "product"
+      }
+    ],
+    "description": "This women\u2019s Crew Neck T-Shirt from the Uniqlo U collection is built around the concept of Unique Comfort, expressing a refined approach to everyday wear through fabric, fit, and proportion. Made from cotton with an interlock-knit jersey construction, it has a clean, smooth surface and a soft yet structured mid-weight feel that works well across seasons. Designed with a regular, balanced fit that is neither too tight nor too loose, the straight silhouette creates a versatile foundation that can be worn on its own in mild weather or layered comfortably as temperatures shift. Designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, this piece reflects UNIQLO\u2019s ongoing exploration of what a universal T-shirt should be, combining thoughtful design with functional simplicity.\n- Made from cotton with an interlock-knit jersey weave for a smooth finish and refined texture.\n- Designed around the Unique Comfort concept, emphasizing ease of wear with clean, intentional lines.\n- Features a classic crew neck and straight silhouette with a regular, balanced fit that is neither too tight nor too loose.\n- Mid-weight fabric offers more structure than lightweight T-shirts while remaining suitable for layering in transitional weather.\n- Developed through repeated testing to refine the shape, proportions, and overall feel for daily wear.\n- Part of the Uniqlo U collection designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, focused on modern interpretations of essential items.\n- Compared with the men\u2019s version, which emphasizes thicker yarn and a more structured feel, the women\u2019s style prioritizes a smoother interlock fabric and balanced proportions.\n- Finished in carefully selected colors, chosen through multiple trials to complement the fabric texture and silhouette.\n- This style was previously sold as U Crew Neck T-Shirt.",
+    "source": "ingest"
+  },
+  {
+    "id": "uniqlo:E424873-000:white",
+    "retailer": "uniqlo",
+    "name": "Crew Neck T-Shirt",
+    "brand": "Uniqlo",
+    "category": "top",
+    "price_usd": 19.9,
+    "sale_price_usd": null,
+    "currency": "USD",
+    "colors": [
+      "White"
+    ],
+    "sizes": [
+      {
+        "name": "XXS",
+        "in_stock": true
+      },
+      {
+        "name": "XS",
+        "in_stock": true
+      },
+      {
+        "name": "S",
+        "in_stock": true
+      },
+      {
+        "name": "M",
+        "in_stock": true
+      },
+      {
+        "name": "L",
+        "in_stock": true
+      },
+      {
+        "name": "XL",
+        "in_stock": true
+      },
+      {
+        "name": "XXL",
+        "in_stock": true
+      }
+    ],
+    "in_stock": true,
+    "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/424873/item/usgoods_00_424873_3x4.jpg",
+    "product_url": "https://www.uniqlo.com/us/en/products/E424873-000/00?colorDisplayCode=00",
+    "style_tags": [
+      "minimalist",
+      "classic",
+      "athleisure"
+    ],
+    "pattern": "solid",
+    "formality": 2,
+    "label": "white crew neck t-shirt",
+    "scraped_at": "2026-10-24T03:09:41+00:00",
+    "images": [
+      {
+        "url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/424873/item/usgoods_00_424873_3x4.jpg",
+        "kind": "product"
+      }
+    ],
+    "description": "This women\u2019s Crew Neck T-Shirt from the Uniqlo U collection is built around the concept of Unique Comfort, expressing a refined approach to everyday wear through fabric, fit, and proportion. Made from cotton with an interlock-knit jersey construction, it has a clean, smooth surface and a soft yet structured mid-weight feel that works well across seasons. Designed with a regular, balanced fit that is neither too tight nor too loose, the straight silhouette creates a versatile foundation that can be worn on its own in mild weather or layered comfortably as temperatures shift. Designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, this piece reflects UNIQLO\u2019s ongoing exploration of what a universal T-shirt should be, combining thoughtful design with functional simplicity.\n- Made from cotton with an interlock-knit jersey weave for a smooth finish and refined texture.\n- Designed around the Unique Comfort concept, emphasizing ease of wear with clean, intentional lines.\n- Features a classic crew neck and straight silhouette with a regular, balanced fit that is neither too tight nor too loose.\n- Mid-weight fabric offers more structure than lightweight T-shirts while remaining suitable for layering in transitional weather.\n- Developed through repeated testing to refine the shape, proportions, and overall feel for daily wear.\n- Part of the Uniqlo U collection designed by Co-Artistic Directors Christophe Lemaire and Sarah-Linh Tran, focused on modern interpretations of essential items.\n- Compared with the men\u2019s version, which emphasizes thicker yarn and a more structured feel, the women\u2019s style prioritizes a smoother interlock fabric and balanced proportions.\n- Finished in carefully selected colors, chosen through multiple trials to complement the fabric texture and silhouette.\n- This style was previously sold as U Crew Neck T-Shirt.",
+    "source": "ingest"
+  }
+]

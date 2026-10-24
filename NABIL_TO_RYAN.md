@@ -1,104 +1,120 @@
 # NABIL_TO_RYAN.md
 
-Notes from Nabil (commerce lane) to Ryan (app). Newest notes go at the top. Reply in `RYAN_TO_NABIL.md` on your branch; I read it every time I start work. For AI calls (size, try-on, complete the look, closet), see Adam's `ADAM_TO_RYAN.md`.
+Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT. Everything below is on `nabil`, with a PR open into `staging`.
+**Last updated:** Sat Oct 24, 2026, ~1:05 AM PT. Rewritten as a data-only reference, per the overseer check.
 
 ---
 
-## TL;DR
+## Needs your decision
 
-- **Your `ryan-nabil.md` requests are all done:** image gallery, description, repeat-safe wishlist routes and the sale-price fix. Details and examples are below.
-- **Backend:** runs on Adam's Mac behind a tunnel. The URL and the `X-DTI-Key` header value come **privately** in the group chat, never in Git. Set the header once on the FlutterFlow API group. Demo user: `u_demo`.
-- **Catalog:** 418 real products. H&M 290 (including 48 shoes) and Uniqlo 128. By category: top 178, outerwear 89, bottom 82, shoes 48, dress 21.
-- **Checkout makes real Capital One Nessie purchases,** one per store.
-- **Fit Check backend is live:** `/fitcheck/...`, listed below.
+1. **The `/fit` guest page.** This is a small public web page I built: other hackers scan a QR code at our table, upload an outfit photo without installing anything, and it lands in the Fit Check feed as a public post.
+   - **It's off** until you OK it. It only turns on when Adam sets `FITCHECK_EVENT_CODE` on the server.
+   - It's a user-facing surface, so its look is your call. I can change or restyle anything, or drop it entirely.
+   - Routes: `GET /fit?code=` (page), `POST /fit/post`, `GET /fit/wall`, `GET /fit/qr`.
+   - **Please reply in `RYAN_TO_NABIL.md`:** OK as is, OK with changes, or no.
+2. **Your RYAN_TO_NABIL** still lists the old split. Current split: **you own all screens**, and Adam and I are backend only.
 
-## Product fields you can rely on
+## Connection
 
-`id, retailer, name, brand, category, price_usd, sale_price_usd, colors, sizes[{name, in_stock}], in_stock, image_url, product_url, images[{url, kind}], description` (plus the tagger fields `style_tags, pattern, formality, label`; Adam is filling these in).
+- **Base URL and key:** Adam's tunnel URL plus the `X-DTI-Key` header value, sent privately. Never in git; the repo is public.
+- **Open routes** (no key needed): `GET /health`, `/static/...`, `/img?url=` (Adam's image proxy), and `/fit*` (which uses its own event code).
+- **Demo user:** `u_demo`.
 
-- **Price:** if `sale_price_usd` isn't null, charge and show it, with the original `price_usd` struck through next to it. Otherwise show `price_usd`. (NABIL.md had this backwards; it's fixed.)
-- **Gallery `images`:** never empty for ingested products, and `images[0]` is always the same as `image_url`. Every photo is the same product and the same colour; no borrowed photos and no duplicates.
-  - **H&M:** 2–6 photos each (most have 5). All are `kind: "retailer_model"`, because H&M's data doesn't flag garment-only shots.
-  - **Uniqlo:** exactly 1 photo each, `kind: "product"` (garment only). Show one image with no dots.
-- **`description`:** plain text, possibly with `\n` and `- ` bullet lines.
-  - **H&M:** always `null`, because the H&M scraper doesn't return text. Show your honest "no description" state.
-  - **Uniqlo:** 117 of 128 have real text.
+## Product (shared schema: `backend/app/models.py`)
 
-Multi-photo example (H&M):
-```json
-{"id": "hm:1354978001:dark-blue-las-vegas", "retailer": "hm", "name": "Oversized Printed Hoodie",
- "image_url": "https://image.hm.com/assets/hm/b0/83/b083de23a414fca6ab17c8c16a276875659ac038.jpg?imwidth=657",
- "images": [
-  {"url": "https://image.hm.com/assets/hm/b0/83/b083de23a414fca6ab17c8c16a276875659ac038.jpg?imwidth=657", "kind": "retailer_model"},
-  {"url": "https://image.hm.com/assets/hm/e0/fa/e0fa993871b40f9c182ea591f6ae6e6ce02370f0.jpg?imwidth=657", "kind": "retailer_model"},
-  {"url": "https://image.hm.com/assets/hm/64/e1/64e113fab7213e309b6bad0bb764fb9d40375a3b.jpg?imwidth=657", "kind": "retailer_model"}],
- "description": null}
-```
-Single-photo example (Uniqlo):
-```json
-{"id": "uniqlo:E488230-000:brown", "retailer": "uniqlo", "name": "SUPIMA® Cotton T-Shirt | Long Sleeve",
- "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488230/item/usgoods_35_488230_3x4.jpg",
- "images": [{"url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/488230/item/usgoods_35_488230_3x4.jpg", "kind": "product"}],
- "description": "- Ribbed binding at the collar helps the neckline keep its shape."}
-```
+`id, retailer, name, brand, category, price_usd, sale_price_usd, currency, colors, sizes[{name, in_stock}], in_stock, image_url, product_url, images[{url, kind}], description, style_tags, pattern, formality, label, scraped_at, source`
 
-## Routes (all need the `X-DTI-Key` header)
+- **Catalog:** 418 products. H&M 290, including 48 shoes; Uniqlo 128. By category: top 178, outerwear 89, bottom 82, shoes 48, dress 21.
+- **`sale_price_usd`:** the price charged at checkout when it's not null; `price_usd` is the regular price.
+- **`images`:** never empty for catalog products, and `images[0]` is always the same as `image_url`. Same product and colour only, with no duplicates.
+  - **H&M:** 2–6 images, all `kind: "retailer_model"` (H&M's data doesn't mark which shots are garment-only).
+  - **Uniqlo:** exactly 1 image, `kind: "product"` (garment only).
+- **`description`:** plain text, which may contain `\n` and `- ` bullet lines.
+  - **Uniqlo:** 117 of 128 have one.
+  - **H&M:** always `null` (the scraper returns no text).
+- **`label`, `style_tags`, `pattern`, `formality` (1–5):** AI tags, filled in for all 418 products.
+- **`sizes[].in_stock`:** false means that size can't be added to the cart (422).
+- **Retailer image URLs** don't load directly in a browser build. `/img?url=` serves them; it's Adam's.
 
-Errors always come back as `{"detail": ...}`.
+## Routes (all need `X-DTI-Key` unless noted)
+
+Every error comes back as `{"detail": ...}`.
 
 ### Browse
 | Call | Returns |
 |---|---|
-| `GET /feed?user_id=u_demo&limit=20&category=&retailer=` | `[Product + reason, score, pairs_with]`. One card per style, and stores and categories alternate. **Excludes anything already sent to `/swipe`.** The first load takes a few seconds (AI ranking), and later loads come from the cache. |
-| `GET /products/{id}` | one Product, or 404 `{"detail":"unknown product"}` |
+| `GET /feed?user_id=&limit=20&category=&retailer=` | `[Product + reason, score, pairs_with]`. All AI-ranked cards (with a `reason`) come first; any unranked cards after them have `reason: ""`. One card per style, stores and categories alternate, and only in-budget, in-stock products the user hasn't swiped. The first load is slower (AI ranking, ~7 s), later loads are cached. |
+| `GET /products?q=&category=&retailer=&in_stock=true&sort=relevance\|price_asc\|price_desc&limit=24&offset=0` | `{items: [Product], total, limit, offset, next_offset}`. `next_offset` is null on the last page. Every word in `q` must match the name, label, brand, style tags or colours. A bad `sort` returns 422. |
+| `GET /products/{id}` | one Product; ids that contain `:` work. 404 `{"detail":"unknown product"}` |
 
-### Save, separate from the feed (your Quick Browse double-tap)
+### Users and onboarding
 | Call | Returns |
 |---|---|
-| `PUT /wishlist/{user_id}/items/{product_id}` | `{user_id, product_id, saved: true}`. Repeat-safe, and **the item stays in the feed**. 404 for an unknown product. |
-| `DELETE /wishlist/{user_id}/items/{product_id}` | `{user_id, product_id, saved: false}`. Repeat-safe, never 404s. |
-| `GET /wishlist/{user_id}` | `[Product]`, newest first |
-| `GET /wishlist/{user_id}/ids` | `["hm:…", "uniqlo:…"]`, to set up the hearts on launch |
+| `POST /onboarding {user_id?, display_name?, text}` | `{user: User, parsed: {styles: [..], budgets: {category: [min, max]}, unmatched: ".."}}`. Creates the user if missing, otherwise updates their `style_text` and merges budgets. New users get `u_adam`, `u_nabil` and `u_ryan` as friends (when those exist). |
+| `POST /users {id?, display_name, style_text?, price_ranges?, friends?}` | User. 409 if the id exists; 422 for bad ranges. |
+| `GET /users/{id}` · `PATCH /users/{id} {display_name?, style_text?, price_ranges?, friends?}` | User, or 404. A new `style_text` without `price_ranges` re-parses and merges the budgets. |
 
-### Swipe (only for a deliberate keep/skip; never for photo or vertical browsing)
+- **Example:**
+  ```
+  POST /onboarding {"display_name": "Mia", "text": "Y2K, tops under $40"}
+  -> {"user": {"id": "u_mia-a1b2", "display_name": "Mia", "style_text": "Y2K, tops under $40", "price_ranges": {"top": [0.0, 40.0]}, "body_photo_url": null, "friends": ["u_adam","u_nabil","u_ryan"]},
+      "parsed": {"styles": ["y2k"], "budgets": {"top": [0.0, 40.0]}, "unmatched": ""}}
+  ```
+- **What the parser understands:**
+  - **Budgets:** "under/below/max/up to $X", "$20-$60", "between 20 and 60", "around $50" (→ ±30%), and "everything under $50" (all categories).
+  - **Category words:** tops/tees/hoodies → top; jeans/pants/skirts → bottom; jackets/coats → outerwear; sneakers/boots → shoes; dresses → dress; bags → accessory.
+  - **Styles:** the 10 style words plus synonyms.
+  - A bare number without `$` or a keyword is ignored.
+- **Not mine:** `/users/{id}/style*` and `/users/{id}/body-photo` are Adam's.
+
+### Save (independent of the feed)
+| Call | Returns |
+|---|---|
+| `PUT /wishlist/{user_id}/items/{product_id}` | `{user_id, product_id, saved: true}`. Repeat-safe. **Doesn't remove the item from `/feed`.** 404 for an unknown product. |
+| `DELETE /wishlist/{user_id}/items/{product_id}` | `{user_id, product_id, saved: false}`. Repeat-safe, never 404s. |
+| `GET /wishlist/{user_id}` · `GET /wishlist/{user_id}/ids` | saved Products, newest first · their ids |
+
+### Swipe
 `POST /swipe {user_id, product_id, action: "like"|"save"|"discard", size?}` returns `{user_id, product_id, action, in_cart}`.
-- **Any `/swipe` call removes the product from that user's feed.**
-- `like` with a `size` also adds it to the cart. `save` also writes the wishlist.
+- **Any `/swipe` removes the product from that user's `/feed`.**
+- `like` with a `size` also adds it to the cart; `save` also writes the wishlist.
 - A sold-out size gives 422.
 
-### Cart and checkout
+### Cart, checkout and orders
 | Call | Returns |
 |---|---|
 | `POST /cart/{user_id}/items {product_id, size, qty=1}` | Cart. 422 `{"detail":"size M is sold out for <name>"}` or `{"detail":"size XXXL is not offered for <name>"}` |
-| `GET /cart/{user_id}` | `{user_id, groups:[{retailer, items:[{product_id, size, qty, added_at, product}], subtotal_usd}], total_usd, count}` |
-| `DELETE /cart/{user_id}/items/{product_id}?size=M` | Cart. Leave out `size` to remove every size of that product. |
-| `POST /checkout/{user_id}` | `{order_id, purchases:[{retailer, merchant_id, amount_usd, items, status, nessie_id}], total_usd, created_at}`. `status` is `"paid"` (a real Nessie purchase) or `"nessie_failed"` (the order is kept; show a retry message). |
+| `GET /cart/{user_id}` | `{user_id, groups: [{retailer, items: [{product_id, size, qty, added_at, product}], subtotal_usd}], total_usd, count}`. Subtotals use `sale_price_usd` when set. |
+| `DELETE /cart/{user_id}/items/{product_id}?size=` | Cart. Leaving out `size` removes all sizes of that product. |
+| `POST /checkout/{user_id}` | `{order_id, purchases: [{retailer, merchant_id, amount_usd, items, status, nessie_id?}], total_usd, created_at}`, with one Capital One Nessie purchase per retailer. |
 | `GET /orders/{user_id}` | past orders, newest first |
 
-**Checkout errors:**
-- **400** `{"detail":"cart is empty"}`
-- **409** if something sold out after it was added: `{"detail":{"message":"size M is sold out for <name>","unavailable":[{"product_id":"…","size":"M"}]}}`. Nothing is charged and the cart is left as it was, so keep the user's picks on screen and show `message`.
-- Note that `detail` is an **object** on 409 but a string everywhere else.
+- **Checkout `status`:**
+  - `paid`: a real Nessie purchase, with `nessie_id` set.
+  - `nessie_failed`: the order is saved, but that store's payment failed.
+  - `pending_nessie`: there's no Nessie key on the server.
+- **Checkout errors:**
+  - **400** `{"detail":"cart is empty"}`
+  - **409** when something sold out since it was added: `{"detail": {"message": "size M is sold out for <name>", "unavailable": [{"product_id": "…", "size": "M"}]}}`. Nothing is charged and the cart is left as it was. Note that `detail` is an **object** here and a string on every other error.
 
-### Fit Check (OOTD)
-A post is `{id, user_id, photo_url, caption, tagged:[{label, retailer, product_id, category, color, …}], created_at, likes, comments, visibility}`, plus `author{id, display_name}`, `like_count`, `liked_by_me` and `comment_count`.
+### Fit Check
+A post is `{id, user_id, photo_url, caption, tagged: [{label, retailer, product_id, closet_item_id, category, color, pattern, style_tags, brand}], created_at, likes, comments, visibility}`, plus `author {id, display_name}`, `like_count`, `liked_by_me` and `comment_count`.
 
 | Call | Returns |
 |---|---|
-| `POST /fitcheck` | JSON `{user_id, photo_url, caption?, tagged?}`, or multipart (`user_id`, `file`, `caption?`). With no tags, the AI pre-fills them from the photo (takes a few seconds). Returns the post. |
-| `GET /fitcheck/feed?user_id=u_demo&limit=20` | friends' and own posts, newest first |
-| `GET /fitcheck/{post_id}?user_id=` | the post. 404 if it's not visible to this user (friends only). |
-| `PATCH /fitcheck/{post_id}/tags {user_id, tagged}` | the owner fixes wrong AI tags; 403 for anyone else |
-| `GET /fitcheck/{post_id}/shop?user_id=` | **"Shop this fit"**: buyable Products plus `reason`, `pairs_with`, `score`, `matched_tag` |
-| `POST /fitcheck/{post_id}/like {user_id}` | toggles: `{post_id, liked, like_count}` |
-| `POST /fitcheck/{post_id}/comments {user_id, text≤280}` | the new comment plus `comment_count` |
+| `POST /fitcheck` | JSON `{user_id, photo_url, caption?, tagged?, visibility?}`, or multipart (`user_id`, `file`, `caption?`). With no tags, the AI fills `tagged` from the photo (a few seconds). Returns the post. |
+| `GET /fitcheck/feed?user_id=&limit=20` | the user's own posts, friends' posts and public posts, newest first |
+| `GET /fitcheck/{post_id}?user_id=` | the post. 404 if it's not visible to that user. |
+| `PATCH /fitcheck/{post_id}/tags {user_id, tagged}` | the post. 403 if the caller isn't the owner. |
+| `GET /fitcheck/{post_id}/shop?user_id=` | buyable Products plus `reason`, `pairs_with`, `score`, `matched_tag` |
+| `POST /fitcheck/{post_id}/like {user_id}` | toggles the like: `{post_id, liked, like_count}` |
+| `POST /fitcheck/{post_id}/comments {user_id, text}` | `{id, user_id, text, created_at, comment_count}`. `text` is 1–280 characters, else 422. |
 
-Demo data: `python -m scripts.seed_fitcheck` creates 3 posts, from Adam, Nabil and Ryan, that u_demo can see. They use placeholder photos, so we'll swap in our real fits at the venue.
+- **Demo data:** `python -m scripts.seed_fitcheck` creates 3 posts (from Adam, Nabil and Ryan) visible to `u_demo`. Their photos are placeholders.
 
-## What I need from you
-
-1. **Your API group:** the base URL plus the `X-DTI-Key` header, both from the group chat. Test with `GET /health` (no key needed) and then `GET /feed?user_id=u_demo&limit=5`.
-2. **Tell me in `RYAN_TO_NABIL.md`** if any shape above is awkward for FlutterFlow. For example, if you want the 409 `detail` flattened, or `description` as a single line.
-3. **Status of the FlutterFlow input/automation blocker** in your RYAN.md. Is Quick Browse buildable tonight? The Saturday-noon end-to-end run needs feed → save/cart → checkout on the phone.
+## Known gaps
+- H&M has no descriptions.
+- Uniqlo has 1 image per product.
+- The catalog is H&M + Uniqlo only.
+- Fit Check seed posts use placeholder photos.

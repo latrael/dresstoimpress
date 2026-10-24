@@ -10,6 +10,11 @@ Return only JSON, no prose:
  "formality": integer 1-5}
 If the image is not clothing, return {"error": "not_clothing"}."""
 
+# Appended to TAGGER for retailer photos, where a model often wears a whole outfit.
+TAGGER_HINT = """
+This photo is for the product "{hint}". If it shows a person wearing several things, describe
+only that product and ignore everything else they wear."""
+
 TRYON = (
     "Dress the person in the first image in the garments shown in the other images. "
     "Keep their face, skin tone, hair, body shape and proportions exactly the same. "

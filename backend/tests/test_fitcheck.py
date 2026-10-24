@@ -133,3 +133,27 @@ def test_shop_returns_products(client, monkeypatch):
     assert cards and cards[0]["id"] == "hm-demo-1"
     assert all({"reason", "pairs_with", "score", "matched_tag"} <= set(c) for c in cards)
     assert client.get("/fitcheck/fc_missing/shop", params={"user_id": "u_demo"}).status_code == 404
+
+
+def test_seed_tags_carry_product_fields(tmp_path):
+    from app.store import JsonStore  # own instance on its own dir: the shared store is untouched
+    backend = os.path.dirname(os.path.dirname(__file__))
+    env = {**os.environ, "DATA_DIR": str(tmp_path)}
+    subprocess.run([sys.executable, "-m", "scripts.seed_demo"], cwd=backend, check=True, env=env)
+    s = JsonStore(tmp_path)
+    s.put("products", "hm:1:blue", {"id": "hm:1:blue", "retailer": "hm", "name": "Baggy Jeans", "brand": "H&M",
+                                    "category": "bottom", "colors": ["light blue", "blue"], "pattern": "solid",
+                                    "style_tags": ["y2k"], "in_stock": True, "source": "ingest"})
+    seed = lambda: subprocess.run([sys.executable, "-m", "scripts.seed_fitcheck"], cwd=backend, check=True,
+                                  env=env, capture_output=True)
+    seed()
+    post = s.get("fitcheck_posts", "fc_seed_1")
+    s.put("fitcheck_posts", "fc_seed_1", {**post, "likes": ["u_b"], "comments": [{"id": "c1", "text": "hi"}]})
+    seed()  # re-run keeps likes and comments
+    post = s.get("fitcheck_posts", "fc_seed_1")
+    assert post["likes"] == ["u_b"] and post["comments"][0]["id"] == "c1"
+    jeans = post["tagged"][0]
+    assert (jeans["product_id"], jeans["category"], jeans["color"], jeans["pattern"], jeans["style_tags"],
+            jeans["brand"]) == ("hm:1:blue", "bottom", "light blue", "solid", ["y2k"], "H&M")
+    assert all(t["category"] for t in post["tagged"])
+    assert post["tagged"][1]["color"] is None  # seed products have no colours

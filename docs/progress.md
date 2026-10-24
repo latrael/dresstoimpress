@@ -1,105 +1,84 @@
-# dresstoimpress — progress and direction
+# Team progress: overseer check
 
-Last updated: Fri Oct 23, 8:00 PM PT. Branch: `adam/ai-pipeline` (Adam's AI lane). `main` has only the README so far.
+**Fri Oct 23, 2026, ~9:45 PM PT; update at ~11:15 PM below.** Adam's session checked every branch and PR, the shared backend and the handoffs. Newer checks replace this file.
 
-## Where we are
+**Ownership:**
+- **Ryan:** the app and all of its design.
+- **Adam:** AI backend, hosting, and `app/lib/core` kept in sync with the backend.
+- **Nabil:** commerce backend.
 
-The backend skeleton and the whole AI pipeline are built, tested (22 tests) and verified on real models.
+## Update: Fri ~11:15 PM
 
-| Area | Status | Notes |
+- **Merged into `staging`:** #8 (Adam), #7 (Nabil), #9 (shell + core), #10 (Ryan's app). Every deviation in the table below is closed except #5, the `/fit` OK, which is waiting on Ryan.
+- **Server:** pulled to `staging` and restarted. Tests: backend **248 pass**; app `flutter analyze` clean, **14/14** tests.
+- **Checks:**
+  - `seed_fitcheck` re-run with the richer tags.
+  - **Smoke test 10/10 through the tunnel.** The feed has a reason on 8 of 8 cards, and Nessie checkout is `paid`.
+  - New routes are live: search, users, Fit Score on the seed posts (85).
+  - Auth: `/fit` 404 (off), `/fitcheck` 401 without the key.
+- **Open:** **PR #11** (core: Ryan's 3 asks + `/img` exact match). Ryan's remaining screens are his call. Then the iPhone build: iOS 26 platform download (Adam).
+
+## Snapshot
+
+| Branch | Head | vs `staging` | PR | State |
+| --- | --- | --- | --- | --- |
+| `main` | f90c36e | 15 behind, 0 ahead | — | last known-good (PR #2 + #3) |
+| `staging` | 669043d | — | — | Ryan's latest handoffs on top of #5/#6 |
+| `adam/ai-pipeline` | this commit | ahead | **#8** open | Style DNA, feed-reason top-up, `/img` proxy, app plan, these docs. 210 tests |
+| `nabil` | 74b7499 | 13 ahead | **#7** open | onboarding/users, search, ranked-first feed, Fit Check seed tags, public `/fit` guest page, judges' README. **247 tests pass**; includes #8's commits |
+| `flutter-starter` | 1b4aff2 | 3 ahead | **#9** open | shared Flutter shell + core (API client, models). Analyze clean, 13/13 live routes decode |
+| `RyanFrontendking` | c45ad88 | **62 behind**, 4 ahead | — | Ryan's Quick Browse Feed + 4 widget tests, wireframe, specs |
+
+- **Backend:** live on Adam's Mac through the tunnel. `smoke_e2e` 10/10: feed, size, AI try-on, complete the look, cart, real Nessie checkout `paid`, Fit Check shop, usage.
+- **Data:** 418 products, all tagged. 3 Fit Check demo posts seeded.
+- **AI spend:** ≈ $0.07 on Adam's runs, plus ≈ $0.40 from Nabil's tag pass, under the $5 cap.
+- **App:** Ryan's Feed was checked inside `flutter-starter`, unchanged: `flutter analyze` clean, **4/4 tests pass**. It hasn't run against the live backend yet (Ryan has no URL/key yet).
+- **Secrets:** scanned all 6 branches and the full history for API keys, the shared key and the tunnel URL. **Clean.**
+
+## Deviations found
+
+| # | What | Status |
 | --- | --- | --- |
-| FastAPI skeleton + shared data contract | Done | `backend/app/main.py`, `backend/app/models.py` |
-| Closet tagging (`/closet/tag`, `/closet/upload`) | Done, live on Claude Haiku | e.g. "black leather moto jacket" → outerwear, grunge/streetwear, ~3 s |
-| Pairing (`/pair`) | Done, live | Budget-first, sorted, reasons like "Perfect Y2K top for your baggy jeans" |
-| Shop the fit (`/ai/shop-fit`) | Done | Strict matching (same type + category); live store search via Apify when nothing matches (needs `APIFY_TOKEN`) |
-| Fit photo auto-tagging (`/ai/tag-fit`) | Done, live | Lists every item in an outfit photo, e.g. "red graphic t-shirt", "oversized black jacket" |
-| Style memory (Moss) | Done, needs Moss keys | Falls back to swipe history until then |
-| Try-on (`/tryon`) | Done, live | Gemini Flash Lite image, ~5 s, keeps body and pose; outfit-board fallback if images fail |
-| Cost controls | Done | Haiku default, caching, $5 cap, `GET /ai/usage`; real cost so far < $0.01 |
-| Gemini fallback | Done | If Claude fails (credits, network), tagging/pairing use Gemini automatically |
-| Commerce: ingest, `/feed`, `/swipe`, `/cart`, `/wishlist`, `/checkout` | Done (merged to `staging`) | Nabil. 370 real H&M + Uniqlo products on his machine; Nessie pending key |
-| Fit Check posts + `/fitcheck/{id}/shop` | Next | Nabil |
-| Demo person photo | Done | AI-generated fictional person, `backend/assets/demo_body.jpg`, set by `seed_demo` |
-| iPhone app (FlutterFlow) | Not started in repo | Ryan |
+| 1 | PR #3 went `nabil` → **`main`**, skipping `staging` | Fixed: `staging` fast-forwarded to `main`, and every PR since targets `staging`. Rule stands: only `staging` → `main`. |
+| 2 | **Adam changed the app plan 3 times in an hour** (SwiftUI → Flutter → "starter is reference only"). Ryan built against the middle version and waited for a starter that was then downgraded. | Fixed: `flutter-starter` is the shared shell + core again (PR #9) and is verified with Ryan's Feed. `docs/app-plan.md` now matches what Ryan approved. No more plan changes without Ryan. |
+| 3 | Adam's docs gave Ryan **design instructions** (what to hide or grey out, labels, badge placement, look and feel, branch naming) | Removed from ADAM_TO_RYAN, app-plan, ADAM.md, schema.md and the starter README. They now state data facts only. Nabil's notes to Ryan also contain display guidance (see Nabil's next steps). |
+| 4 | Ryan's handoff still lists the old split (Ryan = Feed, Nabil = Cart/Fit Check, Adam = Closet/Profile) | Current: Ryan owns all screens; Adam and Nabil stay on the backend. Communicated in ADAM_TO_RYAN. |
+| 5 | Nabil's **public `/fit` guest page** is a user-facing web page outside the app, so its design is in Ryan's area | Needs Ryan's OK. Security reviewed and fine: off unless `FITCHECK_EVENT_CODE` is set, rate-limited, guest cap, AI tagging under the budget cap, escaped output. |
+| 6 | `RyanFrontendking` is 62 commits behind `staging` | Ryan merges `staging` (and #9) in before his PR. His files don't overlap with anyone's. |
+| 7 | PR #7 contains PR #8's commits (Nabil merged `adam/ai-pipeline` in), and after Adam published newer handoffs on `staging` it **conflicts on 3 of Adam's doc files** | Nabil merges `staging` and takes `staging`'s copies of those 3 files; exact commands in ADAM_TO_NABIL. Checked: 0 conflicts, 247 tests pass. |
+| 8 | Feed: 5 of 8 cards come back with a reason | Backend half done (#8: `pair()` always returns reasons). Nabil's ranked-first `/feed` is in #7. |
+| 9 | Two tag passes collided (#5 vs #6) | Resolved: kept the name-hinted snapshot (0 vs 37 wrong labels). |
+| 10 | Anthropic "credit balance too low" during Nabil's tag pass | Adam checks / tops up. |
 
-## Handoffs (Fri 8 PM): what to do next, on `staging`
+## Next steps
 
-Everything below is already merged on `staging` and passes `cd backend && pytest -q` (99 tests). Branch off `staging`, PR back into `staging`.
+### Adam (things only you can do)
+1. **Merge into `staging`, in order: #8 → #7 → #9** (or ask Nabil to). After each one, Adam's session restarts the server and re-runs the smoke test.
+2. **Send Ryan the tunnel URL + key privately.** He hasn't been able to test live yet.
+3. **Anthropic credits:** check the balance and top up.
+4. **For the iPhone build later:**
+   - Xcode → Settings → Components → install the **iOS 26** platform.
+   - Then run `sudo xcode-select -s /Applications/Xcode.app`.
+5. **Keep the Mac awake** (`caffeinate -dims` in a Terminal tab) with the tunnel window open. Repost the URL if it changes.
+6. **Guest page:** if Ryan OKs it, set `FITCHECK_EVENT_CODE` in `backend/.env` after #7 merges.
+7. **Optional cleanup:** `brew cleanup` (2.3 GB), `git worktree remove ~/dti-ios`, `git branch -D ios-starter`.
 
-### Adam → Nabil
-1. **Fit Check backend:** store posts (`POST /fitcheck`, `GET /fitcheck/feed`) and make `GET /fitcheck/{post_id}/shop?user_id=` return `ai.service.shop_fit(user_id, post["tagged"])`. To pre-fill a post's tags from its photo: `ai.service.tag_fit(photo_url)`.
-2. **Run the shared demo backend** on your machine (you have the 370 products): `python -m scripts.seed_demo` (adds the demo user and their photo), then a public URL (ngrok or cloudflared), set `PUBLIC_BASE` to it in `.env`, restart, and send the URL to Ryan.
-3. **Tag the catalog once:** re-run ingest without `--no-tag` so products get `style_tags`/`label`/`pattern` (better pairing; about $0.07 for 370 on Haiku).
-4. **Add shoes** to ingest (e.g. H&M `"sneakers, boots"`); there are none yet, so complete-the-look can only fill shoes from the closet.
-5. **Keys in the shared `.env`:** `APIFY_TOKEN` (also powers Fit Check live search), `NESSIE_API_KEY` when you have it. Adam can send the Anthropic and Gemini keys.
+### Nabil
+1. Merge `staging` into `nabil` (3 doc conflicts, commands in ADAM_TO_NABIL). Review #8 and #9; merge #7 once #8 is in.
+2. Ask Ryan about the `/fit` guest page. It's a user-facing surface, so it's his call.
+3. Keep NABIL_TO_RYAN to data facts (shapes, errors, meanings). How things display is Ryan's decision.
+4. Devpost write-up, the README for sponsor judges (Apify, Capital One / Nessie) and the demo script.
 
-### Adam → Ryan
-1. **Point FlutterFlow's API group at the shared URL** from Nabil (until then: run the backend locally with `MOCK_AI=1`, or use `seed_demo` data). Demo user: `u_demo`.
-2. **Onboarding:** body photo → `POST /users/{id}/body-photo` (multipart); closet photos → `POST /closet/upload` (returns the item with a `label` like "black cargo pants" — show it).
-3. **Swipe feed:** `GET /feed?user_id=` (cards include `reason`, e.g. "goes with your baggy jeans" — show it under the price); swipes → `POST /swipe {user_id, product_id, action: like|save|discard, size?}`.
-4. **Product sheet:** `POST /size` → highlight the suggested size in the picker, grey out `in_stock: false`; "Try it on" → `POST /tryon` (≈5 s, show a spinner; if `mode` is `collage` it's an outfit board, not AI); "Complete the look" → `POST /complete-look {user_id, product_id, budget_usd?}`.
-5. **Cart + checkout:** `GET /cart/{user_id}` (grouped by retailer), `POST /checkout/{user_id}`.
-6. **Fit Check:** after taking the photo, `POST /ai/tag-fit {image_url}` to pre-fill tags; "Shop this fit" → Nabil's `/fitcheck/{post_id}/shop` (or `POST /ai/shop-fit {viewer_id, photo_url}` until it exists).
-7. Push a `RYAN.md` (screens done, what you need) like `NABIL.md` / `ADAM.md`, and your Figma/Notability links, on `RyanFrontendking` → PR into `staging`.
-8. **Your gallery + description request (`ryan-nabil.md`):** the fields are on `staging` now (`images[{url, kind}]`, `description`); Nabil fills them in ingest and adds the wishlist PUT/DELETE routes.
+### Ryan
+1. Merge `staging` into `RyanFrontendking`, plus `flutter-starter` (PR #9). Your Feed already builds and passes its tests there.
+2. Run against the live backend once Adam sends the URL + key.
+3. Your pending list, in your order and your design. Ask Adam for any missing call or field; he keeps `core/` matching the backend.
 
-## Who owns what (no overlap)
+## Checkpoints
 
-| Area | Owner | Not touched by |
-| --- | --- | --- |
-| `backend/app/ai/*`, `scripts/eval_tagger.py`, `scripts/precompute_tryons.py`, `docs/` | Adam | Nabil, Ryan |
-| Main product ingest from Apify (category pages → `products`), `/feed`, `/swipe`, `/cart`, `/checkout`, Fit Check posts storage, Devpost | Nabil | Adam, Ryan |
-| FlutterFlow app, Figma, Notability, demo video, slides | Ryan | Adam, Nabil |
-| `backend/app/models.py` (shared contract) | Shared: announce in group chat before changing | |
-
-Boundaries:
-- Adam's live search (`app/ai/finder.py`) only looks up **items from Fit Check posts** that the catalog doesn't have. It writes them to `products` with `source: "live_search"` and the same Product fields. Nabil's ingest stays the main source of the feed.
-- `/feed` (Nabil) calls `ai.service.pair()`; `/swipe` (Nabil) calls `ai.memory.record_swipe()`; `GET /fitcheck/{post_id}/shop` (Nabil) returns `ai.service.shop_fit(viewer_id, post["tagged"])`. Adam doesn't edit those routes.
-- Gemini-drafted modules (size advisor, outfit rules) land in `backend/app/ai/` via Adam.
-
-## Schema: unified on `staging` (see docs/schema.md)
-
-Proposal for the team: one Product shape (Nabil's ids and sizes-with-stock, singular categories and `price_usd`/`product_url` names). Everyone merges into `staging` first.
-
-### Earlier drafts
-
-Nabil's proposal (branch `nabil`, `NABIL.md`) differs from `backend/app/models.py`: `price`/`currency` vs `price_usd`, `url` vs `product_url`, plural categories (`tops`) vs singular (`top`), single `color` vs `colors[]`, sizes as `[{name, inStock}]` vs `["S"]`, and `tags {style[], formality: "casual"}` vs `style_tags[]` + `formality` 1–5.
-
-**The AI code reads both** (`backend/app/ai/compat.py`), so either choice works for Adam's side. What Nabil asked for is ready:
-- `POST /products/tag {image_url}` returns tags for a product image, including his exact `tags` object (`category: "tops"`, `style[]`, `formality: "casual"`). Cached per image, so tagging the catalog once is cheap (Haiku, ~$0.0002 per product).
-- `POST /pair` results now include `id` (same as `product_id`) plus `reason`.
-- Pick one shape for Ryan's app so the UI reads one set of names; Adam suggests keeping Nabil's richer `sizes` with `inStock`.
-
-## Blockers
-
-2. **Apify token** for live item search (same token Nabil uses for ingest; `APIFY_TOKEN` in `.env`).
-3. **Moss keys** from the Cal Hacks Moss Starter Pack (`MOSS_PROJECT_ID`, `MOSS_PROJECT_KEY`).
-4. **Shared backend URL.** The server runs on Adam's Mac at `localhost:8000`; it needs a tunnel or deploy so the app can reach it.
-
-## Next (timeline, Pacific)
-
-| When | Owner | Task |
-| --- | --- | --- |
-| Fri night | Nabil | Apify ingest into `products` (same Product fields as `models.py`), `/feed`, `/swipe` |
-| Fri night | Ryan | FlutterFlow screens on mock data (`MOCK_AI=1` works without keys) |
-| Fri night | Adam | Run `scripts/eval_tagger.py` on 10 of our own photos; tune prompts; integrate Gemini-built size advisor + outfit rules |
-| Fri 11 PM | Nabil + Adam | Merge commerce router; `/feed` calls `ai.service.pair()`, `/swipe` calls `ai.memory.record_swipe()` |
-| Sat 8 AM–12 PM | All | Public backend URL; app wired to real API; **end-to-end run at noon** |
-| Sat afternoon | Adam | Real try-on on all three of us (once Google clears); Moss keys in |
-| Sat 10 PM | Adam | `scripts/precompute_tryons.py --user u_demo` with real demo photos |
-| Sat 11 PM | Nabil | Devpost draft (Adam writes the "how we use Claude / where it can go wrong" section) |
-| Sun 9 AM | All | Final submit |
-
-## Direction
-
-- **Demo story:** swipe real products → each card names the closet item it goes with → try it on → one checkout across stores → Fit Check post a judge can shop in one tap.
-- **Tracks the AI lane carries:** Anthropic (Claude does tagging and pairing; we can explain failure modes: wrong tags are user-editable, budget filtered server-side, no body reshaping), Moss (style memory), and the AI half of Meta (shop-the-fit for friends' posts).
-- **Keep it cheap and robust:** Haiku everywhere, caches on, caps on, and every AI call has a non-AI fallback so the demo never hard-fails.
-- **Nice to have if time:** size advisor ("we pick your size"), outfit rules scorer for smarter offline ranking (both being drafted in Gemini by Adam), voice via Cartesia only if ahead.
-
-## How to plug in (Nabil, Ryan)
-
-- Run it: see `backend/README.md` (venv, `.env`, `python -m scripts.seed_demo`, `uvicorn app.main:app`).
-- Endpoints and request/response shapes: `backend/README.md` table, or `http://localhost:8000/docs`.
-- New optional field: `ClosetItem.label` (e.g. "black cargo pants") — show it on the closet screen.
-- Giving an AI assistant context: paste `docs/ai-context.md` first.
+| When | Checkpoint |
+| --- | --- |
+| Fri night | #8, #7, #9 merged. Ryan's Feed runs in Chrome against the live backend. |
+| **Sat noon** | End-to-end on a phone: feed → save / add to cart → checkout `paid`. Then `staging` → `main`. |
+| Sat evening | AI features reachable in the app. Real fits photographed at the venue. iPhone build. |
+| Sun morning | Feature freeze, backup demo video, submit. |

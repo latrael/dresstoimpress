@@ -17,11 +17,12 @@ import os
 import re
 from collections import Counter
 from datetime import datetime, timezone
+from typing import get_args
 
 import httpx
 from pydantic import ValidationError
 
-from ..models import Product
+from ..models import Product, StyleTag
 
 log = logging.getLogger(__name__)
 
@@ -283,6 +284,9 @@ NORMALIZERS = {"hm": normalize_hm, "uniqlo": normalize_uniqlo}
 
 # ---- tagging + saving ----
 
+STYLE_VOCAB = set(get_args(StyleTag))
+
+
 def tag(products: list[dict], drops: Counter | None = None) -> list[dict]:
     """Fill label/pattern/formality/style_tags (and a missing category) from the image tagger.
     Without an AI key (or MOCK_AI=1) the tagger returns one fixed answer, so we skip it."""
@@ -296,8 +300,9 @@ def tag(products: list[dict], drops: Counter | None = None) -> list[dict]:
     for p in products:
         if use_ai:
             try:
-                t = tag_product(p["image_url"])
-                p.update({k: t[k] for k in ("label", "pattern", "formality", "style_tags")})
+                t = tag_product(p["image_url"], hint=p["name"])  # model shots: name says which garment
+                p.update({k: t[k] for k in ("label", "pattern", "formality")})
+                p["style_tags"] = [s for s in t.get("style_tags") or [] if s in STYLE_VOCAB]  # model drifts ("casual")
                 p["category"] = p.get("category") or t["category"]
             except Exception as e:  # NotClothing, model errors, budget: keep the rule-based fields
                 log.warning("tag failed for %s: %s", p["id"], e)

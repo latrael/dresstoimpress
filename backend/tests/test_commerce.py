@@ -197,3 +197,32 @@ def test_checkout_409_when_stock_changed(client):
                                   "unavailable": [{"product_id": "uniqlo-flaky", "size": "M"}]}
     assert client.get("/cart/u_409").json()["count"] == 2  # cart kept
     assert not store.list("orders", user_id="u_409")       # nothing charged
+
+
+def test_feed_ranked_cards_first(client, monkeypatch):
+    from app.commerce import router
+    from app.models import PairResult
+    from app.store import store
+    store.put("users", "u_rank", {"id": "u_rank", "price_ranges": RANGES})
+    dupe = {**store.get("products", "asos-demo-1"), "id": "asos-demo-1-red"}  # same style, other colour
+    store.put("products", dupe["id"], dupe)
+    ranked = ["asos-demo-1", "uniqlo-demo-1", "asos-demo-1-red"]
+    monkeypatch.setattr(router, "pair", lambda uid, cands, k: [
+        PairResult(product_id=pid, score=0.9, reason=f"why {pid}") for pid in ranked])
+    try:
+        cards = client.get("/feed", params={"user_id": "u_rank"}).json()
+    finally:
+        store.delete("products", dupe["id"])
+    ids = [c["id"] for c in cards]
+    assert set(ids[:2]) == {"asos-demo-1", "uniqlo-demo-1"} and all(c["reason"] for c in cards[:2])
+    assert set(ids[2:]) == {"hm-demo-1", "zara-demo-1"} and not any(c["reason"] for c in cards[2:])
+    assert "asos-demo-1-red" not in ids  # de-duped against the ranked style
+
+
+def test_product_detail_ids_with_colons(client):
+    from app.store import store
+    store.put("products", "hm:123:light blue", {**store.get("products", "hm-demo-1"), "id": "hm:123:light blue"})
+    try:
+        assert client.get("/products/hm:123:light blue").json()["id"] == "hm:123:light blue"
+    finally:
+        store.delete("products", "hm:123:light blue")

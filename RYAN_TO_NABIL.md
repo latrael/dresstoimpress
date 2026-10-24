@@ -1,77 +1,42 @@
 # RYAN_TO_NABIL.md
 
-Ryan's frontend handoff. Read and reply through `staging` from now on.
-Ryan's implementation branch remains `RyanFrontendking`.
+Updated October 23, 2026 (Pacific). Handoffs on staging; implementation on `RyanFrontendking`.
 
-## Coordination policy (Ryan's instruction)
+## Ownership and latest review
 
-- Read handoffs on `staging` before integration work and refresh them as work progresses.
-- Publish new handoffs and replies on `staging`; use the existing directional Markdown files.
-- This supersedes the handoff destination in `ryan-nabil.md` on `nabil`.
-- Do not copy secrets, private tunnel URLs, or shared keys into these public documents.
-- Implementation changes still follow the team's branch/PR workflow.
+Ryan owns all app screens and all design. Adam is AI/backend hosting + core; Nabil is commerce backend. The old split-screen assignment is withdrawn. Read all distinct Markdown versions across staging, Adam, Nabil, flutter-starter and Ryan. Latest Nabil reread at e2ea844 includes the data-only reference and /fit approval request.
 
-## Quick Browse requirements
+## App progress
 
-Keep Ryan's original wireframe as the layout reference:
-bounded picture section -> position dots -> product information and description ->
-size picker -> Add to Cart, with persistent bottom navigation.
+Merged staging and shared Flutter starter into Ryan's branch, retaining his accepted Quick Browse layout and using both original PDF pages as references. Home grid, persistent search over loaded suggestions, live Feed + wishlist adapter, cart add/remove/grouped totals, explicit sandbox checkout UI, receipts/status handling and order history implemented. Initial Social feed/shop entry wired, with full Social still pending. No backend/core files edited.
 
-Horizontal swiping changes pictures only when it starts inside the picture section,
-like an Instagram photo post. The description, size controls and cart button stay
-outside the carousel. Vertical product browsing does not imply save, discard or cart.
-Photo changes and passive product browsing must never call `/swipe`.
+Eight Flutter tests pass and analyze is clean. Tests cover original gestures plus shared API integration/no browsing /swipe, checkout 409/cart retention, partial account read failure and image proxy URL preservation. Desktop mouse dragging also verified in the actual browser. Switching products resets photo/size, including returning to a prior product.
 
-Ryan retains ownership of the FlutterFlow UI. The project is Niche (`niche-4k1al0`).
-The first generated screens exist, but the revised carousel/description layout is
-not applied or verified yet because editor automation has been unreliable.
-The frontend branch has a layout specification and validated mock Product fixtures.
+## Live checks passed
 
-## Acknowledged from staging
+Ryan supplied the private connection details directly; entered in device-local settings only. No values in source, Git or this handoff.
 
-Read `ADAM_TO_NABIL.md`, `NABIL_TO_ADAM.md` and `docs/schema.md`.
+- Health 200/ok, authenticated feed limit=5 returned five cards with gallery/size arrays, image proxy returned JPEG.
+- Actual app loads live photos, descriptions/fallbacks, product sizes and pairing reasons.
+- Saved a real feed product, selected size M, added it, saw the correct H&M group and total in cart, removed it, then unsaved it. Original cart/wishlist membership restored. Saving and browsing did not dismiss the product.
+- **No live checkout submitted.** The checkout UI is implemented and the stock-change 409 path is tested with controlled API responses. Phone checkout remains a team checkpoint.
 
-Adam has added optional Product fields:
-- `images: [{url, kind: "product" | "retailer_model"}]`
-- `description: string | null`
+The original five gallery/description/wishlist requests remain acknowledged as complete. No schema change requested.
 
-These model additions satisfy the schema portion of Ryan's original request.
-Do not introduce a second gallery shape. Keep `image_url` as the primary image.
-Personal `/tryon` output is separate from the global product gallery;
-`mode: "collage"` means an outfit board, not a photo of the user wearing it.
+## Outstanding commerce/core coordination
 
-## Remaining requests for Nabil
+Your newer product search/paging and users/onboarding routes are not yet methods in the published shared Dart core. Asked Adam to add them; current search filters loaded suggestions and does not claim full-catalog or natural-language matching.
 
-1. **Populate gallery data at ingest.** Preserve distinct images of the same
-   product and colour, including retailer model photos when present. No duplicates
-   or photos borrowed from other products/colour variants. Where only one exists,
-   return that one; the UI hides carousel dots.
-2. **Populate descriptions.** Use available retailer text, normalized to plain
-   text; return null when absent. Do not substitute a pairing reason or invent
-   fabric, fit, model measurements or care instructions.
-3. **Return the agreed fields consistently.** Feed, product detail and nested cart
-   Product objects should expose the same gallery/description data. Document the
-   sample response once ingest is wired; model support alone is not proof of data.
-4. **Independent wishlist operations.** Add/confirm idempotent
-   `PUT /wishlist/{user_id}/items/{product_id}` and
-   `DELETE /wishlist/{user_id}/items/{product_id}`, alongside existing GET.
-   Save/unsave must not dismiss the product from the feed. Preserve existing
-   clients/legacy saved items and avoid duplicate style-memory events on repeat PUT.
-5. **Confirm integration readiness here on staging.** Include exact route/response
-   examples, errors and remaining gaps. Send Adam's server URL and X-DTI-Key to
-   Ryan privately; never commit their values.
+Api.imageUrl in starter 1b4aff2 resolves /static but does not proxy retailer images. Current app wraps the documented /img route; asked Adam for the intended core helper. No new transport was introduced.
 
-Keep existing cart semantics: `{product_id,size,qty}`, unavailable-size validation,
-and retailer-grouped totals. Show the sale price when supplied and strike through
-the original `price_usd`, not the sale price.
+Checkout receipts distinguish paid / nessie_failed / pending_nessie. There is no documented per-purchase retry endpoint, so the app doesn't silently repeat a successful store payment when another failed. Please document a safe retry contract if that is needed.
 
-## Verification needed
+## /fit decision status
 
-- Old products still validate without the optional fields.
-- Gallery data stays with its product/colour and retains meaningful image kinds.
-- Feed/detail/cart expose the fields consistently.
-- Repeated save/unsave is safe and saving does not remove the item from the feed.
-- Existing cart stock validation and legacy swipe clients continue to work.
+Your public guest page proposal was read. **Ryan has not explicitly approved enabling it.** Keep it off until his visual review/decision; this handoff does not give that approval. Continue backend work independently.
 
-Reply in the appropriate handoff file on **staging** with implemented vs pending
-items. No direct agent message has been sent.
+## Remaining Ryan work
+
+Size assistance, personal try-on slide (collage labeled Outfit board), complete-look/Fit Score, full product details, onboarding, full Fit Check/Closet/Profile, and iPhone/live-checkout verification. User explicitly allows Xcode to come later on his machine.
+
+Implementation PRs go to staging only. Private connection details and service credentials must never enter public docs or Git.

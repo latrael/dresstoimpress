@@ -90,16 +90,36 @@ def record_swipe(user_id: str, product: dict, action: str) -> None:
         log.warning("moss add failed: %s", e)
 
 
-def _from_store(user_id: str, n: int = 8) -> tuple[list[str], list[str]]:
-    liked, discarded = [], []
-    for s in reversed(store.list("swipes", user_id=user_id)):
-        p = get_product(s["product_id"])
+def _events(user_id: str) -> list[tuple[str, str]]:
+    """(product_id, action), newest first: swipes plus wishlist saves (PUT /wishlist writes no swipe)."""
+    rows = [(s.get("at") or "", i, s.get("product_id"), s.get("action"))
+            for i, s in enumerate(store.list("swipes", user_id=user_id))]
+    rows += [(w.get("saved_at") or "", i, w.get("product_id"), "wishlist")
+             for i, w in enumerate(store.list("wishlist", user_id=user_id))]
+    rows.sort(key=lambda r: (str(r[0]), r[1]), reverse=True)
+    return [(pid, action) for _, _, pid, action in rows if pid]
+
+
+def history(user_id: str) -> tuple[list[dict], list[dict]]:
+    """(liked products, discarded products), newest first, one entry per product (its newest action)."""
+    liked, discarded, seen = [], [], set()
+    for pid, action in _events(user_id):
+        if pid in seen:
+            continue
+        seen.add(pid)
+        p = get_product(pid)
         if not p:
             continue
-        bucket = liked if s.get("action") in LIKED else discarded if s.get("action") == "discard" else None
-        if bucket is not None and len(bucket) < n:
-            bucket.append(_describe(p))
+        if action in LIKED:
+            liked.append(p)
+        elif action == "discard":
+            discarded.append(p)
     return liked, discarded
+
+
+def _from_store(user_id: str, n: int = 8) -> tuple[list[str], list[str]]:
+    liked, discarded = history(user_id)
+    return [_describe(p) for p in liked[:n]], [_describe(p) for p in discarded[:n]]
 
 
 def _from_moss(user_id: str, query: str, n: int = 8) -> tuple[list[str], list[str]]:

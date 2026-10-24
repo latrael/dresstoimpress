@@ -93,7 +93,7 @@ void main() {
     await gesture.moveBy(const Offset(0, -160));
     await tester.pump(const Duration(milliseconds: 400));
     expect(productPages(tester).page, 0);
-    expect(find.text('Release for next item'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     await gesture.up();
     await tester.pumpAndSettle();
     expect(productPages(tester).page, 1);
@@ -117,20 +117,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(productPages(tester).page, 1);
   });
-  testWidgets(
-      'up-arrow cue appears only past the boundary and confirms before moving',
+  testWidgets('bottom scrolling advances without an arrow or progress overlay',
       (tester) async {
-    await mount(tester);
-    expect(find.text('Keep scrolling for next item'), findsNothing);
+    await mount(tester, long: true);
     await wheel(tester, 20);
-    expect(find.text('Keep scrolling for next item'), findsOneWidget);
-    expect(find.byIcon(Icons.keyboard_arrow_up), findsOneWidget);
+    await tester.pumpAndSettle();
     expect(productPages(tester).page, 0);
+    for (var i = 0; i < 30; i++) {
+      await wheel(tester, 50);
+      await tester.pump(const Duration(milliseconds: 25));
+    }
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Keep scrolling for next item'), findsNothing);
-    await wheel(tester, 130);
-    expect(find.text('Next item ready'), findsOneWidget);
+    await tester.pumpAndSettle();
     expect(productPages(tester).page, 0);
+    await wheel(tester, 130);
+    expect(find.byIcon(Icons.keyboard_arrow_up), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(productPages(tester).page, 1);

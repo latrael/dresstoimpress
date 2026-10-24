@@ -31,11 +31,12 @@ outside the bounded image area. Demo omits service-dependent controls.
 Full app validation: 31 tests, analyze clean and release web build. Shared live
 and phone acceptance remain pending (RYAN.md).
 
-## Scrolling refinement (Ryan's up-arrow request)
+## Scrolling refinement (bottom-gated browsing)
 
 Product paging no longer competes with the details scroller. Read to the end,
-then begin a fresh boundary gesture: an up-arrow and progress cue signals the next
-item. Touch confirms on release; wheel/trackpad confirms after 250 ms idle.
+then begin a fresh boundary gesture to advance to the next item. There is no
+arrow or progress overlay. Touch confirms on release; wheel/trackpad confirms
+after 250 ms idle.
 A smaller movement cancels, one burst selects one item, and description momentum
 cannot skip products. Previous-item navigation uses the corresponding top edge.
 Horizontal gestures remain limited to photos. Details reset on leaving a product.

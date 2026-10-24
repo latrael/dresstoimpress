@@ -1,10 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
-typedef _BoundaryCue = ({int direction, double progress, bool touch});
 
 /// Route adapters belong to the shared shell. Browsing emits no swipe events.
 class QuickBrowse extends StatefulWidget {
@@ -43,7 +40,6 @@ class _QuickBrowseState extends State<QuickBrowse> {
   bool wheelBurst = false;
   bool wheelEligible = false;
   int? wheelTarget;
-  final cue = ValueNotifier<_BoundaryCue?>(null);
 
   // A wheel/trackpad burst must begin at the details boundary. Momentum from
   // scrolling the description cannot turn into a product change, and a burst
@@ -57,7 +53,6 @@ class _QuickBrowseState extends State<QuickBrowse> {
       wheelEligible = false;
       wheelDistance = 0;
       wheelTarget = null;
-      cue.value = null;
     }
     if (paging || !wheelEligible || !atBoundary) return;
     if (wheelDistance.sign != delta.sign) wheelDistance = 0;
@@ -65,15 +60,9 @@ class _QuickBrowseState extends State<QuickBrowse> {
     final target = active + wheelDistance.sign.toInt();
     if (target < 0 || target >= widget.products.length) {
       wheelTarget = null;
-      cue.value = null;
       return;
     }
     wheelTarget = wheelDistance.abs() >= 120 ? target : null;
-    cue.value = (
-      direction: wheelDistance.sign.toInt(),
-      progress: (wheelDistance.abs() / 120).clamp(0.0, 1.0),
-      touch: false
-    );
   }
 
   void keepWheelAlive(PointerSignalEvent event) {
@@ -82,37 +71,21 @@ class _QuickBrowseState extends State<QuickBrowse> {
         event.scrollDelta.dx.abs() > event.scrollDelta.dy.abs()) {
       return;
     }
-    // Wait for the gesture to settle. The arrow stays visible before the page
-    // moves, and one continuous trackpad burst can only choose one target.
+    // Wait for the gesture to settle so one continuous trackpad burst
+    // can only choose one target.
     wheelIdle?.cancel();
     wheelIdle = Timer(const Duration(milliseconds: 250), () {
       final target = wheelTarget;
       wheelBurst = false;
       wheelDistance = 0;
       wheelTarget = null;
-      cue.value = null;
       if (target != null && mounted) move(target);
     });
-  }
-
-  void dragCue(double distance) {
-    final direction = distance.sign.toInt();
-    final target = active + direction;
-    if (distance == 0 || target < 0 || target >= widget.products.length) {
-      cue.value = null;
-    } else {
-      cue.value = (
-        direction: direction,
-        progress: (distance.abs() / 72).clamp(0.0, 1.0),
-        touch: true
-      );
-    }
   }
 
   @override
   void dispose() {
     wheelIdle?.cancel();
-    cue.dispose();
     pages.dispose();
     super.dispose();
   }
@@ -125,7 +98,6 @@ class _QuickBrowseState extends State<QuickBrowse> {
       return;
     }
     paging = true;
-    cue.value = null;
     try {
       await pages.animateToPage(index,
           duration: const Duration(milliseconds: 280),
@@ -140,92 +112,32 @@ class _QuickBrowseState extends State<QuickBrowse> {
     if (widget.products.isEmpty) {
       return const Center(child: Text('No pieces to browse yet.'));
     }
-    return Stack(children: [
-      Listener(
-        onPointerSignal: keepWheelAlive,
-        child: PageView.builder(
-          controller: pages,
-          scrollDirection: Axis.vertical,
-          physics: const NeverScrollableScrollPhysics(),
-          onPageChanged: (index) => setState(() => active = index),
-          itemCount: widget.products.length,
-          itemBuilder: (context, index) => _ProductPage(
-            key: ValueKey(widget.products[index]['id']),
-            active: index == active,
-            product: widget.products[index],
-            saved: widget.savedIds.contains(widget.products[index]['id']),
-            onSave: widget.onSave,
-            onAddToCart: widget.onAddToCart,
-            imageUrl: widget.imageUrl,
-            onSizeAdvice: widget.onSizeAdvice,
-            onTryOn: widget.onTryOn,
-            onCompleteLook: widget.onCompleteLook,
-            onBoundary: (direction) => move(index + direction),
-            onWheel: wheel,
-            onDragProgress: dragCue,
-            position: '${index + 1} / ${widget.products.length}',
-          ),
+    return Listener(
+      onPointerSignal: keepWheelAlive,
+      child: PageView.builder(
+        controller: pages,
+        scrollDirection: Axis.vertical,
+        physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: (index) => setState(() => active = index),
+        itemCount: widget.products.length,
+        itemBuilder: (context, index) => _ProductPage(
+          key: ValueKey(widget.products[index]['id']),
+          active: index == active,
+          product: widget.products[index],
+          saved: widget.savedIds.contains(widget.products[index]['id']),
+          onSave: widget.onSave,
+          onAddToCart: widget.onAddToCart,
+          imageUrl: widget.imageUrl,
+          onSizeAdvice: widget.onSizeAdvice,
+          onTryOn: widget.onTryOn,
+          onCompleteLook: widget.onCompleteLook,
+          onBoundary: (direction) => move(index + direction),
+          onWheel: wheel,
+          position: '${index + 1} / ${widget.products.length}',
         ),
       ),
-      _BoundaryIndicator(cue: cue),
-    ]);
+    );
   }
-}
-
-class _BoundaryIndicator extends StatelessWidget {
-  const _BoundaryIndicator({required this.cue});
-  final ValueListenable<_BoundaryCue?> cue;
-  @override
-  Widget build(BuildContext context) => ValueListenableBuilder<_BoundaryCue?>(
-        valueListenable: cue,
-        builder: (context, value, _) {
-          if (value == null) return const SizedBox.shrink();
-          final next = value.direction > 0;
-          final item = next ? 'next item' : 'previous item';
-          final ready = value.progress >= 1;
-          final label = ready
-              ? value.touch
-                  ? 'Release for $item'
-                  : '${next ? 'Next' : 'Previous'} item ready'
-              : 'Keep scrolling for $item';
-          return Positioned(
-            left: 20,
-            right: 20,
-            bottom: next ? 10 : null,
-            top: next ? null : 10,
-            child: IgnorePointer(
-                child: Center(
-                    child: Semantics(
-              liveRegion: true,
-              child: Material(
-                elevation: 4,
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: SizedBox(
-                      width: 260,
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(
-                            next
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            size: 30),
-                        Text(label,
-                            textAlign: TextAlign.center,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        LinearProgressIndicator(
-                            value: value.progress, minHeight: 3),
-                      ])),
-                ),
-              ),
-            ))),
-          );
-        },
-      );
 }
 
 class _ProductPage extends StatefulWidget {
@@ -239,7 +151,6 @@ class _ProductPage extends StatefulWidget {
     required this.position,
     required this.onBoundary,
     required this.onWheel,
-    required this.onDragProgress,
     required this.active,
     this.onSizeAdvice,
     this.onTryOn,
@@ -253,7 +164,6 @@ class _ProductPage extends StatefulWidget {
   final String position;
   final void Function(int direction) onBoundary;
   final void Function(double delta, bool atBoundary) onWheel;
-  final void Function(double distance) onDragProgress;
   final bool active;
   final Future<String?> Function(String id)? onSizeAdvice;
   final Future<({String url, String label})?> Function(String id)? onTryOn;
@@ -290,11 +200,9 @@ class _ProductPageState extends State<_ProductPage> {
       dragging = true;
       dragStart = notification.metrics.pixels;
       dragDistance = 0;
-      widget.onDragProgress(0);
     } else if (notification is ScrollUpdateNotification &&
         notification.dragDetails != null) {
       dragDistance = 0;
-      widget.onDragProgress(0);
     } else if (notification is OverscrollNotification &&
         notification.dragDetails != null &&
         dragging) {
@@ -304,14 +212,12 @@ class _ProductPageState extends State<_ProductPage> {
       if (beganAtEdge) {
         if (dragDistance.sign != notification.overscroll.sign) dragDistance = 0;
         dragDistance += notification.overscroll;
-        widget.onDragProgress(dragDistance);
       }
     } else if (notification is ScrollEndNotification && dragging) {
       dragging = false;
       final direction =
           dragDistance.abs() >= 72 ? dragDistance.sign.toInt() : 0;
       dragDistance = 0;
-      if (direction == 0) widget.onDragProgress(0);
       if (direction != 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && widget.active) widget.onBoundary(direction);

@@ -18,7 +18,7 @@ Earlier FlutterFlow-specific implementation notes are superseded.
 7. Description, sizes, cart button, search and navigation stay outside the photo
    carousel. Horizontal drags there do not change photos.
 8. Scroll product details to the bottom first. A fresh upward gesture past that
-   boundary reveals an up-arrow/progress cue before the next product. A deliberate
+   boundary advances to the next product without an arrow or progress overlay. A deliberate
    touch drag confirms on release; trackpad/wheel confirms after the burst settles.
    Small edge movements and momentum from reading details do not change products.
    One gesture advances at most one item. Reset new-product state.

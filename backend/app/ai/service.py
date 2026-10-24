@@ -21,6 +21,7 @@ import time
 from .llm import (CLAUDE_PAIR_MODEL, CLAUDE_TAG_MODEL, BadModelOutput, ai_json, gemini_image,
                   mock_mode, text_mock)
 from .memory import style_memory
+from .reason_polish import polish_reason
 
 log = logging.getLogger(__name__)
 
@@ -221,7 +222,8 @@ def _fallback(cands: list[dict], ranges: dict, k: int, closet: list[dict] | None
     over = [p for p in cands if not _in_budget(p, ranges)]
     ranked = rank(in_budget, closet or [], style_text, k) + rank(over, closet or [], style_text, k)
     return [PairResult(product_id=r["product_id"], id=r["product_id"], score=r["score"],
-                       reason=r["reason"], pairs_with=r["pairs_with"]) for r in ranked[:k]]
+                       reason=polish_reason(r["reason"]) or r["reason"], pairs_with=r["pairs_with"])
+            for r in ranked[:k]]
 
 
 def _bank_key(user_id: str, closet: list[dict], user: dict) -> str:
@@ -341,7 +343,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             product_id=r["product_id"],
             id=r["product_id"],
             score=min(1.0, max(0.0, float(r.get("score", 0.5)))),
-            reason=" ".join(str(r.get("reason", "")).split()[:12]).rstrip(".") or "pairs with your closet",
+            reason=polish_reason(r.get("reason", "")) or "Pairs with your closet",
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     by_id = {p["id"]: p for p in cands}
@@ -358,6 +360,8 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         for r in _fallback(rest, ranges, k - len(out), closet, user.get("style_text", "")):
             out.append(r.model_copy(update={"score": round(min(r.score, floor) * 0.99, 4)}))
     # budget-first: anything in the user's price range ranks above anything outside it
+    # one consistent voice on every card (capitalized, no dangling "...with your", <= 12 words)
+    out = [r.model_copy(update={"reason": polish_reason(r.reason) or r.reason}) for r in out]
     out.sort(key=lambda r: (not _in_budget(by_id.get(r.product_id) or get_product(r.product_id), ranges), -r.score))
     return out
 

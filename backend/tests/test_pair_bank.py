@@ -41,19 +41,19 @@ def _swipe(store, pid):
 def test_after_a_swipe_feed_answers_from_the_bank_without_waiting_for_claude(env):
     service, store, calls, queued = env
     first = service.pair("u_b", IDS, k=6)
-    assert len(calls) == 1 and first[0].reason.startswith("call 1")
+    assert len(calls) == 1 and first[0].reason.lower().startswith("call 1")
 
     _swipe(store, "p0")
     second = service.pair("u_b", IDS[1:], k=6)
     assert len(calls) == 1, "no blocking Claude call after a swipe"
     assert [r.product_id for r in second][:3] == ["p1", "p2", "p3"]
-    assert all(r.reason.startswith("call 1") for r in second if r.product_id in IDS[1:6])
+    assert all(r.reason.lower().startswith("call 1") for r in second if r.product_id in IDS[1:6])
     assert len(queued) == 1, "one background re-rank queued"
 
     queued.pop()()  # the background refresh lands
     assert len(calls) == 2
     third = service.pair("u_b", IDS[1:], k=6)
-    assert len(calls) == 2 and third[0].reason.startswith("call 2"), "next load uses the fresh ranking"
+    assert len(calls) == 2 and third[0].reason.lower().startswith("call 2"), "next load uses the fresh ranking"
 
 
 def test_only_one_background_refresh_at_a_time(env):
@@ -71,7 +71,7 @@ def test_bank_too_thin_falls_back_to_a_fresh_claude_call(env):
     service.pair("u_b", IDS[:2], k=2)  # bank only knows p0, p1
     out = service.pair("u_b", IDS[2:], k=6)  # none of these are banked
     assert len(calls) == 2 and not queued
-    assert out[0].reason.startswith("call 2")
+    assert out[0].reason.lower().startswith("call 2")
 
 
 def test_closet_change_starts_a_new_bank(env):
@@ -106,7 +106,7 @@ def test_failed_background_refresh_keeps_the_bank(env, monkeypatch):
     queued.pop()()  # logs and swallows
     assert not service._refreshing
     out = service.pair("u_b", IDS[2:], k=6)
-    assert out and out[0].reason.startswith("call 1")
+    assert out and out[0].reason.lower().startswith("call 1")
 
 
 def test_bank_merges_newest_first_and_ages_older_scores(env):

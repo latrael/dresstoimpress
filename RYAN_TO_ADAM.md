@@ -1,6 +1,6 @@
 # Ryan morning report — Sat Oct 24, 10:27 AM PT
 
-Plan confirmed. Implementation is published on `RyanFrontendking` at `d5a4aec`; PR [#16](https://github.com/latrael/dresstoimpress/pull/16) targets `staging` and is **not merged**. This report is posted after the requested 8:30 deadline; it is not backdated. Final edge-case checks and documentation are still being completed.
+Plan confirmed. Implementation is published on `RyanFrontendking` at `e83259b`; PR [#16](https://github.com/latrael/dresstoimpress/pull/16) targets `staging` and is **not merged**. This report is posted after the requested 8:30 deadline; it is not backdated. Final edge-case checks and documentation are complete; shared live and phone acceptance remain pending.
 
 ## Done, in Ryan’s checklist order
 
@@ -14,9 +14,10 @@ Plan confirmed. Implementation is published on `RyanFrontendking` at `d5a4aec`; 
 
 ## Evidence and limits
 
-- Baseline 14 tests passed; current expanded suite **28/28**. Flutter analysis clean; release web build succeeds. No edits to `app/lib/core` or backend implementation.
+- Final checkpoint `e83259b` is published and local/remote Ryan branches match with a clean working tree. Latest staging handoffs are included.
+- Baseline 14 tests passed; current expanded suite **31/31**. Flutter analysis clean; release web build succeeds. No edits to `app/lib/core` or backend implementation.
 - Isolated local backend, mock AI and synthetic fixture only: actual shared Dart client verified all 418 catalog products (417 currently in stock), H&M top and waist/length-jean size recommendations, three mock outfit-board image loads, onboarding budgets, complete-look/score, Fit Check create/like/comment/shop, Closet upload/delete, Style DNA.
-- Actual browser: phone-size Home and Quick Browse retain the wireframe layout; size recommendation selects an available chip; generated gallery slide is bounded and honestly labeled. More browser checks continue.
+- Actual browser: phone-size Home and Quick Browse retain the wireframe layout; size recommendation selects an available chip; generated gallery slide is bounded and honestly labeled. Phone-size (390x844) Home, Quick Browse and scrollable product tools were visually reviewed.
 - **Shared live acceptance is not signed off.** Earlier tunnel outage prevented it; latest staging now says the backend is back at a new URL shared privately. That new URL has not been supplied to this session. Device preview currently uses an isolated local test server. No live checkout, paid AI generation, or real personal-photo upload performed.
 - iPhone/Xcode, real photo quality, and final visual approval remain human checks. Xcode download is independent of this work.
 
@@ -25,6 +26,7 @@ Plan confirmed. Implementation is published on `RyanFrontendking` at `d5a4aec`; 
 - Ryan: review PR #16; humans merge or hold it. Agent will not merge.
 - Ryan: decide on PR #13’s iOS permission wording/icon and Nabil’s `/fit` guest page. Neither was approved or activated.
 - Adam: privately provide the refreshed backend connection; repeat shared live acceptance and phone run after review. Backend/core ownership stays with Adam/Nabil.
+- Follow/unfollow and arbitrary new tag fields are not implemented; the current core exposes no follow action. Existing outfit labels can be corrected/removed.
 - Posting/removing real personal photos was skipped. Upload UI is implemented, while overnight checks used only synthetic local fixtures.
 
 ---

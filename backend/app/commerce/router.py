@@ -125,6 +125,7 @@ def _swiped(user_id: str) -> set[str]:
 SEED_LEAD = 5        # seeded feed: this many similar cards right after the seed...
 SEED_EVERY = 4       # ...then every 4th card is an other-category item that goes with the seed
 GOES_WITH_MIN = 0.5  # outfit_rules score for "goes with the seed" (the bar complete_look uses for closet items)
+PREFERRED_RUN = 2    # plain feed, per size group: 2 preferred-store cards for every other-store card
 
 
 def _size_pick(p: dict, bp: dict) -> Optional[str]:
@@ -149,6 +150,13 @@ def _size_fields(p: dict, bp: dict) -> dict:
     yours = _size_pick(shaped, bp)
     ideal = _size_pick({**shaped, "sizes": [s["name"] for s in _sizes(p)]}, bp)
     return {"your_size": yours, "in_your_size": None if ideal is None else yours == ideal}
+
+
+def _size_first(products: list[dict], bp: dict) -> list[dict]:
+    """Discover's soft size ranking: adds your_size/in_your_size; in-your-size first, otherwise the given order
+    (stable sort, nothing hidden)."""
+    cards = [{**p, **_size_fields(p, bp)} for p in products]
+    return sorted(cards, key=lambda c: c["in_your_size"] is not True)
 
 
 def _card(p: dict, bp: dict, r=None) -> dict:
@@ -178,9 +186,11 @@ def _weave(similar: list[dict], extra: list[dict]) -> list[dict]:
     return out + list(extra)
 
 
-def _seeded(user_id: str, seed: dict, cands: dict, bp: dict, boosted, limit: int) -> list[dict]:
-    """Seed first, then its category by similarity (in your size first), other categories that go with it woven
-    in, then the rest as the plain feed tiers it. One pair() call, for reasons only: it never reorders."""
+def _seeded(user_id: str, seed: dict, cands: dict, bp: dict, boosted, limit: int,
+            seed_shown: bool = False) -> list[dict]:
+    """Seed first (left out once `seed_shown`), then its category by similarity (in your size first), other
+    categories that go with it woven in, then the rest as the plain feed tiers it. One pair() call, for reasons
+    only: it never reorders."""
     in_size = {pid: _size_fields(p, bp)["in_your_size"] is True for pid, p in cands.items()}
     styles = {(seed.get("retailer"), seed.get("name", "").strip().lower())}  # drops the seed's colour variants
     same = [p for p in cands.values() if p.get("category") == seed.get("category")]
@@ -189,7 +199,7 @@ def _seeded(user_id: str, seed: dict, cands: dict, bp: dict, boosted, limit: int
     scored = [(score_product(as_product(p), anchor)["score"], p) for p in cands.values()
               if p.get("category") != seed.get("category")]
     goes = [p for s, p in sorted(scored, key=lambda r: (not in_size[r[1]["id"]], -r[0])) if s >= GOES_WITH_MIN]
-    cards = [seed, *_weave(_dedupe(same, styles), _dedupe(goes, styles))]
+    cards = [*([] if seed_shown else [seed]), *_weave(_dedupe(same, styles), _dedupe(goes, styles))]
     used = {p["id"] for p in cards}
     rest = sorted((p for p in cands.values() if p["id"] not in used),
                   key=lambda p: (not in_size[p["id"]], not boosted(p)))
@@ -200,10 +210,13 @@ def _seeded(user_id: str, seed: dict, cands: dict, bp: dict, boosted, limit: int
 
 @router.get("/feed")
 def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None,
-         seed: Optional[str] = None):
+         seed: Optional[str] = None, seed_shown: bool = False):
     """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with and
-    your_size/in_your_size. In-your-size items come first, then preferred stores; nothing is hidden for size.
-    `seed` (product id, 404 if unknown): that product first even if swiped, then similar items (see _seeded)."""
+    your_size/in_your_size. In-your-size items come first; within each size group, 2 preferred-store cards per
+    other-store card (_two_to_one). Nothing is hidden for size.
+    `seed` (product id, 404 if unknown): that product first even if swiped, then similar items (see _seeded).
+    `seed_shown=true`: the app has already shown the seed card, so later loads of the same seeded feed leave it
+    out (still "similar to seed"; the page is filled with one more similar item instead)."""
     seed_p = _product(seed) if seed else None
     user = store.get("users", user_id) or {}
     bp, ranges = user.get("body_profile") or {}, user.get("price_ranges", {})
@@ -217,7 +230,7 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
         return str(p.get("retailer", "")).lower() in preferred
 
     if seed_p:
-        return _seeded(user_id, seed_p, cands, bp, boosted, limit)
+        return _seeded(user_id, seed_p, cands, bp, boosted, limit, seed_shown)
     if not cands:
         return []
 
@@ -232,12 +245,24 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
     rest = [_card(cands[pid], bp) for pid in order if pid not in seen]
     styles: set = set()
     cards: list[dict] = []
-    for t in sorted(set(tier.values())):  # in each tier: ranked cards first, then the unranked top-up
-        cards += _mix(_dedupe([p for p in picked if tier[p["id"]] == t], styles))
-        cards += _mix(_dedupe([p for p in rest if tier[p["id"]] == t], styles))  # never repeats a ranked style
+    for size_group in sorted({t[0] for t in tier.values()}):
+        sides = []
+        for t in ((size_group, False), (size_group, True)):  # preferred stores, then the others
+            # in each tier: ranked cards first, then the unranked top-up (never repeats a ranked style)
+            sides.append(_mix(_dedupe([p for p in picked if tier[p["id"]] == t], styles))
+                         + _mix(_dedupe([p for p in rest if tier[p["id"]] == t], styles)))
+        cards += _two_to_one(*sides)
         if len(cards) >= limit:
             break
     return cards[:limit]
+
+
+def _two_to_one(preferred: list[dict], other: list[dict]) -> list[dict]:
+    """PREFERRED_RUN preferred-store cards per other-store card, each side in its own order; leftovers at the end."""
+    out = []
+    for n in range(max(-(-len(preferred) // PREFERRED_RUN), len(other))):
+        out += preferred[n * PREFERRED_RUN:(n + 1) * PREFERRED_RUN] + other[n:n + 1]
+    return out
 
 
 def _hits(p: dict, words: list[str]) -> Optional[int]:
@@ -385,15 +410,21 @@ def _add_to_cart(user_id: str, product_id: str, size: str, qty: int) -> dict:
     if item:
         item["qty"] += qty
     else:
-        # name is kept on the line so the cart can still say what it was if the product leaves the catalog
+        # name + photo are kept on the line so the cart can still show it if the product leaves the catalog
+        p = store.get("products", product_id) or {}
         cart["items"].append({"product_id": product_id, "size": size, "qty": qty, "added_at": _now(),
-                              "name": (store.get("products", product_id) or {}).get("name", "")})
+                              "name": p.get("name", ""), "image_url": p.get("image_url")})
     store.put("carts", user_id, cart)
     return cart
 
 
 def _line_name(i: dict, p: Optional[dict]) -> str:
     return (p or {}).get("name") or i.get("name") or i["product_id"]
+
+
+def _line_image(i: dict, p: Optional[dict]) -> Optional[str]:
+    """The photo saved on the line; lines saved before it was kept fall back to the product's (None if gone)."""
+    return i.get("image_url") or (p or {}).get("image_url")
 
 
 def _grouped(user_id: str) -> dict:
@@ -406,11 +437,11 @@ def _grouped(user_id: str) -> dict:
         count += i["qty"]
         p = store.get("products", i["product_id"])
         if reason := _unavailable_reason(p, i["size"]):
-            unavailable.append({**i, "name": _line_name(i, p), "product": p, "available": False,
-                                "unavailable_reason": reason})
+            unavailable.append({**i, "name": _line_name(i, p), "image_url": _line_image(i, p), "product": p,
+                                "available": False, "unavailable_reason": reason})
             continue
         g = groups.setdefault(p["retailer"], {"retailer": p["retailer"], "items": [], "subtotal_usd": 0.0})
-        g["items"].append({**i, "product": p, "available": True})
+        g["items"].append({**i, "image_url": _line_image(i, p), "product": p, "available": True})
         g["subtotal_usd"] = round(g["subtotal_usd"] + _price(p) * i["qty"], 2)
     gs = list(groups.values())
     return {"user_id": user_id, "groups": gs, "total_usd": round(sum(g["subtotal_usd"] for g in gs), 2),
@@ -457,7 +488,11 @@ def cart_change_size(user_id: str, product_id: str, req: CartSizeChange):
         target["qty"] += line["qty"]
         cart["items"].remove(line)
     else:
+        target = line
         line["size"] = req.new_size
+    # name + photo (re)saved from the live product, like on add (older lines may not have the photo yet)
+    target.update(name=p.get("name") or target.get("name", ""),
+                  image_url=p.get("image_url") or target.get("image_url"))
     store.put("carts", user_id, cart)
     return _grouped(user_id)
 

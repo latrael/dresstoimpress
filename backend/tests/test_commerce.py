@@ -245,6 +245,35 @@ def test_sold_out_size_listed_unavailable(client):
     assert client.get("/cart/u_so").json()["unavailable"][0]["unavailable_reason"] == "size no longer offered"
 
 
+def test_cart_line_keeps_photo_after_product_leaves(client):
+    from app.store import store
+    store.put("products", "asos-pic", {**store.get("products", "asos-demo-1"), "id": "asos-pic",
+                                       "image_url": "https://x/pic.jpg"})
+    cart = client.post("/cart/u_pic/items", json={"product_id": "asos-pic", "size": "M"}).json()
+    assert cart["groups"][0]["items"][0]["image_url"] == "https://x/pic.jpg"
+    assert store.get("carts", "u_pic")["items"][0]["image_url"] == "https://x/pic.jpg"  # saved on the line
+    store.delete("products", "asos-pic")
+    [gone] = client.get("/cart/u_pic").json()["unavailable"]
+    assert gone["product"] is None and gone["image_url"] == "https://x/pic.jpg"
+
+
+def test_cart_lines_saved_without_photo(client):
+    from app.store import store
+    hm = store.get("products", "hm-demo-1")
+    store.put("carts", "u_old", {"user_id": "u_old", "items": [  # lines saved before image_url was kept
+        {"product_id": "hm-demo-1", "size": "M", "qty": 1, "added_at": "2026-10-24T00:00:00+00:00",
+         "name": hm["name"]},
+        {"product_id": "long-gone", "size": "M", "qty": 1, "added_at": "2026-10-24T00:00:00+00:00",
+         "name": "Gone skirt"}]})
+    cart = client.get("/cart/u_old").json()
+    assert cart["groups"][0]["items"][0]["image_url"] == hm["image_url"]  # falls back to the product's photo
+    assert [(i["name"], i["image_url"]) for i in cart["unavailable"]] == [("Gone skirt", None)]
+    # a size change saves the photo on the line
+    assert client.patch("/cart/u_old/items/hm-demo-1", json={"size": "M", "new_size": "L"}).status_code == 200
+    line = store.get("carts", "u_old")["items"][0]
+    assert (line["size"], line["image_url"], line["name"]) == ("L", hm["image_url"], hm["name"])
+
+
 def _lines(cart):
     return sorted((i["product_id"], i["size"], i["qty"]) for g in cart["groups"] for i in g["items"])
 

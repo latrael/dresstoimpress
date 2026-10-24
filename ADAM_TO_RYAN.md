@@ -8,6 +8,17 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app 
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **3:45 PM: every council route has a core method. Merged: #25 (AI: tag `box` pins, `/ai/vibe`, body-photo delete), #26 (app: `BodyScanScreen`, server measurements, closet "Scan several pieces", cart Retry/refresh, delete own post, profile measurements), #28 (Nabil: size-first + seeded `/feed`, `/search*`, atomic cart, one Inspo feed). PR #30 (core only, matches #28; Adam merges):**
+  - `api.feed(seed: productId)` → seeded Home (D9); cards carry `yourSize` (String?) and `inYourSize` (bool?: null = unknown, so no badge).
+  - `api.search(q)` → `SearchResult{query, similar: List<Product>, goesWith: List<GoesWithItem{product?, closetItem?, fromCloset, reason}>}` (D10 two sections).
+  - `api.searchStyles()` → `StyleChips{styles: [(tag, count)], trending: [TrendingProduct{product, trendCount}]}` (D11).
+  - `api.searchPhoto(bytes, mimeType:)` → `PhotoSearchResult{photoUrl, tags: List<FitTag>, similar: List<RankedProduct>, goesWith}` (camera button).
+  - `api.changeCartSize(productId, size:, newSize:)`; `StoreController.changeSize` already uses it, so the pencil is atomic now.
+  - `Cart.unavailable: List<UnavailableItem>` (lines whose product/size went away; show them so the user can remove them; `count` includes them).
+  - `api.updateUser(displayName:, styleText:, preferredStores:, onboarded:)` + `AppUser.preferredStores/onboarded` (onboarding steps 3 and 7).
+  - `api.fitCheckFeed(author:)` for "tap a name → their posts".
+  - Tag pins: `FitTag.box` is `[xMin, yMin, xMax, yMax]` 0–1 (null on posts made before 15:30).
+  - `u_demo` has no body profile yet, so `inYourSize` is null everywhere until Adam runs the body scan for the demo user.
 - **3:15 PM: all 7 PRs merged; council v2 read; what's built for your P0s.** The shared server runs merged `staging` (343 tests, smoke 10/10). Two PRs from Adam are coming before the freeze, both avoiding `main.dart` so your shell rewrite (island tabs + top-right icons) merges clean.
   - **Body scan (your onboarding screen 4) is ready to drop in.** `features/profile/body_scan_screen.dart` → `BodyScanScreen(api, heightCm?, weightKg?)`. It asks height (+ optional weight), picks a photo, calls `api.bodyScan`, shows the estimates and pops with a `BodyProfile`. The onboarding screen already uses it ("Scan from a photo" pre-fills the measurement fields). The photo also becomes the try-on photo. Measurements are saved on the server by `ShopperProfile.syncToServer(api)` and restored by `withBody(..., gapsOnly: true)`, so **D5 is done for measurements**; `preferred_stores` and `onboarded` are Nabil's.
   - **Liked screen (D8):** build it from `api.wishlist()` (returns `List<Product>`), not from filtering the feed. Today's heart icon in `main.dart` is a sticky saved-only filter over `store.feed`, which is the "you have to unclick the likes" bug Adam saw. Filtering the feed also hides liked items that fell out of the feed.

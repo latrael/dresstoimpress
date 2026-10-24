@@ -64,10 +64,30 @@ class Api {
 
   Future<bool> health() async => (await _send('GET', '/health', auth: false))['ok'] == true;
 
-  Future<List<FeedCard>> feed({int limit = 20, String? category, String? retailer}) async => _listOf(
+  /// GET /feed. Cards carry [RankedProduct.yourSize] / [inYourSize] (soft size ranking, D3). With [seed]
+  /// (a product id) the feed is "seeded" (D9): that item first, then similar items in your size.
+  Future<List<FeedCard>> feed({int limit = 20, String? category, String? retailer, String? seed}) async => _listOf(
       await _send('GET', '/feed',
-          query: {'user_id': _user, 'limit': '$limit', 'category': category, 'retailer': retailer}),
+          query: {'user_id': _user, 'limit': '$limit', 'category': category, 'retailer': retailer, 'seed': seed}),
       RankedProduct.fromJson);
+
+  // ------------------------------------------------------------ Discover (Nabil's routes, Adam's vibe parser)
+
+  /// GET /search?user_id=&q=: keyword search (a style, an item) -> "Similar items" (Products, in stock, one
+  /// per style) + "Goes with it" around the top result (D10). Blank [q] -> empty lists.
+  Future<SearchResult> search(String q) async =>
+      SearchResult.fromJson(await _send('GET', '/search', query: {'user_id': _user, 'q': q}));
+
+  /// GET /search/styles?user_id=&limit=: the catalog's style tags with counts (chips, most common first)
+  /// and up to [limit] trending products (D11).
+  Future<StyleChips> searchStyles({int limit = 8}) async =>
+      StyleChips.fromJson(await _send('GET', '/search/styles', query: {'user_id': _user, 'limit': '$limit'}));
+
+  /// POST /search/photo (multipart `user_id` + `file`): the AI tags each piece in the photo, finds catalog
+  /// matches and what completes the top one. Creates no post or closet item; GPS is stripped. 502
+  /// (ApiError) when the AI is down, 415/413 for a bad file; no garments -> 200 with empty lists.
+  Future<PhotoSearchResult> searchPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
+      PhotoSearchResult.fromJson(await _upload('/search/photo', {'user_id': _user}, bytes, mimeType));
 
   Future<Product> product(String id) async => Product.fromJson(await _send('GET', '/products/${_seg(id)}'));
 
@@ -107,6 +127,12 @@ class Api {
 
   Future<Cart> removeFromCart(String productId, {String? size}) async => Cart.fromJson(
       await _send('DELETE', '/cart/${_seg(_user)}/items/${_seg(productId)}', query: {'size': size}));
+
+  /// PATCH /cart/{user}/items/{product_id}: atomic size change (the cart pencil). Keeps the quantity and
+  /// merges into an existing line of [newSize]. Replaces the old add-then-remove pair that could half-fail.
+  Future<Cart> changeCartSize(String productId, {required String size, required String newSize}) async =>
+      Cart.fromJson(await _send('PATCH', '/cart/${_seg(_user)}/items/${_seg(productId)}',
+          body: {'size': size, 'new_size': newSize}));
 
   Future<CheckoutResult> checkout() async => CheckoutResult.fromJson(await _send('POST', '/checkout/${_seg(_user)}'));
 
@@ -178,11 +204,13 @@ class Api {
       AppUser.fromJson(await _send('GET', '/users/${_seg(userId ?? _user)}'));
 
   /// PATCH /users/{id} (current user). Only the fields you pass change; new [styleText] without
-  /// [priceRanges] re-parses budgets and merges them over the old ones.
+  /// [priceRanges] re-parses budgets and merges them over the old ones. [preferredStores] are retailer
+  /// ids ("hm", "uniqlo"); [onboarded] marks the end of onboarding (D5/D6).
   Future<AppUser> updateUser({String? displayName, String? styleText, Map<String, List<double>>? priceRanges,
-          List<String>? friends}) async =>
+          List<String>? friends, List<String>? preferredStores, bool? onboarded}) async =>
       AppUser.fromJson(await _send('PATCH', '/users/${_seg(_user)}', body: {
         'display_name': displayName, 'style_text': styleText, 'price_ranges': priceRanges, 'friends': friends,
+        'preferred_stores': preferredStores, 'onboarded': onboarded,
       }));
 
   /// POST /onboarding: create or update a user from free text ("Y2K, tops under $40") and return what
@@ -242,8 +270,10 @@ class Api {
 
   // ------------------------------------------------------------ Fit Check (Nabil)
 
-  Future<List<FitCheckPost>> fitCheckFeed({int limit = 20}) async => _listOf(
-      await _send('GET', '/fitcheck/feed', query: {'user_id': _user, 'limit': '$limit'}), FitCheckPost.fromJson);
+  /// GET /fitcheck/feed: one Inspo feed for everyone (D4). [author] (a user id) = only that person's posts.
+  Future<List<FitCheckPost>> fitCheckFeed({int limit = 20, String? author}) async => _listOf(
+      await _send('GET', '/fitcheck/feed', query: {'user_id': _user, 'limit': '$limit', 'author': author}),
+      FitCheckPost.fromJson);
 
   Future<FitCheckPost> fitCheckPost(String postId) async =>
       FitCheckPost.fromJson(await _send('GET', '/fitcheck/${_seg(postId)}', query: {'user_id': _user}));

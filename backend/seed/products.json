@@ -3591,7 +3591,6 @@
   "image_url": "https://image.hm.com/assets/hm/ab/0e/ab0e2258dab7def8570b304b516e98d09188f604.jpg?imwidth=657",
   "product_url": "https://www2.hm.com/en_us/productpage.1273075019.html",
   "style_tags": [
-   "retro",
    "athleisure",
    "classic",
    "streetwear"
@@ -4169,8 +4168,7 @@
   "product_url": "https://www2.hm.com/en_us/productpage.1289931012.html",
   "style_tags": [
    "classic",
-   "minimalist",
-   "casual"
+   "minimalist"
   ],
   "pattern": "solid",
   "formality": 2,
@@ -15019,7 +15017,6 @@
   "product_url": "https://www2.hm.com/en_us/productpage.1352190005.html",
   "style_tags": [
    "minimalist",
-   "casual",
    "classic"
   ],
   "pattern": "solid",
@@ -18704,8 +18701,7 @@
   "product_url": "https://www2.hm.com/en_us/productpage.1360320003.html",
   "style_tags": [
    "minimalist",
-   "classic",
-   "casual"
+   "classic"
   ],
   "pattern": "striped",
   "formality": 2,
@@ -19681,7 +19677,6 @@
   "image_url": "https://image.hm.com/assets/hm/74/1a/741a32f66019d051302a373dcdff13a39b7f3175.jpg?imwidth=657",
   "product_url": "https://www2.hm.com/en_us/productpage.1361447006.html",
   "style_tags": [
-   "casual",
    "classic",
    "minimalist"
   ],
@@ -25457,7 +25452,6 @@
   "image_url": "https://image.uniqlo.com/UQ/ST3/us/imagesgoods/482766/item/usgoods_08_482766_3x4.jpg",
   "product_url": "https://www.uniqlo.com/us/en/products/E482766-000/00?colorDisplayCode=08",
   "style_tags": [
-   "casual",
    "minimalist",
    "classic",
    "athleisure"
@@ -30307,8 +30301,7 @@
   "product_url": "https://www.uniqlo.com/us/en/products/E489040-000/00?colorDisplayCode=01",
   "style_tags": [
    "minimalist",
-   "classic",
-   "casual"
+   "classic"
   ],
   "pattern": "striped",
   "formality": 2,
@@ -30516,7 +30509,6 @@
   "product_url": "https://www.uniqlo.com/us/en/products/E489372-000/00?colorDisplayCode=69",
   "style_tags": [
    "minimalist",
-   "casual",
    "classic",
    "athleisure"
   ],

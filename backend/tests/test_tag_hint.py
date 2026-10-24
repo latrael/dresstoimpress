@@ -22,3 +22,16 @@ def test_tag_hint_reaches_prompt_and_cache(monkeypatch, tmp_path):
     assert 'product "Regular Fit T-shirt"' in prompts_sent[0]
     assert "Regular Fit" not in prompts_sent[1]
     assert t["label"] == "white tee" and t["tags"]
+
+
+def test_style_tags_limited_to_vocabulary(monkeypatch, tmp_path):
+    from app.ai import service
+    from app.store import store
+
+    monkeypatch.setattr(store, "root", tmp_path)
+    monkeypatch.setattr(service, "text_mock", lambda: False)
+    monkeypatch.setattr(service, "ai_json", lambda prompt, **k: {
+        "label": "black tee", "category": "top", "color": "black", "pattern": "solid", "formality": 2,
+        "style_tags": ["Casual", "streetwear", "retro", "Streetwear", "y2k", 7]})
+    assert service.tag_product("https://img/v.jpg")["style_tags"] == ["streetwear", "y2k"]
+    assert service.tag_closet_item("u_v", "https://img/v2.jpg").style_tags == ["streetwear", "y2k"]

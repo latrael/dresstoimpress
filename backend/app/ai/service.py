@@ -7,7 +7,9 @@ import os
 import uuid
 from pathlib import Path
 
-from ..models import ClosetItem, PairResult, Product
+from typing import get_args
+
+from ..models import ClosetItem, PairResult, Product, StyleTag
 from .colors import find_duplicate
 from .compat import get_product, list_products
 from ..store import DATA_DIR, store
@@ -22,6 +24,13 @@ TRYON_DIR = DATA_DIR / "tryon"
 PUBLIC_BASE = os.getenv("PUBLIC_BASE", "http://localhost:8000")
 PAIR_TTL = int(os.getenv("PAIR_CACHE_SECONDS", "600"))
 CATEGORIES = {"top", "bottom", "outerwear", "shoes", "dress", "accessory"}
+STYLE_VOCAB = set(get_args(StyleTag))
+
+
+def _style_tags(raw: dict, n: int) -> list[str]:
+    """Model style tags limited to the shared 10-word vocabulary (it sometimes adds "casual", "retro")."""
+    tags = raw.get("style_tags") if isinstance(raw.get("style_tags"), list) else []
+    return [t for t in dict.fromkeys(str(t).strip().lower() for t in tags) if t in STYLE_VOCAB][:n]
 
 
 class NotClothing(Exception):
@@ -68,7 +77,7 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
         color=str(raw.get("color", "unknown")),
         pattern=raw.get("pattern", "other") if raw.get("pattern") in
         {"solid", "striped", "plaid", "graphic", "floral", "other"} else "other",
-        style_tags=list(raw.get("style_tags", []))[:5],
+        style_tags=_style_tags(raw, 5),
         formality=min(5, max(1, int(raw.get("formality", 3)))),
         source="photo",
         label=" ".join(str(raw.get("label", "")).split()[:5]),
@@ -291,7 +300,7 @@ def tag_fit(image_url: str) -> list[dict]:
             "category": r.get("category") if r.get("category") in CATEGORIES else "accessory",
             "color": str(r.get("color", "")),
             "pattern": r.get("pattern", "other"),
-            "style_tags": list(r.get("style_tags", []))[:3],
+            "style_tags": _style_tags(r, 3),
         })
     return out[:8]
 
@@ -310,7 +319,7 @@ def tag_product(image_url: str, hint: str | None = None) -> dict:
         "color": str(raw.get("color", "")),
         "pattern": raw.get("pattern") if raw.get("pattern") in
         {"solid", "striped", "plaid", "graphic", "floral", "other"} else "other",
-        "style_tags": list(raw.get("style_tags", []))[:5],
+        "style_tags": _style_tags(raw, 5),
         "formality": min(5, max(1, int(raw.get("formality", 3)))),
     }
     return {**item, "tags": to_nabil_tags(item)}

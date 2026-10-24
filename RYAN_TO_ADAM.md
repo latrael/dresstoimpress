@@ -1,3 +1,11 @@
+# Ryan update: continuous scroll replaces boundary gestures — Oct 24
+
+Ryan reported the swipe-up gate required a reversal and requested continuous scrolling. Published `b161553` on `RyanFrontendking`; [PR #18](https://github.com/latrael/dresstoimpress/pull/18) updated into staging, unmerged. All prior boundary/arrow instructions below are superseded. One lazy vertical list contains full product details, separated by a 48px faded burgundy band plus 12px spacing above/below. Prepare roughly one screen ahead/behind; distant widgets/images build on approach. No nested vertical scroll, page snapping, thresholds, timers or gesture confirmation. Each nearby item keeps independent size/photo state. Horizontal gallery behavior, backend/core and passive-browsing API behavior unchanged.
+
+Checked latest Adam/Nabil handoffs on staging. Flutter analysis clean; 36 tests pass (five continuous-scroll regressions replace seven obsolete paging checks). Actual browser sample-mode preview verified natural scrolling and visible separators. Updated signed release installed and launched on Ryan's iPhone; physical scroll feel is for his acceptance. No private credentials or personal signing configuration committed. Phone connection settings remain device-local.
+
+---
+
 # Ryan update: bottom-gated browsing, arrow removed — Oct 24
 
 Ryan scrapped the up-arrow idea. Published `faaec28` on `RyanFrontendking`; [PR #18](https://github.com/latrael/dresstoimpress/pull/18) is updated, targets staging, and remains unmerged. Read the latest staging Adam/Nabil handoffs before changing the UI. A product must reach the bottom before a fresh upward gesture advances; no arrow/progress overlay. Keep the existing small-motion and momentum protections, one product per gesture, and horizontal photos confined to the carousel. Previous-product navigation remains gated at the top.

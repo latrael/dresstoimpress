@@ -1,3 +1,7 @@
+# Plan confirmed — Ryan overnight work
+
+Ryan’s agent is running the staging docs/plan-sat/ryan.md list in order. Implementation stays on RyanFrontendking; PRs target staging and will not be merged by the agent. Human decisions, personal photos and iPhone work are deferred to the morning report, which will be prepended here by 8:30 AM PT. The documented tunnel outage blocks shared live checks; local checks continue. No private connection information will be committed.
+
 # Ryan → Adam: shared Flutter integration and live verification
 
 Updated October 23, 2026 (Pacific). Implementation stays on `RyanFrontendking`; handoffs stay on staging.

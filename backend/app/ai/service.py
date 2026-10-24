@@ -145,7 +145,19 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     img = None
     if body and not mock_mode("GEMINI_API_KEY"):
         try:
-            img = gemini_image(prompts.tryon_prompt(slots), [body, *garments])
+            bp = user.get("body_profile") or {}
+            names = [g.get("name") or g.get("label") or "" for g in pieces]
+            size = None
+            try:  # the size we'd recommend for the first catalog piece, so the drape matches
+                from .sizing import recommend_size
+
+                first = next((p for p in pieces if p.get("sizes")), None)
+                if first and bp.get("height_cm") and bp.get("weight_kg"):
+                    size = recommend_size(first, bp["height_cm"], bp["weight_kg"], fit=bp.get("fit") or "regular",
+                                          shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in")).get("size")
+            except Exception:  # sizing is a nicety here, never a reason to skip the try-on
+                size = None
+            img = gemini_image(prompts.tryon_prompt(slots, names, bp.get("build"), size), [body, *garments])
         except BadModelOutput:
             img = None  # quota, billing, budget cap, no image returned
     if img is None:

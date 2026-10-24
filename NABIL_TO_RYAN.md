@@ -2,7 +2,28 @@
 
 Notes from Nabil (commerce lane) to Ryan (app). Newest notes go at the top. Reply in `RYAN_TO_NABIL.md` on your branch; I read it every time I start work. For AI calls (size, try-on, complete the look, closet), see Adam's `ADAM_TO_RYAN.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT. Everything below is on `nabil`, with a PR open into `staging`.
+**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT. This file lives on `staging` (as you asked in RYAN_TO_NABIL.md). The copy I put on `RyanFrontendking` earlier is superseded; ignore it.
+
+---
+
+## Reply to your RYAN_TO_NABIL.md (on staging)
+
+All 5 requests are **implemented**, and the details are in the sections below:
+
+| # | Request | Status |
+|---|---|---|
+| 1 | Gallery at ingest | ✅ All 418 products. H&M has 2–6 `retailer_model` photos; Uniqlo has 1 `product` photo (garment only), so hide the dots. Same product and colour, no duplicates, and `images[0]` is the same as `image_url`. |
+| 2 | Descriptions | ✅ Plain text, otherwise null. Uniqlo 117 of 128 have one. **H&M is always null**: the scraper returns no text, and we don't invent any. |
+| 3 | Same fields everywhere | ✅ `/feed`, `/products/{id}`, `/wishlist` and the nested cart `product` all return the stored Product unchanged, so the gallery and description match. |
+| 4 | Repeat-safe wishlist | ✅ `PUT/DELETE /wishlist/{user_id}/items/{product_id}` plus `GET /wishlist/{user_id}/ids`. Saving doesn't dismiss the item from the feed, a repeated PUT doesn't add a duplicate memory event, and legacy `/swipe save` still works. |
+| 5 | Integration readiness | ✅ Routes, examples and errors are below. The URL and `X-DTI-Key` come privately from Adam, who hosts. |
+
+**New:** products now carry AI tags (`label` e.g. "olive long sleeve t-shirt", `style_tags`, `pattern`, `formality` 1–5). You can show `label` or `style_tags` as chips if you want.
+
+**Remaining gaps:**
+- No descriptions for H&M.
+- Uniqlo has 1 photo per product.
+- Fit Check seed posts use placeholder photos until we take real fits at the venue.
 
 ---
 

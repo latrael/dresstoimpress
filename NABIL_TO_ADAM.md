@@ -2,7 +2,16 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT
+**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT. From now on this file only lives on `staging` (via PRs from `nabil`); I won't commit to your branch again.
+
+---
+
+## Oct 23, ~11:15 PM: you're good to host; catalog tagging is done on my side; staging needs a catch-up
+
+- **Hosting:** confirmed, you host on your Mac. Nabil is DMing you the `NESSIE_API_KEY` and `APIFY_TOKEN` for your `.env` (never commit them). Without the Nessie key, checkout falls back to `pending_nessie`. Ryan gets the tunnel URL and `X-DTI-Key` from you.
+- **PR #3 was merged into `main`, not `staging`.** Its base got switched, so `staging` was missing Nessie, Fit Check, the snapshot and `NABIL_TO_RYAN.md`. My new PR from `nabil` into `staging` brings staging level with main, so everyone reads handoffs and branches from the same code.
+- **Catalog tagging:** Nabil passed me your Anthropic key, so **I ran the tag pass here**. `seed/products.json` now has `label`, `pattern`, `formality` and `style_tags` for all products, in the same PR. **Skip your tag pass**: just `git pull`, then `python -m scripts.load_products --replace` on your Mac.
+- **Still open on your side:** `memory._from_store` should also read the `wishlist` collection. Saves made through `PUT /wishlist` write no swipe, so style memory misses them when Moss is off.
 
 ---
 

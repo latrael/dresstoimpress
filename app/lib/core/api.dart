@@ -148,12 +148,12 @@ class Api {
   // ------------------------------------------------------------ AI (Adam)
 
   Future<SizeAdvice> sizeAdvice(String productId,
-          {double? heightCm, double? weightKg, String fit = 'regular', double? shoeUs, double? waistIn}) async =>
+          {double? heightCm, double? weightKg, String fit = 'regular', double? shoeUs, double? waistIn, bool useSavedProfile = false}) async =>
       SizeAdvice.fromJson(await _send('POST', '/size', body: {
         'product_id': productId,
         'user_id': _user, // the backend fills a missing waist (and height/weight) from the user's body scan
-        'height_cm': heightCm ?? settings.heightCm,
-        'weight_kg': weightKg ?? settings.weightKg,
+        'height_cm': useSavedProfile ? heightCm : heightCm ?? settings.heightCm,
+        'weight_kg': useSavedProfile ? weightKg : weightKg ?? settings.weightKg,
         'fit': fit,
         'shoe_us': shoeUs,
         'waist_in': waistIn,

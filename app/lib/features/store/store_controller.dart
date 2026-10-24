@@ -23,12 +23,50 @@ class StoreController extends ChangeNotifier {
   int sizingRevision = 0;
   ShopperProfile profile = const ShopperProfile();
   final Map<String, Future<String?>> _sizes = {};
-  Future<void> loadProfile() async {
+  Future<void> loadProfile({bool fromServer = false}) async {
     profile = await ShopperProfile.load(api.settings.userId);
+    if (fromServer && !demo) {
+      final user = await api.getUser();
+      final body = user.bodyProfile;
+      profile = ShopperProfile(
+          completed: user.onboarded || profile.completed,
+          style: user.styleText,
+          preferredStores: user.preferredStores
+              .where((s) => ['hm', 'uniqlo'].contains(s))
+              .toList(),
+          otherStores: user.preferredStores
+              .where((s) => !['hm', 'uniqlo'].contains(s))
+              .join(', '),
+          fit: body?.fit ?? profile.fit,
+          usualSize: profile.usualSize,
+          usualSizes: body?.usualSizes ?? profile.usualSizes,
+          heightCm: body != null && body.heightCm > 0
+              ? body.heightCm
+              : profile.heightCm,
+          weightKg: body?.weightKg ?? profile.weightKg,
+          chestCm:
+              body?.chestIn == null ? profile.chestCm : body!.chestIn! * 2.54,
+          waistCm:
+              body?.waistIn == null ? profile.waistCm : body!.waistIn! * 2.54,
+          hipCm: body?.hipIn == null ? profile.hipCm : body!.hipIn! * 2.54,
+          inseamCm: body?.inseamIn == null
+              ? profile.inseamCm
+              : body!.inseamIn! * 2.54,
+          shoeUs: body?.shoeUs ?? profile.shoeUs,
+          budgets: profile.budgets);
+    }
     _sizes.clear();
     sizingRevision++;
     notifyListeners();
   }
+
+  bool get hasSizingData =>
+      profile.heightCm != null ||
+      profile.weightKg != null ||
+      profile.usualSizes.isNotEmpty ||
+      profile.usualSize.isNotEmpty ||
+      profile.waistCm != null ||
+      profile.shoeUs != null;
 
   Future<String?> automaticSize(String id) async {
     try {
@@ -50,8 +88,13 @@ class StoreController extends ChangeNotifier {
                 .contains(available.single.toUpperCase())) {
           return available.single;
         }
-        if (!demo && profile.heightCm != null && profile.weightKg != null) {
+        if (!demo &&
+            (profile.heightCm != null ||
+                profile.weightKg != null ||
+                profile.waistCm != null ||
+                profile.shoeUs != null)) {
           final advice = await api.sizeAdvice(id,
+              useSavedProfile: true,
               heightCm: profile.heightCm,
               weightKg: profile.weightKg,
               fit: profile.fit,
@@ -62,11 +105,11 @@ class StoreController extends ChangeNotifier {
           }
         }
         // An explicit usual size is a fallback, never an invented measurement.
+        final usual = profile.usualSizes[product.category] ??
+            (profile.usualSizes.isEmpty ? profile.usualSize : '');
         final match =
-            available.where((s) => s.toUpperCase() == profile.usualSize);
-        return profile.usualSize.isNotEmpty && match.isNotEmpty
-            ? match.first
-            : null;
+            available.where((s) => s.toUpperCase() == usual.toUpperCase());
+        return usual.isNotEmpty && match.isNotEmpty ? match.first : null;
       });
 
   Future<void> changeSize(CartItem item, String size) async {
@@ -92,14 +135,16 @@ class StoreController extends ChangeNotifier {
     }
     if (accountWarning != null) throw Exception(accountWarning);
     try {
+      // One atomic server operation preserves quantity and merges matching lines.
       try {
-        // One atomic call: the server keeps the quantity and merges into an existing line.
         cart = await api.changeCartSize(item.productId,
             size: item.size, newSize: size);
       } on ApiError catch (e) {
-        if (e.status != 404 && e.status != 405) rethrow;
-        // Older server without the PATCH route: keep the old line until the
-        // requested replacement is added.
+        if (e.status != 405 &&
+            !(e.status == 404 && e.message.toLowerCase() == 'not found')) {
+          rethrow;
+        }
+        // Compatibility only for a missing route, never a missing cart line.
         cart = await api.addToCart(item.productId, size, qty: item.qty);
         cart = await api.removeFromCart(item.productId, size: item.size);
       }
@@ -206,7 +251,9 @@ class StoreController extends ChangeNotifier {
     if (demo) return;
     try {
       cart = await api.cart();
-      accountWarning = null;
+      if (accountWarning?.startsWith('Cart could not') == true) {
+        accountWarning = null;
+      }
     } catch (_) {
       accountWarning ??=
           'Cart could not be refreshed. Retry before making changes.';
@@ -294,6 +341,8 @@ Map<String, dynamic> browseMap(RankedProduct card) {
     'description': p.description,
     'colors': p.colors,
     'reason': card.reason,
+    'your_size': card.yourSize,
+    'in_your_size': card.inYourSize,
     'in_stock': p.inStock,
     'sizes': [
       for (final s in p.sizes) {'name': s.name, 'in_stock': s.available}

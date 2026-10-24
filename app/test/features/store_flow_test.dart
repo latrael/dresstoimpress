@@ -59,12 +59,18 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final requests = <http.Request>[];
-    var inCart = false; // the cart screen re-reads the server copy when it opens
+    var inCart =
+        false; // the cart screen re-reads the server copy when it opens
     final api = Api(client: MockClient((request) async {
       requests.add(request);
       expect(request.headers['X-DTI-Key'], 'test-only');
       Object data;
-      if (request.url.path == '/feed') {
+      if (request.url.path == '/users/u_demo') {
+        return http.Response(
+            jsonEncode(
+                {'id': 'u_demo', 'display_name': 'Demo', 'onboarded': true}),
+            200);
+      } else if (request.url.path == '/feed') {
         data = [piece];
       } else if (request.url.path.endsWith('/ids')) {
         data = <String>[];
@@ -89,9 +95,7 @@ void main() {
     final store = StoreController(api: api, demo: false);
     await tester.pumpWidget(NicheApp(store: store));
     await tester.pumpAndSettle();
-    expect(find.text('Suggested for you'), findsOneWidget);
-    await tester.tap(find.byKey(ValueKey('suggested-${piece['id']}')));
-    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('product-stream')), findsOneWidget);
     expect(find.text('Retailer description'), findsOneWidget);
     await tester.drag(find.text('Retailer description'), const Offset(-200, 0));
     await tester.pumpAndSettle();
@@ -114,7 +118,12 @@ void main() {
   test('checkout 409 retains cart and exposes unavailable product/size',
       () async {
     final api = Api(client: MockClient((request) async {
-      if (request.url.path == '/feed') {
+      if (request.url.path == '/users/u_demo') {
+        return http.Response(
+            jsonEncode(
+                {'id': 'u_demo', 'display_name': 'Demo', 'onboarded': true}),
+            200);
+      } else if (request.url.path == '/feed') {
         return http.Response(jsonEncode([piece]), 200);
       }
       if (request.url.path.endsWith('/ids')) return http.Response('[]', 200);

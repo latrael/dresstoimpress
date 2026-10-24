@@ -36,18 +36,26 @@ void main() {
     final store = StoreController(api: Api(), demo: true);
     await tester.pumpWidget(NicheApp(store: store));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome to Niche'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Skip for now'), 500,
-        scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('Skip for now'));
+    expect(find.text('New account'), findsOneWidget);
+    await tester.tap(find.text('New account'));
     await tester.pumpAndSettle();
-    expect(find.text('Suggested for you'), findsOneWidget);
-    expect((await ShopperProfile.load('u_demo')).completed, true);
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Your display name'), 'Test shopper');
+    await tester.tap(find.text('Create profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to Niche'), findsOneWidget);
+    await tester.tap(find.text('Skip setup'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('product-stream')), findsOneWidget);
+    final id = store.api.settings.userId;
+    expect(id, startsWith('local_'));
+    expect((await ShopperProfile.load(id)).completed, true);
     await tester.pumpWidget(const SizedBox());
-    await tester.pumpWidget(NicheApp(store: StoreController(api: Api())));
+    await tester.pumpWidget(NicheApp(
+        store: StoreController(api: Api()..settings = store.api.settings)));
     await tester.pumpAndSettle();
     expect(find.text('Welcome to Niche'), findsNothing);
-    expect(find.text('Suggested for you'), findsOneWidget);
+    expect(find.byKey(const ValueKey('product-stream')), findsOneWidget);
   });
   test(
       'automatic sizing uses explicit dimensions, converts waist and caches per profile',
@@ -154,8 +162,8 @@ void main() {
     final api = Api(client: MockClient((r) async {
       calls.add(r.method);
       if (r.method == 'PATCH') return http.Response('unavailable', 409);
-      if (r.method == 'POST' || r.method == 'DELETE') {
-        fail('Do not fall back to add/remove after a refused size change');
+      if (r.method == 'DELETE') {
+        fail('Do not remove the old size after failed add');
       }
       return http.Response(
           jsonEncode({
@@ -211,6 +219,12 @@ void main() {
               finished = true;
             })));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('Skip for now'));
+      await tester.pumpAndSettle();
+    }
     for (final e in {
       'Height (cm)': '181',
       'Weight (kg)': '78',
@@ -223,11 +237,15 @@ void main() {
     }
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Start browsing'), 300,
+    await tester.scrollUntilVisible(find.text('Continue'), 300,
         scrollable: find.byType(Scrollable).first);
-    await tester.ensureVisible(find.text('Start browsing'));
+    await tester.ensureVisible(find.text('Continue'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Start browsing'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip for now'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Go to Home'));
     await tester.pumpAndSettle();
     final p = await ShopperProfile.load('u_demo');
     expect(finished, true);

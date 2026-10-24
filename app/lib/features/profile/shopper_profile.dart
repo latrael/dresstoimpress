@@ -10,6 +10,9 @@ class ShopperProfile {
       this.style = '',
       this.fit = 'regular',
       this.usualSize = '',
+      this.usualSizes = const {},
+      this.preferredStores = const [],
+      this.otherStores = '',
       this.heightCm,
       this.weightKg,
       this.waistCm,
@@ -20,6 +23,9 @@ class ShopperProfile {
       this.budgets = const {}});
   final bool completed;
   final String style, fit, usualSize;
+  final Map<String, String> usualSizes;
+  final List<String> preferredStores;
+  final String otherStores;
   final double? heightCm, weightKg, waistCm, chestCm, hipCm, inseamCm, shoeUs;
   final Map<String, double> budgets;
   static String key(String user) => 'niche.shopper.v1.$user';
@@ -35,6 +41,10 @@ class ShopperProfile {
           style: j['style'] as String? ?? '',
           fit: j['fit'] as String? ?? 'regular',
           usualSize: j['usualSize'] as String? ?? '',
+          usualSizes: Map<String, String>.from(j['usualSizes'] as Map? ?? {}),
+          preferredStores:
+              List<String>.from(j['preferredStores'] as List? ?? []),
+          otherStores: j['otherStores'] as String? ?? '',
           heightCm: n('heightCm'),
           weightKg: n('weightKg'),
           waistCm: n('waistCm'),
@@ -63,6 +73,9 @@ class ShopperProfile {
         style: style,
         fit: gapsOnly ? fit : b.fit ?? fit,
         usualSize: usualSize,
+        usualSizes: {...usualSizes, ...b.usualSizes},
+        preferredStores: preferredStores,
+        otherStores: otherStores,
         heightCm: pick(heightCm, b.heightCm > 0 ? b.heightCm : null),
         weightKg: pick(weightKg, b.weightKg),
         waistCm: pick(waistCm, cm(b.waistIn)),
@@ -84,9 +97,28 @@ class ShopperProfile {
       inseamCm: inseamCm,
       shoeUs: shoeUs,
       fit: fit,
-      usualSizes: usualSize.isEmpty
-          ? null
-          : {'top': usualSize, 'outerwear': usualSize, 'dress': usualSize});
+      usualSizes: usualSizes.isNotEmpty
+          ? usualSizes
+          : usualSize.isEmpty
+              ? null
+              : {'top': usualSize, 'outerwear': usualSize, 'dress': usualSize});
+
+  ShopperProfile withCompletion(bool value) => ShopperProfile(
+      completed: value,
+      style: style,
+      fit: fit,
+      usualSize: usualSize,
+      usualSizes: usualSizes,
+      preferredStores: preferredStores,
+      otherStores: otherStores,
+      heightCm: heightCm,
+      weightKg: weightKg,
+      waistCm: waistCm,
+      chestCm: chestCm,
+      hipCm: hipCm,
+      inseamCm: inseamCm,
+      shoeUs: shoeUs,
+      budgets: budgets);
 
   Future<void> save(String user) async {
     final p = await SharedPreferences.getInstance();
@@ -97,6 +129,9 @@ class ShopperProfile {
           'style': style,
           'fit': fit,
           'usualSize': usualSize,
+          'usualSizes': usualSizes,
+          'preferredStores': preferredStores,
+          'otherStores': otherStores,
           'heightCm': heightCm,
           'weightKg': weightKg,
           'waistCm': waistCm,

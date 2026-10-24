@@ -52,7 +52,7 @@ def _search(client, q, user_id="u_new"):
 
 def test_text_search_shape_and_relevance(client):
     r = _search(client, "jeans")
-    assert set(r) == {"query", "similar", "goes_with"} and r["query"] == "jeans"
+    assert set(r) == {"query", "similar", "goes_with", "vibe"} and r["query"] == "jeans" and r["vibe"] is None
     # name + label beats name only; one card per style (colour variants collapse); sold-out Gone Jeans hidden
     assert [p["id"] for p in r["similar"]] == ["hm:2:black", "hm:1:black"]
     assert r["similar"][0]["sizes"] == [{"name": "M", "in_stock": True}]  # stored Product shape, like /products
@@ -72,9 +72,10 @@ def test_goes_with_uses_closet_first(client):
 
 
 def test_blank_query_and_no_results(client):
-    assert _search(client, "") == {"query": "", "similar": [], "goes_with": []}
-    assert _search(client, "   ") == {"query": "   ", "similar": [], "goes_with": []}
-    assert _search(client, "ballgown") == {"query": "ballgown", "similar": [], "goes_with": []}
+    assert _search(client, "") == {"query": "", "similar": [], "goes_with": [], "vibe": None}
+    assert _search(client, "   ") == {"query": "   ", "similar": [], "goes_with": [], "vibe": None}
+    r = _search(client, "ballgown")  # no keyword hits and nothing vibe() can map
+    assert (r["similar"], r["goes_with"]) == ([], []) and r["vibe"]["source"] == "rules"
 
 
 def test_goes_with_falls_back_to_empty(client, monkeypatch):
@@ -171,3 +172,39 @@ def test_photo_search_no_garments(client, monkeypatch):
 
 def test_photo_search_needs_a_file(client):
     assert client.post("/search/photo", data={"user_id": "u_cam"}).status_code == 422
+
+
+# ---------- vibe search (Adam's vibe() turns a sentence into filters) ----------
+
+def test_sentence_goes_through_vibe(client, monkeypatch):
+    from app.commerce import search
+    seen = []
+
+    def fake_vibe(q):
+        seen.append(q)
+        return {"styles": ["streetwear"], "categories": ["shoes"], "colors": ["white"], "keywords": [],
+                "source": "rules"}
+    monkeypatch.setattr(search, "vibe", fake_vibe)
+    r = _search(client, "fit for a rooftop party")
+    assert seen == ["fit for a rooftop party"] and r["vibe"]["styles"] == ["streetwear"]
+    # streetwear + shoes + white (6) > streetwear (3) > white only (1); non-matching items are left out
+    assert [p["id"] for p in r["similar"]] == ["hm:6:white", "zara:4:blue", "zara:3:white"]
+
+
+def test_keyword_hits_stay_first_for_sentences(client, monkeypatch):
+    from app.commerce import search
+    monkeypatch.setattr(search, "vibe", lambda q: {"styles": ["y2k"], "categories": [], "colors": [],
+                                                   "keywords": [], "source": "rules"})
+    ids = [p["id"] for p in _search(client, "black slim jeans")["similar"]]
+    assert ids[0] == "hm:2:black" and "zara:3:white" in ids  # exact match first, vibe extras after
+
+
+def test_no_keyword_hits_falls_back_to_vibe_and_short_hits_skip_it(client, monkeypatch):
+    from app.commerce import search
+    calls = []
+    monkeypatch.setattr(search, "vibe", lambda q: calls.append(q) or {
+        "styles": ["y2k"], "categories": [], "colors": [], "keywords": ["baby tee"], "source": "rules"})
+    assert [p["id"] for p in _search(client, "2000s")["similar"]][0] == "zara:3:white"  # y2k + keyword
+    assert calls == ["2000s"]
+    _search(client, "jeans")
+    assert calls == ["2000s"]  # a one-word query with hits never calls vibe()

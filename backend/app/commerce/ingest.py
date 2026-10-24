@@ -84,6 +84,27 @@ def hm_category(code: str) -> str | None:
     return None
 
 
+HM_DEPT = {"ladies": "women", "women": "women", "men": "men"}
+UNIQLO_DEPT = {"WOMEN": "women", "MEN": "men", "UNISEX": "unisex"}
+
+
+def hm_department(code: str) -> str | None:
+    """H&M category code -> Product.department: "ladies_..." women, "men_..." men, "sportswear_women_..."
+    by its second part. None when the code doesn't say (e.g. "divided_", H&M's teen line)."""
+    segs = (code or "").lower().split("_")
+    if segs[0] == "sportswear":
+        segs = segs[1:]
+    return HM_DEPT.get(segs[0]) if segs else None
+
+
+def uniqlo_department(item: dict) -> str | None:
+    """Uniqlo genderCategory / department / genderName (MEN, WOMEN, UNISEX) -> Product.department."""
+    for k in ("genderCategory", "department", "genderName"):
+        if dept := UNIQLO_DEPT.get(str(item.get(k) or "").upper()):
+            return dept
+    return None
+
+
 def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-") or "default"
 
@@ -191,6 +212,7 @@ def normalize_hm(raw: list[dict], drops: Counter | None = None) -> list[dict]:
             "description": plain_text(it.get("description")),  # the H&M actor doesn't return one
             "scraped_at": now,
             "source": "ingest",
+            "department": hm_department(cat_raw),
         })
         if p is None:
             drops["hm_invalid"] += 1
@@ -269,6 +291,7 @@ def normalize_uniqlo(raw: list[dict], drops: Counter | None = None,
                                           or it.get("descriptionShort")),
                 "scraped_at": now,
                 "source": "ingest",
+                "department": uniqlo_department(it),
             })
             if p is None:
                 drops["uniqlo_invalid"] += 1

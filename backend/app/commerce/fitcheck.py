@@ -20,6 +20,7 @@ from ..ai import service
 from ..ai.router import _save_upload
 from ..models import FitTag
 from ..store import store
+from .router import _dept_ok
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["fitcheck"])
@@ -151,8 +152,11 @@ def delete_post(post_id: str, user_id: str):
 
 @router.get("/fitcheck/{post_id}/shop")
 def shop(post_id: str, user_id: str):
-    """Products for the post's tags, ranked against the viewer's closet (ai.service.shop_fit as-is)."""
-    return service.shop_fit(user_id, _post(post_id, user_id).get("tagged") or [])
+    """Products for the post's tags, ranked against the viewer's closet (ai.service.shop_fit), kept to the
+    viewer's shop_for department (+ unisex/unknown, e.g. live search results)."""
+    items = service.shop_fit(user_id, _post(post_id, user_id).get("tagged") or [])
+    shop_for = (store.get("users", user_id) or {}).get("shop_for")
+    return [p for p in items if _dept_ok(store.get("products", p.get("id")) or p, shop_for)]
 
 
 @router.post("/fitcheck/{post_id}/like")

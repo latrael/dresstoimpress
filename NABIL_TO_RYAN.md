@@ -6,7 +6,31 @@ Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `sta
 
 ## Oct 24, ~4:30 PM: backend for the council redesign (on `nabil`, PR into `staging`)
 
-Every change only adds fields; nothing the app reads today was removed or renamed. More is coming in the same PR: a men's/women's filter, store mixing, the seed card dropping once seen, Discover size-first, and a photo on cart lines. I'll note each one here.
+Every change only adds fields; nothing the app reads today was removed or renamed. Round two (~5:15 PM) is in the same PR, listed first.
+
+**Round two (~5:15 PM)**
+- **Men's / Women's / Both (onboarding question, decided by Nabil):**
+  - `User.shop_for: "men" | "women" | "both"`, default `"both"`. Send it on `POST /onboarding`, `POST /users` or `PATCH /users/{id}`; anything else → 422.
+  - `"men"` shows men's + unisex items; `"women"` shows women's + unisex.
+  - It applies to Home (the seed card itself always shows), Discover search, photo search, trending and the style counts, Inspo's "shop this fit", and `GET /products?department=`.
+  - Every product now has `department: "men" | "women" | "unisex" | null` (null = unknown, e.g. a live search result, shown to everyone).
+- **Seeded Home, what the app must send:**
+  - First load after a tag or result tap: `GET /feed?seed=X`. The seed is card 1.
+  - Every later reload of that same seeded Home: `GET /feed?seed=X&seed_shown=true`. Same "similar to X" feed, without the seed card.
+  - A new tap (even on the same X) or clearing the "Similar to" chip → start again without `seed_shown`.
+- **Store mix:** with `preferred_stores` set, each size group shows 2 preferred-store cards per other-store card.
+- **Discover is size-first too:** `/search` and `/search/photo` `similar` items and trending cards carry `your_size` / `in_your_size`, with in-your-size first. `goes_with` is built around the first card shown.
+- **Cart lines carry `image_url`** (the product's main photo, saved when added), including the lines in `unavailable[]`, so a removed item still shows its picture.
+- **Vibe search is in `GET /search`:**
+  - A sentence (3+ words, e.g. "fit for a rooftop party") or a query with no keyword hits goes through Adam's `vibe()`. Exact keyword matches still come first.
+  - The response adds `vibe: {styles, categories, colors, keywords, source} | null`. You can show it as "Showing: streetwear · black".
+- **Your contract questions (RYAN_TO_ADAM 424dcf3):**
+  - **Clearing a skipped budget:** `PATCH /users/{id}` replaces `price_ranges` as a whole. Send the dict without the skipped category, or `{}` to clear every budget. `null` / leaving it out keeps the saved one.
+  - **`preferred_stores` / `onboarded` / `shop_for`:** `PATCH` changes only the fields you send. `preferred_stores` is replaced as a whole list.
+  - **`usual_sizes`:** Adam's `body_profile` (`PATCH /users/{id}/body-profile`), not on User.
+  - **An unmatched Inspo tag** (no `product_id`): `GET /search?q=<tag label>` gives you the similarity search.
+  - **Trending:** global engagement first (`trend_count > 0`), then your personal feed (`trend_count: 0`). They aren't interleaved; tell me if you want them mixed.
+  - **Dart core methods for these routes:** Adam's `app/lib/core`. The contracts above are final for this PR.
 
 **User profile** (`GET/PATCH /users/{id}`)
 - `preferred_stores: ["hm","uniqlo"]`: onboarding screen 3. Default `[]`.

@@ -49,6 +49,7 @@ class Product(BaseModel):
     images: list[ProductImage] = []       # same product + colour only; image_url stays the primary image
     description: Optional[str] = None     # real retailer text (plain), or null; never a pairing reason
     source: Literal["ingest", "live_search", "seed"] = "ingest"
+    department: Optional[Literal["men", "women", "unisex"]] = None  # retailer's section; None = unknown (shown to all)
 
 
 class ClosetItem(BaseModel):
@@ -75,6 +76,7 @@ class User(BaseModel):
     body_profile: Optional[dict] = None  # set by POST /users/{id}/body-scan (estimated inches); /size reads it
     preferred_stores: list[str] = []     # retailer ids ("hm", "uniqlo"); /feed ranks them first (a boost, not a filter)
     onboarded: bool = False              # the app sets it at the last onboarding step
+    shop_for: Literal["men", "women", "both"] = "both"  # onboarding "Shop:" question; /feed + Discover filter by it
 
 
 # ---- AI endpoint requests / responses ----

@@ -2,7 +2,32 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~8:45 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+**Last updated:** Fri Oct 23, 2026, ~9:15 PM PT · newest section is on `adam/ai-pipeline` (PR into `staging`), older ones are on `staging`
+
+---
+
+## Oct 23, ~9:15 PM: how we proceed from here (please reply in NABIL_TO_ADAM.md)
+
+**Also new:** `pair()` now always returns `k` results with a reason. When Claude ranks fewer, rules-based picks fill the rest. The smoke test's feed still shows 5 of 8 cards with a reason, so `/feed` must be mixing in unranked candidates. Could it prefer the ranked ones, and only use unranked candidates when the ranked ones run out?
+
+**Where things stand:**
+- **Backend:** done and live on Adam's Mac through the tunnel. Smoke test 10/10, including your real Nessie checkout, plus 418 tagged products.
+- **Fit Check:** 3 demo posts are seeded on the shared server (`seed_fitcheck`), so u_demo's Fit Check feed isn't empty.
+- **The risk is now the app.** FlutterFlow is out (API calls need a paid plan), so Ryan continues his FlutterFlow work as **plain Flutter** (`docs/app-plan.md`) and completes the screens himself. iOS comes afterward.
+
+**What Adam does (only he can):**
+- Keeps the Mac awake with the tunnel running, and reposts the URL in the group chat if it changes. Keeps the Anthropic credits topped up (thanks for flagging those errors).
+- Stays on the AI backend. Keeps `app/lib/core` (API + models) in sync when routes change.
+- Builds the iPhone version on his Mac (Xcode, free Apple ID) for the demo.
+- Merges PRs when you're both busy. Note: our agents can open PRs but can't merge them; a human has to click Merge.
+
+**What we need from you:**
+1. **Merges:** review and merge **#8** (Style DNA + app plan) into `staging`. Your #7 has no conflicts with them.
+2. **No app screens for you (or Adam).** Ryan owns the whole Flutter app and is continuing from his FlutterFlow work. You stay on commerce: make `/feed` prefer ranked cards (item at the top), keep Nessie checkout solid, and own the README for sponsor judges, the Devpost write-up and the demo script.
+3. **Fit Check seed tags:** `seed_fitcheck` writes tags with only `label` / `retailer` / `product_id`. Please also copy `category`, `color` (the product's `colors[0]`), `pattern` and `style_tags` from the product. Then the Fit Score badge (`POST /ai/fit-score {items: post.tagged}`) has something to score, and shop-the-fit matching is stricter. Your file; Adam won't touch it.
+4. **Saturday noon checkpoint:** feed → size → add to cart → checkout `paid`, on a phone. If it's at risk, one of us takes one whole tab from Ryan (agreed in the group chat), never a half-shared screen.
+
+**Order of work tonight:** merge #8 → Ryan gets his Flutter project running against the live backend: Feed → Cart. You: the `/feed` ranked-first fix + seed tags. Adam: AI polish + the iPhone build.
 
 ---
 

@@ -2,7 +2,19 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. Everything here is on `adam/ai-pipeline` (PR into `staging`) and already running on the shared backend.
 
-**Last updated:** Fri Oct 23, 2026, ~8:45 PM PT
+**Last updated:** Fri Oct 23, 2026, ~9:15 PM PT
+
+---
+
+## Moving to plain Flutter (Fri ~9:15 PM)
+
+FlutterFlow needs a paid plan for API calls, so continue your app as **plain Flutter**: free, and it runs in Chrome with no Xcode. Plan: [`docs/app-plan.md`](docs/app-plan.md).
+- **You own the app** and complete the sections from your FlutterFlow work. Nabil and I stay on our backends. The iPhone build comes afterward on my Mac.
+- **Order:** Feed / Quick Browse → Cart / checkout (Sat noon checkpoint) → try-on / complete-the-look → Fit Check → Closet / Profile.
+- **Optional:** branch `flutter-starter` has a small Dart API client + models for every route (headers, errors, shapes). Copy from it if it saves time; it's not the app.
+- **Web images:** load product photos via `GET /img?url=<image_url>` on our backend (no key). Retailer image servers don't always allow web apps to load them directly.
+
+New AI route for the Profile tab: `GET /users/{user_id}/style` → Style DNA: `{headline, styles[{tag, share}], palette[{name, family, hex, share}], patterns, formality{avg, label}, price_ranges, favorite_retailers, avoid, sample_size, confidence}`. `POST /users/{user_id}/style/apply` saves the learned price ranges on the user (409 under 5 likes).
 
 ---
 

@@ -26,7 +26,7 @@ for _sub in ("uploads", "tryon"):
 # Shared key for a public tunnel (the repo is public, so a leaked URL could spend AI credits).
 # Set API_SHARED_KEY in .env; clients send it as the X-DTI-Key header. Images and /health stay open
 # because image widgets can't send headers (file names are random).
-OPEN_PREFIXES = ("/health", "/static/")
+OPEN_PREFIXES = ("/health", "/static/", "/img")
 
 
 @app.middleware("http")
@@ -41,6 +41,38 @@ async def shared_key(request: Request, call_next):
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+# Image proxy for the Flutter web build: retailer CDNs may not send CORS headers, which breaks
+# images drawn on a canvas. Only these hosts are fetched (so it's not an open proxy), and it needs
+# no key because image widgets can't send headers.
+IMG_HOSTS = {"image.hm.com", "lp2.hm.com", "image.uniqlo.com", "picsum.photos", "fastly.picsum.photos",
+             "images.unsplash.com"}
+IMG_MAX_BYTES = 8 * 1024 * 1024
+
+
+@app.get("/img")
+def image_proxy(url: str):
+    import httpx
+    from urllib.parse import urlparse
+
+    from fastapi import HTTPException
+    from fastapi.responses import Response
+
+    u = urlparse(url)
+    if u.scheme != "https" or u.hostname not in IMG_HOSTS:
+        raise HTTPException(400, "image host not allowed")
+    try:
+        r = httpx.get(url, timeout=10, follow_redirects=True)
+        r.raise_for_status()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(502, "image fetch failed")
+    if urlparse(str(r.url)).hostname not in IMG_HOSTS:
+        raise HTTPException(400, "image host not allowed")  # redirected somewhere else
+    ctype = r.headers.get("content-type", "")
+    if not ctype.startswith("image/") or len(r.content) > IMG_MAX_BYTES:
+        raise HTTPException(415, "not an image")
+    return Response(r.content, media_type=ctype, headers={"Cache-Control": "public, max-age=86400"})
 
 
 app.include_router(ai_router)

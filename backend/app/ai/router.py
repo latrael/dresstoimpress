@@ -64,6 +64,31 @@ async def body_photo(user_id: str, file: UploadFile = File(...)):
     return {"body_photo_url": url}
 
 
+@router.get("/users/{user_id}/style")
+def user_style(user_id: str):
+    """"Your Style DNA": headline, top styles, palette, formality, learned price ranges. Rules only, free."""
+    from .memory import history
+    from .style_profile import style_profile
+
+    liked, discarded = history(user_id)
+    return style_profile(liked, discarded, store.list("closet_items", user_id=user_id))
+
+
+@router.post("/users/{user_id}/style/apply")
+def apply_style(user_id: str):
+    """Save the learned price ranges on the user (pairing ranks in-budget items first), and the
+    headline as style_text if they never wrote one. Needs 5+ liked items."""
+    profile = user_style(user_id)
+    if profile["confidence"] == "low":
+        raise HTTPException(409, "like at least 5 items first")
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["price_ranges"] = {**(user.get("price_ranges") or {}), **profile["price_ranges"]}
+    if not user.get("style_text"):
+        user["style_text"] = profile["headline"]
+    store.put("users", user_id, user)
+    return {"user": user, "profile": profile}
+
+
 @router.post("/closet/tag", response_model=ClosetItem)
 def closet_tag(req: TagRequest):
     if not req.image_url.startswith(("http://", "https://")):

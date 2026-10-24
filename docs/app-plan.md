@@ -1,15 +1,15 @@
 # App plan: FlutterFlow → plain Flutter
 
-**Decided Fri Oct 23, ~9:10 PM.** FlutterFlow needs a paid plan for API calls, and exporting its code is paid too. So the app is rebuilt in **plain Flutter**: free, the same widgets Ryan already designed with, and it runs on any laptop.
-- **Swift was considered and dropped:** it needs Xcode on every machine, and Ryan doesn't have it.
+**Decided Fri Oct 23, ~9:15 PM.** FlutterFlow needs a paid plan for API calls, so the app moves to **plain Flutter**: free, and it runs in Chrome with no Xcode.
+- **Ryan continues from his existing FlutterFlow work** (same screens, same Quick Browse spec in `RYAN_TO_NABIL.md`) and completes the sections himself. It's not a rewrite from scratch.
+- **The iPhone build comes afterward,** on Adam's Mac.
 - **The backend doesn't change.** It's HTTPS + JSON with one header; routes are in `ADAM_TO_RYAN.md` and `NABIL_TO_RYAN.md`.
-- **The design is still Ryan's Quick Browse spec** (`RYAN_TO_NABIL.md`). Rebuild his FlutterFlow screens from that spec and his fixtures; they're simple.
 
 ## Setup (15 min, any laptop)
 
 1. **Install the Flutter SDK** (flutter.dev → Get started) and Chrome. Check with `flutter doctor`. Xcode and Android Studio are optional, and `flutter doctor` complaining about them is fine.
-2. **Get the code:** branch `flutter-starter` (PR into `staging`), folder `app/`. Then `cd app && flutter pub get && flutter run -d chrome`.
-3. **Backend:** in the app, open **Settings** and paste the tunnel URL and key (sent privately in the group chat). Tap "Test connection".
+2. **Ryan's project:** whatever he carried over from FlutterFlow, run with `flutter run -d chrome`. **Optional reference:** branch `flutter-starter` has a small Dart API client + models for every route (headers, error shapes) to copy from if useful. It's not the app.
+3. **Backend:** the tunnel URL and key are sent privately in the group chat. Keep them in a settings screen or a local, untracked config file, never in code.
    - **Never put the URL or key in code or Git**; the repo is public. When Adam restarts the tunnel, paste the new URL in Settings.
 4. **Phones:**
    - **Android:** plug in with USB debugging on, then `flutter run`.
@@ -17,32 +17,14 @@
 5. **Demo user:** `u_demo`.
 6. **Images on web:** product photos load through `GET /img?url=` on our backend, which needs no key. Retailer image servers don't always allow web apps to load their images directly.
 
-## Layout (see `app/README.md` for the exact map)
-
-```
-app/lib/
-  core/        config.dart (URL + key, saved on device) · api.dart (one method per route) · models.dart
-  components/  shared widgets (price label, size chips, Fit Score badge, network image)
-  features/
-    feed/      Quick Browse + product page + try-on + complete the look
-    cart/      cart, checkout, orders
-    fitcheck/  posts, create, detail, tags, shop the fit
-    closet/    grid, upload, duplicate prompt
-    profile/   Style DNA, settings, onboarding
-  (all of app/ → Ryan; core/ kept in sync by Adam)
-```
-
 **Rules:**
-- **Ryan edits `app/`.** If a call or field is missing, ask Adam: he keeps `core/` in sync with the backend.
+- **Ryan owns the app.** If a call or field is missing, ask Adam (AI routes) or Nabil (commerce routes).
 - **Branches:** `app/<you>-<thing>` → PR into `staging`. Before every PR: `flutter analyze` is clean, and it runs in Chrome against the live backend.
 - **Never call `/swipe` for photo paging or vertical browsing** (Ryan's rule). Save = `PUT /wishlist/...`. Cart = `POST /cart/.../items`.
-- **Packages:** only `http`, `shared_preferences` and `image_picker` unless the team agrees on more.
 
 ## Who builds what
 
-**Ryan owns the whole app (`app/`).** Adam and Nabil stay on their backend tracks. That's fewer hand-offs, one consistent UI, and no merge fights.
-- **The starter does the heavy lifting.** The `flutter-starter` PR wires all 5 tabs to the live backend with plain Material UI: Feed (Quick Browse), Cart/Checkout/Orders, Fit Check, Closet, Profile/Style DNA, plus the product page, try-on, complete-the-look and the Fit Score badge.
-- **Ryan restyles and polishes it to his spec** instead of building from scratch.
+**Ryan owns the whole app** and completes the sections from his FlutterFlow work. Adam and Nabil stay on their backend tracks and answer API questions.
 
 ### Ryan: the app, in this order
 1. **Feed / Quick Browse + product page.** Match his wireframe: picture section, dots, info, description, size chips, Add to Cart, heart. No `/swipe` for paging or browsing.
@@ -51,10 +33,11 @@ app/lib/
 4. **Fit Check:** feed, post, "Shop this fit".
 5. **Closet, Profile / Style DNA, onboarding.**
 6. Look and feel: theme, fonts, icon. Empty, loading and error states.
+7. **Then the iPhone build** on Adam's Mac (Xcode, free Apple ID).
 
 ### Adam: AI backend (his track)
-- AI routes and quality. He keeps `app/lib/core` (API + models) in sync whenever a backend route changes, and adds anything Ryan asks for.
-- Hosts the backend (Mac + tunnel) and builds and runs the iPhone version for the demo.
+- AI routes and quality, plus anything Ryan needs from the AI side.
+- Hosts the backend (Mac + tunnel). Builds and runs the iPhone version once Ryan's sections are done.
 
 ### Nabil: commerce backend (his track)
 - `/feed` should prefer ranked cards, so every card has a reason. Add fuller Fit Check seed tags (category, color, pattern, style_tags), and keep Nessie checkout solid.
@@ -66,12 +49,12 @@ app/lib/
 
 | When | Goal |
 | --- | --- |
-| **Fri night** | Starter merged to `staging`. Ryan runs it in Chrome against the live backend and starts the feed polish. |
+| **Fri night** | Ryan's project runs in plain Flutter (Chrome) against the live backend, starting with the feed. |
 | **Sat noon** | **End-to-end:** feed → size → add to cart → checkout `paid`, in Chrome and on a phone. |
-| **Sat evening** | Try-on, complete the look, Fit Check post + shop the fit, Style DNA, Fit Score. Real fits photographed at the venue. |
+| **Sat evening** | Try-on, complete the look, Fit Check post + shop the fit, Style DNA, Fit Score. Real fits photographed at the venue. Then the iPhone build. |
 | **Sat night** | Polish, empty/error states, demo script, Devpost write-up. |
 | **Sun morning** | Feature freeze, record a backup demo video, submit. |
 
 ## Paste-in brief for your coding agent
 
-> Repo `latrael/dresstoimpress`, branch from `staging`. The app is a plain Flutter project in `app/` (packages: http, shared_preferences, image_picker only). Read `docs/app-plan.md`, `app/README.md`, `ADAM_TO_RYAN.md`, `NABIL_TO_RYAN.md` and `RYAN_TO_NABIL.md` first. I own the whole app; work in the order in the plan. Use the API client in `core/`. If a backend call or field is missing, tell me so I can ask Adam, instead of guessing. Never call `/swipe` for photo paging or vertical browsing. Never put the backend URL or key in code. Load product images through the backend's `/img?url=` helper in `core/`. Run `flutter analyze` and test in Chrome (`flutter run -d chrome`) before each PR into `staging`.
+> Repo `latrael/dresstoimpress`, branch from `staging`. I'm continuing my FlutterFlow app as a plain Flutter project. Read `docs/app-plan.md`, `ADAM_TO_RYAN.md`, `NABIL_TO_RYAN.md` and `RYAN_TO_NABIL.md` first. Work in the order in the plan. Every request needs the `X-DTI-Key` header; URL and key come from a settings screen or an untracked local file, never code. Never call `/swipe` for photo paging or vertical browsing. Load product images through the backend's `/img?url=` on web. Optional: copy the API client/models from branch `flutter-starter`, `app/lib/core/`. If a backend call or field is missing, tell me instead of guessing. Test in Chrome (`flutter run -d chrome`) before each PR into `staging`.

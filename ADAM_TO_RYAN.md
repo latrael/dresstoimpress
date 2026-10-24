@@ -6,14 +6,12 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. Everything here is o
 
 ---
 
-## Switching to plain Flutter (Fri ~9:10 PM)
+## Moving to plain Flutter (Fri ~9:15 PM)
 
-FlutterFlow needs a paid plan for API calls, so we're rebuilding in **plain Flutter**: free, the same widgets you designed with, and it runs in Chrome on your laptop with no Xcode. **Read [`docs/app-plan.md`](docs/app-plan.md)**: setup, who builds which tab, and the timeline.
-- **You own the whole app (`app/`).** Nabil and I stay on our backends.
-- A starter is coming in the `flutter-starter` PR. It wires **all 5 tabs** to the live backend with plain UI: Quick Browse per your spec (vertical pages, photo paging inside the picture only, size chips, Add to Cart, heart = wishlist, no `/swipe`), the product page with try-on and complete-the-look, Cart → checkout, Fit Check, Closet and Profile/Style DNA. You restyle and polish it instead of building from zero.
-- Order: Feed → Cart/checkout (Sat noon checkpoint) → try-on/complete-the-look → Fit Check → Closet/Profile.
-- I keep `app/lib/core` in sync with the backend, so ask me for any missing call or field. My Mac builds the iPhone version for the demo.
-- Your FlutterFlow layout spec and fixtures are the design reference. Rebuild the screens from them.
+FlutterFlow needs a paid plan for API calls, so continue your app as **plain Flutter**: free, and it runs in Chrome with no Xcode. Plan: [`docs/app-plan.md`](docs/app-plan.md).
+- **You own the app** and complete the sections from your FlutterFlow work. Nabil and I stay on our backends. The iPhone build comes afterward on my Mac.
+- **Order:** Feed / Quick Browse → Cart / checkout (Sat noon checkpoint) → try-on / complete-the-look → Fit Check → Closet / Profile.
+- **Optional:** branch `flutter-starter` has a small Dart API client + models for every route (headers, errors, shapes). Copy from it if it saves time; it's not the app.
 - **Web images:** load product photos via `GET /img?url=<image_url>` on our backend (no key). Retailer image servers don't always allow web apps to load them directly.
 
 New AI route for the Profile tab: `GET /users/{user_id}/style` → Style DNA: `{headline, styles[{tag, share}], palette[{name, family, hex, share}], patterns, formality{avg, label}, price_ranges, favorite_retailers, avoid, sample_size, confidence}`. `POST /users/{user_id}/style/apply` saves the learned price ranges on the user (409 under 5 likes).

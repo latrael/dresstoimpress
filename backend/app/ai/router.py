@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
-                      SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse)
+                      SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse, VibeRequest)
 from ..store import DATA_DIR, store
 from . import service
 from .llm import AI_BUDGET_USD, MAX_TRYONS, BadModelOutput, usage
@@ -100,6 +100,24 @@ async def body_photo(user_id: str, file: UploadFile = File(...)):
     user["body_photo_url"] = url
     store.put("users", user_id, user)
     return {"body_photo_url": url}
+
+
+@router.delete("/users/{user_id}/body-photo")
+def body_photo_delete(user_id: str):
+    """User screen "delete my photo": forgets the try-on / body-scan photo and deletes the file if it's
+    one of ours (/static/uploads). Measurements (body_profile) stay. {"deleted": false} if there was none."""
+    from ..static_urls import local_static_path
+
+    user = store.get("users", user_id)
+    url = (user or {}).get("body_photo_url")
+    if not url:
+        return {"deleted": False}
+    path = local_static_path(url, DATA_DIR)
+    if path and path.parent.name == "uploads":
+        path.unlink(missing_ok=True)
+    user["body_photo_url"] = None
+    store.put("users", user_id, user)
+    return {"deleted": True}
 
 
 @router.post("/closet/digitize", response_model=list[ClosetItem])
@@ -245,6 +263,17 @@ def tag_fit(req: TagFitRequest):
         return service.tag_fit(req.image_url)
     except BadModelOutput as e:
         raise _ai_down("outfit tagging", e)
+
+
+@router.post("/ai/vibe")
+def vibe_route(req: VibeRequest):
+    """Discover vibe search: "fit for a rooftop party" -> {styles, categories, colors, keywords, source}.
+    Styles/categories use the catalog vocabularies. Never 502s: falls back to keyword rules."""
+    from .vibe import vibe
+
+    if not req.q.strip():
+        raise HTTPException(422, "q is empty")
+    return vibe(req.q)
 
 
 @router.get("/ai/usage")

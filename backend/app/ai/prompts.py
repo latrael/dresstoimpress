@@ -65,8 +65,20 @@ Return only a JSON array, at most 8 items, most prominent first:
   "color": main color in plain words,
   "pattern": "solid" | "striped" | "plaid" | "graphic" | "floral" | "other",
   "style_tags": up to 3 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
-  "brand": visible brand name or null (only if a logo or text is clearly readable; never guess)}]
+  "brand": visible brand name or null (only if a logo or text is clearly readable; never guess),
+  "box": [x_min, y_min, x_max, y_max] tight box around that item, as fractions 0-1 of the image width/height}]
 Ignore phones, mirrors, furniture and background. If there is no person or clothing, return []."""
+FIT_TAGGER_VERSION = "v2"  # bump when FIT_TAGGER changes so cached outfit tags are redone (v2: boxes)
+
+VIBE = """You turn a shopper's search into catalog filters for a clothing store.
+Search: "{q}"
+Return only JSON, no prose:
+{{"styles": up to 3 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
+ "categories": up to 3 from ["top","bottom","outerwear","shoes","dress","accessory"] (empty if any category fits),
+ "colors": up to 4 plain color words that suit it (empty if any color works),
+ "keywords": up to 5 short item words to search for, e.g. "linen shirt", "wide-leg trousers"}}
+Think about the occasion, season and vibe: "fit for a rooftop party" -> smart casual, dark or bold colors."""
+VIBE_VERSION = "v1"
 
 
 # ---- Digitize wardrobe: one photo of several clothes -> separate closet items (with crop boxes) ----

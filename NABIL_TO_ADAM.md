@@ -2,7 +2,37 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Fri Oct 23, 2026, ~10 PM PT
+**Last updated:** Fri Oct 23, 2026, ~10:45 PM PT
+
+---
+
+## Oct 23, ~10:45 PM: snapshot PR is up; answers to your ADAM_TO_NABIL
+
+**PR #2 into `staging`** (`nabil` is merged with staging at `4e44cdb`, and 136 tests pass):
+- **Catalog snapshot:** `backend/seed/products.json` holds **418 products**: H&M 290 (including **48 shoes**, as you asked) and Uniqlo 128. Load it with `python -m scripts.load_products`.
+  - Now filled in: `images[]` (H&M 2–6 `retailer_model` shots, Uniqlo 1 `product` shot) and `description` (Uniqlo 117 of 128; H&M none, because the actor returns no text).
+  - The raw pulls are in `seed/raw/*.gz`, so anyone can re-normalize with no Apify spend.
+- **Real Nessie checkout** (`app/commerce/nessie.py`): one merchant per retailer and one customer/account per user, cached in store doc `nessie`; one purchase per store; `GET /orders/{user_id}`.
+  - Nessie quirks: amounts are stored as **integers** (we send `round()`), and **https only**.
+- **Fit Check:** `/fitcheck` (post, feed, detail, PATCH tags, `/shop` → your `shop_fit`, like, comment), friends-only. `tagged` is stored through `FitTag(**t).model_dump()`, so your new fields survive. Demo posts: `python -m scripts.seed_fitcheck`.
+- **Wishlist split from swipes:** `PUT/DELETE /wishlist/{user}/items/{product}` writes the `wishlist` collection and **no swipe**, so a save doesn't dismiss the item from the feed. It calls `record_swipe(..., "wishlist")` only on the first save.
+- **`/feed` now passes `k=min(24, limit*2)`,** as you suggested.
+- **Checkout returns 409** if something sold out after it was added to the cart.
+
+**Things that touch your code:**
+1. **The memory fallback misses PUT saves.** Without Moss, `memory._from_store` reads only `swipes`, so saves made through `PUT /wishlist` (which write no swipe) don't reach style memory. One fix on your side: also read `store.list("wishlist", user_id=...)` as likes. Docs are `{user_id, product_id, saved_at}`.
+2. **`fitcheck.py` imports your private `_save_upload` from `app/ai/router.py`.** Please don't rename it, or tell me if you do. Uploads land in `uploads/`, which your new static mount still serves.
+
+**Your questions and decisions:**
+- **Hosting on your Mac:** agreed. Your `.env` will need `NESSIE_API_KEY` (otherwise checkout falls back to `pending_nessie`) and `APIFY_TOKEN`; Nabil is sending both privately. On first checkout, Nessie merchants and accounts get created fresh on your machine; that's fine.
+- **Tagging:** yes, please tag on your Mac once PR #2 lands: `python -m scripts.load_products`, then re-run ingest with tagging on, then `python -m scripts.export_products` and push the tagged snapshot. The commands:
+  ```
+  python -m scripts.ingest --from-file "seed/raw/hm_*.json.gz" --retailer hm
+  python -m scripts.ingest --from-file seed/raw/uniqlo_20261023.json.gz --retailer uniqlo
+  ```
+  They re-normalize from the raw pulls with no Apify spend. About 418 × $0.0002.
+- **`staging` → `main`:** OK from me **once PR #2 is merged into staging**. Nothing else of mine is unpushed.
+- **Apify:** Nabil got $200 in credits, so live search is fine. Keep the per-item caps, please.
 
 ---
 

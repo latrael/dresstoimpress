@@ -9,6 +9,9 @@ class QuickBrowse extends StatefulWidget {
     required this.onSave,
     required this.onAddToCart,
     required this.imageUrl,
+    this.onSizeAdvice,
+    this.onTryOn,
+    this.onCompleteLook,
   });
 
   final List<Map<String, dynamic>> products;
@@ -16,6 +19,10 @@ class QuickBrowse extends StatefulWidget {
   final Future<void> Function(String id, bool saved) onSave;
   final Future<void> Function(String id, String size) onAddToCart;
   final String Function(String source) imageUrl;
+
+  final Future<String?> Function(String id)? onSizeAdvice;
+  final Future<({String url, String label})?> Function(String id)? onTryOn;
+  final void Function(String id)? onCompleteLook;
 
   @override
   State<QuickBrowse> createState() => _QuickBrowseState();
@@ -61,6 +68,9 @@ class _QuickBrowseState extends State<QuickBrowse> {
         onSave: widget.onSave,
         onAddToCart: widget.onAddToCart,
         imageUrl: widget.imageUrl,
+        onSizeAdvice: widget.onSizeAdvice,
+        onTryOn: widget.onTryOn,
+        onCompleteLook: widget.onCompleteLook,
         onBoundary: (direction) => move(index + direction),
         position: '${index + 1} / ${widget.products.length}',
       ),
@@ -79,6 +89,9 @@ class _ProductPage extends StatefulWidget {
     required this.position,
     required this.onBoundary,
     required this.active,
+    this.onSizeAdvice,
+    this.onTryOn,
+    this.onCompleteLook,
   });
   final Map<String, dynamic> product;
   final bool saved;
@@ -88,6 +101,9 @@ class _ProductPage extends StatefulWidget {
   final String position;
   final void Function(int direction) onBoundary;
   final bool active;
+  final Future<String?> Function(String id)? onSizeAdvice;
+  final Future<({String url, String label})?> Function(String id)? onTryOn;
+  final void Function(String id)? onCompleteLook;
 
   @override
   State<_ProductPage> createState() => _ProductPageState();
@@ -98,6 +114,9 @@ class _ProductPageState extends State<_ProductPage> {
   String? size;
   bool saving = false;
   bool adding = false;
+  bool advising = false;
+  bool generating = false;
+  ({String url, String label})? personalPhoto;
   String? error;
   final PageController photos = PageController();
 
@@ -159,6 +178,59 @@ class _ProductPageState extends State<_ProductPage> {
     }
   }
 
+  Future<void> advise() async {
+    if (advising) return;
+    setState(() => advising = true);
+    try {
+      final recommended =
+          await widget.onSizeAdvice!(widget.product['id'] as String);
+      if (!mounted || recommended == null) return;
+      final sizes = (widget.product['sizes'] as List? ?? []).cast<Map>();
+      if (widget.product['in_stock'] != false &&
+          sizes.any((s) => s['name'] == recommended && s['in_stock'] == true)) {
+        setState(() => size = recommended);
+      } else {
+        setState(() => error =
+            'That recommendation is no longer available. Choose an in-stock size.');
+      }
+    } finally {
+      if (mounted) setState(() => advising = false);
+    }
+  }
+
+  Future<void> tryOn() async {
+    if (generating) return;
+    setState(() {
+      generating = true;
+      error = null;
+    });
+    try {
+      final result = await widget.onTryOn!(widget.product['id'] as String);
+      if (!mounted || result == null) return;
+      final retailerPhotos = ((widget.product['images'] as List? ?? [])
+              .map((p) => (p as Map)['url'])
+              .whereType<String>()
+              .where((s) => s.isNotEmpty)
+              .toSet())
+          .length;
+      setState(() => personalPhoto = result);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.active && photos.hasClients) {
+          photos.animateToPage(retailerPhotos == 0 ? 1 : retailerPhotos,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut);
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+            () => error = 'Could not create your try-on. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => generating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = widget.product;
@@ -170,6 +242,7 @@ class _ProductPageState extends State<_ProductPage> {
     if (gallery.isEmpty && (p['image_url'] as String? ?? '').isNotEmpty) {
       gallery.add(p['image_url'] as String);
     }
+    if (personalPhoto != null) gallery.add(personalPhoto!.url);
     final sizes = (p['sizes'] as List? ?? []).cast<Map>();
     final description = p['description'] as String?;
     final reason = p['reason'] as String?;
@@ -316,6 +389,11 @@ class _ProductPageState extends State<_ProductPage> {
                       ),
                     ),
                   ),
+                if (personalPhoto != null && photo == gallery.length - 1)
+                  Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(personalPhoto!.label,
+                          style: const TextStyle(fontWeight: FontWeight.w600))),
                 const SizedBox(height: 12),
                 Text(
                   (p['brand'] ?? p['retailer'] ?? '').toString().toUpperCase(),
@@ -360,7 +438,19 @@ class _ProductPageState extends State<_ProductPage> {
                       ],
                     ),
                   ),
+                if ((p['colors'] as List? ?? []).isNotEmpty)
+                  Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child:
+                          Text('Color · ${(p['colors'] as List).join(', ')}')),
                 const SizedBox(height: 20),
+                if (widget.onSizeAdvice != null)
+                  Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                          onPressed: advising ? null : advise,
+                          icon: const Icon(Icons.straighten),
+                          label: const Text('Find my size'))),
                 const Text(
                   'Select size',
                   style: TextStyle(fontWeight: FontWeight.w600),
@@ -408,6 +498,24 @@ class _ProductPageState extends State<_ProductPage> {
                     ),
                   ),
                 ),
+                if (widget.onTryOn != null || widget.onCompleteLook != null)
+                  Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Wrap(spacing: 8, children: [
+                        if (widget.onTryOn != null)
+                          OutlinedButton.icon(
+                              onPressed: generating ? null : tryOn,
+                              icon: const Icon(Icons.person_outline),
+                              label: Text(generating
+                                  ? 'Creating try-on…'
+                                  : 'Try it on')),
+                        if (widget.onCompleteLook != null)
+                          OutlinedButton.icon(
+                              onPressed: () =>
+                                  widget.onCompleteLook!(p['id'] as String),
+                              icon: const Icon(Icons.auto_awesome),
+                              label: const Text('Complete the look')),
+                      ])),
                 const SizedBox(height: 14),
                 Center(
                   child: Text(

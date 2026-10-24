@@ -162,9 +162,7 @@ class StoreController extends ChangeNotifier {
     if (source.isEmpty) return '';
     if (source.startsWith('/')) return api.imageUrl(source);
     if (demo) return source;
-    // Documented /img contract; core's published imageUrl only resolves /static.
-    return Uri.parse('${api.settings.base}/img')
-        .replace(queryParameters: {'url': source}).toString();
+    return api.imageProxyUrl(source);
   }
 }
 
@@ -182,6 +180,7 @@ Map<String, dynamic> browseMap(RankedProduct card) {
       for (final i in p.images) {'url': i.url, 'kind': i.kind}
     ],
     'description': p.description,
+    'colors': p.colors,
     'reason': card.reason,
     'in_stock': p.inStock,
     'sizes': [

@@ -5,6 +5,12 @@ import 'core/api.dart';
 import 'core/config.dart';
 import 'core/models.dart';
 import 'features/feed/quick_browse.dart';
+import 'features/social/social_feed.dart';
+import 'features/search/catalog_search.dart';
+import 'features/profile/profile_screen.dart';
+import 'features/product/size_advice_sheet.dart';
+import 'features/product/try_on.dart';
+import 'features/product/complete_look_screen.dart';
 import 'features/store/cart_screen.dart';
 import 'features/store/store_controller.dart';
 
@@ -59,6 +65,7 @@ class _ShopShellState extends State<ShopShell> {
   int anchor = 0;
   bool savedOnly = false;
   String query = '';
+  late final catalog = CatalogSearch(store.api);
   final search = TextEditingController();
   StoreController get store => widget.store;
   @override
@@ -69,6 +76,7 @@ class _ShopShellState extends State<ShopShell> {
 
   @override
   void dispose() {
+    catalog.dispose();
     search.dispose();
     super.dispose();
   }
@@ -79,33 +87,196 @@ class _ShopShellState extends State<ShopShell> {
         .trim()
         .split(RegExp(r'\s+'))
         .where((s) => s.isNotEmpty);
-    return store.feed.where((card) {
+    final source = query.isNotEmpty && !store.demo ? catalog.cards : store.feed;
+    return source.where((card) {
       final p = card.product;
       final text =
           '${p.name} ${p.brand} ${p.label} ${p.category} ${p.colors.join(' ')} ${p.styleTags.join(' ')}'
               .toLowerCase();
       return (!savedOnly || store.saved.contains(p.id)) &&
-          words.every(text.contains);
+          (!store.demo && query.isNotEmpty || words.every(text.contains));
     }).toList();
+  }
+
+  void submitSearch(String value) {
+    setState(() {
+      query = value.trim();
+      anchor = 0;
+      tab = 1;
+      savedOnly = false;
+    });
+    if (query.isNotEmpty && !store.demo) catalog.search(query);
   }
 
   void browse(int index) => setState(() {
         anchor = index;
         tab = 1;
       });
+  void openProducts(List<RankedProduct> products) {
+    Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => AnimatedBuilder(
+                  animation: store,
+                  builder: (context, _) => Scaffold(
+                    appBar: AppBar(title: const Text('Quick Browse')),
+                    body: Center(
+                        child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 540),
+                            child: QuickBrowse(
+                              products: products.map(browseMap).toList(),
+                              savedIds: store.saved,
+                              onSave: store.save,
+                              onAddToCart: store.add,
+                              imageUrl: store.imageUrl,
+                              onSizeAdvice: store.demo
+                                  ? null
+                                  : (id) =>
+                                      showSizeAdvice(context, store.api, id),
+                              onTryOn: store.demo
+                                  ? null
+                                  : (id) =>
+                                      requestTryOn(context, store.api, id),
+                              onCompleteLook: store.demo ? null : completeLook,
+                            ))),
+                  ),
+                )));
+  }
+
+  void completeLook(String id) => Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => CompleteLookScreen(
+                api: store.api,
+                productId: id,
+                onProduct: (p) => openProducts([RankedProduct(product: p)]),
+              )));
+
   Future<void> settings() async {
     await Navigator.push<void>(context,
         MaterialPageRoute(builder: (_) => ConnectionScreen(store: store)));
     if (mounted) {
       setState(() {
         anchor = 0;
+        query = '';
+        search.clear();
       });
     }
   }
 
+  Widget content(
+      List<RankedProduct> cards, List<RankedProduct> ordered, int start) {
+    if (tab == 2) {
+      return SocialFeed(
+          key: ValueKey('${store.demo}:${store.api.settings.userId}'),
+          store: store,
+          onShop: openProducts);
+    }
+    if (store.loading ||
+        query.isNotEmpty &&
+            !store.demo &&
+            catalog.loading &&
+            catalog.cards.isEmpty) {
+      return const Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+        CircularProgressIndicator(),
+        SizedBox(height: 16),
+        Text('Finding pieces for you…')
+      ]));
+    }
+    if (query.isNotEmpty &&
+        !store.demo &&
+        catalog.error != null &&
+        catalog.cards.isEmpty) {
+      return Center(
+          child: TextButton(
+              onPressed: () => catalog.search(query),
+              child: Text(catalog.error!)));
+    }
+    if (store.error != null) {
+      return Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Padding(padding: const EdgeInsets.all(24), child: Text(store.error!)),
+        FilledButton(onPressed: store.load, child: const Text('Try again'))
+      ]));
+    }
+    if (tab == 1) {
+      return QuickBrowse(
+        key: ValueKey(
+            '${store.api.settings.userId}:${store.demo}:$query:$savedOnly:$start'),
+        products: ordered.map(browseMap).toList(),
+        savedIds: store.saved,
+        onSave: store.save,
+        onAddToCart: store.add,
+        imageUrl: store.imageUrl,
+        onSizeAdvice:
+            store.demo ? null : (id) => showSizeAdvice(context, store.api, id),
+        onTryOn:
+            store.demo ? null : (id) => requestTryOn(context, store.api, id),
+        onCompleteLook: store.demo ? null : completeLook,
+      );
+    }
+    if (cards.isEmpty) {
+      return Center(
+          child: Text(savedOnly
+              ? 'Double-tap a piece to save it here.'
+              : 'No matches. Try a different search.'));
+    }
+    return CustomScrollView(slivers: [
+      SliverToBoxAdapter(
+          child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(savedOnly ? 'Your saved pieces' : 'Suggested for you',
+                        style: Theme.of(context).textTheme.headlineSmall),
+                    const SizedBox(height: 6),
+                    const Text('Find something that feels like you.'),
+                  ]))),
+      SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 16,
+                childAspectRatio: .67),
+            delegate: SliverChildBuilderDelegate((context, i) {
+              final p = cards[i].product;
+              return InkWell(
+                  key: ValueKey('suggested-${p.id}'),
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => browse(i),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                            child: SizedBox(
+                                width: double.infinity,
+                                child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: ProductPhoto(
+                                        url: store.imageUrl(p.imageUrl),
+                                        name: p.name)))),
+                        const SizedBox(height: 8),
+                        Text(p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                            '${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
+                      ]));
+            }, childCount: cards.length),
+          )),
+      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-      animation: store,
+      animation: Listenable.merge([store, catalog]),
       builder: (context, _) {
         final cards = visible;
         final start = anchor < cards.length ? anchor : 0;
@@ -129,6 +300,15 @@ class _ShopShellState extends State<ShopShell> {
                         }),
                     icon: Icon(
                         savedOnly ? Icons.favorite : Icons.favorite_border)),
+                if (!store.demo)
+                  IconButton(
+                      tooltip: 'Your profile',
+                      icon: const Icon(Icons.person_outline),
+                      onPressed: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ProfileScreen(
+                                  api: store.api, onChanged: store.load)))),
                 IconButton(
                     tooltip: 'Settings',
                     onPressed: settings,
@@ -165,152 +345,24 @@ class _ShopShellState extends State<ShopShell> {
                 child: Center(
                     child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 540),
-                        child: store.loading
-                            ? const Center(
-                                child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                    CircularProgressIndicator(),
-                                    SizedBox(height: 16),
-                                    Text('Finding pieces for you…')
-                                  ]))
-                            : store.error != null
-                                ? Center(
-                                    child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                        Padding(
-                                            padding: const EdgeInsets.all(24),
-                                            child: Text(store.error!)),
-                                        FilledButton(
-                                            onPressed: store.load,
-                                            child: const Text('Try again'))
-                                      ]))
-                                : tab == 2
-                                    ? SocialFeed(
-                                        key: ValueKey(
-                                            '${store.demo}:${store.api.settings.userId}'),
-                                        store: store,
-                                        onShop: (products) {
-                                          Navigator.push<void>(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (_) => Scaffold(
-                                                      appBar: AppBar(
-                                                          title: const Text(
-                                                              'Shop this fit')),
-                                                      body: QuickBrowse(
-                                                          products: products
-                                                              .map(browseMap)
-                                                              .toList(),
-                                                          savedIds: store.saved,
-                                                          onSave: store.save,
-                                                          onAddToCart:
-                                                              store.add,
-                                                          imageUrl: store
-                                                              .imageUrl))));
-                                        })
-                                    : tab == 1
-                                        ? QuickBrowse(
-                                            key: ValueKey(
-                                                '$query:$savedOnly:$start'),
-                                            products:
-                                                ordered.map(browseMap).toList(),
-                                            savedIds: store.saved,
-                                            onSave: store.save,
-                                            onAddToCart: store.add,
-                                            imageUrl: store.imageUrl)
-                                        : cards.isEmpty
-                                            ? Center(
-                                                child: Text(savedOnly
-                                                    ? 'Double-tap a piece to save it here.'
-                                                    : 'No matches. Try a different search.'))
-                                            : CustomScrollView(slivers: [
-                                                SliverToBoxAdapter(
-                                                    child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .fromLTRB(
-                                                                20, 20, 20, 16),
-                                                        child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Text(
-                                                                  savedOnly
-                                                                      ? 'Your saved pieces'
-                                                                      : 'Suggested for you',
-                                                                  style: Theme.of(
-                                                                          context)
-                                                                      .textTheme
-                                                                      .headlineSmall),
-                                                              const SizedBox(
-                                                                  height: 6),
-                                                              const Text(
-                                                                  'Find something that feels like you.'),
-                                                            ]))),
-                                                SliverPadding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 20),
-                                                    sliver: SliverGrid(
-                                                        gridDelegate:
-                                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                                                crossAxisCount:
-                                                                    2,
-                                                                crossAxisSpacing:
-                                                                    14,
-                                                                mainAxisSpacing:
-                                                                    16,
-                                                                childAspectRatio:
-                                                                    .67),
-                                                        delegate:
-                                                            SliverChildBuilderDelegate(
-                                                                (context, i) {
-                                                          final p =
-                                                              cards[i].product;
-                                                          return InkWell(
-                                                              key: ValueKey(
-                                                                  'suggested-${p.id}'),
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          14),
-                                                              onTap: () =>
-                                                                  browse(i),
-                                                              child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    Expanded(
-                                                                        child: SizedBox(
-                                                                            width:
-                                                                                double.infinity,
-                                                                            child: ClipRRect(borderRadius: BorderRadius.circular(14), child: ProductPhoto(url: store.imageUrl(p.imageUrl), name: p.name)))),
-                                                                    const SizedBox(
-                                                                        height:
-                                                                            8),
-                                                                    Text(p.name,
-                                                                        maxLines:
-                                                                            2,
-                                                                        overflow:
-                                                                            TextOverflow
-                                                                                .ellipsis,
-                                                                        style: const TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.w600)),
-                                                                    Text(
-                                                                        '${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
-                                                                  ]));
-                                                        },
-                                                                childCount: cards
-                                                                    .length))),
-                                                const SliverToBoxAdapter(
-                                                    child:
-                                                        SizedBox(height: 24)),
-                                              ])))),
+                        child: content(cards, ordered, start)))),
+            if (tab != 2 && query.isNotEmpty && !store.demo) ...[
+              if (catalog.error != null && catalog.cards.isNotEmpty)
+                Text(catalog.error!),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text('${catalog.cards.length} of ${catalog.total} matches'),
+                if (catalog.nextOffset != null)
+                  TextButton(
+                      onPressed: catalog.loading ? null : catalog.more,
+                      child: Text(catalog.loading ? 'Loading…' : 'Load more')),
+                TextButton(
+                    onPressed: () {
+                      search.clear();
+                      submitSearch('');
+                    },
+                    child: const Text('Clear')),
+              ]),
+            ],
             if (tab != 2)
               Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
@@ -326,21 +378,21 @@ class _ShopShellState extends State<ShopShell> {
                                 suffixIcon: IconButton(
                                     tooltip: 'Search catalog',
                                     icon: const Icon(Icons.arrow_upward),
-                                    onPressed: () => setState(() {
-                                          query = search.text;
-                                          anchor = 0;
-                                          tab = 1;
-                                        }))),
-                            onSubmitted: (value) => setState(() {
-                              query = value;
-                              anchor = 0;
-                              tab = 1;
-                            }),
+                                    onPressed: () =>
+                                        submitSearch(search.text))),
+                            onSubmitted: submitSearch,
                           )))),
           ]),
           bottomNavigationBar: NavigationBar(
               selectedIndex: tab,
-              onDestinationSelected: (value) => setState(() => tab = value),
+              onDestinationSelected: (value) => setState(() {
+                    tab = value;
+                    if (value == 0) {
+                      query = '';
+                      search.clear();
+                      anchor = 0;
+                    }
+                  }),
               destinations: const [
                 NavigationDestination(
                     icon: Icon(Icons.home_outlined), label: 'Home'),
@@ -481,90 +533,4 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
                           },
                     child: const Text('Use demo mode')),
               ]))));
-}
-
-class SocialFeed extends StatefulWidget {
-  const SocialFeed({super.key, required this.store, required this.onShop});
-  final StoreController store;
-  final void Function(List<RankedProduct>) onShop;
-  @override
-  State<SocialFeed> createState() => _SocialFeedState();
-}
-
-class _SocialFeedState extends State<SocialFeed> {
-  late Future<List<FitCheckPost>> posts =
-      widget.store.demo ? Future.value([]) : widget.store.api.fitCheckFeed();
-  String? busyId;
-  String? error;
-  Future<void> shop(FitCheckPost post) async {
-    setState(() {
-      busyId = post.id;
-      error = null;
-    });
-    try {
-      final products = await widget.store.api.shopFitCheck(post.id);
-      if (mounted) widget.onShop(products);
-    } catch (_) {
-      if (mounted) {
-        setState(
-            () => error = 'Could not find these pieces. Please try again.');
-      }
-    } finally {
-      if (mounted) setState(() => busyId = null);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<List<FitCheckPost>>(
-      future: posts,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-              child: TextButton(
-                  onPressed: () =>
-                      setState(() => posts = widget.store.api.fitCheckFeed()),
-                  child: const Text('Could not load fits. Retry')));
-        }
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.data!.isEmpty) {
-          return Center(
-              child: Text(widget.store.demo
-                  ? 'Connect to see your friends’ fits.'
-                  : 'No fits yet. Your next look could be the first.'));
-        }
-        return ListView(padding: const EdgeInsets.all(20), children: [
-          if (error != null) Text(error!),
-          for (final post in snapshot.data!)
-            Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
-                              child: Icon(Icons.person_outline)),
-                          title: Text(post.authorName ?? post.userId)),
-                      AspectRatio(
-                          aspectRatio: .85,
-                          child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: ProductPhoto(
-                                  url: widget.store.api.imageUrl(post.photoUrl),
-                                  name:
-                                      'Outfit by ${post.authorName ?? post.userId}'))),
-                      if (post.caption != null)
-                        Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Text(post.caption!)),
-                      FilledButton.tonal(
-                          onPressed: busyId == null ? () => shop(post) : null,
-                          child: Text(busyId == post.id
-                              ? 'Finding pieces…'
-                              : 'Shop this fit')),
-                    ])),
-        ]);
-      });
 }

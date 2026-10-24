@@ -8,6 +8,31 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app 
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **3:00 PM: answers to your 2:40 requests, plus an app audit Adam asked for.**
+  - **Your asks:**
+    - **(1) Server-side measurements: done in PR #22.**
+      - `Api.updateBodyProfile(heightCm, weightKg, waistCm, chestCm, hipCm, inseamCm, shoeUs, fit, usualSizes)` → `BodyProfile`. Lengths in cm; only the fields passed change.
+      - Read it back on any device via `getUser().bodyProfile`.
+      - `Api.sizeAdvice` now sends `user_id`, so `/size` uses the saved fit (unless you pass one), shoe size and waist. It falls back to the usual size for that category, but only if that size is in stock, including when no height/weight is known.
+    - **(2) Body scan → measurements: done in PR #22.**
+      - `Api.bodyScan(bytes, heightCm:, weightKg:)` → `BodyScanResult`. The model estimates chest / waist / hip / inseam / build from a full-body photo, with height as the scale.
+      - `source` is `ai` or `estimate`. `fullBody == false` comes with a `note` asking for a head-to-feet photo.
+      - The same photo becomes the try-on photo. Values the user typed win over the scan.
+    - **(3) Atomic cart size change** and **(4) category price maximums** are Nabil's lane, forwarded to him.
+  - **Also new in core:**
+    - `Api.digitizeCloset(bytes)` → `List<ClosetItem>` (PR #22): one photo of several clothes → one tagged, cropped closet item per garment; `duplicateOf` is set as with uploads.
+    - `Api.deleteFitCheck(postId)` (PR #17).
+  - **Image fix in core (PR #17):** `imageUrl` / `imageProxyUrl` now load our own photos (`/static/uploads|tryon`) saved under an old server address from the connected server. A photo shown with `Image.network(url)` directly doesn't get the fix; through `api.imageProxyUrl` it does.
+  - **Audit findings. Reporting only, your call how to fix:**
+    - The AppBar heart is the saved-only filter (main.dart ~294-302) and it stays on across tabs. Adam took it for "likes you have to unclick".
+    - The saved view is built from the loaded feed, not `Api.wishlist()`, so items saved from search, Shop this fit or Complete the look never show up there.
+    - Saves and likes only flip after the server replies. One busy flag per post blocks Like while Shop this fit runs (social_feed ~203/281).
+    - No thumbnails in cart rows, Complete the look or order history; no body-photo preview in Profile.
+    - The cart screen doesn't reload from the server when opened or after an error (cart_screen ~78-82).
+    - The receipt shows "Total" even when a store failed.
+    - Order retry needs Nabil's PR #20. I'll add `Api.retryOrder` to core when it merges.
+    - `Api.swipe` is never called, so seen items stay in the feed. Saves still teach the feed (wishlist counts as likes in style memory).
+    - **No UI path yet for:** digitize wardrobe, body scan, the saved list, order retry, deleting your own post. Adam wants everything in the original docs reachable before the 17:00 freeze.
 - **13:45: the shared backend is back at a NEW URL** (Adam DMs it; the 10:25 one is dead); update your device settings. Smoke 10/10. Your PR #18 merges cleanly with #17 + #19: analyze clean, 39/39. PR #19 makes `/feed` return immediately after swipes (same response shape). Reasons are also more varied now.
 - **10:55 AM: #13 and #16 merged** (with your OK), plus #15 and #14. The shared server runs `staging` 096a4cb: smoke 10/10, `flutter analyze` clean, 31/31. The URL and key came by DM. Next on Adam's side: the iPhone build from `staging`.
 - **10:35 AM: read your morning report and PR #16.** Checked on top of #15 + #14 + #13: no conflicts, `flutter analyze` clean, **31/31** (your e83259b), backend 275, and the unsigned iOS release build of the combined app succeeds. The new backend URL comes from Adam by DM, not Git. Merges are the humans' call: #15 → #14 → #13 → #16.

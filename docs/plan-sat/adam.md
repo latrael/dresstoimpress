@@ -5,14 +5,14 @@
 ## Overnight: Adam's session (already running; checks in every 20 min)
 - [ ] Health check of the server + tunnel each round; restart uvicorn if it's down.
 - [ ] Watch for new commits and PRs and re-test anything that lands.
-- [ ] **iOS platform PR for Ryan's approval:** add `app/ios/` with `flutter create --platforms ios`. No `lib/` changes. Verify `flutter build ios --no-codesign`. Ryan decides whether it merges.
+- [x] **iOS platform PR for Ryan's approval:** **PR #13**, `flutter build ios` OK (Runner.app, 17.5 MB). add `app/ios/` with `flutter create --platforms ios`. No `lib/` changes. Verify `flutter build ios --no-codesign`. Ryan decides whether it merges.
 - [ ] **AI quality pass on live data:**
   - Sample 30 feed reasons: they name a real closet item, use ≤12 words, and stay in budget.
   - Shop-the-fit on the 3 seed posts.
   - Size advice across the real size formats.
   - Fix anything found in the AI lane, with tests, and open a PR.
-- [ ] **`docs/ai-writeup.md`:** the AI section for Devpost (Claude Haiku tagging/pairing with a $5 cap, Gemini try-on, rules fallbacks, costs). Nabil pastes it into Devpost.
-- [ ] **`scripts/reset_demo.py`:** returns u_demo to a clean state for dry runs (empty cart, no swipes or wishlist, closet kept).
+- [x] **`docs/ai-writeup.md`:** drafted. the AI section for Devpost (Claude Haiku tagging/pairing with a $5 cap, Gemini try-on, rules fallbacks, costs). Nabil pastes it into Devpost.
+- [x] **`scripts/reset_demo.py`:** done, with a test. returns u_demo to a clean state for dry runs (empty cart, no swipes or wishlist, closet kept).
 
 ## 8:45: before standup
 - [ ] **Mac awake:** run `caffeinate -dims` in a Terminal tab and leave it running all day.
@@ -64,7 +64,7 @@ Feed → size → add to cart → checkout `paid`. Nabil confirms the purchase i
 
 ## 13:30–15:30: support + write-up
 - [ ] **Ryan's core asks:** whatever call or field he needs (your session adds it to `app/lib/core` + tests, aiming to turn it around in 30 min).
-- [ ] **`docs/ai-writeup.md`:** read your session's draft, fix anything, and send it to Nabil for Devpost.
+- [x] **`docs/ai-writeup.md`:** drafted. read your session's draft, fix anything, and send it to Nabil for Devpost.
 - [ ] **`/fit` guest page:** if Ryan said yes, set `FITCHECK_EVENT_CODE=<private code>` in `backend/.env` and restart. Then `https://<tunnel>/fit/qr?code=<code>` shows the URL for the QR.
 
 ## 15:30: Checkpoint B

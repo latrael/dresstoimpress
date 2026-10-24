@@ -14,6 +14,7 @@ from .ai.router import router as ai_router  # noqa: E402
 from .commerce.fitcheck import router as fitcheck_router  # noqa: E402
 from .commerce.fitcheck_web import router as fitcheck_web_router  # noqa: E402
 from .commerce.router import router as commerce_router  # noqa: E402
+from .commerce.search import router as search_router  # noqa: E402
 from .commerce.users import router as users_router  # noqa: E402
 from .store import DATA_DIR  # noqa: E402
 
@@ -96,6 +97,7 @@ def image_proxy(url: str):
 
 app.include_router(ai_router)
 app.include_router(commerce_router)  # /feed /products /swipe /cart /wishlist /checkout
+app.include_router(search_router)  # Discover: /search, /search/styles, /search/photo
 app.include_router(fitcheck_router)  # /fitcheck posts, feed, tags, likes, comments, shop
 app.include_router(users_router)  # /users CRUD, /onboarding
 app.include_router(fitcheck_web_router)  # public /fit page for guests (event code, no X-DTI-Key)

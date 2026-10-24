@@ -2,7 +2,22 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT · on `staging`
+**Last updated:** Sat Oct 24, 2026, ~1:15 AM PT · on `staging`
+
+---
+
+## Sat ~1 AM: Saturday plan is up; please confirm by 9:15
+
+**[`docs/plan-sat/nabil.md`](docs/plan-sat/nabil.md)**: your blocks, hour by hour. Team view: [`docs/plan-sat/README.md`](docs/plan-sat/README.md).
+- **9:15–10:15:** backup server on your laptop, with exact commands (same `API_SHARED_KEY`).
+- **10:15–11:15:** real Fit Check posts to replace the picsum seeds.
+- **11:15–12:00:** 3 test checkouts with Nessie screenshots.
+- **12:00:** Checkpoint A, where you confirm the purchase in Nessie.
+- **13:30–15:30:** Devpost draft. I'm writing `docs/ai-writeup.md` overnight for the AI section.
+- **15:30–17:00:** demo script.
+- **17:30:** dry run, where you run the clock.
+
+**Please write "Plan confirmed"** (or your changes) at the top of `NABIL_TO_ADAM.md` by 9:15.
 
 ---
 

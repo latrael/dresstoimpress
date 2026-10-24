@@ -112,13 +112,24 @@ def _swiped(user_id: str) -> set[str]:
 # ---------- feed / products ----------
 
 @router.get("/feed")
-def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None):
-    """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with."""
-    ranges = (store.get("users", user_id) or {}).get("price_ranges", {})
+def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None,
+         seed: Optional[str] = None):
+    """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with.
+    Every card also carries `your_size` / `in_your_size` and in-your-size cards come first (council D3,
+    ai.discover). `seed=<product_id>`: that product first, then look-alikes (D9); 404 if unknown."""
+    from ..ai import discover
+
+    user = store.get("users", user_id) or {}
+    ranges = user.get("price_ranges", {})
     swiped = _swiped(user_id)
     where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
     cands = {p["id"]: p for p in store.list("products", **where)
              if p["id"] not in swiped and _buyable(p) and _in_budget(p, ranges)}
+    if seed is not None:
+        anchor = _product(seed)
+        pool = [p for p in cands.values() if p["id"] != anchor["id"]]
+        return discover.seeded(anchor, _dedupe(pool, {(anchor.get("retailer"), anchor.get("name", "").strip().lower())}),
+                               user, limit)
     if not cands:
         return []
 
@@ -133,7 +144,7 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
     cards = _mix(_dedupe(picked, styles))  # ranked cards always come first
     if len(cards) < limit:
         cards += _mix(_dedupe(rest, styles))  # unranked top-up never repeats a ranked style
-    return cards[:limit]
+    return discover.size_rank(user, cards)[:limit]
 
 
 def _hits(p: dict, words: list[str]) -> Optional[int]:

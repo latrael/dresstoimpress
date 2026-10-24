@@ -276,6 +276,62 @@ def vibe_route(req: VibeRequest):
     return vibe(req.q)
 
 
+# ---------- Discover (council D10 / D11) ----------
+
+def _goes_with(user_id: str, similar: list[dict], catalog: list[dict]) -> list[dict]:
+    from . import discover
+
+    anchor = next((c for c in similar if c.get("in_your_size")), similar[0]) if similar else None
+    return discover.goes_with(user_id, anchor, catalog)
+
+
+@router.get("/search")
+def search(q: str, user_id: str = "", limit: int = 24):
+    """Discover text search -> {query, vibe, similar: [cards], goes_with: [cards]}. `vibe` is the parsed
+    query (styles / categories / colors / keywords); cards are feed cards (+ your_size, in_your_size),
+    in-your-size first. `goes_with` completes the top similar item. 422 on an empty query. Rules only
+    apart from the vibe parse, which never 502s."""
+    from . import discover
+    from .vibe import vibe
+
+    if not q.strip():
+        raise HTTPException(422, "q is empty")
+    filters = vibe(q)
+    user = (store.get("users", user_id) or {}) if user_id else {}
+    catalog = discover.buyable_catalog()
+    similar = discover.size_rank(user, discover.search_products(q, filters, catalog))[:max(1, min(limit, 100))]
+    return {"query": q, "vibe": filters, "similar": similar, "goes_with": _goes_with(user_id, similar, catalog)}
+
+
+@router.get("/search/styles")
+def search_styles(user_id: str = "", limit: int = 10):
+    """Discover before a search: {styles: [{tag, count}] from the catalog's style tags (most used first),
+    trending: [cards]} - most wishlisted / carted across users, else the top of the catalog. No AI."""
+    from . import discover
+
+    catalog = discover.buyable_catalog()
+    user = (store.get("users", user_id) or {}) if user_id else {}
+    return {"styles": discover.styles(catalog),
+            "trending": discover.size_rank(user, discover.trending(catalog, max(1, min(limit, 50))))}
+
+
+@router.post("/search/photo")
+async def search_photo(user_id: str = Form(...), file: UploadFile = File(...)):
+    """Discover photo search: snap a jacket -> {tags: [fit tags], similar: [cards], goes_with: [cards]}.
+    The photo is saved metadata-free (GPS stripped), tagged with tag_fit, matched with shop_fit, then
+    size-ranked. 502 when tagging is down."""
+    from . import discover
+
+    url = await _save_upload(file)
+    try:
+        tagged = service.tag_fit(url)
+    except BadModelOutput as e:
+        raise _ai_down("outfit tagging", e)
+    user = store.get("users", user_id) or {}
+    similar = discover.size_rank(user, service.shop_fit(user_id, tagged))
+    return {"tags": tagged, "similar": similar, "goes_with": _goes_with(user_id, similar, discover.buyable_catalog())}
+
+
 @router.get("/ai/usage")
 def ai_usage():
     """Running AI spend estimate. Check it from a browser during the hackathon."""

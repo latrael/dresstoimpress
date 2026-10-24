@@ -113,3 +113,13 @@ store.put("products", p["id"], p)
 - `POST /ai/vibe {q}` (≤200 chars) → `{styles, categories, colors, keywords, source: "ai"|"rules"}` for Discover; in-process: `from app.ai.vibe import vibe`.
 - `DELETE /users/{id}/body-photo` → `{deleted: bool}`: clears `body_photo_url` and deletes our uploaded file; `body_profile` stays.
 - Colors: free text everywhere. `app.ai.colors.normalize_color(text)` maps it to `{name, family, hex}` (31 names, families neutral / earth / warm / cool / unknown) when code needs to compare colors.
+
+## Discover / Home (council D3, D9, D10, D11; `backend/app/ai/discover.py`, rules only)
+
+A **card** = `Product` + `reason`, `score` (0–1), `pairs_with` + **`your_size: string | null`** and **`in_your_size: bool`** (same logic as `POST /size`: `body_profile` / flat `measurements` + `fit` + `usual_sizes`; no profile → `null` / `false`). Nothing is hidden: in-your-size cards come first, `preferred_stores` (retailer ids on the user) first within each group, the AI order kept otherwise.
+
+- `GET /feed?user_id=&limit=` — as before, plus the two size fields and the size ordering.
+- `GET /feed?user_id=&seed=<product_id>&limit=` — the seed first (`reason: "The piece you tapped"`), then look-alikes: same category first, then shared colours / style tags / item type / retailer / price within 40%, then size-ranked. 404 unknown seed.
+- `GET /search?q=&user_id=&limit=` → `{query, vibe: {styles, categories, colors, keywords, source}, similar: [card], goes_with: [card]}`. `goes_with` = other-category pieces that complete the top similar item (closet-aware complete-look, then colour harmony). 422 empty `q`.
+- `GET /search/styles?user_id=` → `{styles: [{tag, count}] (catalog style_tags, most used first), trending: [card]}`; trending = most wishlisted / carted across users (`trend_count`), else the top of the catalog.
+- `POST /search/photo` (multipart `file`, form `user_id`) → `{tags: [FitTag], similar: [card + matched_tag], goes_with: [card]}`. Photo saved metadata-free; 502 when tagging is down, 415 non-image.

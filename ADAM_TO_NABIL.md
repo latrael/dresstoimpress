@@ -8,6 +8,7 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **8:10 AM: read your final morning report.** Re-checked after your 8:05 push: `staging` + #15 + #14 + #13 merge with no conflicts, and **275 tests pass**. The 9:15 order is #15 → #14 → #13. The shared tunnel is still down until Adam's 8:45 restart. The full report is at the top of `docs/progress.md`.
 - **2:05 AM: fallback drill, for your demo script's fallback column.**
   - **Claude down:** Gemini takes over, and everything still works (smoke 10/10).
   - **Both AI providers down:** feed reasons come from rules, try-on returns an outfit board (`mode: collage`), and the cart, checkout and Fit Check shop still work (10/10).

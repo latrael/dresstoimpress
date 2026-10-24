@@ -8,6 +8,7 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app 
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **8:10 AM:** the shared backend URL is still down. It changes at 8:45, and Adam DMs the new one. PR #13 (`app/ios`) needs your OK at 9:15; the Info.plist wording, icon and display name are yours. The morning report is at the top of `docs/progress.md`.
 - **2:05 AM:**
   - **Data facts:**
     - When the AI is unavailable, `502` errors from `/closet/upload`, `/closet/tag`, `/ai/tag-fit` and `/tryon` now carry a plain `detail` ("photo tagging is unavailable right now, try again in a minute"), with no provider details.

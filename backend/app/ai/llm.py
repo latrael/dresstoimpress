@@ -1,7 +1,10 @@
-"""Thin wrappers around Claude (vision + text) and Gemini (image gen).
+"""Thin wrappers around Claude / Gemini (vision + text) and Gemini (image gen).
 
-MOCK_AI=1 (or a missing key) returns deterministic fake output so the app
-and frontend can be built without spending credits or waiting on models.
+Text tasks (tagging, pairing) go through `ai_json`:
+  - Claude Haiku when ANTHROPIC_API_KEY is set (the Anthropic-track path),
+  - else Gemini Flash text when GEMINI_API_KEY is set (free tier works),
+  - else mock output. Force one with AI_TEXT_PROVIDER=claude|gemini|mock.
+MOCK_AI=1 forces mock everywhere so the app can be built without spending anything.
 """
 from __future__ import annotations
 
@@ -17,7 +20,26 @@ import httpx
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-5-5")
 CLAUDE_TAG_MODEL = os.getenv("CLAUDE_TAG_MODEL", CLAUDE_MODEL)
 CLAUDE_PAIR_MODEL = os.getenv("CLAUDE_PAIR_MODEL", CLAUDE_MODEL)
-GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+# Cheapest image model; switch to gemini-3.1-flash-image if faces/bodies drift in try-on.
+GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-lite-image")
+GEMINI_TEXT_MODEL = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
+
+
+def text_provider() -> str:
+    if os.getenv("MOCK_AI") == "1":
+        return "mock"
+    forced = os.getenv("AI_TEXT_PROVIDER")
+    if forced in {"claude", "gemini", "mock"}:
+        return forced
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return "claude"
+    if os.getenv("GEMINI_API_KEY"):
+        return "gemini"
+    return "mock"
+
+
+def text_mock() -> bool:
+    return text_provider() == "mock"
 
 # USD per million tokens (input, output), from platform.claude.com/docs pricing, Oct 2026.
 PRICES = {
@@ -57,6 +79,18 @@ def _record_claude(model: str, in_tok: int, out_tok: int) -> None:
     m = u["by_model"].setdefault(model, {"calls": 0, "est_usd": 0.0})
     m["calls"] += 1
     m["est_usd"] = round(m["est_usd"] + cost, 6)
+    store.put("ai_usage", "total", u)
+
+
+def _record_gemini_text(in_tok: int, out_tok: int) -> None:
+    from ..store import store
+
+    u = usage()
+    m = u["by_model"].setdefault(GEMINI_TEXT_MODEL, {"calls": 0, "est_usd": 0.0,
+                                                     "input_tokens": 0, "output_tokens": 0})
+    m["calls"] += 1
+    m["input_tokens"] = m.get("input_tokens", 0) + in_tok
+    m["output_tokens"] = m.get("output_tokens", 0) + out_tok
     store.put("ai_usage", "total", u)
 
 
@@ -133,6 +167,55 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
         except BadModelOutput as e:
             last_err = e
     raise BadModelOutput(str(last_err))
+
+
+def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500) -> Any:
+    """Same contract as claude_json, on Gemini Flash text. Retries once on bad JSON."""
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client()
+    parts: list[Any] = []
+    if image_url:
+        data, mime = fetch_image(image_url)
+        parts.append(types.Part.from_bytes(data=data, mime_type=mime))
+    parts.append(prompt)
+    cfg = types.GenerateContentConfig(
+        max_output_tokens=max_tokens,
+        response_mime_type="application/json",
+        thinking_config=types.ThinkingConfig(thinking_budget=0),  # no thinking: cheaper, faster, no empty replies
+    )
+    last_err: Exception | None = None
+    for _ in range(2):
+        resp = client.models.generate_content(model=GEMINI_TEXT_MODEL, contents=parts, config=cfg)
+        try:
+            meta = resp.usage_metadata
+            _record_gemini_text(meta.prompt_token_count or 0, meta.candidates_token_count or 0)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            return extract_json(resp.text or "")
+        except BadModelOutput as e:
+            last_err = e
+    raise BadModelOutput(str(last_err))
+
+
+def ai_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
+            model: str | None = None) -> Any:
+    """Route a JSON-returning text task to Claude or Gemini (see module doc)."""
+    if text_provider() == "gemini":
+        try:
+            return gemini_json(prompt, image_url=image_url, max_tokens=max_tokens)
+        except BadModelOutput:
+            raise
+        except Exception as e:  # noqa: BLE001 — network/quota errors become fallbacks
+            raise BadModelOutput(f"gemini: {e}") from e
+    try:
+        return claude_json(prompt, image_url=image_url, max_tokens=max_tokens, model=model)
+    except BadModelOutput:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise BadModelOutput(f"claude: {e}") from e
 
 
 CLAUDE_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
@@ -216,7 +299,10 @@ def gemini_image(prompt: str, image_urls: list[str]) -> bytes:
         parts.append(types.Part.from_bytes(data=data, mime_type=mime))
     parts.append(prompt)
 
-    resp = client.models.generate_content(model=GEMINI_IMAGE_MODEL, contents=parts)
+    try:
+        resp = client.models.generate_content(model=GEMINI_IMAGE_MODEL, contents=parts)
+    except Exception as e:  # noqa: BLE001 — quota (429), network, etc.
+        raise BadModelOutput(f"gemini image: {str(e)[:200]}") from e
     for cand in resp.candidates or []:
         for part in cand.content.parts or []:
             if getattr(part, "inline_data", None) and part.inline_data.data:

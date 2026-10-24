@@ -153,8 +153,25 @@ def test_pair_cache_reuses_claude(client, monkeypatch):
         calls.append(1)
         return [{"product_id": "hm-demo-1", "score": 0.9, "reason": "goes with your baggy jeans",
                  "pairs_with": ["ci_demo_2"]}]
-    monkeypatch.setattr(service, "claude_json", fake)
-    monkeypatch.setattr(service, "mock_mode", lambda k: False)
+    monkeypatch.setattr(service, "ai_json", fake)
+    monkeypatch.setattr(service, "text_mock", lambda: False)
     a = service.pair("u_demo", ["hm-demo-1", "zara-demo-1"])
     b = service.pair("u_demo", ["hm-demo-1", "zara-demo-1"])
     assert len(calls) == 1 and a == b and a[0].pairs_with == ["ci_demo_2"]
+
+
+def test_text_provider_routing(monkeypatch):
+    from app.ai import llm
+    monkeypatch.delenv("MOCK_AI", raising=False)
+    monkeypatch.delenv("AI_TEXT_PROVIDER", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    assert llm.text_provider() == "mock"
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    assert llm.text_provider() == "gemini"
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "a")
+    assert llm.text_provider() == "claude"
+    monkeypatch.setenv("AI_TEXT_PROVIDER", "gemini")
+    assert llm.text_provider() == "gemini"
+    monkeypatch.setenv("MOCK_AI", "1")
+    assert llm.text_provider() == "mock"

@@ -12,8 +12,8 @@ from ..store import DATA_DIR, store
 from . import prompts
 import time
 
-from .llm import (CLAUDE_PAIR_MODEL, CLAUDE_TAG_MODEL, BadModelOutput, claude_json, gemini_image,
-                  mock_mode)
+from .llm import (CLAUDE_PAIR_MODEL, CLAUDE_TAG_MODEL, BadModelOutput, ai_json, gemini_image,
+                  mock_mode, text_mock)
 from .memory import style_memory
 
 TRYON_DIR = DATA_DIR / "tryon"
@@ -29,7 +29,7 @@ class NotClothing(Exception):
 # ---------- /closet/tag ----------
 
 def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
-    if mock_mode("ANTHROPIC_API_KEY"):
+    if text_mock():
         raw = {"category": "top", "color": "black", "pattern": "solid",
                "style_tags": ["streetwear"], "formality": 2}
     else:
@@ -39,7 +39,7 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
         if hit:
             raw = hit
         else:
-            raw = claude_json(prompts.TAGGER, image_url=image_url, max_tokens=200,
+            raw = ai_json(prompts.TAGGER, image_url=image_url, max_tokens=200,
                               model=CLAUDE_TAG_MODEL)
             if isinstance(raw, dict):
                 store.put("tag_cache", key, raw)
@@ -127,7 +127,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
     if not cands:
         return []
 
-    if mock_mode("ANTHROPIC_API_KEY") or not closet:
+    if text_mock() or not closet:
         return _fallback(cands, ranges, k)
 
     slim_closet = [{k2: c[k2] for k2 in ("id", "category", "color", "pattern", "style_tags")}
@@ -154,7 +154,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         raw = hit["raw"]
     else:
         try:
-            raw = claude_json(prompt, max_tokens=1200, model=CLAUDE_PAIR_MODEL)
+            raw = ai_json(prompt, max_tokens=1200, model=CLAUDE_PAIR_MODEL)
         except BadModelOutput:
             return _fallback(cands, ranges, k)
         store.put("pair_cache", ckey, {"at": time.time(), "raw": raw})

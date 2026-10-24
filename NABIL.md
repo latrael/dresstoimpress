@@ -9,7 +9,7 @@ What Adam and Ryan need from my layer (Apify ingestion, product DB, feed, cart, 
 ## TL;DR
 
 - **Product schema below is a proposal.** We lock it at the Friday 6 PM schema meeting, so please read it before then.
-- **Sizes are the main risk.** The multi-store Apify actor (`mrdoe/fashion-multi-scraper-us`) returned **no sizes for any retailer** we tested, and returned nothing at all for Uniqlo. Sizes will come from a second pass that scrapes each product's own page.
+- **Sizes: mostly solved.** The multi-store actor gives no sizes, but single-store actors return real per-size stock for H&M and Zara, and for ASOS through product URLs. See "Apify findings" below. Uniqlo and Mango aren't covered yet.
 - **Products are a snapshot.** We scrape them once at ingest and the feed serves them from the DB. Nothing is scraped live during the demo.
 - **Demo retailer may change.** The demo script uses an H&M top. That holds only if H&M sizes work, and I'll confirm by Saturday noon.
 
@@ -95,8 +95,37 @@ Apify listing scrape ──> validate ──> tag (Adam's tagger) ──> size s
 | Uniqlo | **0 items** | no | Failed twice, so it looks broken. |
 | Mango | **0 items** | no | The default URL is a dead summer-sale page. Not retested yet. |
 
-**Next:** find single-store actors that return sizes, test them on about 5 items each and update this table.
-**Fallback:** if none work, the feed uses only the retailers we *can* get sizes for. Building our own sizes actor is the stretch goal, and it also doubles as an entry for Apify's $400 Best Actor prize.
+### Single-store actors that DO return sizes (tested Oct 23, 5 items each)
+
+| Retailer | Actor | Sizes format | Notes |
+|---|---|---|---|
+| H&M | `gauzy_penguin/HM-Product-Scraper` | `[{size, stock, in_stock}]` | Searches by keyword, US store, about 5s per run, $0.004/item. **Best H&M option.** |
+| H&M | `mrdoe/hm-product-scraper-us` | `[{name, inStock}]` | Takes a category URL and shows real out-of-stock sizes, but it's slow (about 2 min) and uses residential proxies. |
+| Zara | `parseforge/zara-scraper` | `[{size, availability, sku}]` | Takes a category URL with `fetchProductDetails: true`, about 9s per run. **Our free Apify plan caps it at 10 items per run.** |
+| ASOS | `nifty.codes/asos-listingdetails-scraper` | text, e.g. `"XS - UK 4-6, S - UK 8-10"` | Needs product URLs, so it's pass 2 only. **It returns the UK store, prices in GBP**, and takes about 30s per URL. |
+
+**Uniqlo: `abotapi/uniqlo-com-scraper` works with no proxy.**
+- **Input that worked:** `{"mode":"search","country":"us","categories":["women t-shirts"],"maxItems":N,"fetchDetails":true,"proxy":{"useApifyProxy":false}}`
+- **Per-colour, per-size stock** in `variants[]`: `{colorName, sizeName, stockStatus, stockQuantity, inStock}`.
+- **Low stock shows up as `inStock: false`.** Count a size as available when `stockStatus != "STOCK_OUT"`, and build the size list from `variants`, not from `availableSizes`.
+- **Cost:** a $0.08 fee per run plus about $0.003 per item, so batch large runs; 100 items is about $0.36. It has clean product-only images per colour (`colors[].imageUrl`).
+- `rl1987/uniqlo-api-scraper` crashed, and `mrdoe/uniqlo-product-scraper-us` returned 0 items.
+
+**Mango: sizes, but no stock flags, on the free plan.**
+- `mrdoe/fashion-multi-scraper-us` works with a **live** `mangoCategoryUrl`, e.g. `https://shop.mango.com/us/en/c/women/dresses-and-jumpsuits/e6bb8705`. It returns `sizes: ["4","6","8"]` as plain strings, so treat every size as in stock.
+- Other live women's category URLs follow the same pattern: tops `227371cd`, jeans `164d8c42`, coats `d1b967bc`, t-shirts `8e23bdfb`, sweaters `f9a8c868`, new-now `56b5c5ed`.
+- `abotapi/mango-com-scraper` has real per-size stock, but it **needs a paid plan** (residential proxy).
+
+**H&M (`gauzy_penguin`) deep check, confirmed:**
+- **Stock is real.** `stock` is just a flag (2 = in stock, 0 = sold out). It agrees with `mrdoe` on the same product. Fast: 50 items in about 3s, with no proxy needed.
+- **Kids and baby items mixed in.** For "dress", 32 of 50 results were kids. Filter `category` to `ladies_*` / `men_*`, and request about 2x the items you need.
+- **The same style in other colours comes back as separate items.** Ids share their first 7 digits.
+- **Images are 2333x3500 and 1–3.5 MB.** Add `?imwidth=657` to resize.
+- **@Adam: adult items have no clean garment-only photo.** `model_image` shows a person wearing the item, so try-on needs background removal or a model that accepts a photo of a worn garment.
+
+**Dead ends:**
+- Zara: `shahidirfan` and `karamelo` returned no sizes. `abotapi` needs proxy access, which our free plan doesn't include.
+- ASOS: `shahidirfan` returned `"Available online"` in place of sizes.
 
 ## Risks
 
@@ -105,5 +134,8 @@ Apify listing scrape ──> validate ──> tag (Adam's tagger) ──> size s
 - **Rule #1: no code before the Friday opening.** Until then this file is design only.
 
 ## Changelog
+
+- **Oct 23 (evening):** Uniqlo works through `abotapi/uniqlo-com-scraper` with real stock. Mango works through the multi-scraper with a live URL (sizes, no stock flags). H&M stock data confirmed real.
+- **Oct 23 (later):** Found actors that return sizes for H&M (`gauzy_penguin`), Zara (`parseforge`, capped at 10 items on the free plan) and ASOS (`nifty.codes`, UK store only).
 
 - **Oct 23:** Proposed the schema and pipeline. Ran the Apify size test: no retailer returns sizes, and Uniqlo and Mango returned nothing.

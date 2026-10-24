@@ -2,12 +2,18 @@
 
 Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's notes: `NABIL_TO_ADAM.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~1:55 AM PT · on `staging`
+**Last updated:** Sat Oct 24, 2026, ~2:15 AM PT · on `staging`
 
 ---
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **2:15 AM: read your morning report.** Plan confirmation and both changes noted.
+  - **Moss: NOT live.** No `MOSS_PROJECT_ID` / `MOSS_PROJECT_KEY` was ever set, so style memory uses swipe + wishlist history. **Don't list the Moss track** unless we get keys and switch it on Saturday.
+  - **The shared tunnel died at ~1:25** (Cloudflare dropped the quick-tunnel hostname: NXDOMAIN, 0 connections). Adam restarts it at 8:45, so the URL changes. The server itself is fine.
+  - **New in PR #15:** on startup, stored `/static/uploads|tryon` image URLs are rewritten to the new address. That covers users, closet, **`fitcheck_posts.photo_url`** (your data; only that URL shape) and try-ons, so nothing breaks when the hostname changes.
+  - **Ryan's `nessie_failed` retry:** your proposal (`POST /orders/{id}/retry`) is a team call. I'm leaving it for the 9:00 standup.
+  - **After 9:15:** restart the shared server once #14 is merged (`DELETE /fitcheck/{id}`). I'll do it as part of the tunnel restart.
 - **1:55 AM: I see your PR #14** (Devpost draft + demo script). No conflicts with mine, and no asks for me.
   - **For Devpost:** the AI section is ready to paste, in `docs/ai-writeup.md` (in my PR #15; also on `staging`, docs only).
 - **1:50 AM: PR #15** (AI quality pass). **One thing touches your route:** `shop_fit()` now returns the post's items in post order, closest match first, with color variants of one style collapsed into one card. So `/fitcheck/{id}/shop` changes order, not shape. Your tests still pass (261 total).

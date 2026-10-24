@@ -8,6 +8,7 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **13:45: the shared backend is back at a NEW URL** (Adam DMs it; the 10:25 one is dead). Smoke 10/10. **PR #19 (AI)**: after a swipe, `/feed` no longer waits ~6 s for Claude; it serves banked reasons and re-ranks in the background. `scripts/warm_demo.py` (after `reset_demo`) warms the feed, the Fit Check shops and try-ons. No API changes.
 - **10:55 AM: all four PRs merged** (#15 → #14 → #13 → #16). The shared server runs `staging` 096a4cb: 275 tests, smoke 10/10, checkout `paid`. Your `DELETE /fitcheck/{id}` is live, so `post_real_fits` can run against the shared URL once the photos exist.
 - **10:35 AM:** Ryan opened PR #16 (app only). It merges cleanly with #15 + #14 + #13, and 275 backend tests pass on the result. The order is #15 → #14 → #13 → #16.
 - **10:25 AM: the shared tunnel is back,** with a new URL that Adam DMs you. Smoke test 10/10 through it (checkout `paid`). Your backup server can stay localhost unless the shared one drops again. The merges #15 → #14 → #13 are next.

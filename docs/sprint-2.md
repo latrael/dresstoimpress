@@ -61,7 +61,55 @@ Sat Oct 24, 2026, ~5:00 PM PT. For the council session. Built from Nabil's list 
 
 ### B2. Sources and cost
 
-_Filled in from the Apify Store research (no paid runs yet), below._
+From the Apify Store research (Sat ~5 PM). **Nothing was run.** Account spend so far: **$7.07** (H&M $5.75, Uniqlo $0.98, early tests $0.35); **~$198 left**.
+- **Our plan is still FREE tier,** so free-tier prices and per-run caps apply. There's no residential proxy (datacenter IPs only), which rules out some actors.
+
+**Step 0, $0: recover three pulls that are already paid for.** Today's 4:31–4:33 PM runs all **succeeded**. Adam's Uniqlo "502" was the HTTP wait timing out, not the run failing. The datasets are kept 7 days:
+
+| Run | Items | Already paid | Dataset |
+| --- | --- | --- | --- |
+| Uniqlo, 18 categories | 211 products (~500 colour-products) | $0.67 | `iGeZpvLVraZfPkDFS` (run `1t465LlAXzkzYAC89`) |
+| H&M, 24 gendered keywords × 25 | 586 | $2.34 | `uYlbnLWpWYVVqbnne` |
+| H&M, men's batch | 286 (mostly duplicates of the above) | $1.14 | `3Er5Eo1UAC3b6iOVy` |
+
+Download each (`GET /v2/datasets/{id}/items`, a fraction of a cent), save it under `seed/raw/`, then `scripts.ingest --from-file`. **≈ +400 H&M and +500 Uniqlo items for $0.** Also fix `run_actor` in `ingest.py`: when the sync call 502s, fetch the run's dataset instead of re-running (that's how this data got "lost").
+
+**Ranked plan for this sprint:**
+
+| # | Source | Actor | Cost | Adds | Sizes + stock | Department | Work needed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | **Recover the 3 datasets** | (already run) | **$0** | ~900 | ✅ | ✅ | `--from-file` only |
+| 2 | **Uniqlo, new categories** (polos, sweatpants, cardigans, leggings, bags, hats, socks…) | `abotapi/uniqlo-com-scraper`, `resumeFromRunId` so duplicates aren't billed | **~$1.20** | ~700–900 | ✅ | ✅ `genderCategory` | none (~$1.10 per 1k feed items: best value) |
+| 3 | **H&M, 32 new keywords × 25**: accessories (caps, bags, belts, jewelry, beanies; we have none), polos, overshirts, blazers, heels | `gauzy_penguin/HM-Product-Scraper` | **~$3.20** (two runs of ~$1.60) | ~600 | ✅ | ✅ `men_` / `ladies_` prefix | none. Keep "mens"/"womens" in keywords so kids' items stay out; check overlap first, since duplicates are billed ($0.004 each) |
+| 4 | **Shopify stores**, ~200 each from gendered collections. Women: Princess Polly US, Edikted, Brandy Melville US. Men: True Classic. Unisex: Kith, Stüssy, Culture Kings | `autofacts/shopify` (2,380 users, 4.2★, updated Oct 20); backup `trovevault/shopify-products-scraper` | **~$1.00** | ~1,000 | ✅ per-variant stock | per collection URL / per store | a new `normalize_shopify` (variant Size/Color → sizes, compare-at → sale price, images per colour, drop gift cards/beauty) |
+| 5 | Zara (optional) | `parseforge/zara-scraper`, 10 items per run on the free tier → 30 runs | ~$1.20 | ~300 | ✅ | ✅ breadcrumb (WOMAN/MAN) | a new `normalize_zara`; works around the actor's 10-per-run cap |
+
+**Total to reach ~2,500–3,000 products: ≈ $5.40, or $6.60 with Zara.** That's under 4% of the remaining credit.
+
+**Ruled out:**
+- **Mango:** the actor needs proxy access our plan lacks.
+- **Shein:** no per-size stock.
+- **Nike and Bershka/Pull&Bear:** $42 per 1k.
+- **ASOS:** UK store, prices in GBP.
+- **Gap/Old Navy, Urban Outfitters, Abercrombie, American Eagle:** no actor, and they don't run on Shopify.
+- **Gymshark, Hello Molly:** Cloudflare blocks them.
+- **Fashion Nova, Skims:** no product JSON.
+- **Forever 21 US:** believed closed in 2025.
+
+**Before #4 / #5, a ~$0.20 test run** (2–3 collection URLs × 20 items) answers what research can't:
+- Do Apify's datacenter IPs get blocked (429/403)?
+- Are prices in USD?
+- How good are the stock and gender tags?
+- Are there garment-only images?
+- Is Zara's cap per run or per day?
+
+**New stores touch other lanes (team call):**
+- **Schema:** `models.py` limits `Retailer` to `zara|hm|asos|uniqlo|mango`, and the schema is locked.
+- **Checkout:** `nessie.py` `MERCHANTS` needs a merchant per new store.
+- **Images:** the image-proxy allowlist (`app/lib/core/api.dart` and `backend/app/main.py`) needs `cdn.shopify.com` / `static.zara.net`, or web builds show no photos.
+- **Onboarding:** the Stores screen hard-codes `['hm','uniqlo']` (`onboarding_screen.dart`).
+
+Steps 1–3 need none of this; they're our current two stores.
 
 ### B3. The pipeline (two stages, every new item goes through both)
 
@@ -97,7 +145,10 @@ _Filled in from the Apify Store research (no paid runs yet), below._
 
 ### Nabil
 1. **Now:** connect the demo phone (A9). Ask Adam to run `load_products` (no `--replace`) + `warm_demo --tryons 0` on the shared server (B1).
-2. **Catalog stage 1:** normalizers for the chosen new stores (B2); keyword batches for H&M + Uniqlo (Adam's command list, ADAM_TO_NABIL 4:45); each store separately; raw saved.
+2. **Catalog stage 1:**
+   - **First:** recover the 3 paid datasets (B2 step 0, $0) and fix `run_actor`'s 502 fallback.
+   - **Then:** Uniqlo + H&M expansion (steps 2–3), and `normalize_shopify` / `normalize_zara` if the council picks them.
+   - Each store runs separately, with raw output saved.
 3. **Catalog stage 3:** export + commit the new snapshot, update the counts in NABIL.md / Devpost / demo script.
 4. **`Product.summary` field + backfill script** around Adam's prompt (B4).
 5. **Review Adam's sizing branch** (`adam/measure-sizing`, 1 commit, touches `commerce/router.py` + `models.py`); it changes what `_size_pick` passes. Reply in `NABIL_TO_ADAM.md`.
@@ -135,8 +186,11 @@ _Filled in from the Apify Store research (no paid runs yet), below._
 
 ## Open questions for the council
 
-1. **[decide]** Which new stores (from B2), and how big: ~2,000 or ~3,000 products?
-2. **[decide]** Apify budget for this sprint (the recommendation is in B2).
+1. **[decide]** How far down B2's ranked plan:
+   - Steps 1–3 only: H&M + Uniqlo, ~2,000+ items, ~$4.40, no cross-lane changes.
+   - Also add Shopify (step 4): new stores and ~3,000 items, but schema, merchant, image-proxy and onboarding changes.
+   - Also Zara (step 5).
+2. **[decide]** Apify budget for this sprint. The recommendation is **≤ $7** total (B2: $5.40, or $6.60 with Zara), including the ~$0.20 test runs.
 3. **[decide]** Separator look (A1) and whether the carousel keeps dots (A5).
 4. **[decide]** The onboarding chip list (A8): our 10 catalog styles only, or also vibe words ("clean girl", "old money", "gorpcore") that map onto them?
 5. **[decide]** Summaries: should the AI one-liner for H&M be labelled as a summary, or shown like a retailer description?

@@ -1,141 +1,111 @@
 # NABIL.md: data and commerce status
 
-What Adam and Ryan need from my layer (Apify ingestion, product DB, feed, cart, Nessie checkout). I update this file whenever something changes, and the newest changes go at the top of the changelog.
+What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Thu Oct 23, 2026
+**Last updated:** Fri Oct 23, 2026, about 8 PM PT
 
 ---
 
 ## TL;DR
 
-- **Product schema below is a proposal.** We lock it at the Friday 6 PM schema meeting, so please read it before then.
-- **Sizes: mostly solved.** The multi-store actor gives no sizes, but single-store actors return real per-size stock for H&M and Zara, and for ASOS through product URLs. See "Apify findings" below. Uniqlo and Mango aren't covered yet.
-- **Products are a snapshot.** We scrape them once at ingest and the feed serves them from the DB. Nothing is scraped live during the demo.
-- **Demo retailer may change.** The demo script uses an H&M top. That holds only if H&M sizes work, and I'll confirm by Saturday noon.
+- **The schema is LOCKED.** The source of truth is `backend/app/models.py` → `Product` (see `docs/schema.md`). My earlier draft (`price`, `url`, `tags{}`, `inStock`) is retired; use `price_usd`, `product_url`, `colors[]`, `sizes[{name, in_stock}]`, `style_tags`, `pattern`, `formality`, `label`, and singular `category`.
+- **The feed is built on H&M and Uniqlo.** Both return real per-size stock on our free Apify plan with no proxy, and neither has a run cap. Zara and Mango are optional extras later.
+- **Products are a snapshot.** They're scraped once at ingest and the feed serves them from the store. Nothing is scraped live during the demo, except Adam's Fit Check lookups (`source: "live_search"`).
+- **The demo's H&M top stays.** H&M sizes and stock are confirmed real.
 
 ---
 
-## Product schema (proposal)
-
-Every product the feed returns looks like this:
-
-```json
-{
-  "id": "asos:211172667:ivory",
-  "retailer": "asos",
-  "name": "Topshop knitted high neck ribbed sweater lace detail in ivory",
-  "price": 96.73,
-  "currency": "USD",
-  "sizes": [{ "name": "S", "inStock": true }, { "name": "M", "inStock": false }],
-  "image_url": "https://images.asos-media.com/products/.../211172667-1-white",
-  "url": "https://www.asos.com/.../prd/211172667",
-  "category": "tops",
-  "color": "ivory",
-  "tags": {
-    "category": "tops",
-    "color": "ivory",
-    "pattern": "solid",
-    "style": ["cozy", "minimal"],
-    "formality": "casual"
-  },
-  "scraped_at": "2026-10-24T02:16:01Z"
-}
-```
-
-| Field | Notes |
-|---|---|
-| `id` | `{retailer}:{productCode}:{color}`. It stays the same across scrapes, so it's safe to store in carts, wishlists and OOTD tags. |
-| `retailer` | One of `zara`, `hm`, `asos`, `uniqlo`, `mango`. Each retailer maps to one Nessie merchant at checkout. |
-| `sizes` | Always a non-empty list. A product without sizes never reaches the feed. |
-| `tags` | **Same schema as Adam's closet tagger.** Products and closet items get tagged the same way so pairing compares like with like. |
-
-## Pipeline
+## Ingest: H&M + Uniqlo
 
 ```
-Apify listing scrape ──> validate ──> tag (Adam's tagger) ──> size scrape ──> products DB ──> /feed
-   (pass 1: name,         (drop bad      (cached once        (pass 2: product     (snapshot)
-    price, image, url)     price/image)   per product)         page → sizes)
+Apify actor (one run per retailer) ──> normalize to Product ──> tag (Adam's POST /products/tag) ──> store "products" ──> /feed
 ```
 
-1. **Pass 1, discovery:** scrape category pages for name, price, image and url.
-2. **Validate:** drop items whose price or image is broken.
-3. **Tag:** run every product image through Adam's tagger once and cache the result.
-4. **Pass 2, sizes:** scrape product pages, only for items that survive the filters, to get sizes and stock.
-5. **Serve:** `/feed` filters by the user's style and price range, then orders by Adam's pairing ranks.
+| | H&M | Uniqlo |
+|---|---|---|
+| Actor | `gauzy_penguin/HM-Product-Scraper` | `abotapi/uniqlo-com-scraper` |
+| Input | keywords, e.g. `"womens tops, baggy jeans, y2k"`, `Country: en_us` | category names, e.g. `"women t-shirts"`, `country: us`, `fetchDetails: true` |
+| Cost | $0.004/item | $0.08/run + ~$0.003/item, so batch into one run |
+| One product = | one H&M article (each colour is its own article) | **one colour** of a Uniqlo product |
+| `id` | `hm:{article_id}:{color}` | `uniqlo:{productId}:{color}` |
+| Sizes / stock | `sizes[].in_stock` (real) | per-colour variants. **`LOW_STOCK` counts as in stock** |
+| Image | `model_image?imwidth=657` (a person wearing it) | `colors[].imageUrl` (**garment only**, the best for try-on) |
+| Filtering | **drop `kids_*` categories** (up to ~60% of results) | none needed |
+| Category | rule-mapped from H&M's category string, tagger as fallback | rule-mapped from `categoryPath`, tagger as fallback |
+
+**Run it** (once `APIFY_TOKEN` is in `backend/.env`):
+```bash
+cd backend && source .venv/bin/activate
+python -m scripts.ingest                 # default keywords/categories → store "products"
+python -m scripts.ingest --dry-run       # preview, no save
+python -m scripts.ingest --from-file data/raw/hm_*.json --retailer hm   # re-normalize a saved pull, no Apify
+```
+More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`, `--no-tag`, `--show N`. Don't mix retailers in one `--from-file` glob.
+
+**First real load (Oct 23, from the saved raw pulls): 370 products.** H&M 242 (34 maternity, 4 kids and 20 duplicates dropped) + Uniqlo 128 (49 products × up to 3 colours). By category: top 178, outerwear 89, bottom 82, dress 21. There are **no shoes or accessories** in the data yet.
+
+## API (commerce router, Nabil)
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/feed?user_id=&limit=20` | in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`. Each card adds `reason`, `score`, `pairs_with` |
+| GET | `/products/{id}` | one product |
+| POST | `/swipe` `{user_id, product_id, action, size?}` | `like` (right → cart if a size is given), `save` (down → wishlist), `discard` (left). Feeds Adam's style memory |
+| POST | `/cart/{user_id}/items` `{product_id, size, qty}` | add to cart; 422 if the size is sold out |
+| GET | `/cart/{user_id}` | cart **grouped by retailer**, with subtotals and a total |
+| DELETE | `/cart/{user_id}/items/{product_id}?size=` | remove an item |
+| GET | `/wishlist/{user_id}` | saved items |
+| POST | `/checkout/{user_id}` | one purchase per retailer. Status is `pending_nessie` until the Nessie key is in |
+
+Shapes:
+- **Feed card** = full `Product` + `reason`, `score`, `pairs_with[]`. One card per style (colour variants are collapsed), and stores and categories alternate. If `pair()` returns fewer cards than `limit`, it tops up with unranked cards (`reason: ""`).
+- **Cart** = `{user_id, groups:[{retailer, items:[{product_id, size, qty, added_at, product}], subtotal_usd}], total_usd, count}`. It uses `sale_price_usd` when set.
+- **Checkout** = `{order_id, purchases:[{retailer, merchant_id, amount_usd, items, status}], total_usd}`. It returns 400 if the cart is empty.
+- **Swipe** returns `{user_id, product_id, action, in_cart}`. Any swipe removes the product from that user's feed. `like` with a sold-out size returns 422.
 
 ## What I need from you
 
 ### Adam
-- **Tagger endpoint:** a product image goes in, the `tags` object above comes out. Can the field names and allowed values for `pattern`, `style` and `formality` be agreed Friday at 6?
-- **Pairing endpoint:** I'll send the closet plus about 50 candidate product `id`s. I need back a ranked list of `{id, reason}`.
+- **FYI on swipes:** `/swipe` now writes the `swipes` collection (`{user_id, product_id, action, swipe, size, at}`, doc id `user:product`). Before this, nothing wrote it, so your memory fallback had no data without Moss. `action` uses your words (`cart`/`wishlist`/`discard`), and `swipe` keeps the app's word (`like`/`save`/`discard`).
+- `/fitcheck/{post_id}/shop` → `shop_fit()` is next on my list.
+- Otherwise nothing blocking. I'm using `to_canonical`, `tag_product`, `pair()` and `record_swipe()` as documented in `docs/schema.md` and `backend/README.md`.
+- FYI: H&M images show a person wearing the item. Uniqlo images are garment-only, so Uniqlo items are the safest for try-on demos.
 
 ### Ryan
-- **Feed cards:** you can rely on `image_url`, `name`, `price`, `retailer` and `sizes` always being present.
-- **Size picker:** it's needed before add-to-cart, and sold-out sizes (`inStock: false`) should be greyed out.
-- **Cart:** items can come from several retailers. The checkout confirmation is grouped by `retailer`, with one Nessie purchase per store.
-- **Mock data:** the JSON example above is safe to build screens against until real data arrives.
+- **Feed cards:** `image_url`, `name`, `brand`, `price_usd`, `retailer` and `sizes` are always present. Show `sale_price_usd` struck through when it isn't null.
+- **Size picker** before add-to-cart: grey out sizes where `in_stock: false`.
+- **Cart and checkout confirmation:** group by `retailer` (H&M and Uniqlo for the demo).
+- Real products should be in the store tonight. Until then, `python -m scripts.seed_demo` gives you mock data in the same shape.
 
-## API (planned, all on the shared FastAPI service)
+## Apify findings (reference)
 
-| Method | Path | Returns |
-|---|---|---|
-| GET | `/feed?user_id=` | ranked list of products |
-| GET | `/products/{id}` | one product |
-| POST | `/cart/{user_id}/items` | add `{product_id, size}` |
-| GET | `/cart/{user_id}` | cart grouped by retailer |
-| POST | `/checkout/{user_id}` | one Nessie purchase per retailer, plus a confirmation |
-
-## Apify findings so far
-
-| Retailer | Listing scrape | Sizes? | Notes |
-|---|---|---|---|
-| Zara | works | no | |
-| H&M | works | no | |
-| ASOS | works (10/10) | no | No `category` either; the tagger will have to fill it in. |
-| Uniqlo | **0 items** | no | Failed twice, so it looks broken. |
-| Mango | **0 items** | no | The default URL is a dead summer-sale page. Not retested yet. |
-
-### Single-store actors that DO return sizes (tested Oct 23, 5 items each)
-
-| Retailer | Actor | Sizes format | Notes |
-|---|---|---|---|
-| H&M | `gauzy_penguin/HM-Product-Scraper` | `[{size, stock, in_stock}]` | Searches by keyword, US store, about 5s per run, $0.004/item. **Best H&M option.** |
-| H&M | `mrdoe/hm-product-scraper-us` | `[{name, inStock}]` | Takes a category URL and shows real out-of-stock sizes, but it's slow (about 2 min) and uses residential proxies. |
-| Zara | `parseforge/zara-scraper` | `[{size, availability, sku}]` | Takes a category URL with `fetchProductDetails: true`, about 9s per run. **Our free Apify plan caps it at 10 items per run.** |
-| ASOS | `nifty.codes/asos-listingdetails-scraper` | text, e.g. `"XS - UK 4-6, S - UK 8-10"` | Needs product URLs, so it's pass 2 only. **It returns the UK store, prices in GBP**, and takes about 30s per URL. |
-
-**Uniqlo: `abotapi/uniqlo-com-scraper` works with no proxy.**
-- **Input that worked:** `{"mode":"search","country":"us","categories":["women t-shirts"],"maxItems":N,"fetchDetails":true,"proxy":{"useApifyProxy":false}}`
-- **Per-colour, per-size stock** in `variants[]`: `{colorName, sizeName, stockStatus, stockQuantity, inStock}`.
-- **Low stock shows up as `inStock: false`.** Count a size as available when `stockStatus != "STOCK_OUT"`, and build the size list from `variants`, not from `availableSizes`.
-- **Cost:** a $0.08 fee per run plus about $0.003 per item, so batch large runs; 100 items is about $0.36. It has clean product-only images per colour (`colors[].imageUrl`).
-- `rl1987/uniqlo-api-scraper` crashed, and `mrdoe/uniqlo-product-scraper-us` returned 0 items.
-
-**Mango: sizes, but no stock flags, on the free plan.**
-- `mrdoe/fashion-multi-scraper-us` works with a **live** `mangoCategoryUrl`, e.g. `https://shop.mango.com/us/en/c/women/dresses-and-jumpsuits/e6bb8705`. It returns `sizes: ["4","6","8"]` as plain strings, so treat every size as in stock.
-- Other live women's category URLs follow the same pattern: tops `227371cd`, jeans `164d8c42`, coats `d1b967bc`, t-shirts `8e23bdfb`, sweaters `f9a8c868`, new-now `56b5c5ed`.
-- `abotapi/mango-com-scraper` has real per-size stock, but it **needs a paid plan** (residential proxy).
-
-**H&M (`gauzy_penguin`) deep check, confirmed:**
-- **Stock is real.** `stock` is just a flag (2 = in stock, 0 = sold out). It agrees with `mrdoe` on the same product. Fast: 50 items in about 3s, with no proxy needed.
-- **Kids and baby items mixed in.** For "dress", 32 of 50 results were kids. Filter `category` to `ladies_*` / `men_*`, and request about 2x the items you need.
-- **The same style in other colours comes back as separate items.** Ids share their first 7 digits.
-- **Images are 2333x3500 and 1–3.5 MB.** Add `?imwidth=657` to resize.
-- **@Adam: adult items have no clean garment-only photo.** `model_image` shows a person wearing the item, so try-on needs background removal or a model that accepts a photo of a worn garment.
+| Retailer | Best actor | Sizes | Stock | Status |
+|---|---|---|---|---|
+| **H&M** | `gauzy_penguin/HM-Product-Scraper` | ✅ | ✅ | **in the feed** |
+| **Uniqlo** | `abotapi/uniqlo-com-scraper` | ✅ | ✅ | **in the feed** |
+| Zara | `parseforge/zara-scraper` (`fetchProductDetails: true`) | ✅ | ✅ | extra; **10 items per run on the free plan** |
+| Mango | `mrdoe/fashion-multi-scraper-us` + a live `mangoCategoryUrl` | ✅ | ❌ (assume in stock) | extra. Live URLs: `https://shop.mango.com/us/en/c/women/{tops/227371cd, jeans/164d8c42, coats/d1b967bc}` |
+| ASOS | `nifty.codes/asos-listingdetails-scraper` (product URLs only) | text | partial | skipped: UK store, GBP prices, ~30s per item |
 
 **Dead ends:**
-- Zara: `shahidirfan` and `karamelo` returned no sizes. `abotapi` needs proxy access, which our free plan doesn't include.
-- ASOS: `shahidirfan` returned `"Available online"` in place of sizes.
+- `mrdoe/fashion-multi-scraper-us`: no sizes for Zara, H&M or ASOS, and 0 items for Uniqlo.
+- Zara: `shahidirfan` and `karamelo` returned no sizes. `abotapi` needs a paid proxy.
+- Uniqlo: `rl1987` crashed and `mrdoe` returned 0 items.
+- ASOS: `shahidirfan` doesn't return real sizes.
+- Mango: `abotapi` needs a paid proxy.
+
+A paid Apify plan or hackathon credits would unlock Zara at full volume and real Mango stock. I'm asking at the booth.
 
 ## Risks
 
-- **No retailer returns sizes yet.** If pass 2 fails, we cut down to whichever stores work.
-- **Zara and H&M block scrapers.** Their product pages may need residential proxies.
-- **Rule #1: no code before the Friday opening.** Until then this file is design only.
+- **Nessie isn't wired yet** (no key). Checkout returns `pending_nessie` purchases until it is.
+- **There's no public backend URL yet.** The app can't reach a laptop's localhost, so we need ngrok or Render before the Saturday-noon end-to-end run.
+- **Style keywords are loose** on H&M (it has no y2k tag), so Adam's tagger supplies the real `style_tags`.
 
 ## Changelog
 
-- **Oct 23 (evening):** Uniqlo works through `abotapi/uniqlo-com-scraper` with real stock. Mango works through the multi-scraper with a live URL (sizes, no stock flags). H&M stock data confirmed real.
-- **Oct 23 (later):** Found actors that return sizes for H&M (`gauzy_penguin`), Zara (`parseforge`, capped at 10 items on the free plan) and ASOS (`nifty.codes`, UK store only).
-
-- **Oct 23:** Proposed the schema and pipeline. Ran the Apify size test: no retailer returns sizes, and Uniqlo and Mango returned nothing.
+- **Oct 23, ~9 PM:** Ingest CLI and commerce router built (84 tests pass). 370 real H&M and Uniqlo products loaded. Merged Adam's staging update; his notes to me are covered here (see ADAM.md).
+- **Oct 23, ~8 PM:** Schema locked to `models.py` (on `staging`). Ingest built around H&M and Uniqlo. Commerce router and ingest CLI in progress on `nabil`.
+- **Oct 23 (evening):** Uniqlo works through `abotapi` with real stock. Mango works through the multi-scraper (sizes, no stock flags). H&M stock confirmed real.
+- **Oct 23 (later):** Found actors that return sizes for H&M, Zara (capped at 10 items) and ASOS (UK only).
+- **Oct 23:** First schema and pipeline proposal. The multi-store actor returned no sizes.

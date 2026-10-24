@@ -3,8 +3,8 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (ClosetItem, CompleteLookRequest, PairRequest, PairResult, ShopFitRequest, SizeRequest, TagFitRequest, TagRequest,
-                      TryOnRequest, TryOnResponse)
+from ..models import (ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
+                      SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
 from .llm import AI_BUDGET_USD, MAX_TRYONS, BadModelOutput, usage
@@ -16,7 +16,8 @@ EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/
 
 
 async def _save_upload(file: UploadFile) -> str:
-    """Save an uploaded image under /static/uploads and return its public URL."""
+    """Save an uploaded image under /static/uploads and return its public URL.
+    Nabil's commerce/fitcheck.py imports this: don't rename it."""
     if file.content_type not in EXT:
         raise HTTPException(415, f"unsupported image type {file.content_type}")
     data = await file.read()
@@ -35,6 +36,22 @@ async def closet_upload(user_id: str = Form(...), file: UploadFile = File(...)):
     """Photo straight from the app: save, then tag. Same output as /closet/tag."""
     url = await _save_upload(file)
     return closet_tag(TagRequest(user_id=user_id, image_url=url))
+
+
+@router.get("/closet/{user_id}", response_model=list[ClosetItem])
+def closet_list(user_id: str):
+    """Everything in this user's closet (newest last)."""
+    return store.list("closet_items", user_id=user_id)
+
+
+@router.delete("/closet/{user_id}/{item_id}")
+def closet_delete(user_id: str, item_id: str):
+    """Remove one closet item, e.g. after "you already have this" on upload."""
+    item = store.get("closet_items", item_id)
+    if not item or item.get("user_id") != user_id:
+        raise HTTPException(404, "unknown closet item")
+    store.delete("closet_items", item_id)
+    return {"deleted": item_id}
 
 
 @router.post("/users/{user_id}/body-photo")
@@ -96,7 +113,7 @@ def products_tag(req: TagFitRequest):
     if not req.image_url.startswith(("http://", "https://")):
         raise HTTPException(400, "image_url must be http(s)")
     try:
-        return service.tag_product(req.image_url)
+        return service.tag_product(req.image_url, req.hint)
     except service.NotClothing:
         raise HTTPException(422, "not_clothing")
     except BadModelOutput as e:
@@ -149,3 +166,26 @@ def complete_look_route(req: CompleteLookRequest):
     catalog = [p for p in list_products() if p["id"] != anchor["id"]]
     return complete_look(anchor, closet, catalog, budget_usd=req.budget_usd,
                          style_text=user.get("style_text", ""))
+
+
+@router.post("/ai/fit-score")
+def fit_score(req: FitScoreRequest):
+    """Fit Score badge: {score 0-100, verdict, notes, breakdown}. Rules only: free and instant.
+    Send a Fit Check post's `tagged` as `items`, or ids for a complete-the-look / closet outfit."""
+    from .compat import get_product
+    from .outfit_score import score_outfit
+
+    items = list(req.items)
+    for pid in req.product_ids:
+        p = get_product(pid)
+        if not p:
+            raise HTTPException(404, f"unknown product {pid}")
+        items.append({"category": p.get("category"), "color": (p.get("colors") or [""])[0],
+                      "pattern": p.get("pattern"), "formality": p.get("formality"),
+                      "style_tags": p.get("style_tags", []), "label": p.get("label") or p.get("name")})
+    for cid in req.closet_item_ids:
+        c = store.get("closet_items", cid)
+        if not c:
+            raise HTTPException(404, f"unknown closet item {cid}")
+        items.append(c)
+    return score_outfit(items)

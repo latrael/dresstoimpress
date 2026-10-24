@@ -7,7 +7,10 @@ import os
 import uuid
 from pathlib import Path
 
-from ..models import ClosetItem, PairResult, Product
+from typing import get_args
+
+from ..models import ClosetItem, PairResult, Product, StyleTag
+from .colors import find_duplicate
 from .compat import get_product, list_products
 from ..store import DATA_DIR, store
 from . import prompts
@@ -21,6 +24,13 @@ TRYON_DIR = DATA_DIR / "tryon"
 PUBLIC_BASE = os.getenv("PUBLIC_BASE", "http://localhost:8000")
 PAIR_TTL = int(os.getenv("PAIR_CACHE_SECONDS", "600"))
 CATEGORIES = {"top", "bottom", "outerwear", "shoes", "dress", "accessory"}
+STYLE_VOCAB = set(get_args(StyleTag))
+
+
+def _style_tags(raw: dict, n: int) -> list[str]:
+    """Model style tags limited to the shared 10-word vocabulary (it sometimes adds "casual", "retro")."""
+    tags = raw.get("style_tags") if isinstance(raw.get("style_tags"), list) else []
+    return [t for t in dict.fromkeys(str(t).strip().lower() for t in tags) if t in STYLE_VOCAB][:n]
 
 
 class NotClothing(Exception):
@@ -29,20 +39,24 @@ class NotClothing(Exception):
 
 # ---------- /closet/tag ----------
 
-def tag_image(image_url: str) -> dict:
-    """Raw tagger output for one garment image (cached per URL). Raises NotClothing."""
+def tag_image(image_url: str, hint: str | None = None) -> dict:
+    """Raw tagger output for one garment image (cached per URL + hint). Raises NotClothing.
+
+    `hint` = what the photo is selling (product name). Retailer photos often show a model in a
+    whole outfit; the hint makes the tagger describe that one item, not the model's jeans."""
+    hint = " ".join(str(hint or "").split())[:120]
     if text_mock():
         raw = {"label": "black tee", "category": "top", "color": "black", "pattern": "solid",
                "style_tags": ["streetwear"], "formality": 2}
     else:
         # same photo tagged twice (retries, re-uploads) costs nothing the second time
-        key = hashlib.sha256(image_url.encode()).hexdigest()[:24]
+        key = hashlib.sha256((image_url + ("|" + hint if hint else "")).encode()).hexdigest()[:24]
         hit = store.get("tag_cache", key)
         if hit:
             raw = hit
         else:
-            raw = ai_json(prompts.TAGGER, image_url=image_url, max_tokens=200,
-                              model=CLAUDE_TAG_MODEL)
+            prompt = prompts.TAGGER + (prompts.TAGGER_HINT.format(hint=hint) if hint else "")
+            raw = ai_json(prompt, image_url=image_url, max_tokens=200, model=CLAUDE_TAG_MODEL)
             if isinstance(raw, dict):
                 store.put("tag_cache", key, raw)
 
@@ -63,11 +77,13 @@ def tag_closet_item(user_id: str, image_url: str) -> ClosetItem:
         color=str(raw.get("color", "unknown")),
         pattern=raw.get("pattern", "other") if raw.get("pattern") in
         {"solid", "striped", "plaid", "graphic", "floral", "other"} else "other",
-        style_tags=list(raw.get("style_tags", []))[:5],
+        style_tags=_style_tags(raw, 5),
         formality=min(5, max(1, int(raw.get("formality", 3)))),
         source="photo",
         label=" ".join(str(raw.get("label", "")).split()[:5]),
     )
+    # same garment uploaded twice? the app can offer "you already have this - keep both?"
+    item.duplicate_of = find_duplicate(item.model_dump(), store.list("closet_items", user_id=user_id))
     store.put("closet_items", item.id, item.model_dump())
     return item
 
@@ -223,10 +239,15 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
     """
     from .finder import find_products
 
+    from concurrent.futures import ThreadPoolExecutor
+
     products = list_products()
     matched: dict[str, str] = {}
-    for tag in tagged:
-        for p in find_products(tag, products):
+    # items that need a live store search take ~5 s each: run them side by side, keep post order
+    with ThreadPoolExecutor(max(1, min(4, len(tagged)))) as ex:
+        found = list(ex.map(lambda t: find_products(t, products), tagged))
+    for tag, hits in zip(tagged, found):
+        for p in hits:
             matched.setdefault(p["id"], tag.get("label", ""))
     if not matched:
         return []
@@ -279,25 +300,26 @@ def tag_fit(image_url: str) -> list[dict]:
             "category": r.get("category") if r.get("category") in CATEGORIES else "accessory",
             "color": str(r.get("color", "")),
             "pattern": r.get("pattern", "other"),
-            "style_tags": list(r.get("style_tags", []))[:3],
+            "style_tags": _style_tags(r, 3),
         })
     return out[:8]
 
 
 
-def tag_product(image_url: str) -> dict:
+def tag_product(image_url: str, hint: str | None = None) -> dict:
     """Tags for a catalog product image (Nabil's ingest). Same vocabulary as closet items so
-    pairing compares like with like. Returns contract fields plus NABIL.md's `tags` object."""
+    pairing compares like with like. Returns contract fields plus NABIL.md's `tags` object.
+    Pass the product name as `hint` for photos of a model wearing a full outfit."""
     from .compat import to_nabil_tags
 
-    raw = tag_image(image_url)
+    raw = tag_image(image_url, hint)
     item = {
         "label": " ".join(str(raw.get("label", "")).split()[:5]),
         "category": raw.get("category") if raw.get("category") in CATEGORIES else "top",
         "color": str(raw.get("color", "")),
         "pattern": raw.get("pattern") if raw.get("pattern") in
         {"solid", "striped", "plaid", "graphic", "floral", "other"} else "other",
-        "style_tags": list(raw.get("style_tags", []))[:5],
+        "style_tags": _style_tags(raw, 5),
         "formality": min(5, max(1, int(raw.get("formality", 3)))),
     }
     return {**item, "tags": to_nabil_tags(item)}

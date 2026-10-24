@@ -2,29 +2,26 @@
 
 1. Strict match against the products we already have (category must match, the item's
    type word -- "hoodie", "jeans" -- must appear in the product name, color helps).
-2. If nothing passes, search the retailers live through Apify (store search pages fed to
-   the same fashion scraper Nabil uses), normalize, save to `products`, and match again.
+2. If nothing passes, search H&M live through Apify (Nabil's H&M actor and normalizer from
+   app.commerce.ingest, so live results have the same ids and shape as the catalog), save new
+   ones to `products`, and match again.
 
-Live search runs only with APIFY_TOKEN set and is capped per item (cost: a few results).
+Live search runs only with APIFY_TOKEN set, is capped per item (LIVE_SEARCH_MAX, ~5 s, a few
+cents) and cached per query.
 """
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 import re
-from urllib.parse import quote_plus
 
-import httpx
-
+from .colors import is_neutral, same_color
 from .compat import get_product, list_products
 from ..store import store
 
 log = logging.getLogger(__name__)
 
-APIFY_ACTOR = os.getenv("APIFY_SEARCH_ACTOR", "jordan-byte~fashion-multi-scraper-us")
-LIVE_SITES = [s for s in os.getenv("LIVE_SEARCH_SITES", "asos,hm,zara").split(",") if s]
-LIVE_PER_SITE = int(os.getenv("LIVE_SEARCH_PER_SITE", "4"))
+LIVE_SEARCH_MAX = int(os.getenv("LIVE_SEARCH_MAX", "6"))  # H&M results per Fit Check item
 MIN_SCORE = 2.5  # type match (2.0) plus at least one more signal: descriptor, color or retailer
 
 # Type words: an item only matches products of the same kind.
@@ -40,6 +37,7 @@ TYPE_GROUPS = [
     {"dress"},
     {"jacket", "bomber", "puffer", "windbreaker", "blazer"},
     {"coat", "trench", "overcoat"},
+    {"vest", "gilet", "waistcoat"},
     {"sneakers", "trainers", "sneaker"},
     {"boots", "boot"},
     {"heels", "pumps", "sandals", "loafers", "flats", "shoes"},
@@ -80,10 +78,14 @@ def match_score(tag: dict, product: dict) -> float:
     # descriptors = label words other than the item's own type ("denim" in "denim jacket" counts)
     want_words = _words(tag.get("label") or "") - (TYPE_GROUPS[want_type] if want_type is not None else set())
     score += 0.5 * len(want_words & have)
-    color = _words(tag.get("color") or "")
-    if color & have:
+    color_text = tag.get("color") or ""
+    color = _words(color_text)
+    prod_colors = product.get("colors") or []
+    # normalized too, so "ivory" matches "off white" and "navy blue" matches "dark navy"
+    if color & have or any(same_color(color_text, c) for c in prod_colors):
         score += 1.0
-    elif color & NEUTRALS and have & NEUTRALS:
+    elif (color & NEUTRALS and have & NEUTRALS) or (
+            is_neutral(color_text) and any(is_neutral(c) for c in prod_colors)):
         score += 0.3
     if tag.get("retailer") and tag["retailer"] == product.get("retailer"):
         score += 1.0
@@ -97,78 +99,46 @@ def best_matches(tag: dict, products: list[dict], n: int = 3) -> list[dict]:
     return [p for _, p in scored[:n]]
 
 
-# ---------- live search via Apify ----------
+# ---------- live search via Apify (H&M) ----------
 
-def search_urls(query: str) -> dict[str, str]:
-    q = quote_plus(query)
-    return {
-        "asosCategoryUrl": f"https://www.asos.com/us/search/?q={q}",
-        "hmCategoryUrl": f"https://www2.hm.com/en_us/search-results.html?q={q}",
-        "zaraCategoryUrl": query,  # Zara field accepts a plain name
-        "uniqloCategoryUrl": f"https://www.uniqlo.com/us/en/search?q={q}",
-        "mangoCategoryUrl": f"https://shop.mango.com/us/en/search?q={q}",
-    }
-
-
-def _normalize(raw: dict, tag: dict) -> dict | None:
-    site = (raw.get("site") or raw.get("retailer") or "").lower()
-    price = raw.get("price") or raw.get("price_usd")
-    if isinstance(price, dict):
-        price = price.get("current")
-    img = raw.get("image") or raw.get("imageUrl") or raw.get("image_url") or (raw.get("images") or [None])[0]
-    url = raw.get("url") or raw.get("productUrl") or raw.get("product_url")
-    name = raw.get("name") or raw.get("title")
-    try:
-        price = float(str(price).replace("$", "").replace(",", "")) if price is not None else None
-    except ValueError:
-        price = None
-    if site not in {"zara", "hm", "asos", "uniqlo", "mango"} or not (name and price and img and url):
-        return None
-    sale = raw.get("salePrice") or raw.get("sale_price")
-    try:
-        sale = float(str(sale).replace("$", "")) if sale else None
-    except ValueError:
-        sale = None
-    pid = f"{site}-" + hashlib.sha256(str(url).encode()).hexdigest()[:12]
-    colors = raw.get("colors") or ([raw["color"]] if raw.get("color") else [])
-    sizes = [s if isinstance(s, dict) else {"name": str(s), "in_stock": True} for s in (raw.get("sizes") or [])]
-    return {
-        "id": pid, "retailer": site, "name": str(name), "brand": raw.get("brand") or {
-            "hm": "H&M", "zara": "Zara", "asos": "ASOS", "uniqlo": "Uniqlo", "mango": "Mango"}[site],
-        "category": tag.get("category") or "top", "price_usd": price, "sale_price_usd": sale,
-        "colors": [str(c) for c in colors][:5], "sizes": sizes[:12], "currency": "USD",
-        "in_stock": True, "image_url": str(img), "product_url": str(url),
-        "style_tags": list(tag.get("style_tags", []))[:3], "source": "live_search",
-    }
+def _query(tag: dict) -> str:
+    """Search text: color + label, without repeating the color ("black hoodie", not "black black hoodie")."""
+    label = " ".join(str(tag.get("label") or "").split())
+    color = " ".join(str(tag.get("color") or "").split())
+    if color and color.lower() not in label.lower():
+        label = f"{color} {label}"
+    return label.strip()
 
 
 def live_search(tag: dict) -> list[dict]:
-    """Search stores for one item; saves and returns normalized Products. [] on any failure."""
+    """Search H&M for one item; saves new products and returns them. [] on any failure."""
     token = os.getenv("APIFY_TOKEN")
     if not token or not tag.get("label"):
         return []
-    query = f"{tag.get('color') or ''} {tag['label']}".strip()
-    key = "q-" + re.sub(r"[^a-z0-9]+", "-", query.lower())[:80]
+    query = _query(tag)
+    key = "hm-" + re.sub(r"[^a-z0-9]+", "-", query.lower())[:80]
     cached = store.get("live_search_cache", key)
     if cached is not None:
         return [p for pid in cached["ids"] if (p := get_product(pid))]
-    sites = [tag["retailer"]] if tag.get("retailer") in LIVE_SITES else LIVE_SITES
-    urls = search_urls(query)
-    body = {"sites": sites, "maxItemsPerSite": LIVE_PER_SITE,
-            **{k: v for k, v in urls.items() if k.split("CategoryUrl")[0] in sites}}
+    from ..commerce.ingest import fetch_hm, normalize_hm  # Nabil's actor + normalizer
+
     try:
-        r = httpx.post(f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items",
-                       params={"token": token}, json=body, timeout=120)
-        r.raise_for_status()
-        items = r.json()
-    except Exception as e:  # noqa: BLE001
-        log.warning("live search failed for %r: %s", query, e)
+        found = normalize_hm(fetch_hm([query], LIVE_SEARCH_MAX, token))
+    except Exception as e:  # noqa: BLE001  (log no message: the request URL carries the token)
+        status = getattr(getattr(e, "response", None), "status_code", "")
+        log.warning("live search failed for %r: %s %s", query, type(e).__name__, status)
         return []
-    found = [p for raw in items if isinstance(raw, dict) and (p := _normalize(raw, tag))]
+    out = []
     for p in found:
+        existing = store.get("products", p["id"])
+        if existing:  # already in the catalog, maybe tagged: keep that copy
+            out.append(existing)
+            continue
+        p["source"] = "live_search"
         store.put("products", p["id"], p)
-    store.put("live_search_cache", key, {"ids": [p["id"] for p in found]})
-    return found
+        out.append(p)
+    store.put("live_search_cache", key, {"ids": [p["id"] for p in out]})
+    return out
 
 
 def find_products(tag: dict, products: list[dict], n: int = 3) -> list[dict]:

@@ -62,6 +62,7 @@ class ClosetItem(BaseModel):
     formality: int = Field(3, ge=1, le=5)
     source: Literal["photo", "receipt", "seed"] = "photo"
     label: str = ""  # short plain name, e.g. "black cargo pants" (optional, added Fri night)
+    duplicate_of: Optional[str] = None  # id of a closet item that's probably the same garment (set on upload)
 
 
 class User(BaseModel):
@@ -139,5 +140,13 @@ class CompleteLookRequest(BaseModel):
     budget_usd: Optional[float] = None  # total for new items incl. the anchor
 
 
+class FitScoreRequest(BaseModel):
+    """Any mix: raw items (a Fit Check post's `tagged`), catalog products, closet items."""
+    items: list[dict] = []
+    product_ids: list[str] = []
+    closet_item_ids: list[str] = []
+
+
 class TagFitRequest(BaseModel):
     image_url: str
+    hint: Optional[str] = None  # /products/tag only: the product name, for photos of a model in a full outfit

@@ -32,12 +32,21 @@ size present in `product["sizes"]`.
 from __future__ import annotations
 
 import math
+import re
 from typing import Any, Literal
 
 Confidence = Literal["high", "medium", "low"]
 
 LETTER_ORDER: tuple[str, ...] = ("XS", "S", "M", "L", "XL", "XXL")
 LETTER_TO_IDX: dict[str, int] = {size: idx for idx, size in enumerate(LETTER_ORDER)}
+# real catalog sizes outside the estimate range (H&M has XXS and 3XL); only picked when nearest
+LETTER_TO_IDX.update({"XXS": -1, "2XS": -1, "2XL": 5, "3XL": 6, "XXXL": 6})
+
+# Bottoms: "28/32" or "W28 L32" (waist/inseam), "28inch", or US women's 0-24 (not inches).
+_WAIST_INSEAM = re.compile(r"^W?\s*(\d{2})\s*(?:/|x|\s)\s*L?\s*(\d{2})$", re.I)
+_WAIST_INCH = re.compile(r'^(\d{2})\s*(?:in|inch|inches|")$', re.I)
+WOMENS_US_WAIST: dict[int, float] = {0: 24.5, 2: 25.5, 4: 26.5, 6: 27.5, 8: 28.5, 10: 29.5, 12: 31.0,
+                                     14: 32.5, 16: 34.5, 18: 36.5, 20: 38.5, 22: 40.5, 24: 42.5}
 
 RETAILER_OFFSET: dict[str, int] = {
     "zara": 1,
@@ -129,6 +138,27 @@ def _estimate_waist_inches(height_cm: float, weight_kg: float) -> float:
     return max(24.0, min(46.0, estimated))
 
 
+def _estimate_inseam_inches(height_cm: float) -> float:
+    return height_cm * 0.45 / 2.54
+
+
+def _bottom_candidates(sizes: list[str]) -> list[tuple[str, float, float | None]]:
+    """(label, waist_in, inseam_in or None) for every size we can read as a waist."""
+    out: list[tuple[str, float, float | None]] = []
+    for s in sizes:
+        t = s.strip()
+        if m := _WAIST_INSEAM.match(t):
+            out.append((s, float(m[1]), float(m[2])))
+        elif m := _WAIST_INCH.match(t):
+            out.append((s, float(m[1]), None))
+    if out:
+        return out
+    nums = _parse_numeric_sizes(sizes)
+    if nums and all(v == int(v) and int(v) in WOMENS_US_WAIST for _, v in nums):
+        return [(label, WOMENS_US_WAIST[int(v)], None) for label, v in nums]  # US women's 0-24
+    return [(label, v, None) for label, v in nums]  # plain waist inches
+
+
 def recommend_size(
     product: dict,
     height_cm: float,
@@ -199,25 +229,25 @@ def recommend_size(
             available_letters.append((s, LETTER_TO_IDX[upper]))
     numeric_candidates = _parse_numeric_sizes(sizes)
 
-    # 4. Bottoms with numeric waist sizes
-    if category == "bottom" and numeric_candidates and not available_letters:
-        if _is_valid_number(waist_in) and 20.0 <= float(waist_in) <= 60.0:  # type: ignore[arg-type]
-            target_waist = float(waist_in)  # type: ignore[arg-type]
-            chosen, diff = _nearest_numeric_size(target_waist, numeric_candidates)
-            if diff <= 1.0:
-                conf: Confidence = "high"
-            elif diff <= 2.0:
-                conf = "medium"
-            else:
-                conf = "low"
-            return _result(chosen, conf, f"nearest waist size to {target_waist:g} in")
-
-        if not valid_metrics:
+    # 4. Bottoms sized by waist: "32", "28/32" (waist/inseam), "28inch", US women's "0"-"24"
+    bottom_cands = _bottom_candidates(sizes) if category == "bottom" and not available_letters else []
+    if bottom_cands:
+        given = _is_valid_number(waist_in) and 20.0 <= float(waist_in) <= 60.0  # type: ignore[arg-type]
+        if not given and not valid_metrics:
             return _result(None, "low", "missing waist and valid body metrics")
-
-        est_waist = _estimate_waist_inches(float(height_cm), float(weight_kg))
-        chosen, _ = _nearest_numeric_size(est_waist, numeric_candidates)
-        return _result(chosen, "low", "waist estimated from height and weight")
+        target_waist = float(waist_in) if given else _estimate_waist_inches(  # type: ignore[arg-type]
+            float(height_cm), float(weight_kg))
+        inseam = _estimate_inseam_inches(float(height_cm)) if valid_metrics else None
+        # nearest waist first (ties -> larger), then the length closest to their height
+        label, waist, _ = min(bottom_cands, key=lambda c: (
+            round(abs(c[1] - target_waist), 6),
+            abs(c[2] - inseam) if c[2] is not None and inseam is not None else 0.0,
+            -c[1]))
+        if not given:
+            return _result(label, "low", "waist estimated from height and weight")
+        diff = abs(waist - target_waist)
+        conf: Confidence = "high" if diff <= 1.0 else "medium" if diff <= 2.0 else "low"
+        return _result(label, conf, f"nearest waist size to {target_waist:g} in")
 
     # 5. Letter-sized apparel (tops, outerwear, dresses, letter-sized bottoms, etc.)
     if available_letters:

@@ -3,7 +3,7 @@
 Default: JSON files under backend/data/ (works offline, zero setup).
 Set USE_FIRESTORE=1 (+ GOOGLE_APPLICATION_CREDENTIALS) to use Firestore with
 the same collection names: products, closet_items, users, swipes, tryon_cache.
-Nabil can swap in his own product source — only get/list/put are used here.
+Nabil can swap in his own product source — get/list/put/delete are all that's used.
 """
 from __future__ import annotations
 
@@ -38,11 +38,27 @@ class JsonStore:
         docs = self._load(collection).values()
         return [d for d in docs if all(d.get(k) == v for k, v in where.items())]
 
+    def _write(self, collection: str, data: dict) -> None:
+        # temp file + rename: a reader (another request, another process) never sees a half-written
+        # file. Writing in place let a concurrent get() read "" and reset e.g. the AI usage counter.
+        path = self._path(collection)
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        tmp.write_text(json.dumps(data, indent=2))
+        os.replace(tmp, path)
+
     def put(self, collection: str, doc_id: str, doc: dict) -> None:
         with self._lock:
             data = self._load(collection)
             data[doc_id] = doc
-            self._path(collection).write_text(json.dumps(data, indent=2))
+            self._write(collection, data)
+
+    def delete(self, collection: str, doc_id: str) -> bool:
+        with self._lock:
+            data = self._load(collection)
+            if data.pop(doc_id, None) is None:
+                return False
+            self._write(collection, data)
+            return True
 
 
 class FirestoreStore:
@@ -63,6 +79,13 @@ class FirestoreStore:
 
     def put(self, collection: str, doc_id: str, doc: dict) -> None:
         self.db.collection(collection).document(doc_id).set(doc)
+
+    def delete(self, collection: str, doc_id: str) -> bool:
+        ref = self.db.collection(collection).document(doc_id)
+        if not ref.get().exists:
+            return False
+        ref.delete()
+        return True
 
 
 store = FirestoreStore() if os.getenv("USE_FIRESTORE") == "1" else JsonStore()

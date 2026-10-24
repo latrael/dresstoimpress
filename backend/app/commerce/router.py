@@ -19,7 +19,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..ai import memory
+from ..ai.colors import _label_words, same_color
+from ..ai.compat import as_product
+from ..ai.complete_look import _as_closet_shape
+from ..ai.outfit_rules import score_product
+from ..ai.router import _usual_size
 from ..ai.service import _in_budget, pair
+from ..ai.sizing import recommend_size
 from ..store import store
 from . import nessie
 
@@ -111,28 +117,121 @@ def _swiped(user_id: str) -> set[str]:
 
 # ---------- feed / products ----------
 
+SEED_LEAD = 5        # seeded feed: this many similar cards right after the seed...
+SEED_EVERY = 4       # ...then every 4th card is an other-category item that goes with the seed
+GOES_WITH_MIN = 0.5  # outfit_rules score for "goes with the seed" (the bar complete_look uses for closet items)
+
+
+def _size_pick(p: dict, bp: dict) -> Optional[str]:
+    """POST /size's pick for a contract-shape product, from an already loaded body_profile (no store reads)."""
+    usual = (bp.get("usual_sizes") or {}).get(p.get("category"))
+    if not (bp.get("height_cm") and bp.get("weight_kg")):
+        return (_usual_size(p, usual) or {}).get("size") if usual else None
+    out = recommend_size(p, bp["height_cm"], bp["weight_kg"], fit=bp.get("fit") or "regular",
+                         shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in"))
+    if not out.get("size") and usual:
+        out = _usual_size(p, usual) or out
+    return out.get("size")
+
+
+def _size_fields(p: dict, bp: dict) -> dict:
+    """your_size: what POST /size would pick (in-stock sizes only). in_your_size: that's also what we'd pick if
+    nothing were sold out (false = their size is sold out and your_size is the nearest one left). Both null
+    when we know nothing about their size, or can't size this item for them (e.g. shoes without a shoe size)."""
+    if not ((bp.get("height_cm") and bp.get("weight_kg")) or bp.get("usual_sizes")):
+        return {"your_size": None, "in_your_size": None}
+    shaped = as_product(p)
+    yours = _size_pick(shaped, bp)
+    ideal = _size_pick({**shaped, "sizes": [s["name"] for s in _sizes(p)]}, bp)
+    return {"your_size": yours, "in_your_size": None if ideal is None else yours == ideal}
+
+
+def _card(p: dict, bp: dict, r=None) -> dict:
+    return {**p, "reason": r.reason if r else "", "score": r.score if r else 0.0,
+            "pairs_with": r.pairs_with if r else [], **_size_fields(p, bp)}
+
+
+def _style_words(p: dict) -> set[str]:
+    return _label_words(f"{p.get('label') or ''} {p.get('name') or ''}")
+
+
+def _similarity(seed: dict, p: dict) -> float:
+    """Rule-based look-alike score: shared colour, style tags, pattern, label words (fit/type: "baggy", "jeans")."""
+    color = any(same_color(a, b) for a in seed.get("colors") or [] for b in p.get("colors") or [])
+    tags = len(set(seed.get("style_tags") or []) & set(p.get("style_tags") or []))
+    pattern = bool(seed.get("pattern")) and seed.get("pattern") == p.get("pattern")
+    return 2.0 * color + tags + pattern + len(_style_words(seed) & _style_words(p))
+
+
+def _weave(similar: list[dict], extra: list[dict]) -> list[dict]:
+    """SEED_LEAD similar cards, then an `extra` card as every SEED_EVERY-th; leftovers of either at the end."""
+    out, extra = similar[:SEED_LEAD], iter(extra)
+    for n, p in enumerate(similar[SEED_LEAD:]):
+        if n % (SEED_EVERY - 1) == 0 and (x := next(extra, None)):
+            out.append(x)
+        out.append(p)
+    return out + list(extra)
+
+
+def _seeded(user_id: str, seed: dict, cands: dict, bp: dict, boosted, limit: int) -> list[dict]:
+    """Seed first, then its category by similarity (in your size first), other categories that go with it woven
+    in, then the rest as the plain feed tiers it. One pair() call, for reasons only: it never reorders."""
+    in_size = {pid: _size_fields(p, bp)["in_your_size"] is True for pid, p in cands.items()}
+    styles = {(seed.get("retailer"), seed.get("name", "").strip().lower())}  # drops the seed's colour variants
+    same = [p for p in cands.values() if p.get("category") == seed.get("category")]
+    same.sort(key=lambda p: (not in_size[p["id"]], -_similarity(seed, p), not boosted(p)))
+    anchor = [_as_closet_shape(as_product(seed), "catalog")]
+    scored = [(score_product(as_product(p), anchor)["score"], p) for p in cands.values()
+              if p.get("category") != seed.get("category")]
+    goes = [p for s, p in sorted(scored, key=lambda r: (not in_size[r[1]["id"]], -r[0])) if s >= GOES_WITH_MIN]
+    cards = [seed, *_weave(_dedupe(same, styles), _dedupe(goes, styles))]
+    used = {p["id"] for p in cards}
+    rest = sorted((p for p in cands.values() if p["id"] not in used),
+                  key=lambda p: (not in_size[p["id"]], not boosted(p)))
+    cards = (cards + _mix(_dedupe(rest, styles)))[:limit]
+    reasons = {r.product_id: r for r in pair(user_id, [p["id"] for p in cards], k=min(24, limit * 2))}
+    return [_card(p, bp, reasons.get(p["id"])) for p in cards]
+
+
 @router.get("/feed")
-def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None):
-    """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with."""
-    ranges = (store.get("users", user_id) or {}).get("price_ranges", {})
+def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None,
+         seed: Optional[str] = None):
+    """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with and
+    your_size/in_your_size. In-your-size items come first, then preferred stores; nothing is hidden for size.
+    `seed` (product id, 404 if unknown): that product first even if swiped, then similar items (see _seeded)."""
+    seed_p = _product(seed) if seed else None
+    user = store.get("users", user_id) or {}
+    bp, ranges = user.get("body_profile") or {}, user.get("price_ranges", {})
+    preferred = {str(s).lower() for s in user.get("preferred_stores") or []}
     swiped = _swiped(user_id)
     where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
     cands = {p["id"]: p for p in store.list("products", **where)
-             if p["id"] not in swiped and _buyable(p) and _in_budget(p, ranges)}
+             if p["id"] not in swiped and p["id"] != seed and _buyable(p) and _in_budget(p, ranges)}
+
+    def boosted(p: dict) -> bool:
+        return str(p.get("retailer", "")).lower() in preferred
+
+    if seed_p:
+        return _seeded(user_id, seed_p, cands, bp, boosted, limit)
     if not cands:
         return []
 
+    # size group (in your size first), then preferred stores; pure rules, computed once per candidate
+    tier = {pid: (_size_fields(p, bp)["in_your_size"] is not True, not boosted(p)) for pid, p in cands.items()}
+    order = sorted(cands, key=tier.get)  # stable; with >50 candidates the AI sees the best tiers
     # Claude sees up to 50 candidates (pair caps it) but writes ~24 reasons (one per ranked item, the slow
     # part); the unranked rest tops up the page so de-duping styles and mixing stores still fills it
-    ranked = pair(user_id, list(cands), k=min(24, limit * 2))
-    picked = [{**cands[r.product_id], "reason": r.reason, "score": r.score, "pairs_with": r.pairs_with}
-              for r in ranked if r.product_id in cands]
+    ranked = pair(user_id, order, k=min(24, limit * 2))
+    picked = [_card(cands[r.product_id], bp, r) for r in ranked if r.product_id in cands]
     seen = {p["id"] for p in picked}
-    rest = [{**p, "reason": "", "score": 0.0, "pairs_with": []} for pid, p in cands.items() if pid not in seen]
+    rest = [_card(cands[pid], bp) for pid in order if pid not in seen]
     styles: set = set()
-    cards = _mix(_dedupe(picked, styles))  # ranked cards always come first
-    if len(cards) < limit:
-        cards += _mix(_dedupe(rest, styles))  # unranked top-up never repeats a ranked style
+    cards: list[dict] = []
+    for t in sorted(set(tier.values())):  # in each tier: ranked cards first, then the unranked top-up
+        cards += _mix(_dedupe([p for p in picked if tier[p["id"]] == t], styles))
+        cards += _mix(_dedupe([p for p in rest if tier[p["id"]] == t], styles))  # never repeats a ranked style
+        if len(cards) >= limit:
+            break
     return cards[:limit]
 
 

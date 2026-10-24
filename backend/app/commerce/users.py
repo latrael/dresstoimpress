@@ -97,6 +97,8 @@ class UserPatch(BaseModel):
     style_text: Optional[str] = Field(None, max_length=500)
     price_ranges: Ranges = None
     friends: Optional[list[str]] = None
+    preferred_stores: Optional[list[str]] = None
+    onboarded: Optional[bool] = None
 
 
 class Onboarding(BaseModel):

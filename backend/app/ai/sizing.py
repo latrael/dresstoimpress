@@ -138,8 +138,22 @@ def _estimate_waist_inches(height_cm: float, weight_kg: float) -> float:
     return max(24.0, min(46.0, estimated))
 
 
+def _estimate_womens_waist_inches(height_cm: float, weight_kg: float) -> float:
+    """Waist for US women's numeric sizes. The general estimate above runs ~2-3 in high for these
+    (a 158 cm / 50 kg person came out a US 10 instead of ~2-4)."""
+    bmi = weight_kg / ((height_cm / 100.0) ** 2)
+    return max(23.0, min(46.0, 10.5 + 0.8 * bmi))
+
+
 def _estimate_inseam_inches(height_cm: float) -> float:
     return height_cm * 0.45 / 2.54
+
+
+def _is_womens_numeric(sizes: list[str]) -> bool:
+    if any(_WAIST_INSEAM.match(s.strip()) or _WAIST_INCH.match(s.strip()) for s in sizes):
+        return False
+    nums = _parse_numeric_sizes(sizes)
+    return bool(nums) and all(v == int(v) and int(v) in WOMENS_US_WAIST for _, v in nums)
 
 
 def _bottom_candidates(sizes: list[str]) -> list[tuple[str, float, float | None]]:
@@ -154,7 +168,7 @@ def _bottom_candidates(sizes: list[str]) -> list[tuple[str, float, float | None]
     if out:
         return out
     nums = _parse_numeric_sizes(sizes)
-    if nums and all(v == int(v) and int(v) in WOMENS_US_WAIST for _, v in nums):
+    if _is_womens_numeric(sizes):
         return [(label, WOMENS_US_WAIST[int(v)], None) for label, v in nums]  # US women's 0-24
     return [(label, v, None) for label, v in nums]  # plain waist inches
 
@@ -235,8 +249,8 @@ def recommend_size(
         given = _is_valid_number(waist_in) and 20.0 <= float(waist_in) <= 60.0  # type: ignore[arg-type]
         if not given and not valid_metrics:
             return _result(None, "low", "missing waist and valid body metrics")
-        target_waist = float(waist_in) if given else _estimate_waist_inches(  # type: ignore[arg-type]
-            float(height_cm), float(weight_kg))
+        estimate = _estimate_womens_waist_inches if _is_womens_numeric(sizes) else _estimate_waist_inches
+        target_waist = float(waist_in) if given else estimate(float(height_cm), float(weight_kg))  # type: ignore[arg-type]
         inseam = _estimate_inseam_inches(float(height_cm)) if valid_metrics else None
         # nearest waist first (ties -> larger), then the length closest to their height
         label, waist, _ = min(bottom_cands, key=lambda c: (

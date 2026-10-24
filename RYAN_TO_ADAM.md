@@ -1,3 +1,11 @@
+# Ryan update: deliberate product scrolling + up-arrow cue
+
+Published on `RyanFrontendking` at `b45ebac`, [PR #18](https://github.com/latrael/dresstoimpress/pull/18) into staging; unmerged. Ryan requested a cue after scrolling to the bottom of the current product. Details now reach the edge first; a fresh overscroll reveals the up-arrow/progress indicator before advancing. Touch confirms on release; wheel/trackpad after the gesture settles. Small movements cancel and momentum cannot skip several products. Horizontal photo gestures remain scoped to photos. The previous item uses the top edge.
+
+Flutter analyze clean; 38 tests pass (seven new scroll/cue regressions). Actual web demo verified bottom → small scroll/cue without paging → armed cue → next product. Native iPhone feel still needs verification. Xcode download is complete per Ryan; no signing/setup changes were performed for this web fix. Branch was brought up to merged staging first; backend/core unchanged.
+
+---
+
 # Ryan morning report — Sat Oct 24, 10:27 AM PT
 
 Plan confirmed. Implementation is published on `RyanFrontendking` at `e83259b`; PR [#16](https://github.com/latrael/dresstoimpress/pull/16) targets `staging` and is **not merged**. This report is posted after the requested 8:30 deadline; it is not backdated. Final edge-case checks and documentation are complete; shared live and phone acceptance remain pending.

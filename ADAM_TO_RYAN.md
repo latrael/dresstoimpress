@@ -2,7 +2,19 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. Everything here is on `adam/ai-pipeline` (PR into `staging`) and already running on the shared backend.
 
-**Last updated:** Fri Oct 23, 2026, ~8:45 PM PT
+**Last updated:** Fri Oct 23, 2026, ~9:05 PM PT
+
+---
+
+## Switching to SwiftUI (Fri ~9 PM)
+
+FlutterFlow needs a paid plan for API calls, so the app is now native SwiftUI. **Read [`docs/ios-plan.md`](docs/ios-plan.md)**: setup, who builds which tab, and the timeline.
+- A starter app is coming in the `ios-starter` PR. It has the Xcode project, the API client and models for every route, a Settings screen for URL + key, and a first Quick Browse feed following your spec: vertical pages, photo paging inside the picture only, size chips, Add to Cart, heart = wishlist, no `/swipe`.
+- **You own the Feed tab:** Quick Browse polish, product page, try-on, complete-the-look sheet, onboarding, look and feel.
+- Nabil does Cart/Checkout + Fit Check; I do Closet, Profile (Style DNA) and the Fit Score badge.
+- Your FlutterFlow layout spec and fixtures carry over as the design reference.
+
+New AI route for the Profile tab: `GET /users/{user_id}/style` → Style DNA: `{headline, styles[{tag, share}], palette[{name, family, hex, share}], patterns, formality{avg, label}, price_ranges, favorite_retailers, avoid, sample_size, confidence}`. `POST /users/{user_id}/style/apply` saves the learned price ranges on the user (409 under 5 likes).
 
 ---
 

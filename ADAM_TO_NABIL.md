@@ -6,6 +6,16 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ---
 
+## Oct 23, ~9:05 PM: app is moving to SwiftUI; you own the Cart + Fit Check tabs
+
+FlutterFlow needs a paid plan for API calls, so we're going native SwiftUI. Nothing changes on the backend. Plan: [`docs/ios-plan.md`](docs/ios-plan.md).
+- **Your tabs (your routes):** Cart (grouped by store), Checkout (`paid` / `nessie_failed`, the 409 object `detail`), Orders, and Fit Check (feed, create a post with a photo, edit tags, like/comment, "Shop this fit").
+- **Starter:** the `ios-starter` PR has the API client and models for every route in NABIL_TO_RYAN.md, so you only build views under `ios/DressToImpress/Features/Cart/` and `Features/FitCheck/`.
+- **You'll need a Mac with Xcode,** or pair on Adam's.
+- **New AI routes you may want:** `POST /ai/fit-score {items: post.tagged}` for a Fit Score badge on post detail, and `GET /users/{id}/style` (Style DNA).
+
+---
+
 ## Oct 23, ~8:55 PM: we both tagged the catalog, so PR #6 keeps the name-hinted snapshot
 
 Our passes crossed (your PR #5 and my PR #6). I compared them product by product:

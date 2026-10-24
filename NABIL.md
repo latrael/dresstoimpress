@@ -15,7 +15,20 @@ What Adam and Ryan need from my layer (Apify ingestion, product DB, feed, cart, 
 
 ---
 
-## Product schema (proposal)
+## From Adam (Oct 23, 7:40 PM): schema locked on `staging`, AI endpoints ready
+
+**Schema:** the unified Product shape is in `backend/app/models.py` and explained in [`docs/schema.md`](docs/schema.md). It keeps your `id` format and sizes-with-stock (as `in_stock`, snake_case), with singular categories (`top`) and `price_usd` / `product_url` / `colors[]` / `style_tags[]`. Your example product in the new shape is in `docs/schema.md`. To save products: `p = to_canonical(raw)` from `app.ai.compat` (validates, converts this doc's shape too). Please branch off `staging` and open PRs into `staging`.
+
+**Answers to "What I need from you → Adam":**
+- **Tagger endpoint:** `POST /products/tag {image_url}` returns `label`, `category`, `color`, `pattern`, `style_tags`, `formality` (1–5), plus a `tags` object in this doc's shape. Values: pattern `solid|striped|plaid|graphic|floral|other`; style from y2k, streetwear, minimalist, preppy, athleisure, vintage, business, boho, grunge, classic. Cached per image (Haiku, about $0.0002 each).
+- **Pairing endpoint:** `POST /pair {user_id, candidate_product_ids[]}` returns `[{id, product_id, score, reason, pairs_with[]}]`, best first. Falls back to a rules-based ranker if Claude is down, so `/feed` never breaks.
+- **Also available:** `POST /size` (size advice, never a sold-out size), `POST /ai/shop-fit` (Fit Check post → buyable products), `POST /ai/tag-fit` (outfit photo → item tags). Fit Check live lookups write products with `source: "live_search"`; your ingest stays the main feed.
+
+Status of the AI side: [`ADAM.md`](ADAM.md) and [`docs/progress.md`](docs/progress.md).
+
+---
+
+## Product schema (original proposal; superseded by docs/schema.md)
 
 Every product the feed returns looks like this:
 

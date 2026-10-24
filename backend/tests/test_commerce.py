@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 os.environ["MOCK_AI"] = "1"
+os.environ["NESSIE_API_KEY"] = ""  # set before app.main's load_dotenv: checkout stays offline
 
 RANGES = {"top": [10, 40], "bottom": [20, 60], "outerwear": [30, 90]}
 

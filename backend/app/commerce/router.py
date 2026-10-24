@@ -1,8 +1,8 @@
-"""Commerce: /feed /products /swipe /cart /wishlist /checkout (Nabil).
+"""Commerce: /feed /products /swipe /cart /wishlist /checkout /orders (Nabil).
 
 Collections: products (ingest/live_search/seed), swipes ("{user}:{product}"), carts (doc id = user_id),
-orders. Swipe actions are mapped to the memory vocabulary (cart / wishlist / discard) before storing,
-so ai.memory and ai.service.pair read them as-is.
+orders, nessie (cached Nessie ids, see nessie.py). Swipe actions are mapped to the memory vocabulary
+(cart / wishlist / discard) before storing, so ai.memory and ai.service.pair read them as-is.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from ..ai import memory
 from ..ai.service import _in_budget, pair
 from ..store import store
+from . import nessie
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["commerce"])
@@ -213,15 +214,24 @@ def cart_remove(user_id: str, product_id: str, size: Optional[str] = None):
 
 # ---------- checkout ----------
 
-def create_nessie_purchase(account_id: str, merchant_id: str | None, amount: float, description: str) -> dict:
-    """NESSIE STUB. TODO: POST http://api.nessieisreal.com/accounts/{account_id}/purchases?key=NESSIE_API_KEY
-    body {merchant_id, medium: "balance", purchase_date, amount, description}. Return the created purchase."""
-    raise NotImplementedError("Nessie not wired yet")
+def _pay(user_id: str, purchase: dict) -> None:
+    """Real Nessie purchase for one retailer group; failures are recorded on the purchase, never raised."""
+    items = purchase["items"]
+    n = sum(i["qty"] for i in items)
+    desc = f"dresstoimpress: {n} item{'s' * (n != 1)} ({', '.join(i['name'] for i in items)})"[:250]
+    try:
+        account_id = nessie.ensure_account(user_id)
+        purchase["merchant_id"] = nessie.ensure_merchant(purchase["retailer"])
+        res = nessie.create_purchase(account_id, purchase["merchant_id"], purchase["amount_usd"], desc)
+        purchase.update(status="paid", nessie_id=res["_id"], nessie_account_id=account_id)
+    except Exception as e:  # noqa: BLE001
+        log.warning("nessie purchase failed: %s", e)
+        purchase.update(status="nessie_failed", error=str(e)[:200])
 
 
 @router.post("/checkout/{user_id}")
 def checkout(user_id: str):
-    """One purchase per retailer. Status stays `pending_nessie` until the Nessie call is wired."""
+    """One Nessie purchase per retailer (`paid`), or `pending_nessie` when NESSIE_API_KEY isn't set."""
     cart = _grouped(user_id)
     if not cart["groups"]:
         raise HTTPException(400, "cart is empty")
@@ -235,17 +245,16 @@ def checkout(user_id: str):
             "status": "pending_nessie",
         }
         if os.getenv("NESSIE_API_KEY"):
-            try:
-                res = create_nessie_purchase(os.getenv("NESSIE_ACCOUNT_ID", ""), purchase["merchant_id"],
-                                             purchase["amount_usd"], f"dresstoimpress {order_id} {g['retailer']}")
-                purchase.update(status="paid", nessie_id=res.get("_id"))
-            except NotImplementedError:
-                pass
-            except Exception as e:  # noqa: BLE001
-                log.warning("nessie purchase failed: %s", e)
-                purchase["status"] = "nessie_failed"
+            _pay(user_id, purchase)
         purchases.append(purchase)
-    store.put("orders", order_id, {"id": order_id, "user_id": user_id, "purchases": purchases,
-                                   "total_usd": cart["total_usd"], "created_at": _now()})
+    order = {"id": order_id, "user_id": user_id, "purchases": purchases,
+             "total_usd": cart["total_usd"], "created_at": _now()}
+    store.put("orders", order_id, order)
     store.put("carts", user_id, {"user_id": user_id, "items": []})
-    return {"order_id": order_id, "purchases": purchases, "total_usd": cart["total_usd"]}
+    return {"order_id": order_id, "purchases": purchases, "total_usd": cart["total_usd"],
+            "created_at": order["created_at"]}
+
+
+@router.get("/orders/{user_id}")
+def orders(user_id: str):
+    return sorted(store.list("orders", user_id=user_id), key=lambda o: o["created_at"], reverse=True)

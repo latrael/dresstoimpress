@@ -5,12 +5,13 @@
     python -m scripts.ingest --from-file "data/raw/hm_*.json" --retailer hm --dry-run
     python -m scripts.ingest --from-file data/raw/uniqlo_a.json --from-file data/raw/uniqlo_b.json --retailer uniqlo
 
---from-file normalizes saved raw actor output (a JSON array) without calling Apify.
+--from-file normalizes saved raw actor output (a JSON array, .gz ok) without calling Apify.
 """
 from __future__ import annotations
 
 import argparse
 import glob
+import gzip
 import json
 import sys
 
@@ -21,7 +22,7 @@ load_dotenv()
 from app.commerce import ingest as ing  # noqa: E402  (after dotenv so env is set)
 
 HM_DEFAULT = ("womens tops, mens graphic tees, baggy jeans, womens jeans, mens jackets, "
-              "womens jackets, hoodies, y2k")
+              "womens jackets, hoodies, y2k, womens sneakers, mens sneakers, womens boots")
 UNIQLO_DEFAULT = ("women t-shirts, women sweaters, women jeans, women pants, women jackets, "
                   "men t-shirts, men sweaters, men jeans, men pants, men jackets")
 
@@ -48,7 +49,7 @@ def main(argv: list[str] | None = None) -> dict:
         paths = sorted({p for pat in a.from_file for p in (glob.glob(pat) or [pat])})
         raw: list[dict] = []
         for path in paths:
-            with open(path) as f:
+            with (gzip.open(path, "rt") if path.endswith(".gz") else open(path)) as f:
                 raw += json.load(f)
         products, summary = ing.process({a.retailer: raw}, do_tag=not a.no_tag, dry_run=a.dry_run)
         summary["files"] = paths

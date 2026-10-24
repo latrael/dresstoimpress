@@ -92,9 +92,17 @@ class StoreController extends ChangeNotifier {
     }
     if (accountWarning != null) throw Exception(accountWarning);
     try {
-      // Keep the old line until adding the requested replacement succeeds.
-      cart = await api.addToCart(item.productId, size, qty: item.qty);
-      cart = await api.removeFromCart(item.productId, size: item.size);
+      try {
+        // One atomic call: the server keeps the quantity and merges into an existing line.
+        cart = await api.changeCartSize(item.productId,
+            size: item.size, newSize: size);
+      } on ApiError catch (e) {
+        if (e.status != 404 && e.status != 405) rethrow;
+        // Older server without the PATCH route: keep the old line until the
+        // requested replacement is added.
+        cart = await api.addToCart(item.productId, size, qty: item.qty);
+        cart = await api.removeFromCart(item.productId, size: item.size);
+      }
     } catch (_) {
       try {
         cart = await api.cart();

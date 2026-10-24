@@ -114,12 +114,21 @@ class Product {
 
 /// A Product plus the AI ranking fields (feed cards, "shop this fit" results), from the same flat JSON.
 class RankedProduct {
-  const RankedProduct({required this.product, this.reason, this.score, this.pairsWith = const [], this.matchedTag});
+  const RankedProduct(
+      {required this.product, this.reason, this.score, this.pairsWith = const [], this.matchedTag, this.yourSize,
+      this.inYourSize});
   final Product product;
   final String? reason;
   final double? score;
   final List<String> pairsWith;
   final String? matchedTag; // shop-the-fit only
+
+  /// Soft size ranking (council D3). [yourSize]: the size POST /size would pick from in-stock sizes (or,
+  /// when that is sold out, the nearest size left), null when unknown. [inYourSize]: true = we have their
+  /// real size; false = their size is sold out; null = we know nothing about their size or can't size this
+  /// item (older servers too). Nothing is ever hidden for size.
+  final String? yourSize;
+  final bool? inYourSize;
 
   String get id => product.id;
 
@@ -129,6 +138,102 @@ class RankedProduct {
         score: _dblN(j['score']),
         pairsWith: _strs(j['pairs_with']),
         matchedTag: _strN(j['matched_tag']),
+        yourSize: _strN(j['your_size']),
+        inYourSize: _boolN(j['in_your_size']),
+      );
+}
+
+// ---------------------------------------------------------------- Discover (search)
+
+/// GET /search/styles: one catalog style tag and how many items carry it.
+class StyleTag {
+  const StyleTag({required this.tag, required this.count});
+  final String tag;
+  final int count;
+
+  factory StyleTag.fromJson(Json j) => StyleTag(tag: _str(j['tag']), count: _int(j['count']));
+}
+
+/// A trending product (GET /search/styles): users who saved + carted + ordered it. 0 = topped up from
+/// the user's own feed when real traffic is thin.
+class TrendingProduct {
+  const TrendingProduct({required this.product, this.trendCount = 0});
+  final Product product;
+  final int trendCount;
+
+  String get id => product.id;
+
+  factory TrendingProduct.fromJson(Json j) =>
+      TrendingProduct(product: Product.fromJson(j), trendCount: _int(j['trend_count']));
+}
+
+/// GET /search/styles?user_id=&limit= (Discover before a search, D11): style chips (most common first)
+/// + a trending row.
+class StyleChips {
+  const StyleChips({this.styles = const [], this.trending = const []});
+  final List<StyleTag> styles;
+  final List<TrendingProduct> trending;
+
+  factory StyleChips.fromJson(Json j) => StyleChips(
+      styles: _list(j['styles'], StyleTag.fromJson), trending: _list(j['trending'], TrendingProduct.fromJson));
+}
+
+/// One "Goes with it" entry (GET /search, POST /search/photo): a catalog [product] (`from_closet: false`)
+/// or one of the user's own [closetItem]s (`from_closet: true`; no price or retailer, can't go to the
+/// cart or seeded Home), each with the engine's [reason].
+class GoesWithItem {
+  const GoesWithItem({this.product, this.closetItem, required this.fromCloset, this.reason = ''});
+  final Product? product;
+  final ClosetItem? closetItem;
+  final bool fromCloset;
+  final String reason;
+
+  String get id => product?.id ?? closetItem?.id ?? '';
+  String get label => product?.name ?? closetItem?.label ?? closetItem?.category ?? '';
+  String get imageUrl => product?.imageUrl ?? closetItem?.imageUrl ?? '';
+
+  factory GoesWithItem.fromJson(Json j) {
+    // Closet items have no price/retailer; a stray entry without the flag is read by what it carries.
+    final fromCloset = j['from_closet'] == true || (j['from_closet'] == null && j['price_usd'] == null && j['user_id'] != null);
+    return GoesWithItem(
+      product: fromCloset ? null : Product.fromJson(j),
+      closetItem: fromCloset ? ClosetItem.fromJson(j) : null,
+      fromCloset: fromCloset,
+      reason: _str(j['reason']),
+    );
+  }
+}
+
+/// GET /search?user_id=&q= (D10): look-alikes of the query (in stock, one per style, up to 24) and
+/// pieces that complete the look around `similar[0]`. A blank query gives empty lists; `goesWith` is
+/// empty when the AI is down.
+class SearchResult {
+  const SearchResult({required this.query, this.similar = const [], this.goesWith = const []});
+  final String query;
+  final List<Product> similar;
+  final List<GoesWithItem> goesWith;
+
+  factory SearchResult.fromJson(Json j) => SearchResult(
+        query: _str(j['query']),
+        similar: _list(j['similar'], Product.fromJson),
+        goesWith: _list(j['goes_with'], GoesWithItem.fromJson),
+      );
+}
+
+/// POST /search/photo: the saved photo, the pieces the AI saw in it, catalog matches (with `reason`,
+/// `score`, `matched_tag`, so [RankedProduct]) and what goes with the top match.
+class PhotoSearchResult {
+  const PhotoSearchResult({this.photoUrl = '', this.tags = const [], this.similar = const [], this.goesWith = const []});
+  final String photoUrl;
+  final List<FitTag> tags;
+  final List<RankedProduct> similar;
+  final List<GoesWithItem> goesWith;
+
+  factory PhotoSearchResult.fromJson(Json j) => PhotoSearchResult(
+        photoUrl: _str(j['photo_url']),
+        tags: _list(j['tags'], FitTag.fromJson),
+        similar: _list(j['similar'], RankedProduct.fromJson),
+        goesWith: _list(j['goes_with'], GoesWithItem.fromJson),
       );
 }
 
@@ -189,18 +294,46 @@ class CartGroup {
       retailer: _str(j['retailer']), items: _list(j['items'], CartItem.fromJson), subtotalUsd: _dbl(j['subtotal_usd']));
 }
 
+/// A cart line that can't be bought any more (GET /cart `unavailable`): not in [Cart.groups] or the totals,
+/// but counted in [Cart.count]. Remove it with the usual DELETE. [reason]: "no longer available",
+/// "size sold out" or "size no longer offered".
+class UnavailableItem {
+  const UnavailableItem(
+      {required this.productId, required this.size, required this.qty, required this.name, this.product,
+      required this.reason});
+  final String productId;
+  final String size;
+  final int qty;
+  final String name;
+  final Product? product; // null when the product left the catalog
+  final String reason;
+
+  factory UnavailableItem.fromJson(Json j) => UnavailableItem(
+        productId: _str(j['product_id']),
+        size: _str(j['size']),
+        qty: _int(j['qty'], 1),
+        name: _str(j['name']),
+        product: j['product'] is Map ? Product.fromJson(_obj(j['product'])) : null,
+        reason: _str(j['unavailable_reason'], _str(j['reason'])),
+      );
+}
+
 class Cart {
-  const Cart({required this.userId, required this.groups, required this.totalUsd, required this.count});
+  const Cart(
+      {required this.userId, required this.groups, required this.totalUsd, required this.count,
+      this.unavailable = const []});
   final String userId;
   final List<CartGroup> groups;
   final double totalUsd;
-  final int count;
+  final int count; // every line, unavailable ones included
+  final List<UnavailableItem> unavailable; // empty on older servers
 
   factory Cart.fromJson(Json j) => Cart(
       userId: _str(j['user_id']),
       groups: _list(j['groups'], CartGroup.fromJson),
       totalUsd: _dbl(j['total_usd']),
-      count: _int(j['count']));
+      count: _int(j['count']),
+      unavailable: _list(j['unavailable'], UnavailableItem.fromJson));
 }
 
 class PurchaseItem {
@@ -456,7 +589,8 @@ class ProductPage {
 /// A user (backend `User`): /users, /users/{id}, /onboarding, /style/apply.
 class AppUser {
   const AppUser({required this.id, required this.displayName, this.styleText = '', this.priceRanges = const {},
-      this.bodyPhotoUrl, this.friends = const [], this.bodyProfile});
+      this.bodyPhotoUrl, this.friends = const [], this.bodyProfile, this.preferredStores = const [],
+      this.onboarded = false});
 
   final String id;
   final String displayName;
@@ -465,6 +599,8 @@ class AppUser {
   final String? bodyPhotoUrl;
   final List<String> friends;
   final BodyProfile? bodyProfile; // null until the user does a body scan
+  final List<String> preferredStores; // retailer ids ("hm", "uniqlo"); the feed boosts them (D5)
+  final bool onboarded; // set by the app at the end of onboarding (D6, screen 7)
 
   factory AppUser.fromJson(Json j) => AppUser(
         id: _str(j['id']),
@@ -474,6 +610,8 @@ class AppUser {
         bodyPhotoUrl: _strN(j['body_photo_url']),
         friends: _strs(j['friends']),
         bodyProfile: j['body_profile'] is Map ? BodyProfile.fromJson(_obj(j['body_profile'])) : null,
+        preferredStores: _strs(j['preferred_stores']),
+        onboarded: j['onboarded'] == true,
       );
 }
 

@@ -153,9 +153,9 @@ void main() {
     final calls = <String>[];
     final api = Api(client: MockClient((r) async {
       calls.add(r.method);
-      if (r.method == 'POST') return http.Response('unavailable', 409);
-      if (r.method == 'DELETE') {
-        fail('Do not remove the old size after failed add');
+      if (r.method == 'PATCH') return http.Response('unavailable', 409);
+      if (r.method == 'POST' || r.method == 'DELETE') {
+        fail('Do not fall back to add/remove after a refused size change');
       }
       return http.Response(
           jsonEncode({
@@ -179,7 +179,7 @@ void main() {
         store.changeSize(
             const CartItem(productId: 'tee', size: 'S', qty: 2), 'M'),
         throwsStateError);
-    expect(calls, ['POST', 'GET']);
+    expect(calls, ['PATCH', 'GET']);
     expect(store.cart.groups.single.items.single.size, 'S');
     expect(store.cart.count, 2);
   });

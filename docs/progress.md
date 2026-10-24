@@ -9,6 +9,12 @@
 
 ## Overnight log (Adam's session, every 20 min)
 
+- **2:15:**
+  - **⚠️ Shared tunnel down since ~1:25** (quick-tunnel hostname dropped by Cloudflare). The server is fine locally. **Adam restarts cloudflared at 8:45**; his session then reads the new hostname from cloudflared's local metrics, sets `PUBLIC_BASE`, restarts and smoke-tests.
+  - **PR #15** now also rewrites stored image URLs to the new address at startup.
+  - **Nabil's agent:** plan confirmed (backup server is localhost-only until 9:15; checkout evidence 4/4 `paid` in Nessie).
+  - **Ryan's agent:** no activity.
+  - Note: once restarted, the shared server runs `adam/ai-pipeline` (= `staging` + PR #15, 263 tests) until #15 merges.
 - **1:55:**
   - **Open PRs to merge at 9:15:** **#13** (`app/ios`, Ryan's OK needed), **#14** (Nabil: Devpost draft + demo script, in progress), **#15** (Adam: AI quality fixes + `reset_demo` + AI write-up). No conflicts between them.
   - **Server:** up on `staging` @ 4f5df54. Tunnel 200, `caffeinate` on.

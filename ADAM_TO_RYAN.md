@@ -2,12 +2,13 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Sat Oct 24, 2026, ~1:55 AM PT
+**Last updated:** Sat Oct 24, 2026, ~2:15 AM PT
 
 ---
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **2:15 AM: the shared tunnel died at ~1:25.** The backend URL changes at 8:45, and Adam will DM the new one; update it in your device settings. Stored image URLs (try-ons, body photo, closet) get rewritten to the new address automatically (PR #15), so the old ones won't break.
 - **1:50 AM: PR #15** (AI quality pass). Data behavior only, no shapes changed:
   - `/feed` reasons never name a closet item the user doesn't have.
   - The feed ranking is budget-first.

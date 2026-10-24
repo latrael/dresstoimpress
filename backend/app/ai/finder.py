@@ -72,15 +72,15 @@ def match_score(tag: dict, product: dict) -> float:
     cat = tag.get("category")
     if cat and product.get("category") and cat != product["category"]:
         return 0.0
-    want_type = item_type(tag.get("label", ""))
+    want_type = item_type(tag.get("label") or "")
     have = _words(" ".join([product.get("name", ""), *product.get("colors", [])]))
     if want_type is not None and not (have & TYPE_GROUPS[want_type]):
         return 0.0
     score = 2.0 if want_type is not None else 0.0
     # descriptors = label words other than the item's own type ("denim" in "denim jacket" counts)
-    want_words = _words(tag.get("label", "")) - (TYPE_GROUPS[want_type] if want_type is not None else set())
+    want_words = _words(tag.get("label") or "") - (TYPE_GROUPS[want_type] if want_type is not None else set())
     score += 0.5 * len(want_words & have)
-    color = _words(tag.get("color", ""))
+    color = _words(tag.get("color") or "")
     if color & have:
         score += 1.0
     elif color & NEUTRALS and have & NEUTRALS:
@@ -147,7 +147,7 @@ def live_search(tag: dict) -> list[dict]:
     token = os.getenv("APIFY_TOKEN")
     if not token or not tag.get("label"):
         return []
-    query = f'{tag.get("color", "")} {tag["label"]}'.strip()
+    query = f"{tag.get('color') or ''} {tag['label']}".strip()
     key = "q-" + re.sub(r"[^a-z0-9]+", "-", query.lower())[:80]
     cached = store.get("live_search_cache", key)
     if cached is not None:

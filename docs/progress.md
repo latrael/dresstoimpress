@@ -40,7 +40,8 @@ Everything below is already merged on `staging` and passes `cd backend && pytest
 4. **Product sheet:** `POST /size` → highlight the suggested size in the picker, grey out `in_stock: false`; "Try it on" → `POST /tryon` (≈5 s, show a spinner; if `mode` is `collage` it's an outfit board, not AI); "Complete the look" → `POST /complete-look {user_id, product_id, budget_usd?}`.
 5. **Cart + checkout:** `GET /cart/{user_id}` (grouped by retailer), `POST /checkout/{user_id}`.
 6. **Fit Check:** after taking the photo, `POST /ai/tag-fit {image_url}` to pre-fill tags; "Shop this fit" → Nabil's `/fitcheck/{post_id}/shop` (or `POST /ai/shop-fit {viewer_id, photo_url}` until it exists).
-7. Push a `RYAN.md` (screens done, what you need) like `NABIL.md` / `ADAM.md`, and your Figma/Notability links, to a `ryan` branch → PR into `staging`.
+7. Push a `RYAN.md` (screens done, what you need) like `NABIL.md` / `ADAM.md`, and your Figma/Notability links, on `RyanFrontendking` → PR into `staging`.
+8. **Your gallery + description request (`ryan-nabil.md`):** the fields are on `staging` now (`images[{url, kind}]`, `description`); Nabil fills them in ingest and adds the wishlist PUT/DELETE routes.
 
 ## Who owns what (no overlap)
 

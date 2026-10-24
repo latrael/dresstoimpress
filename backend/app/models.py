@@ -22,6 +22,11 @@ class Size(BaseModel):
     in_stock: bool = True
 
 
+class ProductImage(BaseModel):
+    url: str
+    kind: Literal["product", "retailer_model"] = "product"  # garment-only vs. a model wearing it
+
+
 class Product(BaseModel):
     id: str                   # "{retailer}:{product_code}:{color}", stable across scrapes
     retailer: Retailer
@@ -41,6 +46,8 @@ class Product(BaseModel):
     formality: Optional[int] = Field(None, ge=1, le=5)  # from the tagger
     label: str = ""           # short plain name from the tagger, e.g. "white baby tee"
     scraped_at: Optional[str] = None      # ISO time of the scrape
+    images: list[ProductImage] = []       # same product + colour only; image_url stays the primary image
+    description: Optional[str] = None     # real retailer text (plain), or null; never a pairing reason
     source: Literal["ingest", "live_search", "seed"] = "ingest"
 
 
@@ -103,6 +110,12 @@ class FitTag(BaseModel):
     retailer: Optional[str] = None
     product_id: Optional[str] = None
     closet_item_id: Optional[str] = None
+    # filled by POST /ai/tag-fit; used by shop_fit's strict matching (same type + category)
+    category: Optional[str] = None
+    color: Optional[str] = None
+    pattern: Optional[str] = None
+    style_tags: list[str] = []
+    brand: Optional[str] = None
 
 
 class ShopFitRequest(BaseModel):

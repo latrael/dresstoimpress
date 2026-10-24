@@ -38,6 +38,8 @@ Source of truth: `backend/app/models.py` → `Product`. Use these exact names.
 | `label` | string | `ivory ribbed sweater` | from `POST /products/tag` |
 | `scraped_at` | ISO string or null | `2026-10-24T02:16:01Z` | |
 | `source` | enum | `ingest` | `ingest` (Nabil), `live_search` (Fit Check lookups), `seed` (demo) |
+| `images` | `{url, kind}[]` | `[{"url": "...", "kind": "product"}, {"url": "...", "kind": "retailer_model"}]` | gallery for Ryan's carousel; same product + colour only; `image_url` stays primary; `kind` = `product` (garment only) or `retailer_model` |
+| `description` | string or null | `"Soft cotton tee with a relaxed fit."` | real retailer text as plain text, else null; never a pairing `reason` |
 
 ### Where this came from
 
@@ -84,7 +86,7 @@ Note: NABIL.md's style words ("cozy", "minimal") become the shared vocabulary (`
 | `tags.pattern` | — | `pattern` |
 | `tags.formality: "casual"` | — | `formality: 2` |
 
-Old shapes still work everywhere in the AI code, and `app.ai.compat.to_canonical(product)` converts any of them to the unified shape before saving.
+Old shapes still work everywhere in the AI code, and `app.ai.compat.to_canonical(product)` converts any of them to the unified shape before saving. It raises on an unknown category (it used to guess `top`) and fills a single-photo `images` gallery from `image_url` when none is given.
 
 ## Writing products (Nabil's ingest)
 

@@ -385,3 +385,24 @@ def test_complete_look_endpoint(client):
     assert cats["bottom"]["source"] == "closet"   # u_demo owns jeans and cargos
     assert cats["shoes"]["source"] == "closet"    # and white sneakers
     assert client.post("/complete-look", json={"user_id": "u_demo", "product_id": "nope"}).status_code == 404
+
+
+def test_shop_fit_keeps_tag_category_and_color(client):
+    # category/color from /ai/tag-fit must survive the API model, or strict matching loses them
+    from app.models import FitTag
+    t = FitTag(label="ivory ribbed sweater", category="top", color="ivory", style_tags=["minimalist"])
+    assert t.model_dump()["category"] == "top" and t.model_dump()["color"] == "ivory"
+
+
+def test_to_canonical_rejects_unknown_category_and_adds_gallery():
+    import pytest
+    from app.ai.compat import to_canonical
+    base = {"id": "hm:1:black", "retailer": "hm", "name": "Tee", "brand": "H&M", "price_usd": 9.99,
+            "sizes": ["S"], "image_url": "https://i/1.jpg", "product_url": "https://p"}
+    with pytest.raises(ValueError, match="unknown category"):
+        to_canonical({**base, "category": "socks-and-tights"})
+    p = to_canonical({**base, "category": "tops"})
+    assert p["images"] == [{"url": "https://i/1.jpg", "kind": "product"}] and p["description"] is None
+    q = to_canonical({**base, "category": "top", "description": "Soft cotton tee.",
+                      "images": [{"url": "https://i/1.jpg"}, {"url": "https://i/m.jpg", "kind": "retailer_model"}]})
+    assert [i["kind"] for i in q["images"]] == ["product", "retailer_model"] and q["description"] == "Soft cotton tee."

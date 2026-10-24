@@ -107,5 +107,9 @@ def to_canonical(p: dict) -> dict:
     data["sizes"] = sizes
     data["in_stock"] = any(s["in_stock"] for s in sizes) if sizes else bool(q.get("in_stock", True))
     if data.get("category") not in PLURAL:
-        data["category"] = "top"
+        # don't guess: a wrong category breaks pairing and complete-the-look
+        raise ValueError(f"unknown category {p.get('category')!r} for product {p.get('id')!r}; "
+                         "map it in ingest or use the tagger's category")
+    if not data.get("images") and data.get("image_url"):
+        data["images"] = [{"url": data["image_url"], "kind": "product"}]  # single-photo gallery
     return Product.model_validate(data).model_dump()

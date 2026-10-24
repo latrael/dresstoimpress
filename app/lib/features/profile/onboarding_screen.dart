@@ -3,6 +3,7 @@ import '../../core/api.dart';
 import '../../core/models.dart';
 import '../shared/feature_ui.dart';
 import 'shopper_profile.dart';
+import 'body_scan_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen(
@@ -47,7 +48,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> restore() async {
-    final p = await ShopperProfile.load(widget.api.settings.userId);
+    var p = await ShopperProfile.load(widget.api.settings.userId);
+    if (!widget.demo) {
+      // Measurements saved on the server (another device, or a body scan) fill in what's missing here.
+      try {
+        final body = (await widget.api.getUser()).bodyProfile;
+        if (body != null) p = p.withBody(body, gapsOnly: true);
+      } catch (_) {}
+    }
     if (!mounted) return;
     text.text = p.style;
     usual.text = p.usualSize;
@@ -74,6 +82,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   OnboardingResult? result;
   String? error;
   bool busy = false;
+
+  /// Body scan pre-fills the measurement fields (council D2: the user checks them, then saves).
+  Future<void> scanBody() async {
+    final body = await Navigator.push<BodyProfile>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => BodyScanScreen(
+                api: widget.api,
+                heightCm:
+                    double.tryParse(measurements['Height (cm)']!.text.trim()),
+                weightKg: double.tryParse(
+                    measurements['Weight (kg)']!.text.trim()))));
+    if (body == null || !mounted) return;
+    double? cm(double? inches) => inches == null ? null : inches * 2.54;
+    final values = {
+      'Height (cm)': body.heightCm > 0 ? body.heightCm : null,
+      'Weight (kg)': body.weightKg,
+      'Waist (cm)': cm(body.waistIn),
+      'Chest (cm)': cm(body.chestIn),
+      'Hips (cm)': cm(body.hipIn),
+      'Inseam (cm)': cm(body.inseamIn),
+    };
+    setState(() {
+      for (final e in values.entries) {
+        if (e.value != null) {
+          measurements[e.key]!.text = e.value!.toStringAsFixed(1);
+        }
+      }
+      error = null;
+    });
+  }
   @override
   void dispose() {
     for (final c in [...measurements.values, ...budgets.values, usual]) {
@@ -136,6 +175,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() => result = saved);
       }
       await profile.save(widget.api.settings.userId);
+      if (!widget.demo && !skip) {
+        // D5: measurements live on the server too. Best effort: the phone copy is already saved.
+        try {
+          await profile.syncToServer(widget.api);
+        } catch (_) {}
+      }
       await widget.onSaved();
     } catch (_) {
       if (mounted) {
@@ -176,7 +221,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 24),
               Text('Your fit', style: Theme.of(context).textTheme.titleLarge),
               const Text(
-                  'Enter actual measurements for sizing. A photo alone cannot measure your body yet.'),
+                  'Enter your measurements, or scan a full-body photo to fill them in. Check the estimates before saving.'),
+              if (!widget.demo)
+                Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                        onPressed: busy ? null : scanBody,
+                        icon: const Icon(Icons.accessibility_new),
+                        label: const Text('Scan from a photo'))),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                   initialValue: fit,

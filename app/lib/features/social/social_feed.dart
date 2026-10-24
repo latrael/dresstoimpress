@@ -74,7 +74,8 @@ class _SocialFeedState extends State<SocialFeed> {
                           key: ValueKey(post.id),
                           post: post,
                           api: widget.store.api,
-                          onShop: widget.onShop)
+                          onShop: widget.onShop,
+                          onDeleted: refresh)
                   ]);
                 })),
       ]);
@@ -166,10 +167,15 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
 
 class FitPostCard extends StatefulWidget {
   const FitPostCard(
-      {super.key, required this.post, required this.api, required this.onShop});
+      {super.key,
+      required this.post,
+      required this.api,
+      required this.onShop,
+      this.onDeleted});
   final FitCheckPost post;
   final Api api;
   final void Function(List<RankedProduct>) onShop;
+  final VoidCallback? onDeleted;
   @override
   State<FitPostCard> createState() => _FitPostCardState();
 }
@@ -235,6 +241,29 @@ class _FitPostCardState extends State<FitPostCard> {
           });
         }
       });
+  Future<void> deletePost() async {
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Delete this post?'),
+              content: const Text(
+                  'Your photo, tags, likes and comments on it are removed for everyone.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Keep')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Delete'))
+              ],
+            ));
+    if (confirmed != true || !mounted) return;
+    await action('delete post', () async {
+      await widget.api.deleteFitCheck(post.id);
+      widget.onDeleted?.call();
+    });
+  }
+
   Future<void> editTags() async {
     final result = await showDialog<List<FitTag>>(
         context: context, builder: (_) => EditTagsDialog(tags: post.tagged));
@@ -257,7 +286,13 @@ class _FitPostCardState extends State<FitPostCard> {
         ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-            title: Text(post.authorName ?? post.userId)),
+            title: Text(post.authorName ?? post.userId),
+            trailing: post.userId == widget.api.settings.userId
+                ? IconButton(
+                    tooltip: 'Delete your post',
+                    onPressed: busy == null ? deletePost : null,
+                    icon: const Icon(Icons.delete_outline))
+                : null),
         AspectRatio(
             aspectRatio: .85,
             child: ClipRRect(

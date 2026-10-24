@@ -4,6 +4,7 @@ import '../../core/models.dart';
 import '../shared/feature_ui.dart';
 import '../product/try_on.dart';
 import '../closet/closet_screen.dart';
+import 'body_scan_screen.dart';
 import 'onboarding_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -65,6 +66,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         applied = null;
       });
     }
+  }
+
+  Future<void> bodyScan(BodyProfile? current) async {
+    await Navigator.push<BodyProfile>(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                BodyScanScreen(api: widget.api, heightCm: current?.heightCm)));
+    if (mounted) setState(() => revision++);
+    await widget.onChanged();
   }
 
   @override
@@ -150,6 +161,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text('Personal try-on',
                   style: Theme.of(context).textTheme.titleLarge),
               BodyPhotoButton(api: widget.api),
+              const SizedBox(height: 24),
+              Text('Your measurements',
+                  style: Theme.of(context).textTheme.titleLarge),
+              if (data.user.bodyProfile != null)
+                for (final line in bodyProfileLines(data.user.bodyProfile!))
+                  Text(line)
+              else
+                const Text('No measurements yet.'),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                  onPressed: () => bodyScan(data.user.bodyProfile),
+                  icon: const Icon(Icons.accessibility_new),
+                  label: const Text('Body scan')),
             ]);
           }));
 }

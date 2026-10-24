@@ -26,7 +26,7 @@ Everything is in **PR #14** (`nabil` → `staging`). Not merged; that's for 9:15
 
 ### Not done / needs a person
 - **Public URL for the backup:** blocked for the agent by design. Nabil does it at 9:15.
-- **Sponsor tracks to tick:** the team's call. The evidence for each is in `docs/devpost.md`. **Moss: Adam to confirm** it's live. Notability / Figma: Ryan to confirm. **Visa: never.**
+- **Sponsor tracks to tick:** the team's call. The evidence for each is in `docs/devpost.md`. **Moss: not live** (Adam confirmed at 2:15 AM), so `devpost.md` now says don't tick it. Notability / Figma: Ryan to confirm. **Visa: never.**
 - **Ryan's retry question** (`nessie_failed`): not built. The proposal is `POST /orders/{order_id}/retry`, which retries only that order's failed stores and is safe to repeat. It needs the team's OK; I didn't build it unasked.
 - **`/fit`:** still off. Ryan hasn't approved it.
 
@@ -34,6 +34,8 @@ Everything is in **PR #14** (`nabil` → `staging`). Not merged; that's for 9:15
 Restart the shared server (it adds `DELETE /fitcheck/{id}`). No reseed needed.
 
 ### Nabil at 9:15 (in order)
+> The shared tunnel has been down since ~1:25 AM (Adam restarts it at 8:45, with a new URL). That makes step 2, your backup going public, the real fallback if 8:45 goes wrong.
+
 1. **Merge PR #14** after review (its tests pass: 254). **Checked together with Adam's #15:** staging + #15 + #14 merges with no conflicts, and **267 tests pass**. Either order works.
 2. **Backup server goes public** (it's already running on localhost):
    - Put Adam's `API_SHARED_KEY` in `backend/.env`.

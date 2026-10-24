@@ -6,9 +6,9 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ---
 
-## Sat ~1 AM: Saturday plan is up; please confirm by 9:15
+## Sat ~1:15 AM: overnight plan (1–10 AM) is up; please confirm by 9:15
 
-**[`docs/plan-sat/nabil.md`](docs/plan-sat/nabil.md)**: your blocks, hour by hour. Team view: [`docs/plan-sat/README.md`](docs/plan-sat/README.md).
+**[`docs/plan-sat/nabil.md`](docs/plan-sat/nabil.md)**: overnight blocks for your agent (only if you started it before bed; prompt in `docs/plan-sat/README.md`), then your 9:00–10:00 list. Anything not done overnight moves to 9:15. Team view: [`docs/plan-sat/README.md`](docs/plan-sat/README.md).
 - **9:15–10:15:** backup server on your laptop, with exact commands (same `API_SHARED_KEY`).
 - **10:15–11:15:** real Fit Check posts to replace the picsum seeds.
 - **11:15–12:00:** 3 test checkouts with Nessie screenshots.

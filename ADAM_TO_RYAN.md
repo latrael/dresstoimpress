@@ -6,9 +6,9 @@ Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app 
 
 ---
 
-## Sat ~1 AM: Saturday plan is up; please confirm by 9:15
+## Sat ~1:15 AM: overnight plan (1–10 AM) is up; please confirm by 9:15
 
-**[`docs/plan-sat/ryan.md`](docs/plan-sat/ryan.md)** lines up your own RYAN.md "Next work" list with the team checkpoints (12:00 phone checkout, 15:30 AI features, 17:00 freeze, 17:30 dry run). For each item it shows the exact `core/` method and route.
+**[`docs/plan-sat/ryan.md`](docs/plan-sat/ryan.md)** lines up your own RYAN.md "Next work" list with the overnight window (agent-only, everyone is asleep 1–9) and the 9:00 handoff. Your agent runs it only if you started it before bed (prompt in `docs/plan-sat/README.md`); otherwise it starts at 9:15. For each item it shows the exact `core/` method and route.
 - **Order and design are yours;** the times are only suggestions. Team view: [`docs/plan-sat/README.md`](docs/plan-sat/README.md).
 - **Two decisions for you at standup:**
   1. My iOS platform PR (adds `app/ios/` only, no `lib/` changes). Merge, or not?

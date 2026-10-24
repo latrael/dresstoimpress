@@ -255,3 +255,32 @@ def test_never_crashes_on_odd_input(
     assert _word_count(res["reason"]) <= 12
     if isinstance(bad_product, dict) and isinstance(bad_product.get("sizes"), list) and res["size"] is not None:
         assert res["size"] in bad_product["sizes"]
+
+
+# ---- real H&M size formats (Oct 23 catalog) ----
+
+def _bottom(sizes, retailer="hm"):
+    return {"category": "bottom", "retailer": retailer, "sizes": sizes}
+
+
+def test_waist_inseam_sizes_pick_waist_then_length() -> None:
+    jeans = _bottom(["28/30", "28/32", "30/30", "30/32", "32/30", "32/32", "34/32"])
+    tall = recommend_size(jeans, 185.0, 75.0, waist_in=32)
+    short = recommend_size(jeans, 165.0, 75.0, waist_in=32)
+    assert tall == {"size": "32/32", "confidence": "high", "reason": "nearest waist size to 32 in"}
+    assert short["size"] == "32/30"
+    est = recommend_size(jeans, 175.0, 70.0)
+    assert est["size"] in {"30/32", "32/32"} and est["confidence"] == "low"
+
+
+def test_inch_and_womens_numeric_sizes() -> None:
+    assert recommend_size(_bottom(["26inch", "28inch", "30inch"]), 165.0, 60.0, waist_in=28)["size"] == "28inch"
+    womens = _bottom(["0", "2", "4", "6", "8", "10", "12", "14"])
+    assert recommend_size(womens, 165.0, 60.0, waist_in=27.5)["size"] == "6"     # not "14" as if inches
+    assert recommend_size(womens, 165.0, 60.0)["size"] in {"4", "6", "8", "10", "12"}
+
+
+def test_xxs_and_3xl_are_understood() -> None:
+    top = {"category": "top", "retailer": "hm", "sizes": ["XXS", "XS", "3XL"]}
+    assert recommend_size(top, 160.0, 45.0, fit="slim")["size"] == "XS"
+    assert recommend_size(top, 190.0, 130.0)["size"] == "3XL"

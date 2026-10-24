@@ -230,10 +230,15 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
     """
     from .finder import find_products
 
+    from concurrent.futures import ThreadPoolExecutor
+
     products = list_products()
     matched: dict[str, str] = {}
-    for tag in tagged:
-        for p in find_products(tag, products):
+    # items that need a live store search take ~5 s each: run them side by side, keep post order
+    with ThreadPoolExecutor(max(1, min(4, len(tagged)))) as ex:
+        found = list(ex.map(lambda t: find_products(t, products), tagged))
+    for tag, hits in zip(tagged, found):
+        for p in hits:
             matched.setdefault(p["id"], tag.get("label", ""))
     if not matched:
         return []

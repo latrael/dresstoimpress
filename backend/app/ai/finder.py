@@ -37,6 +37,7 @@ TYPE_GROUPS = [
     {"dress"},
     {"jacket", "bomber", "puffer", "windbreaker", "blazer"},
     {"coat", "trench", "overcoat"},
+    {"vest", "gilet", "waistcoat"},
     {"sneakers", "trainers", "sneaker"},
     {"boots", "boot"},
     {"heels", "pumps", "sandals", "loafers", "flats", "shoes"},

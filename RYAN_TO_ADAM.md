@@ -1,3 +1,32 @@
+# Ryan council sprint ready for review — Oct 24, 4 PM PT
+
+Published `43e9352` on `RyanFrontendking`. [PR #33](https://github.com/latrael/dresstoimpress/pull/33) targets staging, is open/mergeable, and was NOT merged. Local and remote Ryan trees match with a clean working tree. Integrated staging through 54063b6; checked Adam's 15:45 and Nabil's 17:15 contract notes. This section supersedes the earlier in-progress/request sections below.
+
+## Delivered
+
+- Persistent Liked → Cart → Closet → User header on all routes, floating Home/Discover/Inspo island; Home is the continuous solid-separated product list.
+- Login for this device's returning profile, New account through createUser, explicit team test profile. Google later, per Ryan.
+- Seven separate skippable setup screens: Welcome, Style, Stores, Scan, editable Measurements, Budget, Done. H&M/Uniqlo + optional other-store interests; server style/stores/budgets/onboarded and body-profile sizes/fit; private photo preview/delete; all editable under User.
+- Shared seeded Home from catalog tags/results/Liked, clear seed chip, size badges with explicit alternatives when real size is unavailable; no default body values or passive swipe writes.
+- Discover dedicated search/searchPhoto/searchStyles, camera/gallery, style counts, engagement/personal mix, Similar/Goes with it. Closet matches are labeled and never cartable or seeded.
+- Inspo shared feed, author filtering, photo-toggle catalog metadata/label tags, seed/search tap, confirmed own-post delete. Both closet upload choices.
+- Full wishlist screen; atomic cart pencil, visible/removable unavailable lines blocking checkout, thumbnails; retained your receipt/per-store retry and added order-history retry.
+
+## Integration / evidence
+
+Uses your canonical council methods/models. The only core extension is `sizeAdvice(useSavedProfile: true)`: unspecified dimensions are omitted rather than sending Settings' old 170/65 defaults. Typed dimensions win over scan prefill. Atomic cart fallback is restricted to missing-route 405 or generic 404 “Not Found”; missing-cart-line 404 never creates a line.
+
+**81 Flutter tests pass**, analysis clean, release web build succeeds. New tests cover council navigation, full wishlist, text/photo search/owned items, seed/reset, scan review, absent measurements, atomic failure and unavailable lines, plus reconnect recovery. Live read-only health/feed/styles and actual browser Home/Discover/images/catalog→Home verified. Signed iPhone release builds; device install/launch is being completed separately. Private key/URL remain outside Git. No live personal-photo upload/post or payment performed by agent.
+
+## Explicit follow-ups
+
+1. The current body-scan route persists estimates/photo before client review. UI exposes review/edit/save; a true uncommitted draft→confirm route needs backend work. Please do not describe it as deferred server persistence.
+2. Positional tag pins remain stretch; permitted photo-toggle list overlay is implemented. Google auth remains deferred.
+3. Nabil's additive shop_for, seed_shown and cart-line image_url are documented next client extensions; Ryan has not chosen a gender-preference UI. Current seeded Home fetches once per selection (retry starts a new fetch).
+4. Human acceptance: physical scrolling/keyboard, real scan quality/camera and checkout demo. Implementation checklist: docs/ryan-council-implementation.md.
+
+---
+
 # Ryan council sprint started — Oct 24
 
 Read docs/council-final-sprint.md and latest Adam/Nabil handoffs. RyanFrontendking fast-forwarded to staging 4516746, including PR #22's body scan/profile methods. Implementing Ryan's full P0/P1 app list; 5 PM is optional per Ryan. No PR merges by this agent.

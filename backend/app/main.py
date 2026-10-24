@@ -12,7 +12,9 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from .ai.router import router as ai_router  # noqa: E402
 from .commerce.fitcheck import router as fitcheck_router  # noqa: E402
+from .commerce.fitcheck_web import router as fitcheck_web_router  # noqa: E402
 from .commerce.router import router as commerce_router  # noqa: E402
+from .commerce.users import router as users_router  # noqa: E402
 from .store import DATA_DIR  # noqa: E402
 
 app = FastAPI(title="dresstoimpress API")
@@ -27,12 +29,20 @@ for _sub in ("uploads", "tryon"):
 # Set API_SHARED_KEY in .env; clients send it as the X-DTI-Key header. Images and /health stay open
 # because image widgets can't send headers (file names are random).
 OPEN_PREFIXES = ("/health", "/static/", "/img")
+# Public QR page for guests, gated by its own FITCHECK_EVENT_CODE. Matched exactly (or "/fit/...")
+# so it never opens /fitcheck/*.
+OPEN_EXACT = ("/fit",)
+OPEN_SUBTREES = ("/fit/",)
+
+
+def _is_open(path: str) -> bool:
+    return path.startswith(OPEN_PREFIXES) or path in OPEN_EXACT or path.startswith(OPEN_SUBTREES)
 
 
 @app.middleware("http")
 async def shared_key(request: Request, call_next):
     key = os.getenv("API_SHARED_KEY", "")
-    if key and request.method != "OPTIONS" and not request.url.path.startswith(OPEN_PREFIXES):
+    if key and request.method != "OPTIONS" and not _is_open(request.url.path):
         if not hmac.compare_digest(request.headers.get("x-dti-key", ""), key):
             return JSONResponse({"detail": "missing or wrong X-DTI-Key"}, status_code=401)
     return await call_next(request)
@@ -78,3 +88,5 @@ def image_proxy(url: str):
 app.include_router(ai_router)
 app.include_router(commerce_router)  # /feed /products /swipe /cart /wishlist /checkout
 app.include_router(fitcheck_router)  # /fitcheck posts, feed, tags, likes, comments, shop
+app.include_router(users_router)  # /users CRUD, /onboarding
+app.include_router(fitcheck_web_router)  # public /fit page for guests (event code, no X-DTI-Key)

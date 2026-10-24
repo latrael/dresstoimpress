@@ -79,20 +79,29 @@ def _round_robin(products: list[dict], key: str) -> list[dict]:
     return [p for row in zip_longest(*groups.values()) for p in row if p]
 
 
-def _interleave(products: list[dict]) -> list[dict]:
-    """One card per style (H&M lists each colour as its own article), then alternate categories
-    within each retailer and retailers overall, so the feed isn't ten pairs of jeans."""
-    seen, unique = set(), []
+def _dedupe(products: list[dict], seen: Optional[set] = None) -> list[dict]:
+    """One card per style (H&M lists each colour as its own article); `seen` carries styles across lists."""
+    seen = set() if seen is None else seen
+    unique = []
     for p in products:
         style = (p.get("retailer"), p.get("name", "").strip().lower())
         if style not in seen:
             seen.add(style)
             unique.append(p)
+    return unique
+
+
+def _mix(products: list[dict]) -> list[dict]:
+    """Alternate categories within each retailer and retailers overall, so the feed isn't ten pairs of jeans."""
     by_ret: dict[str, list[dict]] = {}
-    for p in unique:
+    for p in products:
         by_ret.setdefault(p.get("retailer", ""), []).append(p)
     mixed = [_round_robin(ps, "category") for ps in by_ret.values()]
     return [p for row in zip_longest(*mixed) for p in row if p]
+
+
+def _interleave(products: list[dict]) -> list[dict]:
+    return _mix(_dedupe(products))
 
 
 def _swiped(user_id: str) -> set[str]:
@@ -119,10 +128,46 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
               for r in ranked if r.product_id in cands]
     seen = {p["id"] for p in picked}
     rest = [{**p, "reason": "", "score": 0.0, "pairs_with": []} for pid, p in cands.items() if pid not in seen]
-    return _interleave(picked + rest)[:limit]
+    styles: set = set()
+    cards = _mix(_dedupe(picked, styles))  # ranked cards always come first
+    if len(cards) < limit:
+        cards += _mix(_dedupe(rest, styles))  # unranked top-up never repeats a ranked style
+    return cards[:limit]
 
 
-@router.get("/products/{product_id}")
+def _hits(p: dict, words: list[str]) -> Optional[int]:
+    """Total occurrences of the words in name/label/brand/style_tags/colors, or None if any word is missing."""
+    hay = " ".join([p.get("name") or "", p.get("label") or "", p.get("brand") or "",
+                    *(p.get("style_tags") or []), *(p.get("colors") or [])]).lower()
+    counts = [hay.count(w) for w in words]
+    return sum(counts) if all(counts) else None
+
+
+@router.get("/products")
+def search_products(q: str = "", category: Optional[str] = None, retailer: Optional[str] = None,
+                    in_stock: bool = True, sort: Literal["relevance", "price_asc", "price_desc"] = "relevance",
+                    limit: int = 24, offset: int = 0):
+    """Catalog search: every word of `q` must match somewhere; `next_offset` is null on the last page."""
+    limit, offset = max(1, min(limit, 100)), max(0, offset)
+    words = q.lower().split()
+    where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
+    rows = []
+    for p in store.list("products", **where):
+        if in_stock and not _buyable(p):
+            continue
+        if (hits := _hits(p, words)) is not None:
+            rows.append((hits, p))
+    if sort == "relevance":
+        rows.sort(key=lambda r: (-r[0], (r[1].get("name") or "").lower(), r[1]["id"]))
+    else:
+        rows.sort(key=lambda r: (_price(r[1]), r[1]["id"]), reverse=sort == "price_desc")
+    total = len(rows)
+    items = [p for _, p in rows[offset:offset + limit]]
+    return {"items": items, "total": total, "limit": limit, "offset": offset,
+            "next_offset": offset + limit if offset + limit < total else None}
+
+
+@router.get("/products/{product_id:path}")  # ids are "{retailer}:{code}:{color}"; :path keeps a "/" colour working
 def get_product(product_id: str):
     return _product(product_id)
 

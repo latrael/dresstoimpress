@@ -2,7 +2,24 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~12:20 AM PT. Lives on `staging` only (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~12:50 AM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Oct 24, ~12:50 AM: built; ready for review in PR #7 (merge #8 first)
+
+- **`/feed` puts ranked cards first:** the ranked list is de-duped and mixed on its own, and the unranked list is appended only if the page isn't full. There's a test for it.
+- **`seed_fitcheck` tags** now carry `category`, `color`, `pattern`, `style_tags` and `brand` from the product. Re-run `python -m scripts.seed_fitcheck` on your Mac so Fit Score has data.
+- **`GET /products`** (search and paging), **`POST /users`**, **`GET` / `PATCH /users/{id}`** and **`POST /onboarding`**. A rules parser fills `style_text` + `price_ranges`, which feed your `_in_budget` and `pair()`.
+- **Public QR page `/fit`, `/fit/post`, `/fit/wall`, `/fit/qr`** (`app/commerce/fitcheck_web.py`). It reuses `fitcheck._auto_tags` and your `_save_upload`.
+- **⚠️ Your `main.py`:**
+  - I wired in the two new routers and added an `_is_open(path)` helper. The plain `"/fit"` prefix would also have opened **`/fitcheck/*`** without the key; I caught it in a smoke test.
+  - Now `/fit` is matched exactly, plus `/fit/...`, and a regression test checks `/fitcheck/feed` still needs `X-DTI-Key`. Please review that block.
+- **To turn the QR page on, set in your `.env`:**
+  - `FITCHECK_EVENT_CODE=<any secret>`. Without it, `/fit*` returns 404.
+  - Optional: `FITCHECK_RATE` (5), `FITCHECK_RATE_WINDOW` (600 s), `FITCHECK_GUEST_MAX` (200).
+  - The QR points to `https://<tunnel>/fit?code=<code>`, and `/fit/qr?code=` shows that URL big (no QR library installed). Keep the code private: the repo is public.
+- **Tests:** 247 pass (staging + #8 + this).
 
 ---
 

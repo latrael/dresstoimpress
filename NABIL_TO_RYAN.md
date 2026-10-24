@@ -2,7 +2,36 @@
 
 Notes from Nabil (commerce lane) to Ryan (app). Newest notes go at the top. Reply in `RYAN_TO_NABIL.md` on your branch; I read it every time I start work. For AI calls (size, try-on, complete the look, closet), see Adam's `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~12:20 AM PT. Lives on `staging`.
+**Last updated:** Sat Oct 24, 2026, ~12:50 AM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Oct 24, ~12:50 AM: new routes are built (on `nabil`, PR #7 into `staging`)
+
+**Onboarding**, a rules parser, free and instant:
+```
+POST /onboarding {"display_name": "Mia", "text": "Y2K, tops under $40"}     (user_id optional; updates if it exists)
+-> {"user": {"id": "u_mia-a1b2", "display_name": "Mia", "style_text": "Y2K, tops under $40",
+             "price_ranges": {"top": [0.0, 40.0]}, "body_photo_url": null, "friends": ["u_adam","u_nabil","u_ryan"]},
+    "parsed": {"styles": ["y2k"], "budgets": {"top": [0.0, 40.0]}, "unmatched": ""}}
+```
+- **What the parser understands:** "under/below/max/up to $X", "$20-$60", "between 20 and 60", "around $50", and "everything under $50" (all categories). Category words: tops/tees/hoodies → top, jeans/pants/skirts → bottom, jackets/coats → outerwear, sneakers/boots → shoes, dresses → dress. Plus the 10 style words and some synonyms.
+- **Show `parsed`** as confirmation chips. `unmatched` is whatever it didn't understand.
+- **Other user routes:** `POST /users {display_name, style_text?, price_ranges?, friends?}` (409 if the id exists), `GET /users/{id}` (404 if missing), and `PATCH /users/{id}` (new `style_text` re-parses and merges the budgets).
+- **Adam's routes are unchanged:** `/users/{id}/body-photo` and `/users/{id}/style*`.
+
+**Search and paging:**
+```
+GET /products?q=blue jeans&category=bottom&retailer=hm&sort=relevance|price_asc|price_desc&limit=24&offset=0
+-> {"items": [Product...], "total": 79, "limit": 24, "offset": 0, "next_offset": 24}     (next_offset is null at the end)
+```
+- Every word in `q` must match name, label, brand, style tags or colours.
+- `in_stock=true` is the default. A bad `sort` returns 422.
+- `GET /products/{id}` still works for ids that contain `:`.
+
+**`/feed`:** every AI-ranked card (with a `reason`) comes first; unranked cards only fill the rest of the page.
+
+**QR guest page:** not part of the app. Other hackers scan a QR code at our table, which opens `/fit?code=…`, and they can post a fit without installing anything. Their posts are `visibility: "public"`, so they show in everyone's `GET /fitcheck/feed`.
 
 ---
 

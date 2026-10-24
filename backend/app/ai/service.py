@@ -127,7 +127,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         style_text=user.get("style_text", "") or "not given",
         price_ranges=json.dumps(ranges),
         closet_json=json.dumps(slim_closet),
-        memory=style_memory(user_id),
+        memory=style_memory(user_id, user.get("style_text", "")),
         products_json=json.dumps(slim_cands),
         k=k,
     )
@@ -149,3 +149,60 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     return out[:k] or _fallback(cands, ranges, k)
+
+
+# ---------- Fit Check: shop the fit ----------
+
+_STOP = {"the", "a", "an", "and", "with", "my", "of", "in"}
+
+
+def _tokens(s: str) -> set[str]:
+    return {w for w in "".join(c.lower() if c.isalnum() else " " for c in s).split() if w not in _STOP}
+
+
+def _match_tag(tag: dict, products: list[dict], n: int = 3) -> list[dict]:
+    """Products that best match one tagged item: same retailer if given, word overlap on name/category/colors."""
+    if tag.get("product_id"):
+        p = store.get("products", tag["product_id"])
+        if p:
+            return [p]
+    want = _tokens(tag.get("label", ""))
+    retailer = tag.get("retailer")
+    scored = []
+    for p in products:
+        if retailer and p["retailer"] != retailer:
+            continue
+        have = _tokens(" ".join([p["name"], p["category"], *p.get("colors", [])]))
+        overlap = len(want & have)
+        if overlap:
+            scored.append((overlap, -p["price_usd"], p))
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    return [p for _, _, p in scored[:n]]
+
+
+def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
+    """Shoppable cards for a friend's Fit Check post, ranked against the viewer's closet.
+
+    Each result is a Product plus `reason`, `pairs_with`, and `matched_tag` (the post label it answers).
+    Tags with no product match yet are skipped; Nabil can run Apify for that retailer and call again.
+    """
+    products = store.list("products")
+    matched: dict[str, str] = {}
+    for tag in tagged:
+        for p in _match_tag(tag, products):
+            matched.setdefault(p["id"], tag.get("label", ""))
+    if not matched:
+        return []
+
+    ranked = {r.product_id: r for r in pair(viewer_id, list(matched), k=len(matched))}
+    out = []
+    for pid, label in matched.items():
+        p = store.get("products", pid)
+        r = ranked.get(pid)
+        out.append({**p,
+                    "reason": r.reason if r else f"from the fit: {label}",
+                    "pairs_with": r.pairs_with if r else [],
+                    "score": r.score if r else 0.0,
+                    "matched_tag": label})
+    out.sort(key=lambda d: d["score"], reverse=True)
+    return out

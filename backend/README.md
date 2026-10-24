@@ -24,11 +24,24 @@ For phones at the venue, expose it: `ngrok http 8000`, then set `PUBLIC_BASE` to
 | `POST /closet/tag` | `{user_id, image_url}` | ClosetItem (422 `not_clothing` if it isn't) |
 | `POST /tryon` | `{user_id, product_ids[], closet_item_ids[]}` | `{image_url, cached}` |
 | `POST /pair` | `{user_id, candidate_product_ids[]}` (empty = all unswiped products) | `[{product_id, score, reason, pairs_with[]}]` |
+| `POST /closet/upload` | multipart `user_id`, `file` (jpeg/png/webp/heic, ≤10 MB) | ClosetItem (saves, then tags) |
+| `POST /users/{user_id}/body-photo` | multipart `file` | `{body_photo_url}` |
+| `POST /ai/shop-fit` | `{viewer_id, tagged[{label, retailer?, product_id?}]}` | Products + `reason`, `pairs_with`, `score`, `matched_tag` |
 
 - **Tagging:** Claude vision → JSON, validated and clamped to the contract, retried once on bad JSON.
 - **Try-on:** Gemini Flash image with the user's body photo + garment images; prompt forbids reshaping the body. Results cached by user + sorted ids and served from `/static/tryon/`.
 - **Pairing:** budget matches first, top 50 sent to Claude with closet + style memory; hallucinated ids are dropped; falls back to budget/price ranking if Claude fails or the closet is empty.
-- **Style memory:** `app/ai/memory.py` reads swipes today; Moss plugs in there.
+- **Style memory:** with `MOSS_PROJECT_ID`/`MOSS_PROJECT_KEY` set, swipes are indexed in Moss (one index per user) and pairing retrieves the most relevant likes/discards; otherwise it reads recent swipes. **Nabil: call `ai.memory.record_swipe(user_id, product, action)` from `/swipe`.**
+- **Shop the fit:** matches each tagged item in a Fit Check post to products (exact `product_id`, else retailer + word overlap), then ranks them against the viewer's closet. **Nabil: `GET /fitcheck/{post_id}/shop` can return `ai.service.shop_fit(viewer_id, post["tagged"])`.**
+- **Images:** fetched server-side and sent to Claude as base64 (retailer CDNs block outside fetchers; localhost isn't reachable). Only http(s) URLs accepted from the API.
+
+## Scripts
+
+```bash
+python -m scripts.seed_demo                       # demo data
+python -m scripts.eval_tagger ~/Desktop/closet    # real tagger on a folder of photos (needs ANTHROPIC_API_KEY)
+python -m scripts.precompute_tryons --user u_demo # warm try-on cache before judging (needs GEMINI_API_KEY)
+```
 
 ## Where things live
 

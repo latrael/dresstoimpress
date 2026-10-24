@@ -46,7 +46,7 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
     client = Anthropic()
     content: list[dict] = []
     if image_url:
-        content.append({"type": "image", "source": {"type": "url", "url": image_url}})
+        content.append({"type": "image", "source": image_source(image_url)})
     content.append({"type": "text", "text": prompt})
 
     last_err: Exception | None = None
@@ -64,11 +64,69 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
     raise BadModelOutput(str(last_err))
 
 
+CLAUDE_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+_UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 "
+                     "(KHTML, like Gecko) Version/17.0 Safari/605.1.15"}
+
+
 def fetch_image(url: str) -> tuple[bytes, str]:
-    r = httpx.get(url, timeout=20, follow_redirects=True)
+    """Download an image. Local /static URLs are read from disk (works without ngrok)."""
+    from ..store import DATA_DIR
+
+    marker = "/static/"
+    def safe(rel: str):
+        root = DATA_DIR.resolve()
+        p = (root / rel).resolve()
+        if root not in p.parents:
+            raise ValueError("path outside data dir")
+        return p
+
+    if url.startswith("file://"):
+        if os.getenv("ALLOW_FILE_URLS") != "1":  # set only by local scripts (eval_tagger)
+            raise ValueError("file:// URLs not allowed")
+        from pathlib import Path
+        from urllib.parse import unquote, urlparse
+
+        path = Path(unquote(urlparse(url).path))
+        return path.read_bytes(), _guess_mime(path.name)
+    if url.startswith(marker):
+        path = safe(url[len(marker):])
+        return path.read_bytes(), _guess_mime(path.name)
+    local = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/") + marker
+    if url.startswith(local):
+        path = safe(url[len(local):])
+        if path.exists():
+            return path.read_bytes(), _guess_mime(path.name)
+
+    r = httpx.get(url, timeout=20, follow_redirects=True, headers=_UA)
     r.raise_for_status()
-    mime = r.headers.get("content-type", "image/jpeg").split(";")[0]
+    mime = r.headers.get("content-type", "").split(";")[0] or _guess_mime(url)
     return r.content, mime
+
+
+def _guess_mime(name: str) -> str:
+    n = name.lower().split("?")[0]
+    if n.endswith(".png"):
+        return "image/png"
+    if n.endswith(".webp"):
+        return "image/webp"
+    if n.endswith(".gif"):
+        return "image/gif"
+    return "image/jpeg"
+
+
+def image_source(url: str) -> dict:
+    """Send images to Claude as base64: retailer CDNs often block Claude's own fetcher,
+    and localhost URLs aren't reachable from the API at all."""
+    import base64
+
+    try:
+        data, mime = fetch_image(url)
+    except Exception:
+        return {"type": "url", "url": url}  # last resort: let Claude try
+    if mime not in CLAUDE_IMAGE_TYPES:
+        mime = "image/jpeg"
+    return {"type": "base64", "media_type": mime, "data": base64.b64encode(data).decode()}
 
 
 def gemini_image(prompt: str, image_urls: list[str]) -> bytes:

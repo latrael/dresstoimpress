@@ -1,14 +1,56 @@
-from fastapi import APIRouter, HTTPException
+import os
+import uuid
 
-from ..models import ClosetItem, PairRequest, PairResult, TagRequest, TryOnRequest, TryOnResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
+from ..models import (ClosetItem, PairRequest, PairResult, ShopFitRequest, TagRequest,
+                      TryOnRequest, TryOnResponse)
+from ..store import DATA_DIR, store
 from . import service
 from .llm import BadModelOutput
 
 router = APIRouter(tags=["ai"])
 
+MAX_UPLOAD = 10 * 1024 * 1024
+EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/heic": ".heic"}
+
+
+async def _save_upload(file: UploadFile) -> str:
+    """Save an uploaded image under /static/uploads and return its public URL."""
+    if file.content_type not in EXT:
+        raise HTTPException(415, f"unsupported image type {file.content_type}")
+    data = await file.read()
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(413, "image over 10 MB")
+    folder = DATA_DIR / "uploads"
+    folder.mkdir(parents=True, exist_ok=True)
+    name = uuid.uuid4().hex + EXT[file.content_type]
+    (folder / name).write_bytes(data)
+    base = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/")
+    return f"{base}/static/uploads/{name}"
+
+
+@router.post("/closet/upload", response_model=ClosetItem)
+async def closet_upload(user_id: str = Form(...), file: UploadFile = File(...)):
+    """Photo straight from the app: save, then tag. Same output as /closet/tag."""
+    url = await _save_upload(file)
+    return closet_tag(TagRequest(user_id=user_id, image_url=url))
+
+
+@router.post("/users/{user_id}/body-photo")
+async def body_photo(user_id: str, file: UploadFile = File(...)):
+    """Private full-body photo used for try-on."""
+    url = await _save_upload(file)
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["body_photo_url"] = url
+    store.put("users", user_id, user)
+    return {"body_photo_url": url}
+
 
 @router.post("/closet/tag", response_model=ClosetItem)
 def closet_tag(req: TagRequest):
+    if not req.image_url.startswith(("http://", "https://")):
+        raise HTTPException(400, "image_url must be http(s)")
     try:
         return service.tag_closet_item(req.user_id, req.image_url)
     except service.NotClothing:
@@ -31,3 +73,10 @@ def tryon(req: TryOnRequest):
 @router.post("/pair", response_model=list[PairResult])
 def pair(req: PairRequest):
     return service.pair(req.user_id, req.candidate_product_ids)
+
+
+@router.post("/ai/shop-fit")
+def shop_fit(req: ShopFitRequest):
+    """AI half of GET /fitcheck/{post_id}/shop: Nabil's route loads the post and passes its `tagged` here
+    (or calls service.shop_fit directly). Returns Products + reason, pairs_with, score, matched_tag."""
+    return service.shop_fit(req.viewer_id, [t.model_dump() for t in req.tagged])

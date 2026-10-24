@@ -79,3 +79,15 @@ class PairResult(BaseModel):
     score: float = Field(ge=0, le=1)
     reason: str
     pairs_with: list[str] = []
+
+
+class FitTag(BaseModel):
+    label: str
+    retailer: Optional[str] = None
+    product_id: Optional[str] = None
+    closet_item_id: Optional[str] = None
+
+
+class ShopFitRequest(BaseModel):
+    viewer_id: str
+    tagged: list[FitTag]

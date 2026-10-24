@@ -1,48 +1,38 @@
-# Ryan: Saturday plan (9:00 AM – 7:00 PM)
+# Ryan: 1:00 AM – 10:00 AM
 
 **Ryan owns the app and all of its design: order, screens, flows and visuals.**
-- This file only lines up **your own "Next work" list from `RYAN.md`** with the team checkpoints, and shows which backend routes and `core/` methods serve each item.
-- The times are suggestions so the checkpoints land. Move anything you like.
-- Please write "Plan confirmed" (or your changes) at the top of `RYAN_TO_ADAM.md` by 9:15.
+- This file lines up **Ryan's own "Next work" list from `RYAN.md`** with the overnight window, and shows which backend routes and `core/` methods serve each item.
+- **Ryan is asleep 1:00–9:00.** If his coding agent was started before bed (prompt in [README.md](README.md), "Before bed"), it works this list in Ryan's order, to Ryan's spec (`RYAN.md`, `frontend/QUICK_BROWSE.md`, the wireframe). Any design question it can't answer from that spec is skipped and listed in the morning report, never guessed.
+- If no agent ran, the list simply starts at 9:15. The times are only suggestions; Ryan changes anything.
+- Please write "Plan confirmed" (or changes) at the top of `RYAN_TO_ADAM.md`.
 
-Shared timeline: [README.md](README.md).
+Team timeline: [README.md](README.md).
 
-## 8:45: before standup
-- [ ] `git pull origin staging` into `RyanFrontendking`. `core/` now has `searchProducts`, `createUser` / `getUser` / `updateUser`, `onboarding`, `applyStyle` and `imageProxyUrl`, plus `image_picker` in `pubspec` (your request, PR #11).
+## Before starting
+- [ ] `git pull origin staging` into `RyanFrontendking`. `core/` already has `searchProducts`, `createUser` / `getUser` / `updateUser`, `onboarding`, `applyStyle`, `imageProxyUrl`, plus `image_picker` (PR #11).
 - [ ] `cd app && flutter pub get && flutter test`. Expect 14/14.
-- [ ] URL + key in device settings. Adam reposts the URL if the tunnel changed overnight.
 
-## 9:00–9:15: standup
-**Decisions only you can make:**
-1. Adam's iOS platform PR (adds `app/ios/` via `flutter create --platforms ios`; no `lib/` changes). OK to merge?
-2. Nabil's `/fit` guest page: OK, OK with changes, or no?
+## Ryan's list, with what serves each item
 
-## Your list, with what serves each item
+| Suggested | # | Item (from RYAN.md) | Routes / `core` methods | Done when (against the live backend) |
+| --- | --- | --- | --- | --- |
+| 1:00–2:30 | 1 | **Size advice + product details** | `Api.sizeAdvice(productId, …)` → `POST /size` returns `{size, confidence, reason}`; `size` is always in stock, or null. It handles S–XL, XXS–3XL, `28/32`, `28inch`, US women's 0–24, and shoes (`shoeUs`). Height/weight default to `Settings.heightCm` / `weightKg` (170 / 65). | an H&M top and an H&M jean (`30/32` sizes) both get a size from `/size` |
+| 2:30–4:00 | 2 | **Personal try-on** | `Api.tryOn([productId])` → `{imageUrl, cached, mode}`. ~5 s first time, instant after. `isOutfitBoard` = the collage fallback, not a photo of the user. `uploadBodyPhoto(bytes)`. | try-on images load for 3 products |
+| 4:00–5:00 | 3 | **Complete the look + Fit Score** | `Api.completeLook(productId)` → items `{source: closet\|catalog, …}`, `newItemsTotalUsd`, `missing`. `Api.fitScore(productIds, closetItemIds)` → `{score, verdict, notes, breakdown}` | both work from a product |
+| 5:00–6:00 | 4 | **Onboarding + full search** | `Api.onboarding(text)` → user + parsed `styles` / `budgets`. `Api.searchProducts(q, category, retailer, sort, limit, offset)` → `ProductPage` (`nextOffset` null at the end) | free text saves budgets; search covers all 418 products |
+| 6:00–7:00 | 5 | **Fit Check:** create / likes / comments / shop | `createFitCheckUpload(bytes, caption)`, `updateFitCheckTags`, `likeFitCheck`, `commentFitCheck`, `shopFitCheck(postId)`, `fitScore(items: post.tagged)` | post, like, comment and shop all work |
+| 7:00–8:00 | 6 | **Closet** | `closet()`, `uploadClosetItem(bytes)` (`duplicateOf`: an item it's probably the same as, or null; saved either way), `deleteClosetItem(id)` | upload + delete work |
+| 8:00–8:30 | 7 | **Profile / Style DNA** | `style()` → `{headline, styles, palette (hex), patterns, formality, priceRanges, favoriteRetailers, avoid, confidence}`; `applyStyle()` (409 under 5 likes) | the profile loads for u_demo |
+| 8:30 | | **PR `RyanFrontendking` → `staging`** + morning report at the top of `RYAN_TO_ADAM.md`: done, not done, questions | | `flutter analyze` clean, tests pass |
 
-| # | Item (from RYAN.md) | Routes / `core` methods | Done when (against the live backend) |
-| --- | --- | --- | --- |
-| 1 | **Size advice + product details** | `Api.sizeAdvice(productId, …)` → `POST /size` returns `{size, confidence, reason}`; `size` is always in stock, or null. It handles S–XL, XXS–3XL, `28/32`, `28inch`, US women's 0–24, and shoes (needs `shoe_us`). Height/weight: `Settings.heightCm` / `weightKg` (defaults 170 / 65) until onboarding sets them. | an H&M top and an H&M jean (sizes like `30/32`) both get a size from `/size` in the app |
-| 2 | **Personal try-on** | `Api.tryOn([productId])` → `{imageUrl, cached, mode}`. ~5 s first time, instant after. `isOutfitBoard` = the collage fallback, not a photo of the user. `uploadBodyPhoto(bytes)` sets the user's photo. | try-on images load for 3 products on the phone |
-| 3 | **Complete the look + Fit Score** | `Api.completeLook(productId)` → items `{source: closet\|catalog, id, category, label, reason}`, `newItemsTotalUsd`, `missing`. `Api.fitScore(productIds, closetItemIds)` → `{score 0–100, verdict, notes, breakdown}` (free, instant). | both work from a product |
-| 4 | **Onboarding + full search** | `Api.onboarding(text)` → the user plus what was parsed (`styles`, `budgets`). `Api.searchProducts(q, category, retailer, sort, limit, offset)` → `ProductPage` (page on with `nextOffset`, null at the end). | free text like "Y2K, tops under $40" saves budgets; search covers all 418 products |
-| 5 | **Fit Check:** create / likes / comments / shop | `createFitCheckUpload(bytes, caption)` (the AI pre-fills tags), `updateFitCheckTags`, `likeFitCheck`, `commentFitCheck`, `shopFitCheck(postId)`, `fitScore(items: post.tagged)`. Real posts arrive ~11 AM (Nabil). | posting a photo, liking, commenting and shopping a fit all work |
-| 6 | **Closet** | `closet()`, `uploadClosetItem(bytes)` (returns `duplicateOf`: an item it's probably the same as, or null; saved either way), `deleteClosetItem(id)`. Adam's real closet photos land ~11 AM. | upload + delete work; a duplicate is detectable |
-| 7 | **Profile / Style DNA** | `style()` → `{headline, styles, palette (with hex), patterns, formality, priceRanges, favoriteRetailers, avoid, confidence}`. `applyStyle()` saves the learned budgets (409 under 5 likes). | the profile loads for u_demo |
-| 8 | **iPhone verification** | Adam builds and runs it on his iPhone (`flutter run --release`) | your screens work on the phone |
+**Need a call or field that's missing?** Write it in `RYAN_TO_ADAM.md` (AI routes / `core`) or `RYAN_TO_NABIL.md` (commerce). Adam's session checks every 20 minutes all night.
 
-## Suggested blocks (your call)
-| Time | Suggested |
-| --- | --- |
-| 9:15–10:30 | #1 size advice + product details |
-| 10:30 | PR `RyanFrontendking` → `staging` (merge window 1) |
-| 10:30–12:00 | #2 try-on |
-| **12:00** | **Checkpoint A on Adam's iPhone:** feed → size → add to cart → checkout `paid` (the first live checkout; Nabil confirms in Nessie) |
-| 13:30–15:30 | #3 complete the look + Fit Score, #4 onboarding + search |
-| **15:30** | **Checkpoint B:** AI features reachable in the app |
-| 15:30–17:00 | #5 Fit Check, #6 closet, #7 profile / Style DNA. PR by 16:30 (merge window 4). |
-| **17:00** | **Freeze:** fixes only. Adam rebuilds the iPhone app. |
-| 17:30 / 18:30 | Dry runs #1 and #2 (you drive the app) |
+## Ryan (human), 9:00–10:00
+- [ ] 9:00 standup: read your agent's morning report.
+- [ ] **Your decisions:**
+  1. Adam's **PR #13** (adds `app/ios/` only; the permission-prompt wording and the icon are placeholders for you). Merge, or not?
+  2. Nabil's **`/fit` guest page**: OK, OK with changes, or no?
+- [ ] Review and merge (or hold) your agent's overnight PR.
 
-**If a checkpoint is at risk:** you decide whether to hand a whole item to Adam or Nabil, at 12:00 or 15:30.
-
-**Need something from the backend?** Write it in `RYAN_TO_ADAM.md` (AI routes / `core`) or `RYAN_TO_NABIL.md` (commerce). Adam's session checks every 20 minutes.
+## After 10:00
+12:00 checkpoint A on Adam's iPhone (feed → size → add to cart → checkout `paid`) · 15:30 B (AI features reachable) · 17:00 freeze · 17:30 / 18:30 dry runs (you drive the app). If a checkpoint is at risk, you decide whether to hand a whole item to Adam or Nabil.

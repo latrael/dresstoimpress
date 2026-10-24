@@ -52,7 +52,10 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 
 | Method | Path | What it does |
 |---|---|---|
-| GET | `/feed?user_id=&limit=20` | in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`. Each card adds `reason`, `score`, `pairs_with` |
+| GET | `/feed?user_id=&limit=20&seed=` | Home: in-stock, in-budget, not-yet-swiped products, ordered by Adam's `pair()`, **in-your-size first**. Each card adds `reason`, `score`, `pairs_with`, `your_size`, `in_your_size`. `seed=` → that product first, then similar (same category first) |
+| GET | `/search?user_id=&q=` | Discover text search → `{query, similar, goes_with}` (goes_with = complete the look around the top result, closet first) |
+| GET | `/search/styles?user_id=&limit=` | Discover idle: `{styles:[{tag,count}], trending:[Product+trend_count]}` |
+| POST | `/search/photo` (multipart `user_id`, `file`) | Discover photo search → `{photo_url, tags, similar, goes_with}`; no post or closet item created |
 | GET | `/products?q=&category=&retailer=&sort=&limit=&offset=` | search and paging → `{items, total, limit, offset, next_offset}` |
 | GET | `/products/{id}` | one product |
 | POST | `/onboarding` `{user_id?, display_name?, text}` | "Y2K, tops under $40" → user `style_text` + `price_ranges`, plus `parsed` chips |
@@ -60,13 +63,14 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 | GET · POST | `/fit?code=`, `/fit/post`, `/fit/wall`, `/fit/qr` | **public QR page** for guest Fit Check posts. Needs `FITCHECK_EVENT_CODE`; no `X-DTI-Key` |
 | POST | `/swipe` `{user_id, product_id, action, size?}` | `like` (right → cart if a size is given), `save` (down → wishlist), `discard` (left). Feeds Adam's style memory |
 | POST | `/cart/{user_id}/items` `{product_id, size, qty}` | add to cart; 422 if the size is sold out |
-| GET | `/cart/{user_id}` | cart **grouped by retailer**, with subtotals and a total |
+| GET | `/cart/{user_id}` | cart **grouped by retailer**, with subtotals and a total, plus `unavailable[]` (sold out / left the catalog; not in totals) |
+| PATCH | `/cart/{user_id}/items/{product_id}` `{size, new_size}` | change size in one write: quantity kept, merges into an existing line; 404 / 409 |
 | DELETE | `/cart/{user_id}/items/{product_id}?size=` | remove an item |
 | PUT / DELETE | `/wishlist/{user_id}/items/{product_id}` | save / unsave. Repeat-safe, and does **not** remove the item from the feed |
 | GET | `/wishlist/{user_id}` · `/wishlist/{user_id}/ids` | saved products (newest first) · just their ids |
 | GET | `/orders/{user_id}` | past orders |
 | POST | `/orders/{order_id}/retry?user_id=&retailer=` | re-attempt only this order's `nessie_failed`/`pending_nessie` store purchases; `paid` ones are never re-charged, so it's repeat-safe. 404 / 403 not owner / 503 no key |
-| * | `/fitcheck…` | post, feed, detail, PATCH tags, `/shop`, like, comment. See NABIL_TO_RYAN.md |
+| * | `/fitcheck…` | post, feed (**everyone's posts**, `?author=`), detail, PATCH tags, DELETE, `/shop`, like, comment. See NABIL_TO_RYAN.md |
 | POST | `/checkout/{user_id}` | one **real Nessie purchase** per retailer (`paid` / `nessie_failed`). 409 if a size sold out since it went in the cart, and nothing is charged |
 
 Shapes:
@@ -115,6 +119,8 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 - **Style keywords are loose** on H&M (it has no y2k tag), so Adam's tagger supplies the real `style_tags`.
 
 ## Changelog
+
+- **Oct 24, ~4:30 PM:** Council redesign backend: Home size-first + `?seed=`, `preferred_stores` / `onboarded` on User, Discover `/search`, `/search/styles`, `/search/photo`, atomic cart size change, unavailable cart items, Inspo for everyone. 370 tests.
 
 - **Oct 24, ~2:20 PM:** `POST /orders/{order_id}/retry` (Ryan's ask): per-store payment retry, repeat-safe, owner-only.
 

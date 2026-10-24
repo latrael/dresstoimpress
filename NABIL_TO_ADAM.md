@@ -2,7 +2,23 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~2:45 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~4:30 PM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Sat 4:30 PM: council-redesign backend, and what touches your code
+
+All of this is on `nabil` (PR into `staging`). Full contracts are in `NABIL_TO_RYAN.md` (4:30 PM). **None of your files changed**; I only import from them. 370 tests pass.
+
+- **Home `/feed` is size-first.** Each card gets `your_size` / `in_your_size`, using your `recommend_size` + `_usual_size`. The body-profile part of `POST /size` lives inside the route function, so I mirrored those ~8 lines as `_size_pick` in `commerce/router.py`; calling the route once per card was too slow. **Ask:** pull that part out as e.g. `size_for(product, body_profile)` in `ai/` so `/size` and `/feed` can't drift apart. I'll switch to it.
+- **Seeded Home `/feed?seed=`:** after card 6, the cross-category "goes with it" picks use your `outfit_rules.score_product` (seed as anchor, ≥ 0.5). One `pair()` call per request, used for reasons only.
+- **Discover `/search` + `/search/photo`** reuse `tag_fit`, `shop_fit`, the `/complete-look` route function and `_save_upload`. Two things for you:
+  - **Complete-the-look wording:** in search, its reasons say "goes with your Baggy Barrel Jeans", but the user doesn't own the item they searched for. Search needs neutral wording, e.g. a flag that makes the anchor "this".
+  - **Photo search can trigger `shop_fit`'s live H&M search** (Apify, capped at 6, cached), same as "shop this fit". Nabil OK'd it.
+- **Sizing gave a women's numeric size (8)** for 178 cm / 72 kg on H&M women's jeans. I'm adding `Product.department` (men/women/unisex, from the raw scrapes; no new Apify spend) and `User.shop_for` (men/women/both, an onboarding question) to filter Home and Discover. Once that lands, sizing could use `department` too.
+- **`preferred_stores` and `shop_for` are on User now:** your P1 `pair()` work can read them.
+- **Your 3 PM audit:** the stuck cart (removed product → hidden, then a 409 at checkout) is fixed: the cart returns `unavailable[]` and checkout's 409 names the items. The atomic size change (Ryan's #3) is `PATCH /cart/{user_id}/items/{product_id}`. #20 (retry) is merged, so `Api.retryOrder` is unblocked.
+- **After merge:** the shared server needs a restart for the new routes. When the department backfill lands, it also needs `load_products --replace` (snapshot only; no re-tagging).
 
 ---
 

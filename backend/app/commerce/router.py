@@ -7,7 +7,6 @@ independent of swipes so saving never dismisses from the feed), carts (doc id = 
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import uuid
@@ -150,16 +149,6 @@ def swipe(req: SwipeRequest):
     return {"user_id": req.user_id, "product_id": req.product_id, "action": req.action, "in_cart": in_cart}
 
 
-def _delete(collection: str, doc_id: str) -> None:
-    if hasattr(store, "db"):  # FirestoreStore
-        store.db.collection(collection).document(doc_id).delete()
-        return
-    with store._lock:  # JsonStore has no delete; edit the file directly (as scripts/load_products.py)
-        data = store._load(collection)
-        if data.pop(doc_id, None) is not None:
-            store._path(collection).write_text(json.dumps(data, indent=2))
-
-
 def _save(user_id: str, product_id: str) -> None:
     store.put("wishlist", f"{user_id}:{product_id}", {"user_id": user_id, "product_id": product_id, "saved_at": _now()})
 
@@ -192,7 +181,7 @@ def wishlist_put(user_id: str, product_id: str):
 @router.delete("/wishlist/{user_id}/items/{product_id}")
 def wishlist_delete(user_id: str, product_id: str):
     """Ensure unsaved (idempotent). A legacy swipe save stays a swipe (still dismissed) but leaves the wishlist."""
-    _delete("wishlist", f"{user_id}:{product_id}")
+    store.delete("wishlist", f"{user_id}:{product_id}")
     if s := _legacy_save(user_id, product_id):
         store.put("swipes", f"{user_id}:{product_id}", {**s, "unsaved": True})
     return {"user_id": user_id, "product_id": product_id, "saved": False}

@@ -2,7 +2,17 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Fri Oct 23, 2026, ~11:15 PM PT. From now on this file only lives on `staging` (via PRs from `nabil`); I won't commit to your branch again.
+**Last updated:** Sat Oct 24, 2026, ~12 AM PT. This file lives on `staging` only (via PRs from `nabil`).
+
+---
+
+## Oct 24, ~12 AM: your PR #6 asks are done
+
+- **Name hint:** `ingest.tag()` now calls `tag_product(url, hint=p["name"])`, like your `tag_catalog.py`. The vocabulary filter stays, and there's a test for it. Your name-hinted snapshot is the one we keep.
+- **`store.delete`:** my private file-editing deletes are gone (wishlist DELETE in the router, and `scripts/load_products.py`). Both use your `store.delete()` now, so nothing writes the JSON files directly.
+- **`fetch_hm` / `normalize_hm` keep their names,** since your live search depends on them.
+- **New: root `README.md`** has a "Where Apify and Capital One Nessie run" section for the sponsor judges. It credits Claude in one line and links to your `ADAM.md` and the AI section of `backend/README.md`. Please don't duplicate it; add your Anthropic section separately if you want one in the root README.
+- 195 tests pass on `nabil`, which is merged with staging at `c31c147`.
 
 ---
 

@@ -1,61 +1,114 @@
-# Devpost draft: DressToImpress | Niche
+# Devpost: DressToImpress | Niche
 
-Draft by Nabil's agent, Sat Oct 24 ~3 AM. Numbers are measured on our backend. **[confirm]** marks a claim that depends on work still in progress (mostly app screens); check or cut each one before submitting. Deadline: **Sunday 9:00 AM**, with all three of us added as teammates.
+Updated Sat Oct 24 ~4 PM for the council flow. Structured like the Devpost form: **About the project** (paste everything between the two `✂` lines into that one Markdown box), **Built with** (tags), and **"Try it out" links**. Numbers are measured on our backend. **[confirm]** = a screen in Ryan's sprint PR; check it in the app before submitting. Deadline: **Sunday 9:00 AM**, with all three of us added as teammates.
 
-**Tagline (≤ 60 chars):** Swipe real clothes that go with yours. One cart, every store.
+**Tagline (≤ 60 chars):** Real clothes in your size that go with yours. *(50 chars)*
 
 ---
 
+## About the project
+
+✂ ---------- paste from here ----------
+
 ## Inspiration
 
-Styling apps tell you what to wear but can't sell it to you. Shopping apps sell you things but don't know what's already in your closet. Buying one full outfit still means five tabs, five carts and five checkouts. College students on a budget feel that most: they want pieces that work with the clothes they already own, at a price they set.
+Shopping for one outfit means five tabs, five carts, and guessing your size five times. Styling apps tell you what to wear but can't sell it to you. Shopping apps sell you things but have no idea what's already in your closet. College students on a budget feel this the most: we want pieces that work with the clothes we already own, in our size, at a price we pick.
 
 ## What it does
 
-- **Tell it your style in plain words.** "Y2K, tops under $40" becomes style preferences plus a budget for each category.
-- **Swipe a feed of real, in-stock products** from H&M and Uniqlo, 418 of them with real sizes and stock. Every card is ranked against *your* closet and says why: "goes with your black cargos."
-- **See it on you.** A virtual try-on on your own photo, a size suggestion, and "complete the look" with your closet plus a 0–100 Fit Score. **[confirm: app screens]**
-- **One cart across stores, one checkout.** Checkout makes one real Capital One Nessie purchase per store. If something sold out since you added it, nothing is charged and the app shows exactly which item.
-- **Fit Check:** an outfit feed for friends. Post a fit, the AI tags each piece, and friends tap "shop this fit" to buy matching items, found live through Apify when they aren't in our catalog. **[confirm: app screen]**
+Niche learns who you are once, then everything you see is in your size, in stock, goes with what you own, and checks out in one tap across stores.
+
+- **Onboarding, one screen per step.**
+  - Describe your style in plain words ("y2k fits, baggy jeans, tops under $40").
+  - Pick the stores you like and whether you shop men's, women's or both.
+  - Do a body scan: one full-body photo plus your height gives estimated measurements, which you confirm.
+  - Every step after the first can be skipped.
+- **Home:** a scrolling feed of real H&M and Uniqlo products.
+  - Items in your size come first, with the size already picked. You only see sizes that are actually in stock.
+  - Every card says *why* it's there: "goes with your black cargos."
+- **Discover.**
+  - Search a style ("y2k") or a vibe ("fit for a rooftop party").
+  - Or tap the camera and snap something you like in real life.
+  - Results come back as **Similar items** and **Goes with it**, and the pieces you already own are marked.
+- **Inspo:** everyone's outfit of the day.
+  - Tap a photo and each piece gets a tag, like tagging people on Instagram: what it is, which store, the price.
+  - Tap a tag and Home fills with that item and others like it, in your size. **[confirm]**
+- **Closet:** photograph a pile of clothes and it splits them into separate, tagged items. Recommendations are built around what you already own.
+- **One cart, every store, one checkout.**
+  - Change sizes with the pencil on each item.
+  - Checkout makes one real Capital One Nessie purchase per store.
+  - If something sold out since you added it, nothing is charged and the cart shows which item. If one store's payment fails, you retry just that store.
 
 ## How we built it
 
-- **App:** Flutter (one codebase; web build plus an iPhone build). Quick Browse with photo galleries, wishlist, a cart grouped by store, checkout with per-store receipts, and order history.
-- **Backend:** one Python FastAPI service. The app never talks to outside services directly, and every API key stays on the server. A shared request key protects the public tunnel.
-- **Catalog: Apify.** Two actors (`gauzy_penguin/HM-Product-Scraper` and `abotapi/uniqlo-com-scraper`) feed an ingest pipeline. It drops kids' items, splits Uniqlo by colour, keeps per-size stock, builds image galleries and stable ids, and AI-tags every product. The result is 418 products (290 H&M, including 48 shoes, and 128 Uniqlo). We tested about a dozen actors; the multi-store one returned no sizes, which ruled it out for a store that has to sell you a size.
-- **Checkout: Capital One Nessie.** Each user gets a Nessie customer and credit-card account, each retailer becomes a Nessie merchant (created once), and each store in the cart gets one purchase. Orders keep a status per store (`paid` / `nessie_failed`).
+- **App:** Flutter, one codebase for iPhone, Android and web. A floating tab bar (Home · Discover · Inspo), with Liked, Cart, Closet and Profile always at the top. **[confirm]**
+- **Backend:** one Python FastAPI service.
+  - The app never talks to outside services directly; every API key stays on the server.
+  - A shared request key protects the public tunnel.
+- **Catalog: Apify.**
+  - Two actors (`gauzy_penguin/HM-Product-Scraper` and `abotapi/uniqlo-com-scraper`) feed our ingest pipeline. It drops kids' items, splits Uniqlo by colour, keeps per-size stock, builds photo galleries, tags men's/women's/unisex from the store's own data, and AI-tags every product.
+  - The result is 418 products: 212 women's, 159 men's, 47 unisex.
+  - When a photo shows a piece we don't carry, the backend searches H&M live through Apify (capped and cached).
+- **Checkout: Capital One Nessie.**
+  - Each user gets a Nessie customer and a credit-card account, and each retailer is a Nessie merchant.
+  - Each store in the cart becomes its own purchase, with its own status (`paid` / `nessie_failed`) and a retry that never charges a paid store twice.
 - **AI:**
-  - **Claude Haiku** tags every product and closet photo (item, colour, pattern, formality, style). It ranks the feed against your closet and writes the reason on each card.
-  - **Gemini** renders the virtual try-on on your own photo.
-  - **Rules engines (no AI, free)** handle size advice, the Fit Score, Style DNA, colour matching and closet duplicate detection.
-  - Tagging the whole catalog cost about **$0.07**, and the whole build about **$0.50** of AI. A hard $5 budget cap, caching everywhere, and fallbacks (Claude → Gemini → rules; try-on → an outfit-board collage) mean the demo never shows an error screen.
+  - **Claude Haiku** tags every product and photo, ranks the feed against your closet and writes the reason on each card. It also turns vibe searches into filters, splits a closet photo into separate items, and estimates measurements from the body scan.
+  - **Gemini** renders the virtual try-on on your own photo, and covers for Claude if it's down.
+  - **Plain rules (no AI, free)** handle sizing, the Fit Score, colour matching and duplicate detection, so they're instant.
+  - A hard budget cap, caching and fallbacks everywhere (Claude → Gemini → rules; try-on → an outfit-board collage) mean the demo never shows an error screen.
 
 ## Challenges we ran into
 
-- **Sizes.** Most fashion scrapers read category pages, which don't list sizes. We had to find actors that open product pages, and handle store quirks. For example, Uniqlo's "low stock" comes back as `inStock: false` but is buyable.
-- **Model photos lie to taggers.** A retailer photo of jeans usually shows a whole outfit. Without a hint, 37 of 418 tags described the wrong garment (the model's shirt instead of the jeans). Giving the tagger the product name brought that to **0**.
-- **Multi-store checkout honesty.** Each store is a separate payment. We re-check stock before charging (a 409 with the exact unavailable items, nothing charged) and keep each store's status separately, so a failure at one store never hides a success at another.
-- **No-code to code mid-hackathon.** FlutterFlow needed a paid plan to call our API, so we moved the app to plain Flutter overnight.
+- **Sizes.**
+  - Most fashion scrapers read category pages, which don't list sizes, so we had to find actors that open each product page.
+  - Then came the store quirks. Uniqlo's "low stock," for example, comes back as `inStock: false` even though you can still buy it.
+- **Model photos confuse taggers.** A retailer's photo of jeans usually shows a whole outfit. Without a hint, 37 of 418 tags described the wrong garment (the model's shirt instead of the jeans). Giving the tagger the product name brought that to **0**.
+- **Men's vs women's.** Our first sizing pass recommended a women's size 8 to a 178 cm guy. The stores' raw data already said which department each item belongs to, so we pulled that through and let you pick men's, women's or both.
+- **Photos carry your location.** iPhone photos include GPS coordinates. We strip that metadata from every upload before it's saved.
+- **Honest multi-store checkout.**
+  - Every store is a separate payment, so stock is re-checked before anything is charged.
+  - Each store keeps its own status, so a failure at one never hides a success at another.
+- **Three people, one backend, 36 hours.** We split into lanes (app, AI, commerce) and coordinated through handoff files in the repo, with every change going through a pull request into a shared staging branch.
 
 ## Accomplishments that we're proud of
 
 - Real products with real sizes and stock, not mock data.
-- A real multi-merchant checkout: one checkout made separate Nessie purchases at H&M and Uniqlo. **[confirm: from the phone at checkpoint A]**
+- A real multi-store checkout: one tap made separate Nessie purchases at H&M and Uniqlo (4 of 4 `paid` in our test run).
 - Every recommendation explains itself in terms of clothes you already own.
-- The AI is cheap and fails gracefully: about $0.50 of AI for the whole build, a fallback at every step, and 248 backend tests.
+- Snap-to-shop: a photo of something in real life becomes items you can buy, in your size.
+- It fails gracefully: we drilled AI outages, and checkout, cart and the feed keep working. 425 backend tests.
 
 ## What we learned
 
-- Pick the data source by the hardest field you need (sizes), not by the number of stores.
-- Small hints (a product name) beat bigger models for vision accuracy.
-- A design that degrades gracefully matters more in a live demo than any single model.
+- Pick the data source by the hardest field you need (sizes), not by the number of stores it covers.
+- Small hints, like a product name, beat bigger models for accuracy on photos.
+- Graceful fallbacks matter more in a live demo than any single model.
 
 ## What's next
 
-- More stores (Zara, Mango, ASOS) through more actors, refreshed on a schedule.
-- Publishing our multi-store ingest as a public Apify actor.
-- Real payments, plus order tracking per store.
-- Fit Check beyond our friends: public posts, and creators earning from "shop this fit."
+- More stores (Zara, Mango, ASOS) through more Apify actors, refreshed on a schedule.
+- Google sign-in and syncing across devices.
+- Real payments and per-store order tracking.
+- Creators earning when people shop their Inspo posts.
+
+✂ ---------- paste to here ----------
+
+---
+
+## Built with
+
+Paste one at a time (25 max; these are 18):
+
+`flutter` · `dart` · `python` · `fastapi` · `pydantic` · `uvicorn` · `apify` · `capital-one-nessie` · `anthropic` · `claude` · `google-gemini` · `pillow` · `httpx` · `pytest` · `cloudflare-tunnel` · `ios` · `android` · `github`
+
+Add `notability` / `figma` only if Ryan confirms we used them. Don't add `moss` (never switched on) or anything Visa.
+
+## "Try it out" links
+
+- **Code:** https://github.com/latrael/dresstoimpress
+- **Demo video:** add after the 18:30 backup recording.
+- Don't post the tunnel URL: it's private and needs the key.
 
 ---
 
@@ -65,17 +118,17 @@ Ticking is the team's call; this is the evidence for each. **Visa: do not tick, 
 
 | Track | Status | Where it's used (2–3 sentences for the Devpost field) |
 | --- | --- | --- |
-| **Apify** | built | Every feed card is a real H&M or Uniqlo listing pulled by two Apify actors and normalized by our ingest pipeline (`backend/app/commerce/ingest.py`): 418 products with per-size stock. Fit Check's "shop this fit" also runs the H&M actor live when an outfit piece isn't in our catalog (`backend/app/ai/finder.py`). The README section "Where Apify and Capital One Nessie run" walks through it. |
-| **Capital One Nessie** | built, verified | Checkout groups the cart by store and creates one Nessie purchase per store, on a Nessie customer and credit-card account per user, with a merchant per retailer (`backend/app/commerce/nessie.py`, `POST /checkout/{user_id}`). Stock is re-checked first, so a sold-out size returns 409 and nothing is charged. Evidence: the test orders below are visible through `GET /accounts/{id}/purchases`. |
-| **Meta: Bringing People Closer** | backend built; app screen **[confirm]** | Fit Check is a friends' outfit feed: post a fit, the AI tags each piece, and friends tap "shop this fit" to buy matching items paired with their own closet. It turns "where did you get that?" into a one-tap purchase between friends. Friends-only by default. |
-| **Anthropic** | built | Claude Haiku tags every product and closet photo and ranks the feed against each user's closet, with a one-line reason per card. Community: college students building a wardrobe on a student budget. Where it can go wrong: wrong tags (fixed with product-name hints, 37 → 0 errors out of 418) and body bias in try-on (the body photo stays private, and the prompt keeps body proportions unchanged). |
-| Moss | **not live: don't tick** | Code exists (`backend/app/ai/memory.py`), but no Moss keys were ever set, so style memory uses swipe + wishlist history (Adam, Sat 2:15 AM). Tick it only if Moss gets switched on and verified Saturday. |
+| **Apify** | built | Every product in the app is a real H&M or Uniqlo listing, pulled by two Apify actors and normalized by our ingest pipeline (`backend/app/commerce/ingest.py`): 418 products with per-size stock and men's/women's tags. Photo search and Inspo's "shop this fit" also run the H&M actor live when a piece isn't in our catalog (`backend/app/ai/finder.py`). |
+| **Capital One Nessie** | built, verified | Checkout groups the cart by store and creates one Nessie purchase per store, on a Nessie customer and credit-card account per user, with a merchant per retailer (`backend/app/commerce/nessie.py`, `POST /checkout/{user_id}`). Stock is re-checked first, so a sold-out size returns 409 and nothing is charged; a failed store can be retried without re-charging the others. Evidence: the test orders below, visible through `GET /accounts/{id}/purchases`. |
+| **Meta: Bringing People Closer** | built | Inspo is a shared outfit-of-the-day feed: post a fit, the AI tags each piece, and anyone can tap a tag to find that item (or similar) in their own size, or "shop this fit" for the whole look. It turns "where did you get that?" into one tap between friends. |
+| **Anthropic** | built | Claude Haiku tags every product and photo, ranks the feed against each user's closet with a one-line reason per card, turns vibe searches into filters, splits closet photos into items and estimates measurements from a body scan. Community: college students building a wardrobe on a budget. Where it can go wrong: wrong tags (fixed with product-name hints, 37 → 0 errors out of 418) and body bias in sizing and try-on (the body photo stays private, measurements are always confirmed by the user, and try-on keeps body proportions unchanged). |
+| Moss | **not live: don't tick** | Code exists (`backend/app/ai/memory.py`), but no Moss keys were ever set, so style memory uses swipe + wishlist history. |
 | **Notability** | **[Ryan to confirm]** | Wireframes and meeting notes from the start of the build; link them. |
 | **Figma** | **[Ryan to confirm]** | Only if hi-fi screens were made in Figma. |
-| Convex / SpacetimeDB | not built | Skip unless someone builds it; Fit Check runs on our own store. |
+| Convex / SpacetimeDB | not built | Skip. |
 | Visa | **never** | — |
 
-General prizes (no tick needed): Most Creative, Best People-First, Hacker's Choice (the Fit Check QR on our table).
+General prizes (no tick needed): Most Creative, Best People-First, Hacker's Choice.
 
 ### Nessie evidence for judges
 
@@ -89,7 +142,3 @@ Run overnight Sat Oct 24 (~1:20 AM PT) on Nabil's backup server, which uses the 
 | Mixed | uniqlo | $24.90 → 25 | `87f7e4e2-61e0-453d-bcd3-ce37756758f9` |
 
 Nessie account: `2775aade-9973-4ba3-9075-9b52924bd8e2`. Nessie stores whole-dollar amounts; our order keeps the exact price.
-
-## Links to add
-
-- GitHub repo · demo video (backup recording) · Notability notes **[Ryan]** · Figma **[Ryan]**

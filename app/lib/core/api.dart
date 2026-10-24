@@ -380,12 +380,15 @@ class Api {
       ..headers['X-DTI-Key'] = settings.apiKey
       ..headers['Content-Type'] = 'multipart/form-data; boundary=$boundary'
       ..bodyBytes = out.takeBytes();
-    return _perform(req);
+    return _perform(req, timeout: uploadTimeout);
   }
 
-  Future<dynamic> _perform(http.Request req) async {
+  /// Photo uploads go through the tunnel and then the AI (scan, digitize, try-on), so they get longer.
+  static const uploadTimeout = Duration(seconds: 180);
+
+  Future<dynamic> _perform(http.Request req, {Duration timeout = const Duration(seconds: 60)}) async {
     // first feed load and fresh try-ons take a few seconds
-    final streamed = await _client.send(req).timeout(const Duration(seconds: 60));
+    final streamed = await _client.send(req).timeout(timeout);
     final res = await http.Response.fromStream(streamed);
     final text = utf8.decode(res.bodyBytes);
     if (res.statusCode < 200 || res.statusCode >= 300) throw _error(res.statusCode, text);

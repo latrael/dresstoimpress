@@ -16,7 +16,7 @@ Published `43e9352` on `RyanFrontendking`. [PR #33](https://github.com/latrael/d
 
 Uses your canonical council methods/models. The only core extension is `sizeAdvice(useSavedProfile: true)`: unspecified dimensions are omitted rather than sending Settings' old 170/65 defaults. Typed dimensions win over scan prefill. Atomic cart fallback is restricted to missing-route 405 or generic 404 “Not Found”; missing-cart-line 404 never creates a line.
 
-**81 Flutter tests pass**, analysis clean, release web build succeeds. New tests cover council navigation, full wishlist, text/photo search/owned items, seed/reset, scan review, absent measurements, atomic failure and unavailable lines, plus reconnect recovery. Live read-only health/feed/styles and actual browser Home/Discover/images/catalog→Home verified. Signed iPhone release builds; device install/launch is being completed separately. Private key/URL remain outside Git. No live personal-photo upload/post or payment performed by agent.
+**81 Flutter tests pass**, analysis clean, release web build succeeds. New tests cover council navigation, full wishlist, text/photo search/owned items, seed/reset, scan review, absent measurements, atomic failure and unavailable lines, plus reconnect recovery. Live read-only health/feed/styles and actual browser Home/Discover/images/catalog→Home verified. Final signed iPhone release built and installed successfully. iOS blocked its launch because the device is locked; Ryan must unlock and open Niche. Earlier checkpoint launched successfully through devicectl. Private key/URL remain outside Git. No live personal-photo upload/post or payment performed by agent.
 
 ## Explicit follow-ups
 

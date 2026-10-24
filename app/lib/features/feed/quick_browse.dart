@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 /// Route adapters belong to the shared shell. Browsing emits no swipe events.
 class QuickBrowse extends StatefulWidget {
@@ -10,6 +11,9 @@ class QuickBrowse extends StatefulWidget {
     required this.onAddToCart,
     required this.imageUrl,
     this.onSizeAdvice,
+    this.automaticSizing = false,
+    this.onSizingSetup,
+    this.sizingRevision = 0,
     this.onTryOn,
     this.onCompleteLook,
   });
@@ -20,6 +24,9 @@ class QuickBrowse extends StatefulWidget {
   final Future<void> Function(String id, String size) onAddToCart;
   final String Function(String source) imageUrl;
 
+  final bool automaticSizing;
+  final int sizingRevision;
+  final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
   final Future<({String url, String label})?> Function(String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
@@ -29,52 +36,41 @@ class QuickBrowse extends StatefulWidget {
 }
 
 class _QuickBrowseState extends State<QuickBrowse> {
-  final pages = PageController();
-  bool paging = false;
-  int active = 0;
-
-  @override
-  void dispose() {
-    pages.dispose();
-    super.dispose();
-  }
-
-  Future<void> move(int index) async {
-    if (paging || index < 0 || index >= widget.products.length) return;
-    paging = true;
-    await pages.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-    );
-    paging = false;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.products.isEmpty) {
       return const Center(child: Text('No pieces to browse yet.'));
     }
-    return PageView.builder(
-      controller: pages,
-      scrollDirection: Axis.vertical,
-      onPageChanged: (index) => setState(() => active = index),
-      itemCount: widget.products.length,
-      itemBuilder: (context, index) => _ProductPage(
-        key: ValueKey(widget.products[index]['id']),
-        active: index == active,
-        product: widget.products[index],
-        saved: widget.savedIds.contains(widget.products[index]['id']),
-        onSave: widget.onSave,
-        onAddToCart: widget.onAddToCart,
-        imageUrl: widget.imageUrl,
-        onSizeAdvice: widget.onSizeAdvice,
-        onTryOn: widget.onTryOn,
-        onCompleteLook: widget.onCompleteLook,
-        onBoundary: (direction) => move(index + direction),
-        position: '${index + 1} / ${widget.products.length}',
-      ),
-    );
+    return LayoutBuilder(builder: (context, viewport) {
+      return ListView.separated(
+        key: const ValueKey('product-stream'),
+        // Build the visible products and roughly one screen ahead/behind.
+        scrollCacheExtent: const ScrollCacheExtent.viewport(1),
+        itemCount: widget.products.length,
+        separatorBuilder: (context, index) => Container(
+          key: ValueKey('product-separator-$index'),
+          height: 48,
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          color: const Color(0xFFBDA7AD),
+        ),
+        itemBuilder: (context, index) => _ProductPage(
+          key: ValueKey(widget.products[index]['id']),
+          product: widget.products[index],
+          saved: widget.savedIds.contains(widget.products[index]['id']),
+          onSave: widget.onSave,
+          onAddToCart: widget.onAddToCart,
+          imageUrl: widget.imageUrl,
+          onSizeAdvice: widget.onSizeAdvice,
+          automaticSizing: widget.automaticSizing,
+          onSizingSetup: widget.onSizingSetup,
+          sizingRevision: widget.sizingRevision,
+          onTryOn: widget.onTryOn,
+          onCompleteLook: widget.onCompleteLook,
+          imageHeight: (viewport.maxHeight * .46).clamp(180.0, 390.0),
+          position: '${index + 1} / ${widget.products.length}',
+        ),
+      );
+    });
   }
 }
 
@@ -87,9 +83,11 @@ class _ProductPage extends StatefulWidget {
     required this.onAddToCart,
     required this.imageUrl,
     required this.position,
-    required this.onBoundary,
-    required this.active,
+    required this.imageHeight,
     this.onSizeAdvice,
+    required this.automaticSizing,
+    required this.onSizingSetup,
+    required this.sizingRevision,
     this.onTryOn,
     this.onCompleteLook,
   });
@@ -99,8 +97,10 @@ class _ProductPage extends StatefulWidget {
   final Future<void> Function(String, String) onAddToCart;
   final String Function(String) imageUrl;
   final String position;
-  final void Function(int direction) onBoundary;
-  final bool active;
+  final double imageHeight;
+  final bool automaticSizing;
+  final int sizingRevision;
+  final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
   final Future<({String url, String label})?> Function(String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
@@ -119,18 +119,57 @@ class _ProductPageState extends State<_ProductPage> {
   ({String url, String label})? personalPhoto;
   String? error;
   final PageController photos = PageController();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.automaticSizing) resolveSize();
+  }
 
   @override
   void didUpdateWidget(covariant _ProductPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.active && !widget.active) {
-      photo = 0;
+    if (widget.automaticSizing &&
+        oldWidget.sizingRevision != widget.sizingRevision) {
+      resolveSize();
+    }
+  }
+
+  int sizeRequest = 0;
+  Future<void> resolveSize() async {
+    final request = ++sizeRequest;
+    setState(() {
+      advising = true;
       size = null;
       error = null;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && photos.hasClients) photos.jumpToPage(0);
+    });
+    try {
+      final value =
+          await widget.onSizeAdvice?.call(widget.product['id'] as String);
+      if (!mounted || request != sizeRequest) return;
+      final sizes = (widget.product['sizes'] as List? ?? []).cast<Map>();
+      setState(() {
+        size = sizes.any((s) => s['name'] == value && s['in_stock'] == true) &&
+                widget.product['in_stock'] != false
+            ? value
+            : null;
       });
+    } catch (_) {
+      if (mounted && request == sizeRequest) {
+        setState(() =>
+            error = 'Could not find your size. Tap Add to Cart to retry.');
+      }
+    } finally {
+      if (mounted && request == sizeRequest) setState(() => advising = false);
     }
+  }
+
+  Future<void> automaticAdd() async {
+    if (size == null) {
+      if (error == null) await widget.onSizingSetup?.call();
+      if (!mounted) return;
+      await resolveSize();
+    }
+    if (mounted && size != null) await add();
   }
 
   @override
@@ -215,7 +254,7 @@ class _ProductPageState extends State<_ProductPage> {
           .length;
       setState(() => personalPhoto = result);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.active && photos.hasClients) {
+        if (mounted && photos.hasClients) {
           photos.animateToPage(retailerPhotos == 0 ? 1 : retailerPhotos,
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOut);
@@ -247,290 +286,280 @@ class _ProductPageState extends State<_ProductPage> {
     final description = p['description'] as String?;
     final reason = p['reason'] as String?;
     final price = (p['sale_price_usd'] ?? p['price_usd']) as num;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final imageHeight = (constraints.maxHeight * .46).clamp(180.0, 390.0);
-        return NotificationListener<OverscrollNotification>(
-          onNotification: (notification) {
-            if (notification.depth == 0 &&
-                notification.metrics.axis == Axis.vertical &&
-                notification.overscroll.abs() > 8) {
-              widget.onBoundary(notification.overscroll > 0 ? 1 : -1);
-            }
-            return false;
-          },
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            key: ValueKey('details-${p['id']}'),
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      key: ValueKey('details-${p['id']}'),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: widget.imageHeight,
+            child: Stack(
               children: [
-                SizedBox(
-                  height: imageHeight,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: ColoredBox(
-                            color: const Color(0xFFEDEAE4),
-                            child: GestureDetector(
-                              onDoubleTap: () => save(value: true),
-                              child: gallery.isEmpty
-                                  ? const _ImageFailure()
-                                  : PageView.builder(
-                                      key: ValueKey('photos-${p['id']}'),
-                                      controller: photos,
-                                      itemCount: gallery.length,
-                                      onPageChanged: (i) =>
-                                          setState(() => photo = i),
-                                      itemBuilder: (context, i) =>
-                                          Image.network(
-                                        widget.imageUrl(gallery[i]),
-                                        fit: BoxFit.contain,
-                                        webHtmlElementStrategy:
-                                            WebHtmlElementStrategy.prefer,
-                                        semanticLabel:
-                                            '${p['name']}, photo ${i + 1}',
-                                        errorBuilder: (_, error, stack) =>
-                                            const _ImageFailure(),
-                                        loadingBuilder: (_, child, progress) =>
-                                            progress == null
-                                                ? child
-                                                : const Center(
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                                  ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: IconButton.filledTonal(
-                          tooltip: widget.saved ? 'Unsave item' : 'Save item',
-                          onPressed: saving ? null : save,
-                          icon: Icon(
-                            widget.saved
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF722F42),
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (p['sale_price_usd'] != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: Text(
-                                    '\$${(p['price_usd'] as num).toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      decoration: TextDecoration.lineThrough,
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                '\$${price.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: ColoredBox(
+                      color: const Color(0xFFEDEAE4),
+                      child: GestureDetector(
+                        onDoubleTap: () => save(value: true),
+                        child: gallery.isEmpty
+                            ? const _ImageFailure()
+                            : PageView.builder(
+                                key: ValueKey('photos-${p['id']}'),
+                                controller: photos,
+                                itemCount: gallery.length,
+                                onPageChanged: (i) => setState(() => photo = i),
+                                itemBuilder: (context, i) => Image.network(
+                                  widget.imageUrl(gallery[i]),
+                                  fit: BoxFit.contain,
+                                  webHtmlElementStrategy:
+                                      WebHtmlElementStrategy.prefer,
+                                  semanticLabel: '${p['name']}, photo ${i + 1}',
+                                  errorBuilder: (_, error, stack) =>
+                                      const _ImageFailure(),
+                                  loadingBuilder: (_, child, progress) =>
+                                      progress == null
+                                          ? child
+                                          : const Center(
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-                if (gallery.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filledTonal(
+                    tooltip: widget.saved ? 'Unsave item' : 'Save item',
+                    onPressed: saving ? null : save,
+                    icon: Icon(
+                      widget.saved ? Icons.favorite : Icons.favorite_border,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF722F42),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        gallery.length,
-                        (i) => Semantics(
-                          label: 'Photo ${i + 1} of ${gallery.length}',
-                          selected: photo == i,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: photo == i
-                                  ? const Color(0xFF722F42)
-                                  : const Color(0xFFD5C9CB),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (p['sale_price_usd'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Text(
+                              '\$${(p['price_usd'] as num).toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                decoration: TextDecoration.lineThrough,
+                              ),
                             ),
                           ),
+                        Text(
+                          '\$${price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                if (personalPhoto != null && photo == gallery.length - 1)
-                  Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(personalPhoto!.label,
-                          style: const TextStyle(fontWeight: FontWeight.w600))),
-                const SizedBox(height: 12),
-                Text(
-                  (p['brand'] ?? p['retailer'] ?? '').toString().toUpperCase(),
-                  style: const TextStyle(
-                    color: Color(0xFF722F42),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  p['name'] as String,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  description?.trim().isNotEmpty == true
-                      ? description!
-                      : 'Description not provided by retailer.',
-                  style: const TextStyle(height: 1.5, color: Color(0xFF57514F)),
-                ),
-                if (reason?.trim().isNotEmpty == true)
-                  Container(
-                    margin: const EdgeInsets.only(top: 14),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0E5E5),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.auto_awesome,
-                          size: 18,
-                          color: Color(0xFF722F42),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(reason!)),
                       ],
-                    ),
-                  ),
-                if ((p['colors'] as List? ?? []).isNotEmpty)
-                  Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child:
-                          Text('Color · ${(p['colors'] as List).join(', ')}')),
-                const SizedBox(height: 20),
-                if (widget.onSizeAdvice != null)
-                  Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                          onPressed: advising ? null : advise,
-                          icon: const Icon(Icons.straighten),
-                          label: const Text('Find my size'))),
-                const Text(
-                  'Select size',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: sizes
-                      .map(
-                        (s) => ChoiceChip(
-                          label: Text(s['name'] as String),
-                          selected: size == s['name'],
-                          onSelected:
-                              s['in_stock'] == true && p['in_stock'] != false
-                                  ? (_) =>
-                                      setState(() => size = s['name'] as String)
-                                  : null,
-                        ),
-                      )
-                      .toList(),
-                ),
-                if (error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: size == null || adding ? null : add,
-                    child: Text(
-                      adding
-                          ? 'Adding…'
-                          : size == null
-                              ? 'Choose a size'
-                              : 'Add to Cart',
-                    ),
-                  ),
-                ),
-                if (widget.onTryOn != null || widget.onCompleteLook != null)
-                  Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Wrap(spacing: 8, children: [
-                        if (widget.onTryOn != null)
-                          OutlinedButton.icon(
-                              onPressed: generating ? null : tryOn,
-                              icon: const Icon(Icons.person_outline),
-                              label: Text(generating
-                                  ? 'Creating try-on…'
-                                  : 'Try it on')),
-                        if (widget.onCompleteLook != null)
-                          OutlinedButton.icon(
-                              onPressed: () =>
-                                  widget.onCompleteLook!(p['id'] as String),
-                              icon: const Icon(Icons.auto_awesome),
-                              label: const Text('Complete the look')),
-                      ])),
-                const SizedBox(height: 14),
-                Center(
-                  child: Text(
-                    'Swipe up for the next piece · ${widget.position}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF736D69),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        );
-      },
+          if (gallery.length > 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  gallery.length,
+                  (i) => Semantics(
+                    label: 'Photo ${i + 1} of ${gallery.length}',
+                    selected: photo == i,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: photo == i
+                            ? const Color(0xFF722F42)
+                            : const Color(0xFFD5C9CB),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (personalPhoto != null && photo == gallery.length - 1)
+            Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(personalPhoto!.label,
+                    style: const TextStyle(fontWeight: FontWeight.w600))),
+          const SizedBox(height: 12),
+          Text(
+            (p['brand'] ?? p['retailer'] ?? '').toString().toUpperCase(),
+            style: const TextStyle(
+              color: Color(0xFF722F42),
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            p['name'] as String,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            description?.trim().isNotEmpty == true
+                ? description!
+                : 'Description not provided by retailer.',
+            style: const TextStyle(height: 1.5, color: Color(0xFF57514F)),
+          ),
+          if (reason?.trim().isNotEmpty == true)
+            Container(
+              margin: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0E5E5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 18,
+                    color: Color(0xFF722F42),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(reason!)),
+                ],
+              ),
+            ),
+          if ((p['colors'] as List? ?? []).isNotEmpty)
+            Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text('Color · ${(p['colors'] as List).join(', ')}')),
+          const SizedBox(height: 20),
+          if (!widget.automaticSizing && widget.onSizeAdvice != null)
+            Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                    onPressed: advising ? null : advise,
+                    icon: const Icon(Icons.straighten),
+                    label: const Text('Find my size'))),
+          if (!widget.automaticSizing) ...[
+            const Text(
+              'Select size',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: sizes
+                  .map(
+                    (s) => ChoiceChip(
+                      label: Text(s['name'] as String),
+                      selected: size == s['name'],
+                      onSelected: s['in_stock'] == true &&
+                              p['in_stock'] != false
+                          ? (_) => setState(() => size = s['name'] as String)
+                          : null,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ] else
+            Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(advising
+                    ? 'Finding your size…'
+                    : size != null
+                        ? 'Size $size · you can edit it in your cart'
+                        : 'Add your measurements or usual size to find your fit.')),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton(
+              onPressed: widget.automaticSizing
+                  ? (adding || advising || p['in_stock'] == false
+                      ? null
+                      : automaticAdd)
+                  : (size == null || adding ? null : add),
+              child: Text(
+                adding
+                    ? 'Adding…'
+                    : widget.automaticSizing
+                        ? 'Add to Cart'
+                        : size == null
+                            ? 'Choose a size'
+                            : 'Add to Cart',
+              ),
+            ),
+          ),
+          if (widget.onTryOn != null || widget.onCompleteLook != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Wrap(spacing: 8, children: [
+                  if (widget.onTryOn != null)
+                    OutlinedButton.icon(
+                        onPressed: generating ? null : tryOn,
+                        icon: const Icon(Icons.person_outline),
+                        label: Text(
+                            generating ? 'Creating try-on…' : 'Try it on')),
+                  if (widget.onCompleteLook != null)
+                    OutlinedButton.icon(
+                        onPressed: () =>
+                            widget.onCompleteLook!(p['id'] as String),
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Complete the look')),
+                ])),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              widget.position,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF736D69),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

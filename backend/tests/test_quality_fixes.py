@@ -51,9 +51,9 @@ def test_pair_is_budget_first_and_fixes_made_up_closet_items(tmp_path, monkeypat
     out = service.pair("u_q", ["cheap", "pricey"], k=2)
     assert [r.product_id for r in out] == ["cheap", "pricey"]          # in budget ranks first despite score
     cheap = out[0]
-    assert "tees" not in cheap.reason and cheap.reason.startswith("pairs with your ")
+    assert "tees" not in cheap.reason and cheap.reason.lower().startswith("pairs with your ")
     assert cheap.pairs_with and cheap.pairs_with[0] in {"c1", "c2"}  # a real bottom for a top
-    assert out[1].reason == "goes with your baggy jeans"              # good reasons untouched
+    assert out[1].reason == "Goes with your baggy jeans"              # good reasons untouched
 
 
 def test_shop_fit_exact_item_first_and_colour_variants_collapse(tmp_path, monkeypatch):

@@ -1,9 +1,10 @@
 import os
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
+from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
                       SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse)
 from ..store import DATA_DIR, store
 from . import service
@@ -23,17 +24,46 @@ MAX_UPLOAD = 10 * 1024 * 1024
 EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/heic": ".heic"}
 
 
+MAX_SIDE_PX = 2048
+
+
+def _clean_image(data: bytes, content_type: str) -> tuple[bytes, str]:
+    """Re-encode an upload without its metadata: phone photos carry EXIF GPS, and /static/uploads
+    needs no key. The EXIF rotation is applied first (so the saved image is upright) and the longest
+    side is capped. PNG stays PNG; everything else becomes JPEG. If Pillow can't read it (e.g. HEIC
+    without a plugin) the bytes are kept as uploaded."""
+    import io
+    import logging
+
+    try:
+        from PIL import Image, ImageOps
+
+        with Image.open(io.BytesIO(data)) as im:
+            im = ImageOps.exif_transpose(im)
+            im.thumbnail((MAX_SIDE_PX, MAX_SIDE_PX))
+            buf = io.BytesIO()
+            if content_type == "image/png":
+                im.save(buf, "PNG")  # no pnginfo / exif passed: metadata is dropped
+                return buf.getvalue(), ".png"
+            im.convert("RGB").save(buf, "JPEG", quality=90)
+            return buf.getvalue(), ".jpg"
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger(__name__).warning("upload kept as-is (could not re-encode %s): %s", content_type, e)
+        return data, EXT[content_type]
+
+
 async def _save_upload(file: UploadFile) -> str:
-    """Save an uploaded image under /static/uploads and return its public URL.
-    Nabil's commerce/fitcheck.py imports this: don't rename it."""
+    """Save an uploaded image under /static/uploads (metadata stripped, upright) and return its
+    public URL. Nabil's commerce/fitcheck.py imports this: don't rename it."""
     if file.content_type not in EXT:
         raise HTTPException(415, f"unsupported image type {file.content_type}")
     data = await file.read()
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "image over 10 MB")
+    data, ext = _clean_image(data, file.content_type)
     folder = DATA_DIR / "uploads"
     folder.mkdir(parents=True, exist_ok=True)
-    name = uuid.uuid4().hex + EXT[file.content_type]
+    name = uuid.uuid4().hex + ext
     (folder / name).write_bytes(data)
     base = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/")
     return f"{base}/static/uploads/{name}"
@@ -70,6 +100,58 @@ async def body_photo(user_id: str, file: UploadFile = File(...)):
     user["body_photo_url"] = url
     store.put("users", user_id, user)
     return {"body_photo_url": url}
+
+
+@router.post("/closet/digitize", response_model=list[ClosetItem])
+async def closet_digitize(user_id: str = Form(...), file: UploadFile = File(...)):
+    """Digitize wardrobe: one photo of several clothes (flat lay, rack, mirror selfie) -> one closet
+    item per garment, each cropped to its own image. Falls back to one item for the whole photo."""
+    from ..static_urls import local_static_path
+    from .digitize import digitize, upright_jpeg
+
+    url = await _save_upload(file)
+    path = local_static_path(url, DATA_DIR)
+    upright = upright_jpeg(path) if path else None
+    if upright:
+        url = url.rsplit("/", 1)[0] + "/" + upright.name
+        path = upright
+    try:
+        items = digitize(user_id, url, path)
+    except Exception as e:  # noqa: BLE001
+        raise _ai_down("wardrobe scan", e)
+    return items or [closet_tag(TagRequest(user_id=user_id, image_url=url))]
+
+
+@router.post("/users/{user_id}/body-scan")
+async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm: float = Form(...),
+                          weight_kg: Optional[float] = Form(None)):
+    """Body scan: full-body photo + height (weight optional) -> estimated measurements saved as
+    body_profile (used by /size) and the photo saved as the try-on photo."""
+    from .body_scan import HEIGHT_CM, WEIGHT_KG, merge_scan, scan
+
+    if not HEIGHT_CM[0] <= height_cm <= HEIGHT_CM[1]:
+        raise HTTPException(422, "height_cm must be between 120 and 230")
+    if weight_kg is not None and not WEIGHT_KG[0] <= weight_kg <= WEIGHT_KG[1]:
+        raise HTTPException(422, "weight_kg must be between 30 and 250")
+    url = await _save_upload(file)
+    profile = scan(url, height_cm, weight_kg)
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["body_photo_url"] = url
+    user["body_profile"] = merge_scan(user.get("body_profile"), profile)
+    store.put("users", user_id, user)
+    return {"body_photo_url": url, "body_profile": user["body_profile"]}
+
+
+@router.patch("/users/{user_id}/body-profile")
+def body_profile_update(user_id: str, req: BodyProfileUpdate):
+    """Measurements the user typed (onboarding / profile), saved server-side so they follow the user
+    to any device. Merged with the body scan; typed values win. GET /users/{id} returns body_profile."""
+    from .body_scan import apply_manual
+
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["body_profile"] = apply_manual(user.get("body_profile"), req.model_dump(exclude_unset=True))
+    store.put("users", user_id, user)
+    return user["body_profile"]
 
 
 @router.get("/users/{user_id}/style")
@@ -180,8 +262,29 @@ def size(req: SizeRequest):
     product = get_product(req.product_id)
     if not product:
         raise HTTPException(404, "unknown product")
-    return recommend_size(product, req.height_cm, req.weight_kg, fit=req.fit,
-                          shoe_us=req.shoe_us, waist_in=req.waist_in)
+    scan = ((store.get("users", req.user_id) or {}).get("body_profile") or {}) if req.user_id else {}
+    height = req.height_cm or scan.get("height_cm")
+    weight = req.weight_kg or scan.get("weight_kg")
+    fit = req.fit if "fit" in req.model_fields_set or not scan.get("fit") else scan["fit"]
+    usual = (scan.get("usual_sizes") or {}).get(product.get("category"))
+    if not height or not weight:
+        known = _usual_size(product, usual) if usual else None  # no body numbers, but a usual size
+        if known:
+            return known
+        raise HTTPException(422, "add your height and weight (or do a body scan with both)")
+    out = recommend_size(product, height, weight, fit=fit, shoe_us=req.shoe_us or scan.get("shoe_us"),
+                         waist_in=req.waist_in or scan.get("waist_in"))
+    if not out.get("size") and usual:
+        out = _usual_size(product, usual) or out
+    return out
+
+
+def _usual_size(product: dict, usual: str) -> dict | None:
+    """The user's usual size for this category, if this product has it in stock."""
+    for s in product.get("sizes") or []:
+        if str(s).strip().lower() == usual.strip().lower():
+            return {"size": s, "confidence": "medium", "reason": "your usual size"}
+    return None
 
 
 @router.post("/complete-look")

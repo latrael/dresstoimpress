@@ -65,6 +65,7 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 | PUT / DELETE | `/wishlist/{user_id}/items/{product_id}` | save / unsave. Repeat-safe, and does **not** remove the item from the feed |
 | GET | `/wishlist/{user_id}` · `/wishlist/{user_id}/ids` | saved products (newest first) · just their ids |
 | GET | `/orders/{user_id}` | past orders |
+| POST | `/orders/{order_id}/retry?user_id=&retailer=` | re-attempt only this order's `nessie_failed`/`pending_nessie` store purchases; `paid` ones are never re-charged, so it's repeat-safe. 404 / 403 not owner / 503 no key |
 | * | `/fitcheck…` | post, feed, detail, PATCH tags, `/shop`, like, comment. See NABIL_TO_RYAN.md |
 | POST | `/checkout/{user_id}` | one **real Nessie purchase** per retailer (`paid` / `nessie_failed`). 409 if a size sold out since it went in the cart, and nothing is charged |
 
@@ -114,6 +115,8 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 - **Style keywords are loose** on H&M (it has no y2k tag), so Adam's tagger supplies the real `style_tags`.
 
 ## Changelog
+
+- **Oct 24, ~2:20 PM:** `POST /orders/{order_id}/retry` (Ryan's ask): per-store payment retry, repeat-safe, owner-only.
 
 - **Oct 24, ~12:50 AM:** Onboarding + users, product search and paging, feed puts ranked cards first, Fit Check seed tags, public QR guest page. Caught and fixed a `/fit` prefix that would have opened `/fitcheck/*` without the key. 247 tests. No app screens for Nabil: Ryan owns the Flutter app.
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import uuid
 from datetime import datetime, timezone
 from itertools import zip_longest
@@ -321,6 +322,7 @@ def _pay(user_id: str, purchase: dict) -> None:
         purchase["merchant_id"] = nessie.ensure_merchant(purchase["retailer"])
         res = nessie.create_purchase(account_id, purchase["merchant_id"], purchase["amount_usd"], desc)
         purchase.update(status="paid", nessie_id=res["_id"], nessie_account_id=account_id)
+        purchase.pop("error", None)  # a retry that succeeds clears the earlier failure
     except Exception as e:  # noqa: BLE001
         log.warning("nessie purchase failed: %s", e)
         purchase.update(status="nessie_failed", error=str(e)[:200])
@@ -358,10 +360,45 @@ def checkout(user_id: str):
              "total_usd": cart["total_usd"], "created_at": _now()}
     store.put("orders", order_id, order)
     store.put("carts", user_id, {"user_id": user_id, "items": []})
-    return {"order_id": order_id, "purchases": purchases, "total_usd": cart["total_usd"],
+    return _receipt(order)
+
+
+def _receipt(order: dict) -> dict:
+    return {"order_id": order["id"], "purchases": order["purchases"], "total_usd": order["total_usd"],
             "created_at": order["created_at"]}
 
 
 @router.get("/orders/{user_id}")
 def orders(user_id: str):
     return sorted(store.list("orders", user_id=user_id), key=lambda o: o["created_at"], reverse=True)
+
+
+RETRYABLE = ("nessie_failed", "pending_nessie")  # pending_nessie = no Nessie call was ever made (no key)
+_retry_lock = threading.Lock()  # two concurrent retries of one order must not both charge it
+
+
+@router.post("/orders/{order_id}/retry")
+def retry_order(order_id: str, user_id: str, retailer: Optional[str] = None):
+    """Re-attempt only this order's unpaid store purchases (all of them, or just `retailer`). `paid` purchases
+    are never touched, so this is safe to repeat: an all-paid order comes back unchanged with no Nessie call.
+    No stock re-check: the order already exists and the amount is the one recorded at checkout.
+    404 unknown order/retailer, 403 not the owner, 503 no NESSIE_API_KEY (nothing changes)."""
+    with _retry_lock:
+        order = store.get("orders", order_id)
+        if not order:
+            raise HTTPException(404, "unknown order")
+        if order.get("user_id") != user_id:
+            raise HTTPException(403, "not your order")
+        targets = [p for p in order["purchases"] if retailer is None or p["retailer"] == retailer]
+        if retailer is not None and not targets:
+            raise HTTPException(404, f"no {retailer} purchase in this order")
+        todo = [p for p in targets if p.get("status") in RETRYABLE]
+        if not todo:
+            return _receipt(order)
+        if not os.getenv("NESSIE_API_KEY"):
+            raise HTTPException(503, "payments are not configured on this server")
+        for p in todo:
+            p["retried_at"] = _now()
+            _pay(user_id, p)
+        store.put("orders", order_id, order)
+        return _receipt(order)

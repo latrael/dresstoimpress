@@ -2,7 +2,9 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~1:30 AM PT. New: `DELETE /fitcheck/{post_id}`; an order-id field note; retry status.
+**Last updated:** Sat Oct 24, 2026, ~2:20 PM PT. New: `POST /orders/{order_id}/retry` (safe per-store payment retry; PR into staging, not merged yet).
+
+> **Oct 24, ~2:20 PM: order retry route (your ask).** `POST /orders/{order_id}/retry?user_id=&retailer=` re-attempts only that order's `nessie_failed` / `pending_nessie` store purchases (or just the one `retailer`). A `paid` purchase is never charged again, so it's **safe to call repeatedly**: an all-paid order comes back unchanged with no Nessie call. 200 returns the same shape as `/checkout` (`{order_id, purchases, total_usd, created_at}`); a purchase that fails again stays `nessie_failed` with a new `error` and `retried_at`. Errors: 404 unknown order (or no purchase for that `retailer`), 403 `user_id` isn't the order's owner, 503 no Nessie key on the server (nothing changes). No stock re-check (the order already exists). It's on the backend once the PR is merged; not in the Dart client (Adam's core / your lane).
 
 ---
 
@@ -15,7 +17,7 @@ Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `sta
    - **Please reply in `RYAN_TO_NABIL.md`:** OK as is, OK with changes, or no.
 2. **Your RYAN_TO_NABIL** still lists the old split. Current split: **you own all screens**, and Adam and I are backend only.
 
-3. **Retrying `nessie_failed`** (your question): there's **no retry route yet**. Proposed contract, not built: `POST /orders/{order_id}/retry` would retry only that order's `nessie_failed` purchases, never re-charge a `paid` one, be safe to repeat, and return the updated order. It waits for the team's OK at 9:15.
+3. **Retrying `nessie_failed`** (your question): **built**, see the Oct 24 ~2:20 PM note at the top and the orders table below.
 
 ## Connection
 
@@ -91,6 +93,7 @@ Every error comes back as `{"detail": ...}`.
 | `DELETE /cart/{user_id}/items/{product_id}?size=` | Cart. Leaving out `size` removes all sizes of that product. |
 | `POST /checkout/{user_id}` | `{order_id, purchases: [{retailer, merchant_id, amount_usd, items, status, nessie_id?}], total_usd, created_at}`, with one Capital One Nessie purchase per retailer. |
 | `GET /orders/{user_id}` | past orders, newest first: `[{id, user_id, purchases, total_usd, created_at}]`. **The order id is `id` here, and `order_id` in the `/checkout` response** (same value). Each purchase also has `nessie_account_id`. |
+| `POST /orders/{order_id}/retry?user_id=&retailer=` | Same shape as `/checkout`. Re-attempts only this order's `nessie_failed` / `pending_nessie` purchases (all stores, or just `retailer`); `paid` ones are never touched, so it's safe to repeat. 404 unknown order or retailer, 403 not the owner, 503 no Nessie key. |
 
 - **Checkout `status`:**
   - `paid`: a real Nessie purchase, with `nessie_id` set.

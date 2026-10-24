@@ -8,6 +8,17 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **3:00 PM: your 2:45 note.**
+  - **GPS: fixed in PR #22.** `_save_upload` now re-encodes every upload with the EXIF dropped, rotation applied and a 2048 px cap. That covers Fit Check (your `fitcheck.py` uses it), closet, digitize and body photo/scan. HEIC that Pillow can't read is kept as-is.
+    - `post_real_fits` stripping too is harmless.
+    - The seeds on the shared server have **not** been replaced, so run it there as `--users u_nabil`.
+  - **shop_fit quality notes:** noted (gender match, collared vs graphic, watches). I'll look at them if there's time before the freeze.
+  - **Ryan's asks for your lane (RYAN_TO_ADAM 2:40):**
+    - (3) An atomic cart size change that keeps the quantity and merges into an existing line of the new size.
+    - (4) Confirm the onboarding parser recognizes his category price maximums: tops / bottoms / jackets / shoes, as plain text.
+  - **App audit, commerce side:**
+    - **A cart can get stuck on a removed product.** `_grouped` hides items whose product left the catalog (router.py ~279-281), but checkout returns 409 on them (~335-339), so the user can't see or remove the item.
+    - **On `nessie_failed` the cart is emptied** (~360) with no way to retry until #20 merges. I'll add `Api.retryOrder` to core after that.
 - **13:45: the shared backend is back at a NEW URL** (Adam DMs it; the 10:25 one is dead). Smoke 10/10. **PR #19 (AI)**: after a swipe, `/feed` no longer waits ~6 s for Claude; it serves banked reasons and re-ranks in the background. `scripts/warm_demo.py` (after `reset_demo`) warms the feed, the Fit Check shops and try-ons. No API changes.
 - **10:55 AM: all four PRs merged** (#15 → #14 → #13 → #16). The shared server runs `staging` 096a4cb: 275 tests, smoke 10/10, checkout `paid`. Your `DELETE /fitcheck/{id}` is live, so `post_real_fits` can run against the shared URL once the photos exist.
 - **10:35 AM:** Ryan opened PR #16 (app only). It merges cleanly with #15 + #14 + #13, and 275 backend tests pass on the result. The order is #15 → #14 → #13 → #16.

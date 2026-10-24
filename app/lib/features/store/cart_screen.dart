@@ -40,6 +40,51 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  Future<void> editSize(CartItem item) async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final product =
+          item.product ?? await widget.store.api.product(item.productId);
+      if (!mounted) return;
+      final size = await showModalBottomSheet<String>(
+          context: context,
+          useSafeArea: true,
+          builder: (context) => Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text('Size for ${product.name}',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 16),
+                Flexible(
+                    child: SingleChildScrollView(
+                        child: Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final s in product.sizes)
+                    ChoiceChip(
+                        label: Text(s.name),
+                        selected: s.name == item.size,
+                        onSelected: s.available && product.inStock != false
+                            ? (_) => Navigator.pop(context, s.name)
+                            : null)
+                ]))),
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel')),
+              ])));
+      if (size == null || size == item.size) return;
+      await widget.store.changeSize(item, size);
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Size change could not be confirmed. Review your cart before retrying.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> checkout() async {
     final confirmed = await showDialog<bool>(
         context: context,
@@ -166,6 +211,14 @@ class _CartScreenState extends State<CartScreen> {
                                 trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      IconButton(
+                                          tooltip:
+                                              'Edit size for ${item.product?.name ?? 'item'}',
+                                          onPressed: busy
+                                              ? null
+                                              : () => editSize(item),
+                                          icon:
+                                              const Icon(Icons.edit_outlined)),
                                       Text(dollars(
                                           (item.product?.effectivePrice ?? 0) *
                                               item.qty)),

@@ -26,7 +26,8 @@ MIN_SCORE = 2.5  # type match (2.0) plus at least one more signal: descriptor, c
 
 # Type words: an item only matches products of the same kind.
 TYPE_GROUPS = [
-    {"tee", "t-shirt", "tshirt", "tank", "top", "cami", "shirt", "blouse", "polo"},
+    {"tee", "t-shirt", "tshirt", "tank", "top", "cami", "blouse"},
+    {"shirt", "button-up", "button-down", "oxford", "flannel", "overshirt", "polo"},  # collared, not tees
     {"hoodie", "sweatshirt", "pullover", "crewneck"},
     {"sweater", "cardigan", "knit", "jumper"},
     {"jeans", "denim"},
@@ -45,8 +46,18 @@ TYPE_GROUPS = [
     {"cap", "hat", "beanie", "bucket"},
     {"sunglasses", "glasses"},
     {"belt"},
-    {"earrings", "necklace", "bracelet", "ring", "jewelry"},
+    {"necklace", "pendant", "chain"},
+    {"bracelet", "bangle", "cuff"},
+    {"earrings", "earring", "hoops"},
+    {"ring"},
+    {"watch", "wristwatch"},  # no watches in the catalog: better no match than a necklace
 ]
+# Cuts that make a garment a different piece unless the post says so (a V-neck sweater should not
+# get an off-the-shoulder one first). Common cuts like "cropped" or "mini" are not penalized.
+CUT_WORDS = {"off-shoulder", "off-the-shoulder", "bralette", "corset", "bodysuit", "babydoll", "peplum",
+             "halter", "tube", "bandeau", "ruched", "puff-sleeve", "puff-sleeved"}
+CUT_PENALTY = 1.5
+_OFF_SHOULDER = re.compile(r"off[- ]?(the[- ])?shoulder")
 _WORD = re.compile(r"[a-z0-9-]+")
 NEUTRALS = {"black", "white", "grey", "gray", "beige", "cream", "navy", "denim", "ecru", "khaki"}
 
@@ -89,6 +100,10 @@ def match_score(tag: dict, product: dict) -> float:
         score += 0.3
     if tag.get("retailer") and tag["retailer"] == product.get("retailer"):
         score += 1.0
+    label_text = (tag.get("label") or "").lower()
+    cuts = (have & CUT_WORDS) | ({"off-shoulder"} if _OFF_SHOULDER.search((product.get("name") or "").lower()) else set())
+    if cuts and not (cuts & _words(label_text) or _OFF_SHOULDER.search(label_text)):
+        score -= CUT_PENALTY
     return score
 
 

@@ -20,7 +20,7 @@ def test_pair_tops_up_short_claude_answer(tmp_path, monkeypatch):
         {"product_id": "nope", "score": 0.8, "reason": "hallucinated"}])
 
     out = service.pair("u_p", ids, k=3)
-    assert len(out) == 3 and out[0].product_id == "p2" and out[0].reason == "goes with your baggy jeans"
+    assert len(out) == 3 and out[0].product_id == "p2" and out[0].reason == "Goes with your baggy jeans"
     assert all(r.reason for r in out) and len({r.product_id for r in out}) == 3
     assert all(r.score < out[0].score for r in out[1:])
     assert "nope" not in {r.product_id for r in out}

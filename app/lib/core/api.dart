@@ -31,8 +31,18 @@ class Api {
 
   String get _user => settings.userId;
 
-  /// Absolute URL for an image the server returns ("/static/..." paths get the base URL).
-  String imageUrl(String url) => url.startsWith('/') ? '${settings.base}$url' : url;
+  /// Absolute URL for an image the server returns ("/static/..." paths get the base URL). Our own photos
+  /// (uploads, try-ons) saved under an older server address are loaded from the current one.
+  String imageUrl(String url) => url.startsWith('/') ? '${settings.base}$url' : _ownImage(url);
+
+  // Uploads and try-ons are stored with the server address current when they were saved. The tunnel
+  // URL changes (and the backup server has its own), so always load them from the connected server.
+  static final _ownStatic = RegExp(r'^https?://[^/?#]+(/static/(?:uploads|tryon)/[^?#]+)$');
+
+  String _ownImage(String url) {
+    final m = _ownStatic.firstMatch(url);
+    return m == null || settings.base.isEmpty ? url : '${settings.base}${m.group(1)}';
+  }
 
   /// Retailer image hosts the backend's `GET /img?url=` will re-serve (same list as backend/app/main.py).
   static const imageProxyHosts = {
@@ -43,6 +53,8 @@ class Api {
   /// `GET /img?url=` (no key; retailer servers refuse direct loads from a web app); anything else as-is.
   String imageProxyUrl(String url) {
     if (url.startsWith('/')) return '${settings.base}$url';
+    final own = _ownImage(url);
+    if (own != url) return own;
     final u = Uri.tryParse(url);
     if (u == null || u.scheme != 'https' || !imageProxyHosts.contains(u.host)) return url;
     return Uri.parse('${settings.base}/img').replace(queryParameters: {'url': url}).toString();
@@ -106,6 +118,7 @@ class Api {
           {double? heightCm, double? weightKg, String fit = 'regular', double? shoeUs, double? waistIn}) async =>
       SizeAdvice.fromJson(await _send('POST', '/size', body: {
         'product_id': productId,
+        'user_id': _user, // the backend fills a missing waist (and height/weight) from the user's body scan
         'height_cm': heightCm ?? settings.heightCm,
         'weight_kg': weightKg ?? settings.weightKg,
         'fit': fit,
@@ -184,6 +197,32 @@ class Api {
   Future<String> uploadBodyPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       _str((await _upload('/users/${_seg(_user)}/body-photo', {}, bytes, mimeType))['body_photo_url']);
 
+  /// POST /closet/digitize ("digitize wardrobe"): one photo of several clothes (flat lay, rack, mirror
+  /// selfie) -> one tagged closet item per garment, each cropped to its own image. Items that look like
+  /// something already in the closet come back with [ClosetItem.duplicateOf] set.
+  Future<List<ClosetItem>> digitizeCloset(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
+      _listOf(await _upload('/closet/digitize', {'user_id': _user}, bytes, mimeType), ClosetItem.fromJson);
+
+  /// PATCH /users/{id}/body-profile: measurements the user typed (onboarding / profile), saved on the
+  /// server so they follow the user to any device; [AppUser.bodyProfile] returns them. Only the fields
+  /// passed change. Lengths in cm (the profile stores inches). Typed values win over a body scan.
+  /// [usualSizes] maps a category ("top", "bottom", "shoes", ...) to the user's usual size; /size falls
+  /// back to it. 422 (ApiError) for impossible values.
+  Future<BodyProfile> updateBodyProfile({double? heightCm, double? weightKg, double? waistCm, double? chestCm,
+          double? hipCm, double? inseamCm, double? shoeUs, String? fit, Map<String, String>? usualSizes}) async =>
+      BodyProfile.fromJson(await _send('PATCH', '/users/${_seg(_user)}/body-profile', body: {
+        'height_cm': heightCm, 'weight_kg': weightKg, 'waist_cm': waistCm, 'chest_cm': chestCm, 'hip_cm': hipCm,
+        'inseam_cm': inseamCm, 'shoe_us': shoeUs, 'fit': fit, 'usual_sizes': usualSizes,
+      }));
+
+  /// POST /users/{id}/body-scan: full-body photo + height (weight optional) -> estimated measurements,
+  /// saved on the user and used by [sizeAdvice]. The photo also becomes the try-on photo.
+  /// 422 (ApiError) for a height outside 120-230 cm or weight outside 30-250 kg.
+  Future<BodyScanResult> bodyScan(List<int> bytes,
+          {required double heightCm, double? weightKg, String mimeType = 'image/jpeg'}) async =>
+      BodyScanResult.fromJson(await _upload('/users/${_seg(_user)}/body-scan',
+          {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType));
+
   // ------------------------------------------------------------ Fit Check (Nabil)
 
   Future<List<FitCheckPost>> fitCheckFeed({int limit = 20}) async => _listOf(
@@ -216,6 +255,10 @@ class Api {
 
   Future<FitCheckComment> commentFitCheck(String postId, String text) async => FitCheckComment.fromJson(
       await _send('POST', '/fitcheck/${_seg(postId)}/comments', body: {'user_id': _user, 'text': text}));
+
+  /// Deletes the current user's own post. Throws [ApiError] 403 for someone else's post, 404 if it's gone.
+  Future<bool> deleteFitCheck(String postId) async =>
+      (await _send('DELETE', '/fitcheck/${_seg(postId)}', query: {'user_id': _user}))['deleted'] == true;
 
   // ------------------------------------------------------------ plumbing
 

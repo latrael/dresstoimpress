@@ -300,6 +300,34 @@ def cart_get(user_id: str):
     return _grouped(user_id)
 
 
+class CartSizeChange(BaseModel):
+    size: str
+    new_size: str
+
+
+@router.patch("/cart/{user_id}/items/{product_id}")
+def cart_change_size(user_id: str, product_id: str, req: CartSizeChange):
+    """Atomic size change for one cart line: keeps the quantity and merges into an existing line of
+    `new_size`. 404 if the product or the (product, size) line isn't there; 409 if `new_size` is not
+    offered / sold out. One store write."""
+    p = _product(product_id)
+    cart = _cart(user_id)
+    line = next((i for i in cart["items"] if i["product_id"] == product_id and i["size"] == req.size), None)
+    if not line:
+        raise HTTPException(404, f"size {req.size} of {product_id} is not in the cart")
+    if msg := _size_problem(p, req.new_size):
+        raise HTTPException(409, msg)
+    if req.new_size != req.size:
+        target = next((i for i in cart["items"] if i["product_id"] == product_id and i["size"] == req.new_size), None)
+        if target:
+            target["qty"] += line["qty"]
+            cart["items"].remove(line)
+        else:
+            line["size"] = req.new_size
+        store.put("carts", user_id, cart)
+    return _grouped(user_id)
+
+
 @router.delete("/cart/{user_id}/items/{product_id}")
 def cart_remove(user_id: str, product_id: str, size: Optional[str] = None):
     """Removes that product (only the given size, if `size` is passed)."""

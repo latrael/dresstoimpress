@@ -2,8 +2,9 @@
 
 Collection fitcheck_posts: {id, user_id, photo_url, caption, tagged: [FitTag], created_at, likes: [user_id],
 comments: [{id, user_id, text, created_at}], visibility: "friends" | "public"}.
-Privacy: a viewer sees their own posts, friends' posts (either side of `friends`), and public ones;
-a viewer with no friends list sees everything (demo). Hidden posts 404 so ids don't leak.
+Inspo is one feed for everyone (council D4, Oct 24): every post is visible to every user, friends lists
+are ignored, and `GET /fitcheck/feed?author=<user_id>` returns one person's posts. `visibility` is still
+stored (and accepted) for compatibility but no longer hides anything.
 """
 from __future__ import annotations
 
@@ -57,10 +58,8 @@ def _user(uid: str) -> dict:
 
 
 def _can_see(viewer: dict, post: dict) -> bool:
-    author = post["user_id"]
-    if post.get("visibility") == "public" or author == viewer["id"] or not viewer.get("friends"):
-        return True
-    return author in viewer["friends"] or viewer["id"] in (_user(author).get("friends") or [])
+    """D4: one feed for everyone. Kept as the single hook if privacy ever comes back."""
+    return True
 
 
 def _view(post: dict, viewer_id: str) -> dict:
@@ -123,9 +122,10 @@ async def create_post(request: Request):
 
 
 @router.get("/fitcheck/feed")
-def feed(user_id: str, limit: int = 20):
+def feed(user_id: str, limit: int = 20, author: Optional[str] = None):
+    """Everyone's posts, newest first (D4). `author` = only that user's posts (tap a name in Inspo)."""
     viewer = _user(user_id)
-    posts = [p for p in store.list(COL) if _can_see(viewer, p)]
+    posts = [p for p in store.list(COL) if _can_see(viewer, p) and (author is None or p["user_id"] == author)]
     posts.sort(key=lambda p: p["created_at"], reverse=True)
     return [_view(p, user_id) for p in posts[:max(1, min(limit, 100))]]
 

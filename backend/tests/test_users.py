@@ -88,6 +88,22 @@ def test_patch_merges_budgets(client):
     assert u["price_ranges"] == {"dress": [5, 50]}  # explicit ranges replace
 
 
+def test_preferred_stores_and_onboarded(client):
+    u = client.post("/users", json={"id": "u_ob", "display_name": "Ob"}).json()
+    assert u["preferred_stores"] == [] and u["onboarded"] is False  # defaults
+    u = client.patch("/users/u_ob", json={"preferred_stores": ["HM", " uniqlo", "hm"], "onboarded": True}).json()
+    assert u["preferred_stores"] == ["hm", "uniqlo"] and u["onboarded"] is True
+    u = client.patch("/users/u_ob", json={"display_name": "Ob2"}).json()  # partial: untouched fields stay
+    assert (u["display_name"], u["preferred_stores"], u["onboarded"]) == ("Ob2", ["hm", "uniqlo"], True)
+    got = client.get("/users/u_ob").json()
+    assert got["preferred_stores"] == ["hm", "uniqlo"] and got["onboarded"] is True
+    assert client.patch("/users/u_ob", json={"preferred_stores": []}).json()["preferred_stores"] == []
+    assert client.patch("/users/u_ob", json={"onboarded": "yes please"}).status_code == 422
+    # users stored before the fields existed still read fine
+    assert client.get("/users/u_adam").json()["preferred_stores"] == []
+    assert client.get("/users/u_adam").json()["onboarded"] is False
+
+
 def test_onboarding_creates_then_updates(client):
     r = client.post("/onboarding", json={"display_name": "Mia", "text": "Y2K, tops under $40"}).json()
     u = r["user"]

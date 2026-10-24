@@ -65,6 +65,33 @@ def test_out_of_stock_size_422(client):
     assert r.status_code == 422
 
 
+def test_cart_change_size_atomic(client):
+    from app.store import store
+    uid = "u_resize"
+    client.post(f"/cart/{uid}/items", json={"product_id": "hm-demo-1", "size": "S", "qty": 2})
+    url = f"/cart/{uid}/items/hm-demo-1"
+    # plain move: quantity kept, size changed, one line
+    r = client.patch(url, json={"size": "S", "new_size": "M"})
+    assert r.status_code == 200, r.text
+    cart = r.json()
+    assert set(cart) == {"user_id", "groups", "total_usd", "count"}  # same shape as the other cart routes
+    lines = [(i["size"], i["qty"]) for g in cart["groups"] for i in g["items"]]
+    assert lines == [("M", 2)] and cart["count"] == 2
+    # merge into an existing line of the new size
+    client.post(f"/cart/{uid}/items", json={"product_id": "hm-demo-1", "size": "L", "qty": 1})
+    cart = client.patch(url, json={"size": "M", "new_size": "L"}).json()
+    lines = [(i["size"], i["qty"]) for g in cart["groups"] for i in g["items"]]
+    assert lines == [("L", 3)] and cart["count"] == 3
+    assert [(i["size"], i["qty"]) for i in store.get("carts", uid)["items"]] == [("L", 3)]
+    # errors
+    assert client.patch(url, json={"size": "L", "new_size": "XL"}).status_code == 409    # sold out
+    assert client.patch(url, json={"size": "L", "new_size": "XXXL"}).status_code == 409  # not offered
+    assert client.patch(url, json={"size": "M", "new_size": "S"}).status_code == 404     # no such line
+    assert client.patch(f"/cart/{uid}/items/nope", json={"size": "L", "new_size": "S"}).status_code == 404
+    assert client.patch(url, json={"size": "L"}).status_code == 422
+    assert client.patch(url, json={"size": "L", "new_size": "L"}).json()["count"] == 3  # no-op
+
+
 def test_cart_groups_by_retailer(client):
     client.post("/cart/u_cart/items", json={"product_id": "hm-demo-1", "size": "M", "qty": 2})
     client.post("/swipe", json={"user_id": "u_cart", "product_id": "zara-demo-1", "action": "like", "size": "S"})

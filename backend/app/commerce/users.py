@@ -92,11 +92,24 @@ class UserCreate(BaseModel):
     friends: list[str] = []
 
 
+def _check_stores(v: Optional[list[str]]) -> Optional[list[str]]:
+    if v is None:
+        return None
+    out: list[str] = []
+    for s in v:
+        s = (s or "").strip().lower()
+        if s and s not in out:
+            out.append(s)
+    return out
+
+
 class UserPatch(BaseModel):
     display_name: Optional[str] = Field(None, min_length=1, max_length=60)
     style_text: Optional[str] = Field(None, max_length=500)
     price_ranges: Ranges = None
     friends: Optional[list[str]] = None
+    preferred_stores: Annotated[Optional[list[str]], AfterValidator(_check_stores)] = None  # retailer ids, lowercase
+    onboarded: Optional[bool] = None
 
 
 class Onboarding(BaseModel):

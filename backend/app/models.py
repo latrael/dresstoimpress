@@ -73,6 +73,8 @@ class User(BaseModel):
     body_photo_url: Optional[str] = None
     friends: list[str] = []
     body_profile: Optional[dict] = None  # set by POST /users/{id}/body-scan (estimated inches); /size reads it
+    preferred_stores: list[str] = []     # retailer ids, lowercase ("hm", "uniqlo"); onboarding stores screen
+    onboarded: bool = False              # true once the app finished (or skipped through) onboarding
 
 
 # ---- AI endpoint requests / responses ----

@@ -70,21 +70,26 @@ def test_create_multipart(client):
     assert client.post("/fitcheck", data={"user_id": "u_b"}).status_code == 422
 
 
-def test_feed_friends_and_order(client):
+def test_feed_is_one_feed_for_everyone(client):
+    """D4: friends lists are ignored; newest first; ?author= narrows to one person."""
     a = _post(client, "u_a", caption="a-latest")
     b = _post(client, "u_b", caption="b-latest")
-    c = _post(client, "u_c", caption="c-private")
+    c = _post(client, "u_c", caption="c-not-a-friend")  # u_c is nobody's friend
     ids = [p["id"] for p in client.get("/fitcheck/feed", params={"user_id": "u_a"}).json()]
-    assert ids[:2] == [b["id"], a["id"]] and c["id"] not in ids
-    assert client.get("/fitcheck/feed", params={"user_id": "u_c"}).json()[0]["id"] == c["id"]
-    assert all(p["user_id"] == "u_c" for p in client.get("/fitcheck/feed", params={"user_id": "u_c"}).json())
+    assert ids[:3] == [c["id"], b["id"], a["id"]]
+    assert ids[:3] == [p["id"] for p in client.get("/fitcheck/feed", params={"user_id": "u_c"}).json()][:3]
     everyone = client.get("/fitcheck/feed", params={"user_id": "u_nobody", "limit": 2}).json()
-    assert [p["id"] for p in everyone] == [c["id"], b["id"]]  # no friends list -> sees all
+    assert [p["id"] for p in everyone] == [c["id"], b["id"]]
+    mine = client.get("/fitcheck/feed", params={"user_id": "u_a", "author": "u_c"}).json()
+    assert mine and all(p["user_id"] == "u_c" for p in mine) and mine[0]["id"] == c["id"]
+    assert set(mine[0]) >= {"id", "user_id", "photo_url", "caption", "tagged", "created_at", "author",
+                            "like_count", "liked_by_me", "comment_count"}
+    assert client.get("/fitcheck/feed", params={"user_id": "u_a", "author": "u_ghost"}).json() == []
 
 
-def test_privacy_404_and_public(client):
+def test_everyone_can_open_any_post(client):
     c = _post(client, "u_c")
-    assert client.get(f"/fitcheck/{c['id']}", params={"user_id": "u_a"}).status_code == 404
+    assert client.get(f"/fitcheck/{c['id']}", params={"user_id": "u_a"}).status_code == 200
     assert client.get(f"/fitcheck/{c['id']}", params={"user_id": "u_c"}).status_code == 200
     pub = _post(client, "u_c", visibility="public")
     assert client.get(f"/fitcheck/{pub['id']}", params={"user_id": "u_a"}).status_code == 200

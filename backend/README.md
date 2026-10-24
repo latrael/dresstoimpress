@@ -1,0 +1,42 @@
+# dresstoimpress backend
+
+One FastAPI service. Every outside call (Claude, Gemini, Apify, Nessie) goes through it; keys live only here.
+
+## Run
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # add keys, or set MOCK_AI=1 to build without them
+python -m scripts.seed_demo # demo user u_demo + 3 closet items + 5 products
+uvicorn app.main:app --reload --port 8000
+```
+
+Docs at http://localhost:8000/docs. Tests: `pytest -q` (runs in mock mode, no keys).
+
+For phones at the venue, expose it: `ngrok http 8000`, then set `PUBLIC_BASE` to the ngrok URL.
+
+## AI endpoints (Adam)
+
+| Endpoint | Request | Response |
+| --- | --- | --- |
+| `POST /closet/tag` | `{user_id, image_url}` | ClosetItem (422 `not_clothing` if it isn't) |
+| `POST /tryon` | `{user_id, product_ids[], closet_item_ids[]}` | `{image_url, cached}` |
+| `POST /pair` | `{user_id, candidate_product_ids[]}` (empty = all unswiped products) | `[{product_id, score, reason, pairs_with[]}]` |
+
+- **Tagging:** Claude vision → JSON, validated and clamped to the contract, retried once on bad JSON.
+- **Try-on:** Gemini Flash image with the user's body photo + garment images; prompt forbids reshaping the body. Results cached by user + sorted ids and served from `/static/tryon/`.
+- **Pairing:** budget matches first, top 50 sent to Claude with closet + style memory; hallucinated ids are dropped; falls back to budget/price ranking if Claude fails or the closet is empty.
+- **Style memory:** `app/ai/memory.py` reads swipes today; Moss plugs in there.
+
+## Where things live
+
+```
+app/models.py     shared data contract (don't rename fields without telling the team)
+app/store.py      JSON-file store (default) or Firestore (USE_FIRESTORE=1)
+app/ai/           Adam's pipeline: prompts, llm wrappers, service, router, memory
+scripts/          seed_demo.py
+```
+
+Nabil: add a `commerce` router for `/feed /swipe /cart /checkout /fitcheck` and include it in `app/main.py`. `/feed` should call `ai.service.pair()` to order cards and attach `reason` + `pairs_with`.

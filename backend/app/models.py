@@ -1,0 +1,81 @@
+"""Shared data contract. Field names are fixed — tell the team before changing any."""
+from __future__ import annotations
+
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
+
+Category = Literal["top", "bottom", "outerwear", "shoes", "dress", "accessory"]
+Retailer = Literal["zara", "hm", "asos", "uniqlo", "mango"]
+Pattern = Literal["solid", "striped", "plaid", "graphic", "floral", "other"]
+StyleTag = Literal[
+    "y2k", "streetwear", "minimalist", "preppy", "athleisure",
+    "vintage", "business", "boho", "grunge", "classic",
+]
+
+
+class Product(BaseModel):
+    id: str
+    retailer: Retailer
+    name: str
+    brand: str
+    category: Category
+    price_usd: float
+    sale_price_usd: Optional[float] = None
+    colors: list[str] = []
+    sizes: list[str] = []
+    in_stock: bool = True
+    image_url: str
+    product_url: str
+    style_tags: list[str] = []
+
+
+class ClosetItem(BaseModel):
+    id: str
+    user_id: str
+    image_url: str
+    category: Category
+    color: str
+    pattern: Pattern = "solid"
+    style_tags: list[str] = []
+    formality: int = Field(3, ge=1, le=5)
+    source: Literal["photo", "receipt", "seed"] = "photo"
+
+
+class User(BaseModel):
+    id: str
+    display_name: str
+    style_text: str = ""
+    price_ranges: dict[str, list[float]] = {}
+    body_photo_url: Optional[str] = None
+    friends: list[str] = []
+
+
+# ---- AI endpoint requests / responses ----
+
+class TagRequest(BaseModel):
+    user_id: str
+    image_url: str
+
+
+class TryOnRequest(BaseModel):
+    user_id: str
+    product_ids: list[str] = []
+    closet_item_ids: list[str] = []
+
+
+class TryOnResponse(BaseModel):
+    image_url: str
+    cached: bool
+
+
+class PairRequest(BaseModel):
+    user_id: str
+    candidate_product_ids: list[str] = []
+
+
+class PairResult(BaseModel):
+    product_id: str
+    score: float = Field(ge=0, le=1)
+    reason: str
+    pairs_with: list[str] = []

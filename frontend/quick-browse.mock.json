@@ -1,0 +1,221 @@
+[
+  {
+    "product": {
+      "id": "hm:1361447006:burgundy-striped",
+      "retailer": "hm",
+      "name": "Long-Sleeved Cotton Top",
+      "brand": "H&M",
+      "category": "top",
+      "price_usd": 19.99,
+      "sale_price_usd": null,
+      "currency": "USD",
+      "colors": [
+        "Burgundy/striped"
+      ],
+      "sizes": [
+        {
+          "name": "XS",
+          "in_stock": true
+        },
+        {
+          "name": "S",
+          "in_stock": true
+        },
+        {
+          "name": "M",
+          "in_stock": true
+        },
+        {
+          "name": "L",
+          "in_stock": true
+        },
+        {
+          "name": "XL",
+          "in_stock": true
+        },
+        {
+          "name": "XXL",
+          "in_stock": false
+        }
+      ],
+      "in_stock": true,
+      "image_url": "https://image.hm.com/assets/hm/0b/78/0b78567ed13fffe906d631a4d7989912edc3af64.jpg",
+      "product_url": "https://www2.hm.com/en_us/productpage.1361447006.html",
+      "style_tags": [],
+      "pattern": null,
+      "formality": null,
+      "label": "long-sleeved cotton top",
+      "scraped_at": null,
+      "source": "seed"
+    },
+    "presentation": {
+      "description": "Long-Sleeved Cotton Top in burgundy/striped. Browse the garment and retailer model photos to explore the look. This is sample description text for the prototype.",
+      "gallery": [
+        {
+          "url": "https://image.hm.com/assets/hm/0b/78/0b78567ed13fffe906d631a4d7989912edc3af64.jpg",
+          "kind": "product",
+          "alt": "Long-Sleeved Cotton Top \u2014 garment view"
+        },
+        {
+          "url": "https://image.hm.com/assets/hm/74/1a/741a32f66019d051302a373dcdff13a39b7f3175.jpg",
+          "kind": "retailer_model",
+          "alt": "Long-Sleeved Cotton Top \u2014 retailer model view"
+        }
+      ],
+      "description_is_mock": true,
+      "availability_is_mock": true
+    },
+    "pairing": {
+      "product_id": "hm:1361447006:burgundy-striped",
+      "reason": "Try pairing this with your favorite jeans.",
+      "pairs_with": [],
+      "is_mock": true
+    }
+  },
+  {
+    "product": {
+      "id": "hm:1360320001:gray-melange",
+      "retailer": "hm",
+      "name": "Long-Sleeved Ribbed Top",
+      "brand": "H&M",
+      "category": "top",
+      "price_usd": 14.99,
+      "sale_price_usd": null,
+      "currency": "USD",
+      "colors": [
+        "Gray melange"
+      ],
+      "sizes": [
+        {
+          "name": "XS",
+          "in_stock": true
+        },
+        {
+          "name": "S",
+          "in_stock": true
+        },
+        {
+          "name": "M",
+          "in_stock": true
+        },
+        {
+          "name": "L",
+          "in_stock": true
+        },
+        {
+          "name": "XL",
+          "in_stock": true
+        },
+        {
+          "name": "XXL",
+          "in_stock": false
+        }
+      ],
+      "in_stock": true,
+      "image_url": "https://image.hm.com/assets/hm/32/d1/32d17692a5adc4d8b83dfc18091f90710e2a6beb.jpg",
+      "product_url": "https://www2.hm.com/en_us/productpage.1360320001.html",
+      "style_tags": [],
+      "pattern": null,
+      "formality": null,
+      "label": "long-sleeved ribbed top",
+      "scraped_at": null,
+      "source": "seed"
+    },
+    "presentation": {
+      "description": "Long-Sleeved Ribbed Top in gray melange. Browse the garment and retailer model photos to explore the look. This is sample description text for the prototype.",
+      "gallery": [
+        {
+          "url": "https://image.hm.com/assets/hm/32/d1/32d17692a5adc4d8b83dfc18091f90710e2a6beb.jpg",
+          "kind": "product",
+          "alt": "Long-Sleeved Ribbed Top \u2014 garment view"
+        },
+        {
+          "url": "https://image.hm.com/assets/hm/bf/ca/bfcaa9457b362372a48cbbcdc2939b9f09315ba6.jpg",
+          "kind": "retailer_model",
+          "alt": "Long-Sleeved Ribbed Top \u2014 retailer model view"
+        }
+      ],
+      "description_is_mock": true,
+      "availability_is_mock": true
+    },
+    "pairing": {
+      "product_id": "hm:1360320001:gray-melange",
+      "reason": "Try pairing this with your favorite jeans.",
+      "pairs_with": [],
+      "is_mock": true
+    }
+  },
+  {
+    "product": {
+      "id": "hm:1307934010:burgundy",
+      "retailer": "hm",
+      "name": "Mock Turtleneck Top",
+      "brand": "H&M",
+      "category": "top",
+      "price_usd": 14.99,
+      "sale_price_usd": null,
+      "currency": "USD",
+      "colors": [
+        "Burgundy"
+      ],
+      "sizes": [
+        {
+          "name": "XS",
+          "in_stock": true
+        },
+        {
+          "name": "S",
+          "in_stock": true
+        },
+        {
+          "name": "M",
+          "in_stock": true
+        },
+        {
+          "name": "L",
+          "in_stock": true
+        },
+        {
+          "name": "XL",
+          "in_stock": true
+        },
+        {
+          "name": "XXL",
+          "in_stock": false
+        }
+      ],
+      "in_stock": true,
+      "image_url": "https://image.hm.com/assets/hm/0e/24/0e24f48ed61bf84f6dd3100e5b2a6552caa3f304.jpg",
+      "product_url": "https://www2.hm.com/en_us/productpage.1307934010.html",
+      "style_tags": [],
+      "pattern": null,
+      "formality": null,
+      "label": "mock turtleneck top",
+      "scraped_at": null,
+      "source": "seed"
+    },
+    "presentation": {
+      "description": "Mock Turtleneck Top in burgundy. Browse the garment and retailer model photos to explore the look. This is sample description text for the prototype.",
+      "gallery": [
+        {
+          "url": "https://image.hm.com/assets/hm/0e/24/0e24f48ed61bf84f6dd3100e5b2a6552caa3f304.jpg",
+          "kind": "product",
+          "alt": "Mock Turtleneck Top \u2014 garment view"
+        },
+        {
+          "url": "https://image.hm.com/assets/hm/5e/6c/5e6cfcc2c974153ad546e7f83cb13fa69862529d.jpg",
+          "kind": "retailer_model",
+          "alt": "Mock Turtleneck Top \u2014 retailer model view"
+        }
+      ],
+      "description_is_mock": true,
+      "availability_is_mock": true
+    },
+    "pairing": {
+      "product_id": "hm:1307934010:burgundy",
+      "reason": "Try pairing this with your favorite jeans.",
+      "pairs_with": [],
+      "is_mock": true
+    }
+  }
+]

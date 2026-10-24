@@ -226,7 +226,7 @@ def _fallback(cands: list[dict], ranges: dict, k: int, closet: list[dict] | None
 
 def _bank_key(user_id: str, closet: list[dict], user: dict) -> str:
     """The reason bank is valid while the closet, style text and budgets stay the same."""
-    state = (f"bank|{user_id}|{','.join(sorted(c['id'] for c in closet))}|{user.get('style_text', '')}|"
+    state = (f"bank|{prompts.PAIR_VERSION}|{user_id}|{','.join(sorted(c['id'] for c in closet))}|{user.get('style_text', '')}|"
              f"{json.dumps(user.get('price_ranges', {}), sort_keys=True)}")
     return "bank_" + hashlib.sha256(state.encode()).hexdigest()[:20]
 
@@ -314,7 +314,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
     )
     # Cache: same user, same candidates, same closet/swipe state -> reuse for 10 min.
     # The feed and shop-the-fit can hit this on every scroll; this keeps that free.
-    state = (f"{user_id}|{','.join(sorted(p['id'] for p in cands))}|{len(closet)}|{len(swiped)}|{k}|"
+    state = (f"{prompts.PAIR_VERSION}|{user_id}|{','.join(sorted(p['id'] for p in cands))}|{len(closet)}|{len(swiped)}|{k}|"
              f"{user.get('style_text', '')}|{json.dumps(ranges, sort_keys=True)}")
     ckey = hashlib.sha256(state.encode()).hexdigest()[:24]
     bkey = _bank_key(user_id, closet, user)

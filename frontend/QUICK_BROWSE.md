@@ -14,11 +14,14 @@ Earlier FlutterFlow-specific implementation notes are superseded.
 4. Position dots immediately below the picture; no dots for a single image.
 5. Retailer and product name, readable description or honest retailer fallback,
    and pairing reason only when supplied. Do not invent fabric or model stats.
-6. Product-provided sizes, unavailable choices disabled, then Add to Cart.
+6. Onboarded sizing resolves automatically from saved explicit measurements or
+   an available usual letter size. One Add to Cart button replaces size chips and
+   the sizing sheet; the chosen size is shown quietly and editable with the cart pencil.
+   Missing or unavailable recommendations never select an arbitrary size.
 7. Description, sizes, cart button, search and navigation stay outside the photo
    carousel. Horizontal drags there do not change photos.
 8. One continuous vertical product list: details flow straight through a thick,
-   faded burgundy separator into the next product. No snap paging, arrow,
+   solid muted burgundy separator into the next product. No snap paging, arrow,
    release-to-confirm, or boundary gestures. Build the visible items and about
    one screen ahead/behind; distant product widgets and images load on approach.
    Nearby products keep their own photo/size state; each new item starts separately.
@@ -46,7 +49,7 @@ The older JSON fixture remains an explicitly mock historical design asset.
 
 ## Verification
 
-Thirty-six Flutter tests cover original gestures/cart and the overnight feature flows.
+Forty-five Flutter tests cover original gestures/cart and the overnight feature flows.
 Connected mode uses paged catalog search; explicit demo mode stays local. Run `cd app && flutter analyze && flutter test`. Backend health/feed
 and image proxy were also verified with private runtime settings. The app loads
 live photos. Phone and live checkout verification remain separate checks.
@@ -61,6 +64,6 @@ owned/catalog suggestions and Fit Score. These controls stay outside horizontal
 photo swipes; product details scroll to expose controls on smaller screens.
 No model measurements, real descriptions or personal photos are invented.
 
-36 tests pass and Flutter analysis is clean. The overnight release web build succeeded. Overnight backend checks used
+45 tests pass and Flutter analysis is clean. The overnight release web build succeeded. Overnight backend checks used
 mock AI and synthetic local fixtures. Shared live / phone / personal-photo quality
 acceptance remains pending; see RYAN.md and the staging morning report.

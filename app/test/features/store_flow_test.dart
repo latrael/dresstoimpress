@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dress_to_impress/features/profile/shopper_profile.dart';
 
 import 'package:dress_to_impress/core/api.dart';
 import 'package:dress_to_impress/core/settings.dart';
@@ -80,6 +82,8 @@ void main() {
     }))
       ..settings = const Settings(
           baseUrl: 'https://api.example.test', apiKey: 'test-only');
+    SharedPreferences.setMockInitialValues({});
+    await const ShopperProfile(completed: true, usualSize: 'M').save('u_demo');
     final store = StoreController(api: api, demo: false);
     await tester.pumpWidget(NicheApp(store: store));
     await tester.pumpAndSettle();
@@ -92,8 +96,7 @@ void main() {
     await tester.tap(find.byTooltip('Save item'));
     await tester.pumpAndSettle();
     expect(store.saved, contains(piece['id']));
-    await tester.tap(find.widgetWithText(ChoiceChip, 'M'));
-    await tester.pump();
+    expect(find.widgetWithText(ChoiceChip, 'M'), findsNothing);
     await tester.tap(find.widgetWithText(FilledButton, 'Add to Cart'));
     await tester.pumpAndSettle();
     expect(store.cart.count, 1);

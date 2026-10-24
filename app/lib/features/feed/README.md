@@ -36,12 +36,24 @@ and phone acceptance remain pending (RYAN.md).
 Ryan replaced boundary-gated swiping with a single lazy vertical product list.
 Product details and subsequent products share the same scroll; there are no nested
 vertical scrollers, page snaps, arrows, thresholds, or release confirmations.
-A 48-pixel faded burgundy band with 12-pixel spacing on each side separates items.
+A 48-pixel solid muted burgundy band with 12-pixel spacing on each side separates items.
 The list prepares about one viewport ahead and behind and disposes distant items.
 Nearby items retain their own photo/size state. Horizontal swiping stays scoped
 to each bounded photo gallery; cart/size tools remain with the matching product.
 
-Flutter analysis clean; 36 app tests pass, including continuous touch/wheel,
+Flutter analysis clean; 45 app tests pass, including continuous touch/wheel,
 long descriptions, lazy item creation/disposal, separators, carousel boundaries,
 cart selection and separate generated try-on slides. Actual browser preview
 verified the separator and continuous product transition. Phone feel awaits Ryan.
+
+## Onboarded sizing
+
+The app supplies automaticSizing and the shared StoreController size resolver.
+Nearby products request sizing once per saved profile revision, using explicit
+height/weight, preferred fit, optional waist converted cm → inches, and US shoes.
+No connection defaults are treated as entered body measurements. A usual letter
+size may match an in-stock choice exactly; demo mode uses this explicit fallback.
+One Add to Cart button replaces the size picker. Missing measurements open the
+preferences editor; unavailable recommendations do not silently choose a size.
+Manual callback mode remains available for isolated widget adapters/tests.
+See frontend/ONBOARDING.md for persistence and backend handoff limits.

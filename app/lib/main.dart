@@ -8,7 +8,7 @@ import 'features/feed/quick_browse.dart';
 import 'features/social/social_feed.dart';
 import 'features/search/catalog_search.dart';
 import 'features/profile/profile_screen.dart';
-import 'features/product/size_advice_sheet.dart';
+import 'features/profile/onboarding_screen.dart';
 import 'features/product/try_on.dart';
 import 'features/product/complete_look_screen.dart';
 import 'features/store/cart_screen.dart';
@@ -50,7 +50,47 @@ class NicheApp extends StatelessWidget {
               style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF722F42),
                   foregroundColor: Colors.white))),
-      home: ShopShell(store: store));
+      home: FirstVisit(store: store));
+}
+
+class FirstVisit extends StatefulWidget {
+  const FirstVisit({super.key, required this.store});
+  final StoreController store;
+  @override
+  State<FirstVisit> createState() => _FirstVisitState();
+}
+
+class _FirstVisitState extends State<FirstVisit> {
+  late Future<void> ready = widget.store.loadProfile();
+  @override
+  Widget build(BuildContext context) => FutureBuilder<void>(
+      future: ready,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+              body: Center(
+                  child: TextButton(
+                      onPressed: () =>
+                          setState(() => ready = widget.store.loadProfile()),
+                      child: const Text(
+                          'Could not load your preferences. Tap to retry.'))));
+        }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        if (!widget.store.profile.completed) {
+          return OnboardingScreen(
+              api: widget.store.api,
+              firstRun: true,
+              demo: widget.store.demo,
+              onSaved: () async {
+                await widget.store.loadProfile();
+                if (mounted) setState(() {});
+              });
+        }
+        return ShopShell(store: widget.store);
+      });
 }
 
 class ShopShell extends StatefulWidget {
@@ -129,10 +169,10 @@ class _ShopShellState extends State<ShopShell> {
                               onSave: store.save,
                               onAddToCart: store.add,
                               imageUrl: store.imageUrl,
-                              onSizeAdvice: store.demo
-                                  ? null
-                                  : (id) =>
-                                      showSizeAdvice(context, store.api, id),
+                              automaticSizing: true,
+                              sizingRevision: store.sizingRevision,
+                              onSizeAdvice: store.automaticSize,
+                              onSizingSetup: editSizing,
                               onTryOn: store.demo
                                   ? null
                                   : (id) =>
@@ -141,6 +181,21 @@ class _ShopShellState extends State<ShopShell> {
                             ))),
                   ),
                 )));
+  }
+
+  Future<void> editSizing() async {
+    await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => OnboardingScreen(
+                api: store.api,
+                demo: store.demo,
+                onSaved: () async {
+                  await store.loadProfile();
+                  await store.load();
+                })));
+    await store.loadProfile();
+    if (mounted) setState(() {});
   }
 
   void completeLook(String id) => Navigator.push<void>(
@@ -209,8 +264,10 @@ class _ShopShellState extends State<ShopShell> {
         onSave: store.save,
         onAddToCart: store.add,
         imageUrl: store.imageUrl,
-        onSizeAdvice:
-            store.demo ? null : (id) => showSizeAdvice(context, store.api, id),
+        automaticSizing: true,
+        sizingRevision: store.sizingRevision,
+        onSizeAdvice: store.automaticSize,
+        onSizingSetup: editSizing,
         onTryOn:
             store.demo ? null : (id) => requestTryOn(context, store.api, id),
         onCompleteLook: store.demo ? null : completeLook,
@@ -308,7 +365,11 @@ class _ShopShellState extends State<ShopShell> {
                           context,
                           MaterialPageRoute(
                               builder: (_) => ProfileScreen(
-                                  api: store.api, onChanged: store.load)))),
+                                  api: store.api,
+                                  onChanged: () async {
+                                    await store.loadProfile();
+                                    await store.load();
+                                  })))),
                 IconButton(
                     tooltip: 'Settings',
                     onPressed: settings,

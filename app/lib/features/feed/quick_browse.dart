@@ -11,6 +11,9 @@ class QuickBrowse extends StatefulWidget {
     required this.onAddToCart,
     required this.imageUrl,
     this.onSizeAdvice,
+    this.automaticSizing = false,
+    this.onSizingSetup,
+    this.sizingRevision = 0,
     this.onTryOn,
     this.onCompleteLook,
   });
@@ -21,6 +24,9 @@ class QuickBrowse extends StatefulWidget {
   final Future<void> Function(String id, String size) onAddToCart;
   final String Function(String source) imageUrl;
 
+  final bool automaticSizing;
+  final int sizingRevision;
+  final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
   final Future<({String url, String label})?> Function(String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
@@ -45,13 +51,7 @@ class _QuickBrowseState extends State<QuickBrowse> {
           key: ValueKey('product-separator-$index'),
           height: 48,
           margin: const EdgeInsets.symmetric(vertical: 12),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x00722F42), Color(0x30722F42), Color(0x00722F42)],
-            ),
-          ),
+          color: const Color(0xFFBDA7AD),
         ),
         itemBuilder: (context, index) => _ProductPage(
           key: ValueKey(widget.products[index]['id']),
@@ -61,6 +61,9 @@ class _QuickBrowseState extends State<QuickBrowse> {
           onAddToCart: widget.onAddToCart,
           imageUrl: widget.imageUrl,
           onSizeAdvice: widget.onSizeAdvice,
+          automaticSizing: widget.automaticSizing,
+          onSizingSetup: widget.onSizingSetup,
+          sizingRevision: widget.sizingRevision,
           onTryOn: widget.onTryOn,
           onCompleteLook: widget.onCompleteLook,
           imageHeight: (viewport.maxHeight * .46).clamp(180.0, 390.0),
@@ -82,6 +85,9 @@ class _ProductPage extends StatefulWidget {
     required this.position,
     required this.imageHeight,
     this.onSizeAdvice,
+    required this.automaticSizing,
+    required this.onSizingSetup,
+    required this.sizingRevision,
     this.onTryOn,
     this.onCompleteLook,
   });
@@ -92,6 +98,9 @@ class _ProductPage extends StatefulWidget {
   final String Function(String) imageUrl;
   final String position;
   final double imageHeight;
+  final bool automaticSizing;
+  final int sizingRevision;
+  final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
   final Future<({String url, String label})?> Function(String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
@@ -110,6 +119,59 @@ class _ProductPageState extends State<_ProductPage> {
   ({String url, String label})? personalPhoto;
   String? error;
   final PageController photos = PageController();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.automaticSizing) resolveSize();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProductPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.automaticSizing &&
+        oldWidget.sizingRevision != widget.sizingRevision) {
+      resolveSize();
+    }
+  }
+
+  int sizeRequest = 0;
+  Future<void> resolveSize() async {
+    final request = ++sizeRequest;
+    setState(() {
+      advising = true;
+      size = null;
+      error = null;
+    });
+    try {
+      final value =
+          await widget.onSizeAdvice?.call(widget.product['id'] as String);
+      if (!mounted || request != sizeRequest) return;
+      final sizes = (widget.product['sizes'] as List? ?? []).cast<Map>();
+      setState(() {
+        size = sizes.any((s) => s['name'] == value && s['in_stock'] == true) &&
+                widget.product['in_stock'] != false
+            ? value
+            : null;
+      });
+    } catch (_) {
+      if (mounted && request == sizeRequest) {
+        setState(() =>
+            error = 'Could not find your size. Tap Add to Cart to retry.');
+      }
+    } finally {
+      if (mounted && request == sizeRequest) setState(() => advising = false);
+    }
+  }
+
+  Future<void> automaticAdd() async {
+    if (size == null) {
+      if (error == null) await widget.onSizingSetup?.call();
+      if (!mounted) return;
+      await resolveSize();
+    }
+    if (mounted && size != null) await add();
+  }
+
   @override
   void dispose() {
     photos.dispose();
@@ -401,33 +463,43 @@ class _ProductPageState extends State<_ProductPage> {
                 padding: const EdgeInsets.only(top: 10),
                 child: Text('Color · ${(p['colors'] as List).join(', ')}')),
           const SizedBox(height: 20),
-          if (widget.onSizeAdvice != null)
+          if (!widget.automaticSizing && widget.onSizeAdvice != null)
             Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                     onPressed: advising ? null : advise,
                     icon: const Icon(Icons.straighten),
                     label: const Text('Find my size'))),
-          const Text(
-            'Select size',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: sizes
-                .map(
-                  (s) => ChoiceChip(
-                    label: Text(s['name'] as String),
-                    selected: size == s['name'],
-                    onSelected: s['in_stock'] == true && p['in_stock'] != false
-                        ? (_) => setState(() => size = s['name'] as String)
-                        : null,
-                  ),
-                )
-                .toList(),
-          ),
+          if (!widget.automaticSizing) ...[
+            const Text(
+              'Select size',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: sizes
+                  .map(
+                    (s) => ChoiceChip(
+                      label: Text(s['name'] as String),
+                      selected: size == s['name'],
+                      onSelected: s['in_stock'] == true &&
+                              p['in_stock'] != false
+                          ? (_) => setState(() => size = s['name'] as String)
+                          : null,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ] else
+            Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(advising
+                    ? 'Finding your size…'
+                    : size != null
+                        ? 'Size $size · you can edit it in your cart'
+                        : 'Add your measurements or usual size to find your fit.')),
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -443,13 +515,19 @@ class _ProductPageState extends State<_ProductPage> {
             width: double.infinity,
             height: 50,
             child: FilledButton(
-              onPressed: size == null || adding ? null : add,
+              onPressed: widget.automaticSizing
+                  ? (adding || advising || p['in_stock'] == false
+                      ? null
+                      : automaticAdd)
+                  : (size == null || adding ? null : add),
               child: Text(
                 adding
                     ? 'Adding…'
-                    : size == null
-                        ? 'Choose a size'
-                        : 'Add to Cart',
+                    : widget.automaticSizing
+                        ? 'Add to Cart'
+                        : size == null
+                            ? 'Choose a size'
+                            : 'Add to Cart',
               ),
             ),
           ),

@@ -4,7 +4,8 @@ from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitScoreRequest, PairRequest, PairResult, ShopFitRequest,
+from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitCreateRequest, FitScoreRequest, PairRequest,
+                      PairResult, ShopFitRequest,
                       SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse, VibeRequest)
 from ..store import DATA_DIR, store
 from . import service
@@ -354,3 +355,54 @@ def fit_score(req: FitScoreRequest):
             raise HTTPException(404, f"unknown closet item {cid}")
         items.append(c)
     return score_outfit(items)
+
+
+
+# ---------- AI Fit Creator ----------
+
+@router.post("/fits/create")
+def fits_create(req: FitCreateRequest, tryon: bool = False):
+    """Full outfits for the user's body (body scan): closet pieces + in-stock catalog pieces in their size.
+    `?tryon=true` also renders each fit on the user's body photo (slow); otherwise `try_on` is null and the app
+    lazy-loads it with POST /fits/{id}/try-on. Cached 1 h per (user, closet, occasion, must_include, budget)."""
+    from .fit_creator import NoFits, create_fits
+
+    try:
+        return create_fits(req.user_id, req.count, req.occasion, req.must_include, req.budget_usd, tryon=tryon)
+    except NoFits as e:
+        raise _ai_down("fit creator", e)
+
+
+@router.get("/fits/{fit_id}")
+def fit_get(fit_id: str, user_id: str):
+    """One cached fit (404 once it expires, after 1 h)."""
+    from .fit_creator import get_fit
+
+    fit = get_fit(fit_id, user_id)
+    if fit is None:
+        raise HTTPException(404, "unknown or expired fit")
+    return fit
+
+
+@router.post("/fits/{fit_id}/try-on")
+def fit_try_on_route(fit_id: str, user_id: str):
+    """Try-on image for a fit: {image_url, mode "ai"|"collage"}. Same generator as POST /tryon."""
+    from .fit_creator import fit_try_on, get_fit
+
+    if get_fit(fit_id, user_id) is None:
+        raise HTTPException(404, "unknown or expired fit")
+    out = fit_try_on(fit_id, user_id)
+    if out is None:
+        raise _ai_down("try-on", RuntimeError("no image"))
+    return out
+
+
+@router.post("/fits/{fit_id}/cart")
+def fit_cart_route(fit_id: str, user_id: str):
+    """Add every catalog piece of the fit to the cart at your_size; returns the cart like POST /cart/{user}/items."""
+    from .fit_creator import fit_to_cart
+
+    cart = fit_to_cart(fit_id, user_id)
+    if cart is None:
+        raise HTTPException(404, "unknown or expired fit")
+    return cart

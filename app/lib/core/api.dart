@@ -166,6 +166,32 @@ class Api {
   Future<CompleteLook> completeLook(String productId, {double? budgetUsd}) async => CompleteLook.fromJson(
       await _send('POST', '/complete-look', body: {'user_id': _user, 'product_id': productId, 'budget_usd': budgetUsd}));
 
+  /// POST /fits/create: complete outfits for the user's body scan, mixing closet pieces with new ones in their
+  /// size. [tryOn] renders each fit on the body photo (slow); default false, use [fitTryOn] to lazy-load it.
+  Future<List<OutfitFit>> createFits(
+          {int count = 3, String? occasion, List<String>? mustInclude, double? budgetUsd, bool tryOn = false}) async =>
+      _listOf(
+          (await _send('POST', '/fits/create', query: {'tryon': tryOn ? 'true' : null}, body: {
+            'user_id': _user,
+            'count': count,
+            'occasion': occasion,
+            'must_include': mustInclude,
+            'budget_usd': budgetUsd,
+          }))['fits'],
+          OutfitFit.fromJson);
+
+  /// GET /fits/{id}: a fit from the last hour (ApiError 404 once it expires).
+  Future<OutfitFit> fit(String fitId) async =>
+      OutfitFit.fromJson(await _send('GET', '/fits/${_seg(fitId)}', query: {'user_id': _user}));
+
+  /// POST /fits/{id}/try-on: the fit on the user's body photo ({imageUrl, mode}; `cached` is always false here).
+  Future<TryOnResponse> fitTryOn(String fitId) async =>
+      TryOnResponse.fromJson(await _send('POST', '/fits/${_seg(fitId)}/try-on', query: {'user_id': _user}));
+
+  /// POST /fits/{id}/cart: every new piece of the fit into the cart at the user's size. Returns the cart.
+  Future<Cart> addFitToCart(String fitId) async =>
+      Cart.fromJson(await _send('POST', '/fits/${_seg(fitId)}/cart', query: {'user_id': _user}));
+
   Future<FitScore> fitScore(
           {List<FitTag> items = const [], List<String> productIds = const [], List<String> closetItemIds = const []}) async =>
       FitScore.fromJson(await _send('POST', '/ai/fit-score', body: {

@@ -913,3 +913,72 @@ class ClosetDeleteResult {
   final String deleted;
   factory ClosetDeleteResult.fromJson(Json j) => ClosetDeleteResult(_str(j['deleted']));
 }
+
+// ---------------------------------------------------------------- AI Fit Creator (Adam)
+
+/// One slot of an [OutfitFit]: either something the user owns ([closetItem]) or a catalog [product] in
+/// [yourSize]. `slot` is top | bottom | shoes | outerwear | dress | accessory.
+class FitPiece {
+  const FitPiece({required this.slot, required this.source, this.closetItem, this.product, this.yourSize, this.inYourSize});
+  final String slot;
+  final String source; // "closet" | "catalog"
+  final ClosetItem? closetItem;
+  final Product? product;
+  final String? yourSize;
+  final bool? inYourSize;
+
+  bool get fromCloset => source == 'closet';
+  String get imageUrl => closetItem?.imageUrl ?? product?.imageUrl ?? '';
+  String get label => closetItem?.label ?? closetItem?.category ?? product?.name ?? slot;
+
+  factory FitPiece.fromJson(Json j) => FitPiece(
+        slot: _str(j['slot']),
+        source: _str(j['source'], 'catalog'),
+        closetItem: j['closet_item'] is Map ? ClosetItem.fromJson(_obj(j['closet_item'])) : null,
+        product: j['product'] is Map ? Product.fromJson(_obj(j['product'])) : null,
+        yourSize: _strN(j['your_size']),
+        inYourSize: _boolN(j['in_your_size']),
+      );
+}
+
+/// A complete outfit from POST /fits/create: built for the user's body scan, mixing closet pieces with new
+/// pieces in their size. [tryOnUrl] is null until the app asks for it (`Api.fitTryOn`).
+class OutfitFit {
+  const OutfitFit({
+    required this.id,
+    required this.name,
+    required this.reason,
+    required this.pieces,
+    required this.newTotalUsd,
+    required this.closetCount,
+    this.occasion,
+    this.tryOnUrl,
+    this.tryOnMode,
+  });
+  final String id;
+  final String name;
+  final String? occasion;
+  final String reason;
+  final List<FitPiece> pieces;
+  final double newTotalUsd;
+  final int closetCount;
+  final String? tryOnUrl;
+  final String? tryOnMode; // "ai" | "collage"
+
+  List<FitPiece> get newPieces => pieces.where((p) => !p.fromCloset).toList();
+
+  factory OutfitFit.fromJson(Json j) {
+    final t = j['try_on'] is Map ? _obj(j['try_on']) : null;
+    return OutfitFit(
+      id: _str(j['id']),
+      name: _str(j['name']),
+      occasion: _strN(j['occasion']),
+      reason: _str(j['reason']),
+      pieces: _list(j['pieces'], FitPiece.fromJson),
+      newTotalUsd: _dbl(j['new_total_usd']),
+      closetCount: _int(j['closet_count']),
+      tryOnUrl: t == null ? null : _strN(t['image_url']),
+      tryOnMode: t == null ? null : _strN(t['mode']),
+    );
+  }
+}

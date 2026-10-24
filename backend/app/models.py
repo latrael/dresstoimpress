@@ -178,6 +178,15 @@ class CompleteLookRequest(BaseModel):
     budget_usd: Optional[float] = None  # total for new items incl. the anchor
 
 
+class FitCreateRequest(BaseModel):
+    """POST /fits/create: full outfits for the user's body that mix closet pieces with new ones in their size."""
+    user_id: str
+    count: int = Field(3, ge=1, le=6)
+    occasion: Optional[str] = None            # "rooftop party", "class", "date"
+    must_include: Optional[list[str]] = None  # catalog product ids every fit must use
+    budget_usd: Optional[float] = None        # total for the new (catalog) pieces of one fit
+
+
 class FitScoreRequest(BaseModel):
     """Any mix: raw items (a Fit Check post's `tagged`), catalog products, closet items."""
     items: list[dict] = []

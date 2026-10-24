@@ -108,3 +108,24 @@ Return only a JSON object:
 Measurements in inches, rounded to the nearest 0.5. If it is not one standing person in full view,
 set full_body_visible to false and every number to null.
 Never comment on attractiveness, weight or health."""
+
+
+FIT_CREATOR = """You are a personal stylist building complete outfits for one person's body.
+Body: {body}
+Fit preference: {fit}
+Style: {style_text}
+Occasion: {occasion}
+Budget for new pieces (USD, total per outfit): {budget}
+Must include (catalog ids): {must_include}
+Closet (what they already own): {closet_json}
+Catalog candidates (in stock, your_size = the size we would order for them): {products_json}
+
+Build {count} different complete outfits. Each needs a top and a bottom (or a dress) plus shoes;
+outerwear and one accessory are optional. Build each outfit around at least one closet piece when the
+closet has anything usable, and fill the rest from the catalog candidates. Use every must-include id.
+Return only a JSON array of {count} objects:
+{{"name": 2-4 word vibe name, "reason": 1-2 sentences, casual second person, that name the build or a
+measurement (e.g. "slim build, 30.5 in waist") and the closet piece the look is built around,
+"pieces": [{{"slot": "top"|"bottom"|"shoes"|"outerwear"|"dress"|"accessory", "id": closet or catalog id}}]}}
+Use only ids from the closet or the candidates, one piece per slot. Never comment on weight or attractiveness."""
+FIT_CREATOR_VERSION = "v1"  # bump when FIT_CREATOR changes so cached fits are rebuilt

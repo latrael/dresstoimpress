@@ -44,3 +44,6 @@ Tagging our 418-product catalog cost about **$0.07**. A hard $5 budget cap, cach
 - Claude does the reasoning work (understanding clothes and explaining why a piece fits your closet).
 - Gemini does the generation work (try-on).
 - They're cleanly separated, each with a measured cost and a fallback. One line for the demo: "every card tells you *why* it fits what you already own."
+
+## AI Fit Creator
+One tap builds complete outfits *for your body*. The pool is what you own plus in-stock pieces that pass your department, your learned price ranges and the sizing engine (only items we can actually order in your size, from the body scan's height/weight/waist/shoe size). Claude gets your build and measurements, style text, occasion, closet and ~40 sized candidates, and returns named fits with a reason that cites a real measurement ("slim build, 30.5 in waist: tapered denim keeps the line clean") and the closet piece each look is built around. Every id is validated against the pool and missing slots are filled by the outfit rules, so a fit is always wearable (top+bottom or dress, plus shoes). No AI? The same rules build one fit around each closet piece. Fits are cached an hour, can be rendered on your body photo on demand (`POST /fits/{id}/try-on`, lazy so the list is instant) and added to the cart in one tap at your size.

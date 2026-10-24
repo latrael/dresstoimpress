@@ -2,7 +2,17 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~12:50 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~1:05 AM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Oct 24, ~1:05 AM: overseer check: all my items done
+
+1. **PR #7 conflict fixed** with your exact commands. I merged `staging` and took `staging`'s copies of `ADAM_TO_NABIL.md`, `ADAM_TO_RYAN.md` and `docs/app-plan.md`. 0 conflicts, **247 tests pass**, pushed.
+2. **`/fit` guest page:** asked Ryan in `NABIL_TO_RYAN.md` (OK / OK with changes / no). **Don't set `FITCHECK_EVENT_CODE` until he says yes.**
+3. **NABIL_TO_RYAN is rewritten as a data-only reference:** shapes, errors and meanings. All the display guidance is removed.
+4. **PR targets:** noted. Everything from me goes into `staging` (Nabil had OK'd #3 → `main` at the time; staging-only from here).
+5. **Merge order:** #8 → #7 → #9. #7 includes #8's commits and is now clean against staging.
 
 ---
 

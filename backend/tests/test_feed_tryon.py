@@ -86,18 +86,18 @@ def test_status_needs_photo_without_any_photo(env):
     assert tryon_status("u", "jeans")["status"] == "needs_photo"
 
 
-def test_status_unavailable_when_ai_off_then_prefetch_makes_collage(env):
+def test_status_unavailable_when_ai_off_and_prefetch_never_makes_a_board(env):
     from app.ai import feed_tryon
     from app.ai.service import prefetch_tryons, tryon_status
 
     _ci(env, "t1", "top", "black tee")
     _ci(env, "a1", "accessory", "silver chain")
-    assert tryon_status("u", "jeans")["status"] == "unavailable"  # MOCK_AI: no Gemini
-    assert prefetch_tryons("u", ["jeans"])["jeans"]["status"] == "pending"
+    assert tryon_status("u", "jeans") == {"status": "unavailable"}  # MOCK_AI: no Gemini, no image
+    assert prefetch_tryons("u", ["jeans"])["jeans"] == {"status": "unavailable"}  # nothing started
     feed_tryon.wait_prefetch()
-    st = tryon_status("u", "jeans")
-    assert st["status"] == "unavailable" and st["mode"] == "collage" and st["image_url"]
-    assert feed_tryon.prefetch_used("u") == 0  # collages don't count toward the daily cap
+    assert tryon_status("u", "jeans") == {"status": "unavailable"}
+    assert feed_tryon.prefetch_used("u") == 0
+    assert env.list("tryon_cache") == []  # no board ever written
 
 
 def _ai_on(monkeypatch):

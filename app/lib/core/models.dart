@@ -192,8 +192,8 @@ class ClosetPick {
 }
 
 /// Sprint 4 §10.1 `tryon`: slide 2. [status] is one of ready | pending | none | needs_photo | unavailable
-/// (unknown values read as none). [imageUrl] is set when ready, or the free collage when unavailable.
-/// [mode]: "ai" | "collage".
+/// (unknown values read as none). [imageUrl] is set only when ready (a real edit of the user's photo).
+/// [mode]: "ai".
 class TryOnState {
   const TryOnState({required this.status, this.imageUrl, this.mode});
   static const none = TryOnState(status: 'none');
@@ -497,14 +497,12 @@ class TryOnResponse {
   const TryOnResponse({required this.imageUrl, required this.cached, this.mode, this.sourcePhotoUrl});
   final String imageUrl;
   final bool cached;
-  final String? mode; // "ai" = real try-on, "collage" = outfit board
+  final String? mode; // "ai" = real try-on (the only mode; there is no collage fallback)
 
   /// The user's own photo the try-on was edited from (their body photo or one of their outfit photos
   /// that shows the garment being replaced); null on older servers or when the user has no photo.
   /// Handy for a before/after toggle.
   final String? sourcePhotoUrl;
-
-  bool get isOutfitBoard => mode == 'collage';
 
   factory TryOnResponse.fromJson(Json j) => TryOnResponse(
       imageUrl: _str(j['image_url']),
@@ -1435,7 +1433,7 @@ class OutfitFit {
   /// Fits are closet-only since sprint 4: no shop pieces are ever substituted.
   final List<String> missing;
   final String? tryOnUrl;
-  final String? tryOnMode; // "ai" | "collage"
+  final String? tryOnMode; // "ai"
   final String? tryOnSourcePhotoUrl; // the user's photo the try-on was edited from (see TryOnResponse.sourcePhotoUrl)
 
   List<FitPiece> get newPieces => pieces.where((p) => !p.fromCloset).toList();

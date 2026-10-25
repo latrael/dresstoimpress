@@ -132,6 +132,17 @@ class _ReelsBrowseState extends State<ReelsBrowse> with WidgetsBindingObserver {
         : (status: 'none', url: null, mode: null);
   }
 
+  /// Re-request one post's try-on (after "unavailable"); the server retries since nothing was cached.
+  Future<void> retry(String productId) async {
+    if (widget.prepareTryOns == null) return;
+    setState(() => tryOns[productId] = (status: 'pending', url: null, mode: null));
+    try {
+      final result = await widget.prepareTryOns!([productId]);
+      if (mounted) setState(() => tryOns.addAll(result));
+    } catch (_) {/* stays unavailable */}
+    schedulePoll();
+  }
+
   Future<void> prepare() async {
     if (!mounted || !widget.active || !foreground || widget.products.isEmpty) {
       return;
@@ -228,6 +239,7 @@ class _ReelsBrowseState extends State<ReelsBrowse> with WidgetsBindingObserver {
               onSizeAdvice: widget.onSizeAdvice,
               onCloset: widget.onCloset,
               onBodyPhoto: widget.onBodyPhoto,
+              onRetryTryOn: widget.prepareTryOns == null ? null : retry,
               seedLabel: i == 0 ? widget.seedLabel : null,
               onClearSeed: widget.onClearSeed);
         });
@@ -251,6 +263,7 @@ class _ReelPost extends StatefulWidget {
       this.onSizeAdvice,
       this.onCloset,
       this.onBodyPhoto,
+      this.onRetryTryOn,
       this.seedLabel,
       this.onClearSeed});
   final Map<String, dynamic> product;
@@ -263,6 +276,7 @@ class _ReelPost extends StatefulWidget {
   final Future<String?> Function(String)? onSizeAdvice;
   final void Function(String?)? onCloset;
   final VoidCallback? onBodyPhoto, onClearSeed;
+  final void Function(String productId)? onRetryTryOn;
   final String? seedLabel;
   @override
   State<_ReelPost> createState() => _ReelPostState();
@@ -379,57 +393,41 @@ class _ReelPostState extends State<_ReelPost>
           child: Text(text, style: Theme.of(context).textTheme.labelMedium)));
   Widget onYou() {
     final preview = widget.tryOn;
-    if (preview.url?.isNotEmpty == true) {
+    // Only a real AI edit of the user's photo is ever shown on this slide; no collage, no outfit board.
+    if (preview.url?.isNotEmpty == true && preview.mode == 'ai') {
       return Stack(fit: StackFit.expand, children: [
         NichePhoto(
-            key: ValueKey(preview.url),
-            url: widget.imageUrl(preview.url!),
-            label: preview.mode == 'ai'
-                ? 'On you'
-                : preview.mode == 'collage'
-                    ? 'Outfit board'
-                    : 'Preview'),
-        Positioned(
-            left: 16,
-            bottom: 16,
-            child: tag(preview.mode == 'ai'
-                ? 'on you'
-                : preview.mode == 'collage'
-                    ? 'outfit board'
-                    : 'preview'))
+            key: ValueKey(preview.url), url: widget.imageUrl(preview.url!), label: 'On you'),
+        Positioned(left: 16, bottom: 16, child: tag('on you'))
       ]);
     }
-    if (preview.status == 'pending') {
-      return const NicheShimmer(label: 'Dressing you…');
-    }
-    return ColoredBox(
-        color: Niche.of(context).paper,
-        child: Center(
-            child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(NicheIcons.autoAwesome, size: 32),
-                  const SizedBox(height: 16),
-                  Text(
-                      preview.status == 'needs_photo'
-                          ? 'Meet your next look.'
-                          : 'Your next look, on you.',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
-                  Text(
-                      preview.status == 'needs_photo'
-                          ? 'Add a photo of you to see this on you.'
-                          : preview.status == 'unavailable'
-                              ? 'An outfit board is not available for this piece yet.'
-                              : 'Your preview will appear here when it’s ready.',
-                      textAlign: TextAlign.center),
-                  if (preview.status == 'needs_photo' &&
-                      widget.onBodyPhoto != null)
-                    TextButton(
-                        onPressed: widget.onBodyPhoto,
-                        child: const Text('Add your photo'))
-                ]))));
+    final pending = preview.status == 'pending';
+    final unavailable = preview.status == 'unavailable' || preview.status == 'none';
+    return Stack(fit: StackFit.expand, children: [
+      ColorFiltered(
+          colorFilter: ColorFilter.mode(
+              Colors.black.withValues(alpha: pending ? .25 : .45), BlendMode.darken),
+          child: NichePhoto(key: ValueKey('hero-${widget.hero}'), url: widget.hero, label: 'Product')),
+      if (pending) const Positioned.fill(child: NicheShimmer(label: 'Dressing you…')),
+      Positioned(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          child: Row(children: [
+            tag(pending
+                ? 'Try-on rendering…'
+                : preview.status == 'needs_photo'
+                    ? 'Add a photo to see this on you'
+                    : 'Try-on unavailable'),
+            const Spacer(),
+            if (preview.status == 'needs_photo' && widget.onBodyPhoto != null)
+              FilledButton.tonal(onPressed: widget.onBodyPhoto, child: const Text('Add photo'))
+            else if (unavailable && widget.onRetryTryOn != null)
+              FilledButton.tonal(
+                  onPressed: () => widget.onRetryTryOn!(widget.product['id'] as String),
+                  child: const Text('Retry')),
+          ]))
+    ]);
   }
 
   Widget closet() {

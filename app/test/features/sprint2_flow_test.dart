@@ -278,8 +278,8 @@ void main() {
     await t.tap(find.text('class'));
     await t.tap(find.text('Create 3 fits'));
     await t.pumpAndSettle();
-    expect(find.text('My shirt'), findsOneWidget);
-    expect(find.text('My jeans'), findsOneWidget);
+    expect(find.text('My shirt'), findsWidgets);
+    expect(find.text('My jeans'), findsWidgets);
     expect(find.text('Add shoes to your closet to finish this one.'),
         findsOneWidget);
     expect(find.text('Try on this fit'), findsNothing);

@@ -12,22 +12,12 @@
 </p>
 
 <p align="center">
-  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-iOS%20%C2%B7%20Android%20%C2%B7%20web-02569B?logo=flutter&logoColor=white">
-  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white">
-  <img alt="Claude" src="https://img.shields.io/badge/Claude-Haiku-D97757?logo=anthropic&logoColor=white">
-  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-image-8E75B2?logo=googlegemini&logoColor=white">
-  <img alt="Apify" src="https://img.shields.io/badge/Apify-catalog%20%2B%20pins-97D700">
-  <img alt="Capital One Nessie" src="https://img.shields.io/badge/Capital%20One-Nessie-D03027">
-  <img alt="Cal Hacks 13.0" src="https://img.shields.io/badge/Cal%20Hacks-13.0-5B1F33">
-</p>
-
-<p align="center">
   <a href="https://youtu.be/LcWr5wsJTwA"><img alt="Watch the demo on YouTube" src="https://img.shields.io/badge/%E2%96%B6%20Watch%20the%20demo-YouTube-FF0000?logo=youtube&logoColor=white"></a>
 </p>
 
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/readme/welcome.jpg" width="230" alt="The welcome screen: the niche arch, 'Let's make niche yours.' and a mosaic of real outfits"></td>
+    <td align="center"><img src="docs/readme/welcome.jpg" width="230" alt="The welcome screen: the niche arch, 'Your clothes. Your fit. Your niche.' and a mosaic of real outfits"></td>
     <td align="center"><img src="docs/readme/item.jpg" width="230" alt="Home: one product per screen, an H&M oxford shirt with Add to cart"></td>
     <td align="center"><img src="docs/readme/on-you.jpg" width="230" alt="The same shirt tried on the user's own photo"></td>
   </tr>
@@ -111,17 +101,9 @@ The app never calls outside services directly. Every key stays on the server, an
 
 **Plain rules (free, instant):** sizing, colour matching, warmth/season, duplicate detection.
 
-## Brand
+## Design
 
-<img src="docs/readme/logo-board.png" width="360" align="right" alt="The Niche logo board: the arch mark on merlot and on cream, and the niche wordmark">
-
-The mark is an **arch**: a niche in a wall, a small space that's yours. The **dot** is the hanger hook.
-
-- **Type:** Young Serif for the wordmark and display text, Manrope for everything else.
-- **Colour:** merlot `#5B1F33` and wine `#722F42` on cream `#FFFBF0`, with a blush `#E9B9A8` hook. Dark mode keeps the same palette.
-- **Feel:** minimal chrome so the outfits lead. Frosted-glass bars, soft corners, and a small animation on every tap.
-
-<br clear="right">
+The original app wireframe: [WireframeSketch (made with Notability).pdf](<WireframeSketch (made with Notability).pdf>).
 
 ## Tech stack
 

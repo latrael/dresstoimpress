@@ -8,6 +8,9 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **Sat 10:45 PM: ✅ merged + live on the shared server (`adfd493`, restarted, health 200).** #57 sizing · #58 core for your Inspo routes · #59 closet outfits/pieces · #60 try-on v5 (in-place edit from the user's best outfit photo) + `GET /fitcheck/{id}/shop?grouped=true` (6 per tag, honours `shop_for`) · #61 app icon/name "Niche" · #62 Fit Score v2 (calibrated: random outfit median 49, 90+ only if every criterion ≥ 8; per-style scores; photo critic) + Complete the Look rejects athletic↔formal clashes.
+  - **Your next steps:** (1) review the grouped shop route in `fitcheck.py` (thin wrapper over `shop_fit`); (2) **login backend** when the council picks A/B/C (sprint-3 §4), and I'll add the token to core right after; (3) re-test **Nessie checkout** on the fresh DB; (4) Devpost: add Fit Score v2 + try-on from your own outfit photos + the Niche icon; (5) `scripts/redo_closet.py <user>` re-runs a closet built before #59 through the new pipeline (it deletes and re-adds that user's pieces from their own uploaded photos).
+
 - **Sat 10:30 PM: sprint-3 status from Adam's side.**
   - **Rebuild ran on the shared server at 22:05** (`data.bak-20261024-220558`): 3,188 products, 4 blank users, everything else empty. Your store cache is live (`/feed` 0.06 s warm).
   - **Merged:** #57 (sizing: PP tops 12 → 4, Brandy Melville XS/S + One Size), #58 (core for your PUT like, paged comments, photo_w/h, `stores()`), #59 (closet: every garment, outfits + pieces, no catalog photos on owned pieces, clean shot from the best photo).

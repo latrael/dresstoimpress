@@ -109,7 +109,7 @@ def test_claude_json_passes_temperature_zero_and_validates(monkeypatch):
     monkeypatch.setattr(llm, "_record_claude", lambda *a: None)
     out = llm.claude_json(_formatted("summary"))
     assert out == {"summary": "A tee."}
-    assert len(calls) == 2 and all(c["temperature"] == 0.0 for c in calls)
+    assert len(calls) == 2 and all(c["extra_body"]["temperature"] == 0.0 for c in calls)
     assert all(c["thinking"] == {"type": "disabled"} for c in calls)
 
 
@@ -156,4 +156,4 @@ def test_pair_reason_naming_unknown_closet_item_is_replaced():
     assert "black tee" not in fixed.reason and fixed.pairs_with and fixed.pairs_with[0] in {"c1", "c2"}
     good = PairResult(product_id="p1", id="p1", score=0.9, reason="layer it over your white baby tee", pairs_with=["c1"])
     assert service._safe_reason(good, product, closet) is good
-    assert "ONLY items they own" in prompts.PAIR and prompts.PAIR_VERSION == "v4"
+    assert "ONLY items they own" in prompts.PAIR and prompts.PAIR_VERSION == "v5"

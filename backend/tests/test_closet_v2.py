@@ -341,7 +341,7 @@ def test_prompts_ask_for_every_garment_and_brand():
     assert '"brand"' in prompts.DIGITIZE and "accessory" in prompts.DIGITIZE and prompts.DIGITIZE_VERSION == "v2"
     for word in ("mirror selfie", "shoes", "watch", "bag", "cap", "Never collapse"):
         assert word in prompts.DIGITIZE
-    assert prompts.PAIR_VERSION == "v4" and "brand" in prompts.PAIR
+    assert prompts.PAIR_VERSION == "v5" and "brand" in prompts.PAIR
 
 
 def test_pair_closet_json_includes_brand(client, monkeypatch):
@@ -349,15 +349,16 @@ def test_pair_closet_json_includes_brand(client, monkeypatch):
     from app.store import store
 
     monkeypatch.setattr(service, "text_mock", lambda: False)
-    store.put("closet_items", "ci_b", {"id": "ci_b", "user_id": "u_c", "image_url": "https://x/t.jpg", "category": "top",
+    # a bottom: a top can't "pair with" another top any more (same-category pairs are dropped by the validator)
+    store.put("closet_items", "ci_b", {"id": "ci_b", "user_id": "u_c", "image_url": "https://x/t.jpg", "category": "bottom",
                                        "color": "black", "pattern": "solid", "style_tags": [], "formality": 2,
-                                       "label": "black tee", "brand": "Stüssy"})
+                                       "label": "black cargos", "brand": "Stüssy"})
     store.put("products", PRODUCT["id"], PRODUCT)
     seen = {}
 
     def fake_ai(prompt, **kw):
         seen["prompt"] = prompt
-        return [{"product_id": PRODUCT["id"], "score": 0.9, "reason": "goes with your Stüssy tee", "pairs_with": ["ci_b"]}]
+        return [{"product_id": PRODUCT["id"], "score": 0.9, "reason": "goes with your Stüssy cargos", "pairs_with": ["ci_b"]}]
 
     monkeypatch.setattr(service, "ai_json", fake_ai)
     out = service.pair("u_c", [PRODUCT["id"]], k=1)

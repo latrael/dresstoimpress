@@ -17,10 +17,16 @@ class FitsScreen extends StatefulWidget {
 }
 
 class _FitsScreenState extends State<FitsScreen> {
-  String occasion = 'everyday';
+  final occasionCtrl = TextEditingController();
   bool loading = false;
   String? error;
   List<OutfitFit> fits = [];
+
+  @override
+  void dispose() {
+    occasionCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> generate() async {
     setState(() {
@@ -28,8 +34,9 @@ class _FitsScreenState extends State<FitsScreen> {
       error = null;
     });
     try {
-      final result =
-          await widget.store.api.createFits(occasion: occasion, count: 3);
+      final text = occasionCtrl.text.trim();
+      final result = await widget.store.api
+          .createFits(occasion: text.isEmpty ? null : text, count: 3);
       if (mounted) setState(() => fits = result);
     } catch (e) {
       if (mounted) setState(() => error = featureError(e));
@@ -52,20 +59,16 @@ class _FitsScreenState extends State<FitsScreen> {
               const Text(
                   'Three outfits put together from what you already own.'),
               const SizedBox(height: 16),
-              Wrap(spacing: 8, children: [
-                for (final choice in [
-                  'everyday',
-                  'class',
-                  'date',
-                  'rooftop party'
-                ])
-                  ChoiceChip(
-                      label: Text(choice),
-                      selected: occasion == choice,
-                      onSelected: loading
-                          ? null
-                          : (_) => setState(() => occasion = choice))
-              ]),
+              TextField(
+                  key: const ValueKey('fits-occasion'),
+                  controller: occasionCtrl,
+                  enabled: !loading,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) =>
+                      loading || widget.store.demo ? null : generate(),
+                  decoration: const InputDecoration(
+                      labelText: "What's the occasion?",
+                      hintText: 'date night in SF, 55°F, walking a lot')),
               const SizedBox(height: 16),
               FilledButton.icon(
                   onPressed: loading || widget.store.demo ? null : generate,
@@ -89,7 +92,7 @@ class _FitsScreenState extends State<FitsScreen> {
               if (!loading && fits.isEmpty && error == null)
                 const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text('Choose an occasion to get started.')),
+                    child: Text('Tell us the occasion to get started.')),
               for (final fit in fits)
                 Card(
                     key: ValueKey('fit-${fit.id}'),

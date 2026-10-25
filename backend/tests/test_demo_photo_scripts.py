@@ -64,8 +64,8 @@ def test_set_body_photo_and_tryon_cache_follows_it(env):
     url1 = set_body_photo(photos / "body1.png", "u_b")
     assert store.get("users", "u_b")["body_photo_url"] == url1 and url1.endswith(".png")
 
-    _, cached, _ = service.try_on("u_b", ["p1"], [])
-    assert cached is False
+    r = service.try_on("u_b", ["p1"], [])
+    assert r.cached is False and r.source_photo_url == url1
     assert service.try_on("u_b", ["p1"], [])[1] is True
     set_body_photo(photos / "body1.png", "u_b")                                    # new photo (new file name)
     assert service.try_on("u_b", ["p1"], [])[1] is False                           # old body's try-on not reused

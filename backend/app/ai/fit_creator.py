@@ -451,11 +451,11 @@ def _try_on(user_id: str, fit: dict) -> dict | None:
     product_ids = [p["product"]["id"] for p in fit["pieces"] if p["source"] == "catalog"]
     closet_ids = [p["closet_item"]["id"] for p in fit["pieces"] if p["source"] == "closet"]
     try:
-        url, _cached, mode = try_on(user_id, product_ids, closet_ids)
+        r = try_on(user_id, product_ids, closet_ids)
     except (BadModelOutput, ValueError) as e:
         log.warning("fit try-on failed: %s", e)
         return None
-    return {"image_url": url, "mode": mode}
+    return {"image_url": r.image_url, "mode": r.mode, "source_photo_url": r.source_photo_url}
 
 
 def fit_try_on(fit_id: str, user_id: str) -> dict | None:

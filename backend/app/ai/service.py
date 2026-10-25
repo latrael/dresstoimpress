@@ -8,7 +8,7 @@ import re
 import uuid
 from pathlib import Path
 
-from typing import get_args
+from typing import NamedTuple, get_args
 
 from ..models import ClosetItem, PairResult, Product, StyleTag
 from .colors import find_duplicate
@@ -119,17 +119,22 @@ def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str], body
 COLLAGE_RETRY_SECONDS = int(os.getenv("COLLAGE_RETRY_SECONDS", "600"))
 
 
-def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> tuple[str, bool, str]:
-    """Returns (image_url, cached, mode). mode "ai" = Gemini try-on; "collage" = outfit board
-    fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS)."""
-    user = store.get("users", user_id) or {}
-    body = user.get("body_photo_url")
-    key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
-    hit = store.get("tryon_cache", key)
-    if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
-                or mock_mode("GEMINI_API_KEY")):
-        return hit["image_url"], True, hit.get("mode", "ai")
+class TryOnResult(NamedTuple):
+    image_url: str
+    cached: bool
+    mode: str                    # "ai" = Gemini try-on; "collage" = outfit board fallback
+    source_photo_url: str | None  # the user's photo that was edited (image 1), None without any photo
 
+
+def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> TryOnResult:
+    """Returns TryOnResult(image_url, cached, mode, source_photo_url). mode "ai" = Gemini try-on; "collage" =
+    outfit board fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS).
+    Image 1 is the user's best photo for these garments (tryon_source.pick_source_photo: the body photo or one
+    of their own outfit photos that shows a garment of the same category, full body, not cut off), so the v5
+    in-place edit has a real region to replace; its url is part of the cache key."""
+    from .tryon_source import pick_source_photo
+
+    user = store.get("users", user_id) or {}
     pieces = [p for pid in product_ids if (p := get_product(pid))]
     pieces += [c for cid in closet_item_ids if (c := store.get("closet_items", cid))]
     garments = [g["image_url"] for g in pieces]
@@ -137,10 +142,19 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     if not garments:
         raise ValueError("no garment images found for given ids")
 
+    src = pick_source_photo(user_id, pieces, user)
+    body = src["url"] if src else None
+    boxes = src["boxes"] if src else [None] * len(pieces)
+    key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
+    hit = store.get("tryon_cache", key)
+    if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
+                or mock_mode("GEMINI_API_KEY")):
+        return TryOnResult(hit["image_url"], True, hit.get("mode", "ai"), hit.get("source_photo_url", body))
+
     if os.getenv("MOCK_AI") == "1":  # UI development: instant placeholder, no downloads
         store.put("tryon_cache", key, {"image_url": garments[0], "user_id": user_id, "mode": "collage",
-                                       "at": time.time()})
-        return garments[0], False, "collage"
+                                       "at": time.time(), "source_photo_url": body})
+        return TryOnResult(garments[0], False, "collage", body)
 
     TRYON_DIR.mkdir(parents=True, exist_ok=True)
     mode = "ai"
@@ -159,7 +173,7 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
                                           shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in")).get("size")
             except Exception:  # sizing is a nicety here, never a reason to skip the try-on
                 size = None
-            img = gemini_image(prompts.tryon_prompt(slots, names, bp.get("build"), size), [body, *garments])
+            img = gemini_image(prompts.tryon_prompt(slots, names, bp.get("build"), size, boxes), [body, *garments])
         except BadModelOutput:
             img = None  # quota, billing, budget cap, no image returned
     if img is None:
@@ -170,8 +184,9 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     name = f"{key}.png" if mode == "ai" else f"{key}-board.png"
     (TRYON_DIR / name).write_bytes(img)
     url = f"{PUBLIC_BASE}/static/tryon/{name}"
-    store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": mode, "at": time.time()})
-    return url, False, mode
+    store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": mode, "at": time.time(),
+                                   "source_photo_url": body})
+    return TryOnResult(url, False, mode, body)
 
 
 # ---------- /pair ----------
@@ -383,21 +398,21 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
 
 # ---------- Fit Check: shop the fit ----------
 
-def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
-    """Shoppable cards for a friend's Fit Check post, ranked against the viewer's closet.
+SHOP_PER_TAG = 3          # flat /shop: cards per tagged piece (unchanged)
+SHOP_GROUPED_PER_TAG = 6  # grouped /shop: similar items shown under each piece's chip
 
-    Each result is a Product plus `reason`, `pairs_with`, and `matched_tag` (the post label it answers).
-    Tags with no product match yet are skipped; Nabil can run Apify for that retailer and call again.
-    """
+
+def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int) -> list[tuple[int, dict]]:
+    """(tag index, card) pairs behind shop_fit / shop_fit_grouped: post order, closest match first."""
     from .finder import find_products
 
     from concurrent.futures import ThreadPoolExecutor
 
     products = list_products()
-    matched: dict[str, str] = {}
+    matched: dict[str, tuple[int, str]] = {}
     # items that need a live store search take ~5 s each: run them side by side, keep post order
     with ThreadPoolExecutor(max(1, min(4, len(tagged)))) as ex:
-        found = list(ex.map(lambda t: find_products(t, products), tagged))
+        found = list(ex.map(lambda t: find_products(t, products, per_tag), tagged))
     from .finder import match_score
 
     order: dict[str, tuple[int, float]] = {}
@@ -408,24 +423,50 @@ def shop_fit(viewer_id: str, tagged: list[dict]) -> list[dict]:
             if style in seen_styles or p["id"] in matched:
                 continue  # one card per style: colour variants of the same item collapse
             seen_styles.add(style)
-            matched[p["id"]] = tag.get("label", "")
+            matched[p["id"]] = (i, tag.get("label", ""))
             order[p["id"]] = (i, -match_score(tag, p))
     if not matched:
         return []
 
     ranked = {r.product_id: r for r in pair(viewer_id, list(matched), k=len(matched))}
     out = []
-    for pid, label in matched.items():
+    for pid, (i, label) in matched.items():
         p = get_product(pid)
         r = ranked.get(pid)
-        out.append({**p,
-                    "reason": r.reason if r else f"from the fit: {label}",
-                    "pairs_with": r.pairs_with if r else [],
-                    "score": r.score if r else 0.0,
-                    "matched_tag": label})
+        out.append((i, {**p,
+                        "reason": r.reason if r else f"from the fit: {label}",
+                        "pairs_with": r.pairs_with if r else [],
+                        "score": r.score if r else 0.0,
+                        "matched_tag": label}))
     # the post's items in post order, closest match first; closet fit only breaks ties
-    out.sort(key=lambda d: (*order[d["id"]], -d["score"]))
+    out.sort(key=lambda row: (*order[row[1]["id"]], -row[1]["score"]))
     return out
+
+
+def shop_fit(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_PER_TAG) -> list[dict]:
+    """Shoppable cards for a friend's Fit Check post, ranked against the viewer's closet.
+
+    Each result is a Product plus `reason`, `pairs_with`, and `matched_tag` (the post label it answers).
+    Tags with no product match yet are skipped; Nabil can run Apify for that retailer and call again.
+    """
+    return [card for _, card in _shop_fit_rows(viewer_id, tagged, per_tag)]
+
+
+def shop_tag_summary(tag: dict) -> dict:
+    """The part of a FitTag the app needs to draw the piece's chip / pin."""
+    return {k: tag.get(k) for k in ("label", "category", "color", "box", "product_id")}
+
+
+def shop_fit_grouped(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_GROUPED_PER_TAG,
+                     keep=None) -> list[dict]:
+    """shop_fit, one group per tagged piece, in post order: [{"tag": {label, category, color, box,
+    product_id}, "products": [card, ...]}]. A piece with no match keeps its chip with `products: []`.
+    `keep(card) -> bool` drops cards the viewer should not see (their shop_for department)."""
+    groups = [{"tag": shop_tag_summary(t), "products": []} for t in tagged]
+    for i, card in _shop_fit_rows(viewer_id, tagged, per_tag):
+        if keep is None or keep(card):
+            groups[i]["products"].append(card)
+    return groups
 
 
 # ---------- Fit Check: auto-tag an outfit photo ----------

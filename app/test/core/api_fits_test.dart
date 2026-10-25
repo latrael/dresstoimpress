@@ -2,6 +2,7 @@
 import 'dart:convert';
 
 import 'package:dress_to_impress/core/api.dart';
+import 'package:dress_to_impress/core/models.dart';
 import 'package:dress_to_impress/core/settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -114,6 +115,25 @@ void main() {
     expect(t.mode, 'collage');
     expect(t.isOutfitBoard, isTrue);
     expect(t.cached, isFalse);
+    expect(t.sourcePhotoUrl, isNull); // older server: no source photo
+  });
+
+  test('try-on carries source_photo_url (the user photo it was edited from)', () async {
+    final api = _api([], (_) => {
+      'image_url': 'https://dti.example/static/tryon/x.png', 'cached': true, 'mode': 'ai',
+      'source_photo_url': 'https://dti.example/static/uploads/fit1.jpg',
+    });
+    final t = await api.tryOn(['hm:1']);
+    expect(t.sourcePhotoUrl, 'https://dti.example/static/uploads/fit1.jpg');
+    expect(t.cached, isTrue);
+
+    final fit = OutfitFit.fromJson({..._fit, 'try_on': {
+      'image_url': 'https://dti.example/static/tryon/y.png', 'mode': 'ai',
+      'source_photo_url': 'https://dti.example/static/uploads/fit2.jpg',
+    }});
+    expect(fit.tryOnUrl, 'https://dti.example/static/tryon/y.png');
+    expect(fit.tryOnSourcePhotoUrl, 'https://dti.example/static/uploads/fit2.jpg');
+    expect(OutfitFit.fromJson(_fit).tryOnSourcePhotoUrl, isNull);
   });
 
   test('addFitToCart posts and parses the cart', () async {

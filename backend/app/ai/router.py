@@ -448,12 +448,12 @@ def closet_tag(req: TagRequest):
 @router.post("/tryon", response_model=TryOnResponse)
 def tryon(req: TryOnRequest):
     try:
-        url, cached, mode = service.try_on(req.user_id, req.product_ids, req.closet_item_ids)
+        r = service.try_on(req.user_id, req.product_ids, req.closet_item_ids)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except BadModelOutput as e:
         raise _ai_down("try-on", e)
-    return TryOnResponse(image_url=url, cached=cached, mode=mode)
+    return TryOnResponse(image_url=r.image_url, cached=r.cached, mode=r.mode, source_photo_url=r.source_photo_url)
 
 
 @router.post("/pair", response_model=list[PairResult])
@@ -473,6 +473,8 @@ def shop_fit(req: ShopFitRequest):
             tagged = service.tag_fit(req.photo_url)
         except BadModelOutput as e:
             raise _ai_down("outfit tagging", e)
+    if req.grouped:
+        return service.shop_fit_grouped(req.viewer_id, tagged)
     return service.shop_fit(req.viewer_id, tagged)
 
 

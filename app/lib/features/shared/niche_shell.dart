@@ -52,7 +52,7 @@ class _NicheHeaderState extends State<NicheHeader>
       child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: ColoredBox(
-              color: Niche.cream.withValues(alpha: .70),
+              color: Niche.of(context).cream.withValues(alpha: .70),
               child: Padding(
                   padding:
                       EdgeInsets.only(top: MediaQuery.paddingOf(context).top),
@@ -64,7 +64,9 @@ class _NicheHeaderState extends State<NicheHeader>
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: Row(children: [
-                                const Text('niche', style: Niche.wordmark),
+                                Text('niche',
+                                    style: Niche.wordmark.copyWith(
+                                        color: Niche.of(context).brand)),
                                 const Spacer(),
                                 action('Liked', NicheIcons.favoriteBorder,
                                     widget.onLiked),
@@ -102,7 +104,8 @@ class _NicheHeaderState extends State<NicheHeader>
                                             minWidth: 44, minHeight: 44),
                                         icon: CircleAvatar(
                                             radius: 15,
-                                            backgroundColor: Niche.blush,
+                                            backgroundColor:
+                                                Niche.of(context).blush,
                                             child: Text(
                                                 widget.initial.isEmpty
                                                     ? 'N'
@@ -112,7 +115,8 @@ class _NicheHeaderState extends State<NicheHeader>
                                                     .textTheme
                                                     .labelMedium!
                                                     .copyWith(
-                                                        color: Niche.merlot)))))
+                                                        color: Niche.of(context)
+                                                            .brand)))))
                               ]))))))));
 }
 
@@ -129,7 +133,9 @@ class NicheNavigation extends StatelessWidget {
       BuildContext context, int value, String label, IconData icon) {
     final selected = index == value;
     final content = Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 22, color: selected ? Niche.cream : Niche.merlot),
+      Icon(icon,
+          size: 22,
+          color: selected ? Niche.cream : Niche.of(context).brand),
       AnimatedSize(
           duration: const Duration(milliseconds: 180),
           child: selected

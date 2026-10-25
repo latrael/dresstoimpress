@@ -1,3 +1,4 @@
+import 'niche_theme.dart';
 import 'niche_icons.dart';
 import 'package:flutter/material.dart';
 
@@ -65,7 +66,7 @@ class PiecePhoto extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) => ColoredBox(
-      color: const Color(0xFFEDEAE4),
+      color: Niche.of(context).stone,
       child: url.isEmpty
           ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,

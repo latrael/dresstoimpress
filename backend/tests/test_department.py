@@ -41,33 +41,57 @@ def test_normalizers_set_department():
         {"women"}  # fixture only has genderName
 
 
-def test_snapshot_backfill_matches_raw():
-    by_hm = {str(it["id"]): it["category"] for it in _raw("hm")}
-    by_uq = {it["productId"]: it["genderCategory"] for it in _raw("uniqlo")}
-    want = {"ladies": "women", "men": "men", "sportswear_women": "women"}
+def test_snapshot_departments_match_raw():
+    """Invariants, not counts, so the snapshot can grow (418 -> 2,500+). Raw files other than hm*/uniqlo*
+    (e.g. shopify_*) and products without a saved raw item are only held to the first rule."""
+    by_hm = {str(it["id"]): str(it.get("category") or "") for it in _raw("hm") if it.get("id")}
+    by_uq = {str(it["productId"]): it for it in _raw("uniqlo") if it.get("productId")}
+    want = {"ladies": "women", "men": "men"}
+    checked = 0
     for p in SNAPSHOT:
+        assert p.get("department") in {"men", "women", "unisex"}, p["id"]  # none left unknown
         code = p["id"].split(":")[1]
-        if p["retailer"] == "hm":
+        if p["retailer"] == "hm" and code in by_hm:
             cat = by_hm[code]
             if cat.startswith(("ladies_", "men_")):  # every men_/ladies_ item is mapped
                 assert p["department"] == want[cat.split("_")[0]], p["id"]
-            else:
-                assert p["department"] == want["_".join(cat.split("_")[:2])], p["id"]
-        else:
-            assert p["department"] == by_uq[code].lower(), p["id"]
-    counts = Counter(p["department"] for p in SNAPSHOT)
-    assert counts == {"women": 212, "men": 159, "unisex": 47}  # none left unknown
+            elif hm_department(cat):  # sportswear_women_ / sportswear_men_
+                assert p["department"] == hm_department(cat), p["id"]
+            checked += 1
+        elif p["retailer"] == "uniqlo" and code in by_uq:
+            if uniqlo_department(by_uq[code]):
+                assert p["department"] == uniqlo_department(by_uq[code]), p["id"]
+            checked += 1
+    assert checked > 0  # the raw files were found and matched
+    depts, stores = Counter(p["department"] for p in SNAPSHOT), Counter(p["retailer"] for p in SNAPSHOT)
+    assert depts["men"] > 0 and depts["women"] > 0 and stores["hm"] > 0 and stores["uniqlo"] > 0
 
 
 def test_backfill_only_adds_department():
     from scripts.backfill_department import backfill, departments
-    stripped = copy.deepcopy(SNAPSHOT)
+    depts = departments()
+    # products whose raw item says the department (others, e.g. other stores, keep what ingest set)
+    covered = [p for p in SNAPSHOT if depts.get((p["retailer"], p["id"].split(":")[1]))]
+    assert covered
+    stripped = copy.deepcopy(covered)
     for p in stripped:
         del p["department"]
-    out = backfill(stripped, departments())
-    assert out == SNAPSHOT and [list(p) for p in out] == [list(p) for p in SNAPSHOT]  # same keys, same order
-    assert backfill(copy.deepcopy(SNAPSHOT), departments()) == SNAPSHOT  # idempotent
-    assert backfill([{**SNAPSHOT[0], "id": "hm:nope:black"}], departments())[0]["department"] is None
+    out = backfill(stripped, depts)
+    assert out == covered and [list(p) for p in out] == [list(p) for p in covered]  # same keys, same order
+    assert backfill(copy.deepcopy(covered), depts) == covered  # idempotent
+    assert backfill([{**SNAPSHOT[0], "id": "hm:nope:black"}], depts)[0]["department"] is None
+
+
+def test_backfill_reads_only_hm_and_uniqlo_raw_files(tmp_path):
+    from scripts.backfill_department import departments
+
+    def put(name, items):
+        (tmp_path / name).write_bytes(gzip.compress(json.dumps(items).encode()))
+    put("hm_20261024a.json.gz", [{"id": "1", "category": "men_jeans_baggy"}])
+    put("uniqlo_20261024b.json.gz", [{"productId": "E1-000", "genderCategory": "WOMEN"}])
+    put("shopify_kith.json.gz", [{"id": "1", "category": "ladies_tops", "productId": "E1-000",
+                                  "genderCategory": "MEN"}])  # same keys, other store: ignored
+    assert departments(tmp_path) == {("hm", "1"): "men", ("uniqlo", "E1-000"): "women"}
 
 
 # ---------- the filter ----------

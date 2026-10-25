@@ -58,6 +58,7 @@ More flags: `--hm "baggy jeans,y2k" --uniqlo "men jeans,women t-shirts" --per 5`
 | POST | `/search/photo` (multipart `user_id`, `file`) | Discover photo search → `{photo_url, tags, similar, goes_with}`; no post or closet item created |
 | GET | `/products?q=&category=&retailer=&sort=&limit=&offset=` | search and paging → `{items, total, limit, offset, next_offset}` |
 | GET | `/products/{id}` | one product |
+| GET | `/stores` | stores we carry → `[{id, name, count, departments}]` (in stock), for onboarding chips + cart headings |
 | POST | `/onboarding` `{user_id?, display_name?, text}` | "Y2K, tops under $40" → user `style_text` + `price_ranges`, plus `parsed` chips |
 | POST · GET · PATCH | `/users`, `/users/{id}` | create, read and update a user (Adam owns `/users/{id}/style*` and `/body-photo`) |
 | GET · POST | `/fit?code=`, `/fit/post`, `/fit/wall`, `/fit/qr` | **public QR page** for guest Fit Check posts. Needs `FITCHECK_EVENT_CODE`; no `X-DTI-Key` |
@@ -119,6 +120,8 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 - **Style keywords are loose** on H&M (it has no y2k tag), so Adam's tagger supplies the real `style_tags`.
 
 ## Changelog
+
+- **Oct 24, ~5:45 PM:** Sprint #2 catalog: 418 → ~3,200 products from H&M, Uniqlo + 6 Shopify stores (Princess Polly, Edikted, Brandy Melville, True Classic, Kith, Stüssy), ~$2.97 Apify. `normalize_shopify`, `GET /stores`, re-ingest keeps AI tags, `run_actor` 502-safe with a $2 cap per run.
 
 - **Oct 24, ~5:15 PM:** `Product.department` (backfilled from raw: 212 women / 159 men / 47 unisex) + `User.shop_for` filter Home, Discover and shop-this-fit; `seed_shown`; 2:1 store mix; Discover size-first; cart lines keep `image_url`. 411 tests.
 - **Oct 24, ~4:30 PM:** Council redesign backend: Home size-first + `?seed=`, `preferred_stores` / `onboarded` on User, Discover `/search`, `/search/styles`, `/search/photo`, atomic cart size change, unavailable cart items, Inspo for everyone. 370 tests.

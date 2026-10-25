@@ -67,7 +67,7 @@ def _rebase_image_urls():
 # images drawn on a canvas. Only these hosts are fetched (so it's not an open proxy), and it needs
 # no key because image widgets can't send headers.
 IMG_HOSTS = {"image.hm.com", "lp2.hm.com", "image.uniqlo.com", "picsum.photos", "fastly.picsum.photos",
-             "images.unsplash.com"}
+             "images.unsplash.com", "cdn.shopify.com"}  # cdn.shopify.com: the Shopify stores (sprint #2)
 IMG_MAX_BYTES = 8 * 1024 * 1024
 
 

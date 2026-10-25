@@ -23,7 +23,35 @@ Sat Oct 24, 2026, ~5:00 PM PT. For the council session. Built from Nabil's list 
 
 ---
 
-## Part A: app details (Ryan's lane unless noted)
+## Status, 5:45 PM
+
+**Decided:**
+- **Nabil:** H&M + Uniqlo **and** the Shopify stores; Apify budget ~$10.
+- **Ryan (RYAN_TO_ADAM 5:14):**
+  - A1: a thin line with spacing.
+  - A5: keep the dots, drop the numeric counter.
+  - A8: catalog styles plus vibe chips.
+  - Fits for you lives in **Discover**.
+  - Summaries show with no label.
+
+**Done (Nabil, on `nabil`):**
+- **Catalog: 418 → ~3,200 products, 8 stores. Apify: ~$2.97.**
+  - $0 of that recovered Adam's "lost" runs.
+  - H&M ~$1.10, Uniqlo ~$0.70 (2 failed starts included), Shopify ~$1.10.
+  - Every product has sizes with stock + a department.
+  - AI tags via `tag_catalog` (~$0.72).
+- **Pipeline:**
+  - Re-ingest keeps paid AI tags.
+  - `run_actor` survives 502s.
+  - A $2 cap on every run; `--from-dataset`.
+  - `normalize_shopify`.
+  - `GET /stores`.
+
+**Still open:**
+- **Adam:** summaries + department fallback (`adam/summary-dept`), the sizing PR (with the new stores' size names), and `imageProxyHosts` += `cdn.shopify.com` in core.
+- **Ryan:** the store list from `GET /stores`.
+
+
 
 | # | Detail (Nabil's words) | Where it is now | Change | Owner |
 | --- | --- | --- | --- | --- |

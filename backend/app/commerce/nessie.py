@@ -17,7 +17,9 @@ from ..store import store
 
 BASE = "https://api.nessieisreal.com"
 DEMO_USER = "u_demo"  # NESSIE_ACCOUNT_ID, if set, is used for this user instead of creating one
-MERCHANTS = {"hm": "H&M", "uniqlo": "Uniqlo", "zara": "Zara", "mango": "Mango", "asos": "ASOS"}
+MERCHANTS = {"hm": "H&M", "uniqlo": "Uniqlo", "zara": "Zara", "mango": "Mango", "asos": "ASOS",
+             "princesspolly": "Princess Polly", "edikted": "Edikted", "brandymelville": "Brandy Melville",
+             "trueclassic": "True Classic", "kith": "Kith", "stussy": "Stüssy"}
 ADDRESS = {"street_number": "2650", "street_name": "Telegraph Ave", "city": "Berkeley", "state": "CA",
            "zip": "94704"}
 GEOCODE = {"lat": 37.8611, "lng": -122.2588}

@@ -306,6 +306,22 @@ def search_products(q: str = "", category: Optional[str] = None, retailer: Optio
             "next_offset": offset + limit if offset + limit < total else None}
 
 
+@router.get("/stores")
+def stores():
+    """Stores we carry, for onboarding chips and cart headings: [{id, name, count, departments}], biggest
+    first. `count` = in-stock products; `departments` = in-stock products per men/women/unisex."""
+    by: dict[str, dict] = {}
+    for p in store.list("products"):
+        if p.get("source") == "seed" or not _buyable(p):
+            continue
+        s = by.setdefault(p["retailer"], {"id": p["retailer"], "count": 0, "departments": {}})
+        s["count"] += 1
+        if dept := p.get("department"):
+            s["departments"][dept] = s["departments"].get(dept, 0) + 1
+    return [{**s, "name": nessie.MERCHANTS.get(s["id"], s["id"].title())}
+            for s in sorted(by.values(), key=lambda s: (-s["count"], s["id"]))]
+
+
 @router.get("/products/{product_id:path}")  # ids are "{retailer}:{code}:{color}"; :path keeps a "/" colour working
 def get_product(product_id: str):
     return _product(product_id)

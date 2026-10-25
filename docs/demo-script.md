@@ -110,7 +110,7 @@ Only if we demo it live (25 s). Otherwise, say the line and start on Home.
 ## Judge Q&A crib
 
 - **Is the data real?**
-  - Yes: 418 products from H&M and Uniqlo, via two Apify actors, with per-size stock (212 women's, 159 men's, 47 unisex).
+  - Yes: 3,188 products from 8 stores (H&M, Uniqlo and six Shopify brands like Princess Polly, Kith and Stüssy), via three Apify actors, with per-size stock (1,727 women's, 1,170 men's, 291 unisex).
   - It's a snapshot taken at ingest. The only live scraping is photo search and "shop this fit": if a piece isn't in our catalog, it searches H&M live (capped and cached).
 - **Is the payment real?** Yes, against Capital One's Nessie sandbox API: one purchase per store, and each one can be checked by its purchase id.
 - **How does it know my size?**

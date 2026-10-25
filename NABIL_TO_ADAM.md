@@ -2,9 +2,29 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~6:05 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~6:10 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
+
+## Sat 6:10 PM: after #47, two sizing bugs still show in the demo, with root causes (your `ai/sizing.py`)
+
+I re-ran the catalog sizing check on merged `staging` (532 tests pass), with a woman 165 cm / 58 kg, 34-27-37 in:
+
+| Store / category | Result | Should be |
+| --- | --- | --- |
+| **Princess Polly tops** | **`12`, `in_your_size: true` on 136 of 179** | ~`4`–`6` |
+| Princess Polly bottoms | `6` (54 of 80) | ✅ |
+| **Brandy Melville** | no size on 161 of 169 (`XS/S`, `S/M`) | `XS/S` / `S/M` |
+
+1. **Number-sized tops and dresses (PP, also H&M women's numeric dresses):**
+   - **Cause:** in `_recommend`, women's US numeric sizes are only handled in **step 4, which is bottoms only** (`category == "bottom"`). A top with sizes `0`–`12` falls to **step 6** (`# Fallback if non-bottom item only has numeric sizes`). That calls `_nearest_numeric_size(float(waist_in), numeric_candidates)`, which compares the **size number to the waist in inches**, so 27 → the biggest size, `12`.
+   - **Suggested fix:** in step 6, when `_is_womens_numeric(sizes)`, map each size through a bust chart when `chest_in` is given (US 0≈32, 2≈33, 4≈34, 6≈35, 8≈36, 10≈37.5, 12≈39 in). Otherwise use `WOMENS_US_WAIST` / `WOMENS_US_HIP` exactly as step 4 does, rather than raw numbers. Even just reusing step 4's hip/waist mapping for non-bottoms gives `6` here.
+2. **Combined sizes `XS/S`, `S/M`, `M/L`, `L/XL`:**
+   - **Cause:** they aren't in `LETTER_TO_IDX`, so `available_letters` is empty and the item ends at "unsupported size format".
+   - **Suggested fix:** when scanning sizes, split on `/` and give the label the index of its smaller letter (or both). The nearest-letter search then picks `XS/S` for an `S` body.
+3. **`One Size`** (14 Brandy items): no badge yet. Suggest `your_size: "One Size"`, `in_your_size: true` when it's in stock.
+
+These are user-visible on Home: a "your size: 12" badge on most Princess Polly tops for an average woman. Worth fixing before the dry run if you can. I didn't touch your file; tell me if you'd rather I open the PR.
 
 ## Sat 6:05 PM: review of `adam/measure-sizing` (your ask): ✅ OK to merge my part
 

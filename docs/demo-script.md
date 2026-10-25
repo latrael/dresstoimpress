@@ -1,6 +1,6 @@
 # Demo script (3 minutes)
 
-Rewritten Sat Oct 24 ~4 PM for the council flow (`docs/council-final-sprint.md`): **Home · Discover · Inspo** tabs, with **Liked · Cart · Closet · User** at the top right. Nabil runs the clock at the dry runs (17:30 / 18:30). **[confirm]** = depends on a screen in Ryan's sprint PR (not merged at the time of writing); check it at the first dry run, and if it isn't there, use the step's fallback. **[decide]** = a call for the team at the dry run. Who talks is a suggestion.
+Rewritten Sat Oct 24 ~4 PM for the council flow (`docs/council-final-sprint.md`); **updated Sun Oct 25 ~3 AM for the sprint-4 redesign (Ryan's #71)**: Home is now **reels** (one product per screen, 3 photo slides), **swipe left/right between Home · Discover · Inspo**, and a lowercase **niche** header with **Liked · Bag · Closet** icons plus your avatar. Nabil runs the clock at the dry runs (17:30 / 18:30). **[confirm]** = depends on a screen in Ryan's sprint PR (not merged at the time of writing); check it at the first dry run, and if it isn't there, use the step's fallback. **[decide]** = a call for the team at the dry run. Who talks is a suggestion.
 
 **Setup before a judge arrives:**
 - **Demo phone:** team test profile (`u_demo`), charged, on venue Wi-Fi.
@@ -10,6 +10,11 @@ Rewritten Sat Oct 24 ~4 PM for the council flow (`docs/council-final-sprint.md`)
 - **Laptop:** backup video queued, and the Nessie purchase list open (`GET /accounts/{id}/purchases`).
 - **Backend:**
   - Run `scripts.reset_demo`, then `scripts.warm_demo` (empty cart, warm feed and shops).
+  - **Warm Home's slides (sprint 4):**
+    - Open Home on the demo phone and scroll the first ~6 posts once, 15–20 minutes before judging. Each post pre-renders the next 3 try-ons (15–20 s each), so slide 2 ("on you") is instant on stage.
+    - **Each account gets 20 AI pre-renders a day.** After that, slide 2 shows the outfit board. Don't burn them scrolling the demo account the night before; ask Adam to reset or raise the cap if needed.
+    - `u_demo` needs a **body photo** (or slide 2 says "Add a photo of you") and **a few closet pieces** (or slide 3 shows empty "+ add from your closet" tiles).
+  - Load Home once per team account after any server restart, so Claude's card reasons are cached (the first load takes ~7 s, then ~40 ms).
   - Then `smoke_e2e`: 10/10 within the last hour.
   - Nabil's backup server is running the same commit as the shared one.
 - **Inspo:** Nabil's 3 real fits are posted (done), so the feed isn't empty if the live post fails.
@@ -35,19 +40,21 @@ Only if we demo it live (25 s). Otherwise, say the line and start on Home.
 - **Line:** "Every step past your style is skippable, and the photo stays private."
 - **Fallback:** the team test profile is already onboarded. "We've set this one up already."
 
-## 0:40–1:15 · Home (Ryan drives, Adam narrates the AI)
+## 0:40–1:15 · Home as reels (Ryan drives, Adam narrates the AI)
 
-- **Scroll the feed.** It's one product per screen, continuous scroll (`GET /feed`).
-  - Each card shows real photos, the price, an **"in your size"** badge with the size already picked (`your_size` / `in_your_size`), and a reason line like "goes with your black cargos".
-- **Adam:** "Every card is a real listing pulled by Apify, filtered to your size and what's in stock, then ranked by Claude against what you already own. It tells you *why*."
-- **Add to cart** (`POST /cart/{user}/items`), with the size already chosen. **Like** one item: the heart shows up under Liked at the top right.
+- **One product fills the screen.** Swipe up for the next one (`GET /feed`). Slide through its 3 photos:
+  1. **The item on its own:** the store's product shot (`hero_image_url`; 941 of 3,188 products have one, the rest use their main photo).
+  2. **On you:** the item tried on *your* photo with pieces from your closet, already rendered before you got there (`tryon`, prefetched with `POST /feed/{user}/tryons`). Label: "on you".
+  3. **Goes with:** a 2×2 grid of pieces **you already own** that go with it, accessories included (`closet_picks`). These are your own photos, never a store's.
+- **Adam:** "Every post is a real listing pulled by Apify, in your size and in stock, ranked by Claude against your closet. Slide two is Gemini putting it on you, with the pieces from slide three."
+- **Tap "see more":** the description, colour and the size Niche picked for you.
+- **Add to cart** is the only button (`POST /cart/{user}/items`). It turns into "Added ✓" and the bag icon bounces. **Double-tap the photo** to like it: it shows up under Liked.
 - **Add a Uniqlo item too,** so the cart has two stores.
-- **Optional, 10 s: try-on** on your own photo (`POST /tryon`; warmed, so it's cached).
-  - **Fallback:** the outfit board (`mode: "collage"`), labeled as such. Never call it a photo of you.
-- **Fallbacks if the feed stalls:**
-  1. Pull to refresh. Reasons are cached, so it comes back fast.
-  2. If the tunnel is down, switch the base URL to Nabil's backup.
-  3. If that fails too, play the backup video from 0:40.
+- **Swipe sideways on the caption** (not the photo) to go to Discover. Sideways on the photo only flips slides.
+- **Fallbacks:**
+  - Slide 2 still says "Dressing you…": swipe on and come back; it's rendering (15–20 s).
+  - The outfit board shows (`mode: "collage"`): it's labelled "outfit board". Never call it a photo of you.
+  - The feed stalls: pull to refresh (reasons are cached). If the tunnel is down, switch the base URL to Nabil's backup. If that fails too, play the backup video from 0:40.
 
 ## 1:15–1:45 · Discover (Adam) [confirm]
 
@@ -102,7 +109,7 @@ Only if we demo it live (25 s). Otherwise, say the line and start on Home.
 | Anthropic credits run out | Nothing to do: text falls back to Gemini (drilled Sat 2:05 AM, smoke 10/10). |
 | Claude **and** Gemini both down | Feed reasons come from rules, try-on shows the outfit board, and cart, checkout and seeded Home still work. **What fails is new photo work:** photo search, closet scans, and auto-tags on a live post. Use the style chips, and a pre-posted real fit instead. |
 | Body scan fails | It falls back to height/weight estimates (`source: "estimate"`). Or type the measurements in; the size badges work either way. |
-| Try-on fails | The outfit board appears (`mode: "collage"`); warmed try-ons are cached. |
+| Try-on fails, or the account's 20 daily pre-renders are used up | Slide 2 shows the outfit board (`mode: "collage"`, labelled). Warmed try-ons are cached, so warm the first posts before judging. |
 | Nessie fails | **Retry payment** on the receipt; the order is saved as `nessie_failed`. Show the evidence table in `docs/devpost.md`. |
 | The iPhone build fails | Demo the Android build, or the web build in Chrome on the laptop. |
 | Everything fails | Play the backup video and narrate it live. |

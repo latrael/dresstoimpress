@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/shared/niche_theme.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -76,10 +77,9 @@ void main() {
     }));
     await mount(
         t, OnboardingScreen(api: client, initialStep: 7, onSaved: () async {}));
-    expect(
-        t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Men')).selected,
+    expect(t.widget<NicheChip>(find.widgetWithText(NicheChip, 'Men')).selected,
         true);
-    await t.tap(find.widgetWithText(ChoiceChip, 'Women'));
+    await t.tap(find.widgetWithText(NicheChip, 'Women'));
     await t.tap(find.text('Save preferences'));
     await t.pumpAndSettle();
     expect(update!['shop_for'], 'women');
@@ -100,11 +100,10 @@ void main() {
     expect(store.profile.otherStores, '');
     await mount(
         t, OnboardingScreen(api: client, initialStep: 2, onSaved: () async {}));
-    expect(find.byType(FilterChip), findsNWidgets(8));
+    expect(find.byType(NicheChip), findsNWidgets(8));
     expect(
         t
-            .widget<FilterChip>(
-                find.widgetWithText(FilterChip, 'Princess Polly'))
+            .widget<NicheChip>(find.widgetWithText(NicheChip, 'Princess Polly'))
             .selected,
         true);
     expect(find.text('We currently carry H&M and Uniqlo.'), findsNothing);
@@ -116,6 +115,11 @@ void main() {
       if (r.url.path == '/search/styles') {
         return reply({'styles': [], 'trending': []});
       }
+      if (r.url.path.endsWith('/tryons')) {
+        return reply({
+          'p': {'status': 'needs_photo'}
+        });
+      }
       expect(r.url.path, '/feed');
       expect(r.url.queryParameters['seed'], 'p');
       requests.add(r.url.queryParameters['seed_shown']);
@@ -123,7 +127,7 @@ void main() {
     }));
     await mount(t, ShopShell(store: FeedFixture(client)));
     Future<void> choose() async {
-      await t.tap(find.text('Discover'));
+      await t.tap(find.byKey(const ValueKey('tab-1')));
       await t.pumpAndSettle();
       await t.ensureVisible(find.byKey(const ValueKey('suggested-p')));
       await t.pumpAndSettle();

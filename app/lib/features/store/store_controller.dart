@@ -24,10 +24,12 @@ class StoreController extends ChangeNotifier {
   int sizingRevision = 0;
   ShopperProfile profile = const ShopperProfile();
   final Map<String, Future<String?>> _sizes = {};
+  String displayName = '';
   Future<void> loadProfile({bool fromServer = false}) async {
     profile = await ShopperProfile.load(api.settings.userId);
     if (fromServer && !demo) {
       final user = await api.getUser();
+      displayName = user.displayName;
       final body = user.bodyProfile;
       profile = ShopperProfile(
           completed: user.onboarded || profile.completed,
@@ -337,6 +339,22 @@ Map<String, dynamic> browseMap(RankedProduct card) {
     'price_usd': p.priceUsd,
     'sale_price_usd': p.isOnSale ? p.effectivePrice : null,
     'image_url': p.imageUrl,
+    'hero_image_url': card.heroImageUrl,
+    'closet_picks': [
+      for (final pick in card.closetPicks)
+        {
+          'id': pick.id,
+          'label': pick.label,
+          'category': pick.category,
+          'image_url': pick.imageUrl
+        }
+    ],
+    if (card.tryOn != null)
+      'tryon': {
+        'status': card.tryOn!.status,
+        'image_url': card.tryOn!.imageUrl,
+        'mode': card.tryOn!.mode
+      },
     'images': [
       for (final i in p.images) {'url': i.url, 'kind': i.kind}
     ],

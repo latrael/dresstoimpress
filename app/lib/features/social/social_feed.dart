@@ -1,4 +1,8 @@
-import 'dart:typed_data';
+import 'dart:math' as math;
+import 'package:flutter/services.dart';
+import '../shared/niche_theme.dart';
+import '../shared/niche_photo.dart';
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -57,10 +61,10 @@ class _SocialFeedState extends State<SocialFeed> {
                 IconButton(
                     tooltip: 'Refresh fits',
                     onPressed: refresh,
-                    icon: const Icon(Icons.refresh)),
+                    icon: const Icon(NicheIcons.refresh)),
                 FilledButton.tonalIcon(
                     onPressed: create,
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(NicheIcons.add),
                     label: const Text('Post a fit')),
               ])),
         Expanded(
@@ -82,29 +86,32 @@ class _SocialFeedState extends State<SocialFeed> {
                             ? 'Connect to explore Inspo.'
                             : 'No fits yet. Your next look could be the first.'));
                   }
-                  return ListView(padding: const EdgeInsets.all(20), children: [
-                    for (final post in snapshot.data!)
-                      FitPostCard(
-                          key: ValueKey(post.id),
-                          post: post,
-                          bindings: widget.bindings ??
-                              InspoBindings.fromApi(widget.store.api),
-                          api: widget.store.api,
-                          onShop: widget.onShop,
-                          onTagSearch: widget.onTagSearch,
-                          onDeleted: refresh,
-                          onAuthor: (id, name) => Navigator.push<void>(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => FeaturePage(
-                                      title: name,
-                                      child: SocialFeed(
-                                          store: widget.store,
-                                          onShop: widget.onShop,
-                                          onTagSearch: widget.onTagSearch,
-                                          authorId: id,
-                                          bindings: widget.bindings)))))
-                  ]);
+                  return ListView(
+                      padding: EdgeInsets.fromLTRB(
+                          16, 12, 16, Niche.bottomSpace(context)),
+                      children: [
+                        for (final post in snapshot.data!)
+                          FitPostCard(
+                              key: ValueKey(post.id),
+                              post: post,
+                              bindings: widget.bindings ??
+                                  InspoBindings.fromApi(widget.store.api),
+                              api: widget.store.api,
+                              onShop: widget.onShop,
+                              onTagSearch: widget.onTagSearch,
+                              onDeleted: refresh,
+                              onAuthor: (id, name) => Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => FeaturePage(
+                                          title: name,
+                                          child: SocialFeed(
+                                              store: widget.store,
+                                              onShop: widget.onShop,
+                                              onTagSearch: widget.onTagSearch,
+                                              authorId: id,
+                                              bindings: widget.bindings)))))
+                      ]);
                 })),
       ]);
 }
@@ -214,7 +221,10 @@ class FitPostCard extends StatefulWidget {
   State<FitPostCard> createState() => _FitPostCardState();
 }
 
-class _FitPostCardState extends State<FitPostCard> {
+class _FitPostCardState extends State<FitPostCard>
+    with SingleTickerProviderStateMixin {
+  late final heart = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 650));
   late FitCheckPost post = widget.post;
   late bool liked = post.likedByMe ?? false;
   late int count = post.likeCount ?? post.likes.length;
@@ -297,6 +307,7 @@ class _FitPostCardState extends State<FitPostCard> {
   void dispose() {
     instantLike?.removeListener(likeChanged);
     instantLike?.dispose();
+    heart.dispose();
     super.dispose();
   }
 
@@ -316,6 +327,8 @@ class _FitPostCardState extends State<FitPostCard> {
   }
 
   Future<void> like() async {
+    HapticFeedback.selectionClick();
+    if (!shownLiked && !Niche.reduced(context)) heart.forward(from: 0);
     if (instantLike != null) {
       instantLike!.toggle();
       return;
@@ -346,6 +359,11 @@ class _FitPostCardState extends State<FitPostCard> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      sheetAnimationStyle: AnimationStyle(
+          duration: Niche.reduced(context)
+              ? const Duration(milliseconds: 120)
+              : const Duration(milliseconds: 300),
+          reverseDuration: const Duration(milliseconds: 280)),
       builder: (_) => CommentsSheet(
           api: widget.api,
           postId: post.id,
@@ -387,8 +405,9 @@ class _FitPostCardState extends State<FitPostCard> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-            title: Text(post.authorName ?? post.userId),
+            leading: const CircleAvatar(child: Icon(NicheIcons.personOutline)),
+            title: Text(post.authorName ?? post.userId,
+                style: Theme.of(context).textTheme.titleMedium),
             onTap: widget.onAuthor == null
                 ? null
                 : () => widget.onAuthor!(
@@ -397,7 +416,7 @@ class _FitPostCardState extends State<FitPostCard> {
                 ? IconButton(
                     tooltip: 'Delete your post',
                     onPressed: busy == null ? deletePost : null,
-                    icon: const Icon(Icons.delete_outline))
+                    icon: const Icon(NicheIcons.deleteOutline))
                 : null),
         NaturalPhotoFrame(
             url: widget.api.imageProxyUrl(post.photoUrl),
@@ -412,17 +431,23 @@ class _FitPostCardState extends State<FitPostCard> {
                     onTap: () => setState(() => showTags = !showTags),
                     child: Stack(fit: StackFit.expand, children: [
                       ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                              widget.api.imageProxyUrl(post.photoUrl),
-                              fit: BoxFit.cover,
-                              alignment: Alignment.center,
-                              semanticLabel:
-                                  'Outfit by ${post.authorName ?? post.userId}',
-                              webHtmlElementStrategy:
-                                  WebHtmlElementStrategy.prefer,
-                              errorBuilder: (_, __, ___) => const Center(
-                                  child: Text('Photo unavailable')))),
+                          borderRadius: BorderRadius.circular(28),
+                          child: NichePhoto(
+                              url: widget.api.imageProxyUrl(post.photoUrl),
+                              label:
+                                  'Outfit by ${post.authorName ?? post.userId}')),
+                      IgnorePointer(
+                          child: AnimatedBuilder(
+                              animation: heart,
+                              builder: (context, _) => !heart.isAnimating
+                                  ? const SizedBox.shrink()
+                                  : Opacity(
+                                      opacity: heart.isAnimating
+                                          ? math.sin(heart.value * math.pi)
+                                          : 0,
+                                      child: Center(
+                                          child: Icon(NicheIcons.favorite,
+                                              size: 88, color: Niche.paper))))),
                       Positioned(
                           left: 12,
                           bottom: 12,
@@ -431,8 +456,8 @@ class _FitPostCardState extends State<FitPostCard> {
                               ? Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                      color: const Color(0xEEFFFFF8),
-                                      borderRadius: BorderRadius.circular(12)),
+                                      color: Niche.paper.withValues(alpha: .85),
+                                      borderRadius: BorderRadius.circular(20)),
                                   constraints:
                                       const BoxConstraints(maxHeight: 180),
                                   child: SingleChildScrollView(
@@ -450,7 +475,7 @@ class _FitPostCardState extends State<FitPostCard> {
                                       ])))
                               : const Align(
                                   alignment: Alignment.bottomLeft,
-                                  child: Icon(Icons.local_offer_outlined,
+                                  child: Icon(NicheIcons.localOfferOutlined,
                                       color: Colors.white))),
                     ])))),
         if (post.caption?.isNotEmpty == true)
@@ -464,8 +489,9 @@ class _FitPostCardState extends State<FitPostCard> {
               TextButton.icon(
                   key: ValueKey('like-${post.id}'),
                   onPressed: instantLike != null || !liking ? like : null,
-                  icon:
-                      Icon(shownLiked ? Icons.favorite : Icons.favorite_border),
+                  icon: Icon(shownLiked
+                      ? NicheIcons.favorite
+                      : NicheIcons.favoriteBorder),
                   label: Text('$shownCount')),
               FilledButton.tonal(
                   onPressed: busy == null
@@ -497,7 +523,7 @@ class _FitPostCardState extends State<FitPostCard> {
         const SizedBox(height: 12),
         TextButton.icon(
             onPressed: openComments,
-            icon: const Icon(Icons.chat_bubble_outline),
+            icon: const Icon(NicheIcons.chatBubbleOutline),
             label: Text('Comments ($commentCount)')),
         const SizedBox(height: 16),
         if (busy != null) const LinearProgressIndicator(),
@@ -587,12 +613,16 @@ class _CatalogTagState extends State<CatalogTag> {
       future: product,
       builder: (context, snapshot) {
         final p = snapshot.data;
-        return ActionChip(
-            label: Text(p == null
-                ? '${widget.tag.label}${widget.tag.retailer == null ? '' : ' · ${retailerName(widget.tag.retailer!)}'}'
-                : '${p.name} · ${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
-            onPressed: () => p == null
-                ? widget.onSearch?.call(widget.tag.label)
-                : widget.onProduct(p));
+        return NichePress(
+            child: NicheGlass(
+                radius: 999,
+                opacity: .75,
+                child: ActionChip(
+                    label: Text(p == null
+                        ? '${widget.tag.label}${widget.tag.retailer == null ? '' : ' · ${retailerName(widget.tag.retailer!)}'}'
+                        : '${p.name} · ${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
+                    onPressed: () => p == null
+                        ? widget.onSearch?.call(widget.tag.label)
+                        : widget.onProduct(p))));
       });
 }

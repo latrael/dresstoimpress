@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import 'measurement_picker.dart';
@@ -124,7 +125,7 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
           const SizedBox(height: 16),
           FilledButton.icon(
               onPressed: busy ? null : scan,
-              icon: const Icon(Icons.accessibility_new),
+              icon: const Icon(NicheIcons.accessibilityNew),
               label: Text(busy
                   ? 'Scanning…'
                   : r == null

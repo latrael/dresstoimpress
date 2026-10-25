@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  animations: 3.0.0
   http: ^1.2.2
   shared_preferences: ^2.3.2
   image_picker: ^1.1.2
@@ -23,6 +24,27 @@ flutter:
   uses-material-design: true
   assets:
     - assets/demo-products.json
+  fonts:
+    - family: NicheIconsRegular
+      fonts:
+        - asset: assets/icons/Phosphor.ttf
+    - family: NicheIconsFill
+      fonts:
+        - asset: assets/icons/Phosphor-Fill.ttf
+    - family: YoungSerif
+      fonts:
+        - asset: assets/fonts/YoungSerif-Regular.ttf
+          weight: 400
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-Bold.ttf
+          weight: 700
 
 # App icon: the Niche "Arch" mark (assets/icon/make_icon.py renders the PNGs).
 # Regenerate with: dart run flutter_launcher_icons

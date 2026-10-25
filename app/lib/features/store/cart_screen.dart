@@ -1,3 +1,5 @@
+import '../shared/niche_theme.dart';
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/api.dart';
@@ -171,10 +173,12 @@ class _CartScreenState extends State<CartScreen> {
       : SizedBox(
           width: 44,
           height: 56,
-          child: Image.network(widget.store.imageUrl(url),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.shopping_bag_outlined)));
+          child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.network(widget.store.imageUrl(url),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(NicheIcons.shoppingBagOutlined))));
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -193,7 +197,7 @@ class _CartScreenState extends State<CartScreen> {
                             MaterialPageRoute<void>(
                                 builder: (_) =>
                                     OrderHistory(api: widget.store.api))),
-                        icon: const Icon(Icons.receipt_long_outlined)),
+                        icon: const Icon(NicheIcons.receiptLongOutlined)),
                 ]),
             body: Center(
                 child: ConstrainedBox(
@@ -203,8 +207,8 @@ class _CartScreenState extends State<CartScreen> {
                       if (receipt != null) ...[
                         Icon(
                             widget.store.demo
-                                ? Icons.check_circle_outline
-                                : Icons.receipt_long,
+                                ? NicheIcons.checkCircleOutline
+                                : NicheIcons.receiptLong,
                             size: 48),
                         const SizedBox(height: 16),
                         Text(
@@ -221,7 +225,8 @@ class _CartScreenState extends State<CartScreen> {
                               trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(dollars(p.amountUsd)),
+                                    Text(dollars(p.amountUsd),
+                                        style: Niche.price),
                                     if (!widget.store.demo &&
                                         (p.status == 'nessie_failed' ||
                                             p.status == 'pending_nessie'))
@@ -263,7 +268,7 @@ class _CartScreenState extends State<CartScreen> {
                                           .error))),
                       ] else if (cart.count == 0) ...[
                         const SizedBox(height: 80),
-                        const Icon(Icons.shopping_bag_outlined, size: 48),
+                        const Icon(NicheIcons.shoppingBagOutlined, size: 48),
                         const SizedBox(height: 16),
                         const Center(
                             child:
@@ -282,8 +287,8 @@ class _CartScreenState extends State<CartScreen> {
                                   onPressed: widget.store.load,
                                   child: const Text('Retry'))),
                         if (cart.unavailable.isNotEmpty) ...[
-                          const Text('Unavailable pieces',
-                              style: TextStyle(fontWeight: FontWeight.w700)),
+                          Text('Unavailable pieces',
+                              style: Theme.of(context).textTheme.titleMedium),
                           for (final item in cart.unavailable)
                             ListTile(
                                 leading: thumbnail(
@@ -293,7 +298,7 @@ class _CartScreenState extends State<CartScreen> {
                                     'Size ${item.size} · Qty ${item.qty} · ${item.reason}'),
                                 trailing: IconButton(
                                     tooltip: 'Remove unavailable ${item.name}',
-                                    icon: const Icon(Icons.close),
+                                    icon: const Icon(NicheIcons.close),
                                     onPressed: busy
                                         ? null
                                         : () => remove(CartItem(
@@ -326,26 +331,30 @@ class _CartScreenState extends State<CartScreen> {
                                           onPressed: busy
                                               ? null
                                               : () => editSize(item),
-                                          icon:
-                                              const Icon(Icons.edit_outlined)),
-                                      Text(dollars(
-                                          (item.product?.effectivePrice ?? 0) *
-                                              item.qty)),
+                                          icon: const Icon(
+                                              NicheIcons.editOutlined)),
+                                      Text(
+                                          dollars(
+                                              (item.product?.effectivePrice ??
+                                                      0) *
+                                                  item.qty),
+                                          style: Niche.price),
                                       IconButton(
                                           tooltip:
                                               'Remove ${item.product?.name ?? 'item'} size ${item.size}',
                                           onPressed:
                                               busy ? null : () => remove(item),
-                                          icon: const Icon(Icons.close))
+                                          icon: const Icon(NicheIcons.close))
                                     ])),
                           Align(
                               alignment: Alignment.centerRight,
                               child: Text(
-                                  'Subtotal ${dollars(group.subtotalUsd)}')),
+                                  'Subtotal ${dollars(group.subtotalUsd)}',
+                                  style: Niche.price)),
                           const Divider(height: 32),
                         ],
                         Text('Total ${dollars(cart.totalUsd)}',
-                            style: Theme.of(context).textTheme.headlineSmall),
+                            style: Niche.price),
                         const SizedBox(height: 20),
                         if (error != null)
                           Padding(
@@ -448,7 +457,7 @@ class _OrderHistoryState extends State<OrderHistory> {
                             subtitle: Text(p.status),
                             trailing:
                                 Row(mainAxisSize: MainAxisSize.min, children: [
-                              Text(dollars(p.amountUsd)),
+                              Text(dollars(p.amountUsd), style: Niche.price),
                               if (['nessie_failed', 'pending_nessie']
                                   .contains(p.status))
                                 TextButton(

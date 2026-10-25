@@ -1,3 +1,4 @@
+import 'niche_icons.dart';
 import 'package:flutter/material.dart';
 
 class FeaturePage extends StatelessWidget {
@@ -8,7 +9,16 @@ class FeaturePage extends StatelessWidget {
   final List<Widget>? actions;
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title), actions: actions),
+        appBar: AppBar(
+            title: Text(title),
+            actions: actions,
+            automaticallyImplyLeading: false,
+            leading: Navigator.canPop(context)
+                ? IconButton(
+                    tooltip: 'Back',
+                    icon: const Icon(NicheIcons.back),
+                    onPressed: () => Navigator.maybePop(context))
+                : null),
         body: Center(
             child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 540),
@@ -57,7 +67,7 @@ class PiecePhoto extends StatelessWidget {
   Widget build(BuildContext context) => ColoredBox(
       color: const Color(0xFFEDEAE4),
       child: url.isEmpty
-          ? const Center(child: Icon(Icons.image_outlined))
+          ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,
               fit: BoxFit.contain,
               semanticLabel: label,

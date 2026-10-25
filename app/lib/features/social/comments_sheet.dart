@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -161,7 +162,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     IconButton(
                         tooltip: 'Close comments',
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close))
+                        icon: const Icon(NicheIcons.close))
                   ]),
                   const Divider(height: 1),
                   if (loadError != null)
@@ -194,8 +195,9 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                             widget.authorLabel
                                                     ?.call(comments[i]) ??
                                                 comments[i].userId,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.w600)),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium),
                                         Text(comments[i].text)
                                       ])))),
                   if (error != null)
@@ -227,7 +229,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                                         height: 20,
                                         child: CircularProgressIndicator(
                                             strokeWidth: 2))
-                                    : const Icon(Icons.send_outlined))
+                                    : const Icon(NicheIcons.sendOutlined))
                           ])),
                 ]))));
   }

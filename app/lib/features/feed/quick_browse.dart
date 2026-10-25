@@ -1,3 +1,5 @@
+import '../shared/niche_theme.dart';
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
@@ -427,7 +429,7 @@ class _ProductPageState extends State<_ProductPage>
                               Curves.easeOutBack.transform(
                                       (heart.value / .4).clamp(0, 1)) *
                                   .3,
-                          child: const Icon(Icons.favorite,
+                          child: const Icon(NicheIcons.favorite,
                               size: 92,
                               color: Colors.white,
                               shadows: [
@@ -441,7 +443,9 @@ class _ProductPageState extends State<_ProductPage>
                     tooltip: widget.saved ? 'Unsave item' : 'Save item',
                     onPressed: saving ? null : save,
                     icon: Icon(
-                      widget.saved ? Icons.favorite : Icons.favorite_border,
+                      widget.saved
+                          ? NicheIcons.favorite
+                          : NicheIcons.favoriteBorder,
                     ),
                   ),
                 ),
@@ -473,10 +477,7 @@ class _ProductPageState extends State<_ProductPage>
                           ),
                         Text(
                           '\$${price.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Niche.price.copyWith(color: Niche.paper),
                         ),
                       ],
                     ),
@@ -516,30 +517,26 @@ class _ProductPageState extends State<_ProductPage>
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                     showOriginal ? 'Your original photo' : personalPhoto!.label,
-                    style: const TextStyle(fontWeight: FontWeight.w600))),
+                    style: Theme.of(context).textTheme.titleMedium)),
             if (personalPhoto!.sourcePhotoUrl?.isNotEmpty == true)
               TextButton.icon(
                   onPressed: () => setState(() => showOriginal = !showOriginal),
-                  icon: const Icon(Icons.compare_outlined),
+                  icon: const Icon(NicheIcons.compareOutlined),
                   label: Text(
                       showOriginal ? 'Show try-on' : 'Compare with original')),
           ],
           const SizedBox(height: 12),
           Text(
             (p['brand'] ?? p['retailer'] ?? '').toString().toUpperCase(),
-            style: const TextStyle(
-              color: Color(0xFF722F42),
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall!
+                .copyWith(color: Niche.wine),
           ),
           const SizedBox(height: 5),
           Text(
             p['name'] as String,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-            ),
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 10),
           Text(
@@ -569,7 +566,7 @@ class _ProductPageState extends State<_ProductPage>
               child: Row(
                 children: [
                   const Icon(
-                    Icons.auto_awesome,
+                    NicheIcons.autoAwesome,
                     size: 18,
                     color: Color(0xFF722F42),
                   ),
@@ -588,12 +585,12 @@ class _ProductPageState extends State<_ProductPage>
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                     onPressed: advising ? null : advise,
-                    icon: const Icon(Icons.straighten),
+                    icon: const Icon(NicheIcons.straighten),
                     label: const Text('Find my size'))),
           if (!widget.automaticSizing) ...[
-            const Text(
+            Text(
               'Select size',
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -665,14 +662,14 @@ class _ProductPageState extends State<_ProductPage>
                   if (widget.onTryOn != null)
                     OutlinedButton.icon(
                         onPressed: generating ? null : tryOn,
-                        icon: const Icon(Icons.person_outline),
+                        icon: const Icon(NicheIcons.personOutline),
                         label: Text(
                             generating ? 'Creating try-on…' : 'Try it on')),
                   if (widget.onCompleteLook != null)
                     OutlinedButton.icon(
                         onPressed: () =>
                             widget.onCompleteLook!(p['id'] as String),
-                        icon: const Icon(Icons.auto_awesome),
+                        icon: const Icon(NicheIcons.autoAwesome),
                         label: const Text('Complete the look')),
                 ])),
           const SizedBox(height: 14),
@@ -689,7 +686,7 @@ class _ImageFailure extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.image_outlined, size: 36),
+            Icon(NicheIcons.imageOutlined, size: 36),
             SizedBox(height: 8),
             Text('Photo unavailable'),
           ],

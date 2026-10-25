@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -43,12 +44,12 @@ class _ClosetScreenState extends State<ClosetScreen> {
         useSafeArea: true,
         builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
               ListTile(
-                  leading: const Icon(Icons.checkroom_outlined),
+                  leading: const Icon(NicheIcons.checkroomOutlined),
                   title: const Text('A piece'),
                   subtitle: const Text('One garment, one or more photos'),
                   onTap: () => Navigator.pop(context, 'piece')),
               ListTile(
-                  leading: const Icon(Icons.style_outlined),
+                  leading: const Icon(NicheIcons.styleOutlined),
                   title: const Text('An outfit'),
                   subtitle: const Text('Find every garment in your photos'),
                   onTap: () => Navigator.pop(context, 'outfit')),
@@ -153,18 +154,18 @@ class _ClosetScreenState extends State<ClosetScreen> {
               const SizedBox(height: 12),
               FilledButton.icon(
                   onPressed: busy ? null : chooseUpload,
-                  icon: const Icon(Icons.add_a_photo_outlined),
+                  icon: const Icon(NicheIcons.addAPhotoOutlined),
                   label: Text(busy ? 'Finding your pieces…' : 'Add to closet')),
               const SizedBox(height: 12),
               SegmentedButton<String>(segments: const [
                 ButtonSegment(
                     value: 'pieces',
                     label: Text('Pieces'),
-                    icon: Icon(Icons.checkroom_outlined)),
+                    icon: Icon(NicheIcons.checkroomOutlined)),
                 ButtonSegment(
                     value: 'outfits',
                     label: Text('Outfits'),
-                    icon: Icon(Icons.style_outlined))
+                    icon: Icon(NicheIcons.styleOutlined))
               ], selected: {
                 view
               }, onSelectionChanged: (v) => setState(() => view = v.single)),
@@ -289,8 +290,8 @@ class _ClosetScreenState extends State<ClosetScreen> {
                                           tooltip: 'Remove closet piece',
                                           onPressed:
                                               busy ? null : () => remove(item),
-                                          icon:
-                                              const Icon(Icons.delete_outline)))
+                                          icon: const Icon(
+                                              NicheIcons.deleteOutline)))
                                 ]));
                       });
                 })),

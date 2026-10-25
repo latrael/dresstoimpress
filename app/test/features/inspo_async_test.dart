@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -249,10 +250,11 @@ void main() {
         find.descendant(
             of: find.byKey(const ValueKey('like-p')), matching: find.text('1')),
         findsOneWidget);
-    expect(find.byIcon(Icons.favorite), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('like-p')),
+        matching: find.byIcon(NicheIcons.favorite)), findsOneWidget);
     pending.completeError(StateError('offline'));
     await t.pumpAndSettle();
-    expect(find.byIcon(Icons.favorite_border), findsOneWidget);
+    expect(find.byIcon(NicheIcons.favoriteBorder), findsOneWidget);
     expect(calls, [true]);
     expect(
         find.text('Could not update like. Please try again.'), findsOneWidget);

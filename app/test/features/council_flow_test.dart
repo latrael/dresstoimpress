@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/feed/reels_browse.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -15,7 +16,6 @@ import 'package:dress_to_impress/features/profile/shopper_profile.dart';
 import 'package:dress_to_impress/features/shared/pick_photo.dart';
 import 'package:dress_to_impress/features/store/store_controller.dart';
 import 'package:dress_to_impress/features/store/cart_screen.dart';
-import 'package:dress_to_impress/features/feed/quick_browse.dart';
 
 Map<String, dynamic> product(String id) => {
       'id': id,
@@ -192,7 +192,7 @@ void main() {
     }
 
     icons();
-    expect(find.text('Inspo'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tab-2')), findsOneWidget);
     await t.tap(find.byTooltip('Your cart'));
     await t.pumpAndSettle();
     icons();
@@ -212,7 +212,7 @@ void main() {
     final store = FixtureStore();
     await t.pumpWidget(NicheApp(store: store));
     await t.pumpAndSettle();
-    await t.tap(find.text('Discover'));
+    await t.tap(find.byKey(const ValueKey('tab-1')));
     await t.pumpAndSettle();
     final selected = store.feed.first;
     await t.enterText(find.byType(TextField), selected.product.name);
@@ -224,7 +224,7 @@ void main() {
     await t.tap(find.byKey(ValueKey('suggested-${selected.id}')).first);
     await t.pumpAndSettle();
     expect(find.text('Similar to: ${selected.product.name}'), findsOneWidget);
-    expect(t.widget<QuickBrowse>(find.byType(QuickBrowse)).products.first['id'],
+    expect(t.widget<ReelsBrowse>(find.byType(ReelsBrowse)).products.first['id'],
         selected.id);
     await t.tap(find.byTooltip('Show all products'));
     await t.pumpAndSettle();

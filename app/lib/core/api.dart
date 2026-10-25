@@ -272,11 +272,48 @@ class Api {
   Future<bool> deleteBodyPhoto() async =>
       (await _send('DELETE', '/users/${_seg(_user)}/body-photo'))['deleted'] == true;
 
-  /// POST /closet/digitize ("digitize wardrobe"): one photo of several clothes (flat lay, rack, mirror
-  /// selfie) -> one tagged closet item per garment, each cropped to its own image. Items that look like
-  /// something already in the closet come back with [ClosetItem.duplicateOf] set.
+  /// Closet v2 upload: 1-8 photos in one call, with intent. `kind` = `'piece'` (each photo is one
+  /// garment: tagged directly) or `'outfit'` (each photo is a whole fit: every visible garment is detected
+  /// and cropped to its own picture). Pieces that match something already in the closet are not
+  /// duplicated: the photo is added to that item's [ClosetItem.wornIn] and it comes back under
+  /// [ClosetUploadResult.merged]. [mimeTypes] pairs with [photos] (jpeg when omitted).
+  Future<ClosetUploadResult> uploadClosetPhotos(List<List<int>> photos,
+      {required String kind, List<String>? mimeTypes}) async {
+    assert(kind == 'piece' || kind == 'outfit', 'kind must be piece or outfit');
+    final types = [for (var i = 0; i < photos.length; i++) mimeTypes?[i] ?? 'image/jpeg'];
+    return ClosetUploadResult.fromJson(await _uploadMany('/closet/upload', {'user_id': _user, 'kind': kind}, photos, types));
+  }
+
+  /// One outfit photo -> every garment in it, as closet v2 items (added + merged). Kept for callers of the
+  /// old digitize flow; same as `uploadClosetPhotos([bytes], kind: 'outfit').all`.
   Future<List<ClosetItem>> digitizeCloset(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
-      _listOf(await _upload('/closet/digitize', {'user_id': _user}, bytes, mimeType), ClosetItem.fromJson);
+      (await uploadClosetPhotos([bytes], kind: 'outfit', mimeTypes: [mimeType])).all;
+
+  /// PATCH /closet/{user}/{item}: edit one piece. Only the named fields are sent. [clearProduct] sends
+  /// `product_id: null` (drops the catalog match; the picture goes back to the clean shot / crop);
+  /// [productId] links it to a catalog product (the picture becomes the catalog photo).
+  Future<ClosetItem> updateClosetItem(String itemId,
+      {String? label, String? brand, String? category, String? color, String? productId, bool clearProduct = false}) async {
+    final body = <String, dynamic>{
+      if (label != null) 'label': label,
+      if (brand != null) 'brand': brand,
+      if (category != null) 'category': category,
+      if (color != null) 'color': color,
+      if (productId != null) 'product_id': productId,
+    };
+    final req = http.Request('PATCH', _uri('/closet/${_seg(_user)}/${_seg(itemId)}', null))
+      ..headers['X-DTI-Key'] = settings.apiKey
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode(clearProduct ? {...body, 'product_id': null} : body);
+    return ClosetItem.fromJson(await _perform(req));
+  }
+
+  /// POST /closet/{user}/{item}/reshoot: regenerate the piece's clean product shot (slow: image AI).
+  Future<ClosetItem> reshootClosetItem(String itemId) async {
+    final req = http.Request('POST', _uri('/closet/${_seg(_user)}/${_seg(itemId)}/reshoot', null))
+      ..headers['X-DTI-Key'] = settings.apiKey;
+    return ClosetItem.fromJson(await _perform(req, timeout: uploadTimeout));
+  }
 
   /// PATCH /users/{id}/body-profile: measurements the user typed (onboarding / profile), saved on the
   /// server so they follow the user to any device; [AppUser.bodyProfile] returns them. Only the fields
@@ -415,6 +452,31 @@ class Api {
     add('Content-Type: $mimeType\r\n\r\n');
     out.add(bytes);
     add('\r\n--$boundary--\r\n');
+
+    final req = http.Request('POST', _uri(path, query))
+      ..headers['X-DTI-Key'] = settings.apiKey
+      ..headers['Content-Type'] = 'multipart/form-data; boundary=$boundary'
+      ..bodyBytes = out.takeBytes();
+    return _perform(req, timeout: uploadTimeout);
+  }
+
+  /// multipart/form-data with several images, each in a `files` part (closet v2 upload).
+  Future<dynamic> _uploadMany(String path, Map<String, String> fields, List<List<int>> photos, List<String> mimeTypes,
+      {Map<String, String?>? query}) async {
+    final boundary = 'dti-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 30)}';
+    final out = BytesBuilder();
+    void add(String s) => out.add(utf8.encode(s));
+    for (final f in fields.entries) {
+      add('--$boundary\r\nContent-Disposition: form-data; name="${f.key}"\r\n\r\n${f.value}\r\n');
+    }
+    for (var i = 0; i < photos.length; i++) {
+      final ext = mimeTypes[i].split('/').last;
+      add('--$boundary\r\nContent-Disposition: form-data; name="files"; filename="photo$i.$ext"\r\n');
+      add('Content-Type: ${mimeTypes[i]}\r\n\r\n');
+      out.add(photos[i]);
+      add('\r\n');
+    }
+    add('--$boundary--\r\n');
 
     final req = http.Request('POST', _uri(path, query))
       ..headers['X-DTI-Key'] = settings.apiKey

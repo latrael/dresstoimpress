@@ -28,9 +28,9 @@ PATTERNS = {"solid", "striped", "plaid", "graphic", "floral", "other"}
 
 _MOCK = [
     {"label": "black cargo pants", "category": "bottom", "color": "black", "pattern": "solid",
-     "style_tags": ["streetwear"], "formality": 2, "box": [0.0, 0.0, 0.5, 1.0]},
+     "style_tags": ["streetwear"], "formality": 2, "brand": None, "box": [0.0, 0.0, 0.5, 1.0]},
     {"label": "white baby tee", "category": "top", "color": "white", "pattern": "solid",
-     "style_tags": ["y2k", "minimalist"], "formality": 2, "box": [0.5, 0.0, 1.0, 1.0]},
+     "style_tags": ["y2k", "minimalist"], "formality": 2, "brand": None, "box": [0.5, 0.0, 1.0, 1.0]},
 ]
 
 
@@ -101,7 +101,7 @@ def detect(image_url: str) -> list[dict]:
     """Garments in the photo, each with tags and a box. Cached per photo."""
     if text_mock():
         return [dict(d) for d in _MOCK]
-    key = "dig-" + hashlib.sha256(image_url.encode()).hexdigest()[:24]
+    key = f"dig{prompts.DIGITIZE_VERSION}-" + hashlib.sha256(image_url.encode()).hexdigest()[:24]
     hit = store.get("tag_cache", key)
     if hit:
         return hit["items"]
@@ -109,6 +109,17 @@ def detect(image_url: str) -> list[dict]:
     items = [r for r in raw if isinstance(r, dict) and r.get("label")] if isinstance(raw, list) else []
     store.put("tag_cache", key, {"items": items})
     return items
+
+
+def save_crop(local_path: Path | None, box) -> str | None:
+    """Crop one box out of the photo into /static/uploads; its public URL, or None without a usable box."""
+    piece = crop(local_path, box) if local_path else None
+    if not piece:
+        return None
+    name = f"{uuid.uuid4().hex}.jpg"
+    (DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
+    (DATA_DIR / "uploads" / name).write_bytes(piece)
+    return _public_url(name)
 
 
 def digitize(user_id: str, image_url: str, local_path: Path | None) -> list[ClosetItem]:

@@ -70,6 +70,14 @@ class ClosetItem(BaseModel):
     source: Literal["photo", "receipt", "seed"] = "photo"
     label: str = ""  # short plain name, e.g. "black cargo pants" (optional, added Fri night)
     duplicate_of: Optional[str] = None  # id of a closet item that's probably the same garment (set on upload)
+    # closet v2 (Oct 24): the piece on its own, plus the fits it was worn in
+    brand: Optional[str] = None            # read off a visible logo/label by the tagger, or from the catalog match
+    product_id: Optional[str] = None       # catalog product this piece was matched to (confident match only)
+    catalog_image_url: Optional[str] = None
+    match_confidence: Optional[float] = None  # 0-1, set with product_id
+    display_image_url: Optional[str] = None   # what to show: catalog image > generated clean shot > crop; = image_url
+    crop_image_url: Optional[str] = None      # the garment cropped out of the photo it was found in
+    worn_in: list[dict] = []                  # [{photo_url, at, source: "closet"|"fitcheck"}] outfit photos it appeared in
 
 
 class User(BaseModel):

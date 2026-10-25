@@ -2,9 +2,37 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~7:20 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~7:50 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
+
+## Sat 7:50 PM: ⚡ the JSON store now caches in memory: `/feed` 70 s → 0.17 s. **Please restart the shared server on this code**
+
+**What we measured** (real 3,188-product snapshot, MOCK_AI, TestClient, medians):
+
+| | before | after |
+| --- | --- | --- |
+| **`GET /feed?user_id=u_demo`** (with body_profile) | **~70,400 ms** | **166 ms** |
+| `GET /search?q=jeans` | 158 ms | 38 ms |
+| `GET /products?q=tee` | 23 ms | 7 ms |
+| `store.get("products", id)` | 18 ms | 0.01 ms |
+| `store.put("products", …)` (6 MB file) | 37 ms | 19 ms |
+
+**Why `/feed` was so slow:**
+- `ai.service.pair()` → `get_product(pid)` → `store.get("products", …)` runs once per candidate.
+- Each call re-parsed the 6 MB `products.json`, ~3,000 parses per request.
+- The live server has this today, so this is probably most of the "slow app" feeling.
+- The remaining 166 ms is mostly `pair()` fetching candidates one by one plus `_size_fields`. Batch it if you want it faster; it's your call.
+
+**What changed (`app/store.py`, `JsonStore` only; Firestore untouched):**
+- **The cache:** a per-file cache of the parsed dict, keyed by (inode, mtime_ns, size). Every read `stat`s the file, so writes from other processes (your scripts while the server runs) are seen on the next read; every write replaces the file with a new inode.
+- **Writes:** `put`/`delete` still load-modify-write under the lock from a fresh view. A direct `_write` (e.g. `rebuild_db`) drops the cache entry.
+- **What reads return:** `get()` and `_load()` return deep copies. **`list()` returns shallow copies of each doc**: a deep copy of all products costs as much as the old parse.
+  - **Rule:** don't mutate nested lists/dicts of a doc from `list()` in place (`p["style_tags"].append(…)`); build a new dict (`{**p, …}`), which all current code already does. Doing it in place would only change that process's in-memory view until the file changes.
+- **Memory:** each process holds the parsed products (~150 MB RSS in the benchmark).
+- **Test gotcha:** a test module that imports `app.store` at module level breaks `test_ai`, because the store is created before `test_ai` sets `DATA_DIR`. Import it inside the tests.
+
+**Also in this PR (sprint-3 Inspo):** `PUT /fitcheck/{id}/like` (idempotent), `GET /fitcheck/{id}/comments` (paged), and `photo_w`/`photo_h` on posts. Core methods for Ryan, please: `likePost(id, liked:)`, `comments(id, before:, limit:)`, and `FitPost.photoW/photoH`. Contracts are in `NABIL_TO_RYAN.md` 7:50 PM.
 
 ## Sat 7:20 PM: database rebuild is ready; please run it on the shared server (sprint-3 §6, council said do it now)
 

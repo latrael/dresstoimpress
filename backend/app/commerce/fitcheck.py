@@ -2,8 +2,8 @@
 
 Collection fitcheck_posts: {id, user_id, photo_url, caption, tagged: [FitTag], created_at, likes: [user_id],
 comments: [{id, user_id, text, created_at}], visibility: "friends" | "public", photo_w, photo_h}.
-photo_w/photo_h: pixel size of an uploaded photo (read from our saved file), null for external URLs and for
-posts made before the fields existed (the app lays photos out at their own aspect ratio, sprint-3 3.1).
+photo_w/photo_h: pixel size of an uploaded photo (read from our saved file); for an external URL, the size the
+app sends with the JSON post (else null); null for posts made before the fields existed (the app lays photos out at their own aspect ratio, sprint-3 3.1).
 Inspo is one feed for everyone (council D4): every user sees every post, so friends lists don't filter
 anything here. `visibility` is still stored (the guest /fit wall only shows "public" posts).
 """
@@ -36,6 +36,8 @@ class PostCreate(BaseModel):
     caption: str = Field("", max_length=500)
     tagged: list[FitTag] = []
     visibility: Literal["friends", "public"] = "friends"
+    photo_w: Optional[int] = Field(None, ge=1, le=20000)  # JSON posts only: the size the app knows; uploads are measured
+    photo_h: Optional[int] = Field(None, ge=1, le=20000)
 
 
 class TagsEdit(BaseModel):
@@ -142,6 +144,8 @@ async def create_post(request: Request):
     photo_url = await _save_upload(file) if file else req.photo_url
     tagged = [t.model_dump() for t in req.tagged] or _auto_tags(photo_url)
     w, h = _photo_size(photo_url)
+    if (w, h) == (None, None) and not file and req.photo_w and req.photo_h:
+        w, h = req.photo_w, req.photo_h  # external URL: trust the app's size (both or neither)
     post = {"id": "fc_" + uuid.uuid4().hex[:12], "user_id": req.user_id, "photo_url": photo_url,
             "caption": req.caption, "tagged": tagged, "created_at": _now(), "likes": [], "comments": [],
             "visibility": req.visibility, "photo_w": w, "photo_h": h}

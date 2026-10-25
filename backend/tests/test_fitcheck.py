@@ -264,3 +264,12 @@ def test_photo_size_null_for_urls_and_old_posts(client):
     got = client.get("/fitcheck/fc_old", params={"user_id": "u_a"}).json()
     assert (got["photo_w"], got["photo_h"]) == (None, None)
     store.delete("fitcheck_posts", "fc_old")
+
+
+def test_json_post_can_send_its_photo_size(client):
+    body = {"user_id": "u_a", "photo_url": PHOTO, "caption": "", "tagged": [{"label": "tee"}]}
+    p = client.post("/fitcheck", json={**body, "photo_w": 1080, "photo_h": 1350}).json()
+    assert (p["photo_w"], p["photo_h"]) == (1080, 1350)
+    half = client.post("/fitcheck", json={**body, "photo_w": 1080}).json()
+    assert (half["photo_w"], half["photo_h"]) == (None, None)  # both or neither
+    assert client.post("/fitcheck", json={**body, "photo_w": 0, "photo_h": 10}).status_code == 422

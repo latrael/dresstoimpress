@@ -2,7 +2,24 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~5:55 PM PT. New: 3,188 products from 8 stores (PR #44), and `GET /stores` for the onboarding chips and cart headings.
+**Last updated:** Sat Oct 24, 2026, ~7:50 PM PT. New: sprint #3 Inspo routes (instant likes, paged comments, photo sizes).
+
+## Oct 24, ~7:50 PM: sprint #3 Inspo backend (`docs/sprint-3.md` 3.1, 3.3, 3.4)
+
+All additive; nothing you use today changes.
+- **Instant likes (3.3): `PUT /fitcheck/{post_id}/like` `{user_id, liked: true|false}`** → `{post_id, liked, like_count}`.
+  - Setting the same state twice is a no-op, so it's safe to retry or queue. Flip the heart locally, send this in the background, and roll back only on an error.
+  - Unliking something never liked → `liked: false`, count unchanged. 404 unknown post. The old toggle `POST …/like` still works.
+- **Comment sheet (3.4): `GET /fitcheck/{post_id}/comments?user_id=&limit=20&before=<comment_id>`** → `{post_id, comment_count, comments: [{id, user_id, author: {id, display_name}, text, created_at}], next_before}`.
+  - Each page runs oldest → newest, so you can show newest at the bottom.
+  - No `before` = the newest page. Pass `next_before` to load older comments; it's null when there are none left.
+  - `limit` is clamped to 1–100. 422 if `before` isn't a comment on that post.
+  - `POST …/comments` now also returns `author`.
+- **Photo sizes (3.1):** every post (create, feed, detail, tags, `/fit/wall`) has `photo_w`, `photo_h` (pixels, or null).
+  - Uploads are measured on the server, upright. **JSON posts with a `photo_url` may send `photo_w` + `photo_h`** (both or neither, 1–20000); otherwise they're null.
+  - Layout (decided): width-fit, tall photos capped at **9:16** and centre-cropped. With null sizes, measure the image after it loads.
+- **Coming later (decided, waits on your comment sheet):** the feed and detail responses will carry `comment_count` + the **2 newest comments** only (a "View all N comments" preview), instead of every comment. I'll switch it once your sheet uses the paged GET. Tell me when.
+- **Faster everywhere:** server-side, Home (`/feed`) was taking ~70 s on the 3,188-product catalog; it's now ~0.2 s once Adam restarts the server on this code. Search is ~4× faster too.
 
 ## Oct 24, ~5:45 PM: way more clothes (sprint #2)
 

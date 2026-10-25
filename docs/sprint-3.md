@@ -65,6 +65,7 @@ Owners: Nabil (auth routes + token check), Adam (core `Api` sends the token), Ry
 
 ## 5. Speed
 
+- **Done (7:50 PM): the JSON store caches in memory: `/feed` ~70 s → 0.17 s, search 4× faster** (`NABIL_TO_ADAM.md` 7:50 PM; needs a server restart).
 - Most of the slowness is venue Wi-Fi plus the tunnel. Optimistic likes (3.3) and paged comments (3.4) hide it.
 - Also: the JSON store rewrites its whole file on every write (~6 MB with 3,188 products), so every like or comment write takes longer as data grows. **Nabil:** keep hot collections (likes, comments, carts) in small files, or batch writes. Measure first.
 

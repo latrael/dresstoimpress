@@ -242,3 +242,10 @@ Added to `Product` (both optional, existing data still validates):
 - `description: string | null`, real retailer text as plain text, else null (never a pairing reason).
 
 Over to you for the ingest side: H&M `images[]` + `model_image` (as `retailer_model`), Uniqlo per-colour images, descriptions from raw when present, and the idempotent wishlist routes Ryan asked for (`PUT`/`DELETE /wishlist/{user_id}/items/{product_id}`). Ryan's branch is `RyanFrontendking`.
+
+## Sun 01:00 — sprint 4 §10 AI side is ready (PR adam/sprint4)
+Wire these into `/feed` cards and the two routes (all in `app.ai.service`):
+- `closet_picks(user_id, product, k=4) -> list[{id,label,category,image_url}]`: rules only, instant; `[]` for an empty closet. `product` = dict, Product or id.
+- `tryon_status(user_id, product, picks=None) -> {status, image_url?, mode?}`: the §10.1 `tryon` field. Pass the card's `closet_picks` as `picks` to skip recomputing.
+- `prefetch_tryons(user_id, items) -> {product_id: tryon}`: for `POST /feed/{u}/tryons` (≤5 items, returns at once, 2 workers, de-duped). `GET /feed/{u}/tryons?ids=` = `{pid: tryon_status(u, pid)}`.
+- Accessories show on slide 3 but never go into the render. Daily cap `PREFETCH_PER_USER_DAY` (default 20; past it → free collage, `unavailable`). `MAX_TRYONS` untouched (team decision §12.5).

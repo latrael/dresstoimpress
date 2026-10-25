@@ -78,6 +78,21 @@ class Api {
           }),
           RankedProduct.fromJson);
 
+  /// POST /feed/{user}/tryons {product_ids} (sprint 4 §10.2): start rendering slide-2 try-ons in the
+  /// background for up to 5 posts (call on feed load for posts 1-3, then n+1..n+3 as the user lands on n).
+  /// Returns immediately with each product's [TryOnState] (usually pending).
+  Future<Map<String, TryOnState>> prefetchTryOns(List<String> productIds) async => _tryOnMap(await _send(
+      'POST', '/feed/${_seg(_user)}/tryons', body: {'product_ids': productIds.take(5).toList()}));
+
+  /// GET /feed/{user}/tryons?ids=a,b,c: current slide-2 states, for polling (~3 s while a visible post is
+  /// pending; stop once ready).
+  Future<Map<String, TryOnState>> tryOnStatus(List<String> productIds) async => _tryOnMap(
+      await _send('GET', '/feed/${_seg(_user)}/tryons', query: {'ids': productIds.join(',')}));
+
+  static Map<String, TryOnState> _tryOnMap(dynamic j) => j is Map
+      ? {for (final e in j.entries) if (e.value is Map) '${e.key}': TryOnState.fromJson(Map<String, dynamic>.from(e.value as Map))}
+      : <String, TryOnState>{};
+
   // ------------------------------------------------------------ Discover (Nabil's routes, Adam's vibe parser)
 
   /// GET /search?user_id=&q=: keyword search (a style, an item) -> "Similar items" (Products, in stock, one

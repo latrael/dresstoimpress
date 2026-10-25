@@ -1,9 +1,18 @@
 # Google sign-in
 
-Status (Sun Oct 25, ~6 AM): **backend merged to `staging`** (Nabil OK'd sharing it). Login is **optional** until we
-flip `AUTH_REQUIRED=1`: requests without a token work exactly as before, so every current build keeps working.
-Still to do: the Google Cloud OAuth clients (Nabil), `GOOGLE_CLIENT_IDS` on the shared server, and the app side
-(Google Sign-In button → `POST /auth/google` → Bearer token in core).
+Status (Sun Oct 25, ~7:15 AM): backend (#90) and app (#93) merged; OAuth clients created (Google Cloud project
+"Niche", External / Testing: only listed **test users** can sign in). Login is **optional** until `AUTH_REQUIRED=1`.
+
+OAuth clients (public ids; never commit the web client's *secret*, which we don't use):
+
+| Client | Id | Used by |
+| --- | --- | --- |
+| Web ("Niche server") | `43902770892-itpsnesq1jfvskr8jn1l25hli51m92v6…` | `serverClientId` in the app = the ID token's audience the server checks |
+| iOS team | `43902770892-2u86506g9nhtdsliu673of6n6hosq51a…` | bundle `com.dresstoimpress.dressToImpress` (default in `GoogleAuth`) |
+| iOS Nabil | `43902770892-ppf9mblaraum6tgui4hpn8usf43pffkn…` | bundle `com.nabil.dressToImpress` (`--dart-define=GOOGLE_IOS_CLIENT_ID=…`) |
+| Android | pending: needs the signing SHA-1 | package `com.dresstoimpress.dress_to_impress` |
+
+Server: `GOOGLE_CLIENT_IDS` = the web + both iOS ids, comma-separated (full ids in `NABIL_TO_ADAM.md`, 7:15 AM).
 
 ## How it works
 

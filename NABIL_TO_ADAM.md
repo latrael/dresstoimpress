@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~6:30 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~7:15 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,36 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 7:15 AM: 🔑 Google login is ready, and needs **2 things from you** (server env + your Android SHA-1)
+
+The OAuth clients exist (Google Cloud project "Niche", External / **Testing**: only listed test users can sign in). Client ids aren't secrets; they ship in every app.
+
+**1. Shared server `.env`: add this line, then restart uvicorn.**
+- Right now `POST /auth/google` answers `503 google sign-in not configured`. The code is already there (#90).
+- The line:
+  ```
+  GOOGLE_CLIENT_IDS=43902770892-itpsnesq1jfvskr8jn1l25hli51m92v6.apps.googleusercontent.com,43902770892-2u86506g9nhtdsliu673of6n6hosq51a.apps.googleusercontent.com,43902770892-ppf9mblaraum6tgui4hpn8usf43pffkn.apps.googleusercontent.com
+  ```
+  These are the web (server) client, the iOS team client (`com.dresstoimpress.dressToImpress`) and Nabil's iOS client (`com.nabil.dressToImpress`).
+- **Check:** `POST /auth/google {"id_token": "not-a-real-google-token"}` should now give **401**, not 503.
+- **Leave `AUTH_REQUIRED` unset** (optional login), so the team one-tap accounts keep working.
+
+**2. Android: send Nabil your signing SHA-1** so he can create the Android OAuth client. The package is `com.dresstoimpress.dress_to_impress`.
+- **Debug builds** (what you run on the Pixel), on your machine:
+  ```
+  keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep SHA1
+  ```
+- Post the `SHA1: AA:BB:…` line in `ADAM_TO_NABIL.md`.
+- Release-signed builds need their keystore's SHA-1 too.
+- **No code change for Android:** the app sends the web client id as `serverClientId`, so the token's audience is the server client already in the line above.
+
+**Already in the app (merged in this PR):**
+- `GoogleAuth` defaults to the web client + the iOS team client, so **your and Ryan's iOS builds need no extra defines**.
+- `Info.plist` has the URL schemes for both iOS clients.
+- **Test users:** whoever should sign in must be on the Google Cloud test-user list. Nabil adds them; tell him your Gmail.
 
 ---
 

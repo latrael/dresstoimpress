@@ -1,13 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-/// Google Sign-In for `POST /auth/google` (docs/auth-google.md). The OAuth client ids are build-time defines,
-/// like the tunnel URL: `--dart-define=GOOGLE_SERVER_CLIENT_ID=<web client id>` (the ID token's audience,
-/// which the server checks) and, on iOS, `--dart-define=GOOGLE_IOS_CLIENT_ID=<iOS client id for this bundle id>`.
-/// Without them the Google button stays hidden and the team / test accounts work as before.
+/// Google Sign-In for `POST /auth/google` (docs/auth-google.md). OAuth client ids are public (they ship inside
+/// every app), so the team's are the defaults here; a build can override them with
+/// `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` / `--dart-define=GOOGLE_IOS_CLIENT_ID=...` (Nabil's local
+/// bundle id `com.nabil.dressToImpress` has its own iOS client). Android needs no id here: Google matches the
+/// app by package name + signing SHA-1 and the token's audience is the web (server) client.
 class GoogleAuth {
-  static const serverClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
-  static const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
+  static const serverClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID',
+      defaultValue: '43902770892-itpsnesq1jfvskr8jn1l25hli51m92v6.apps.googleusercontent.com');
+  // iOS client for the team bundle id com.dresstoimpress.dressToImpress
+  static const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID',
+      defaultValue: '43902770892-2u86506g9nhtdsliu673of6n6hosq51a.apps.googleusercontent.com');
 
   /// Phones only for now: the web build needs Google's own rendered button (a later step).
   static bool get available =>

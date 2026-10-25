@@ -70,5 +70,18 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<!-- Google Sign-In: the reversed iOS OAuth client ids (team bundle id, then Nabil's local one) -->
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.43902770892-2u86506g9nhtdsliu673of6n6hosq51a</string>
+				<string>com.googleusercontent.apps.43902770892-ppf9mblaraum6tgui4hpn8usf43pffkn</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

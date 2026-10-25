@@ -172,7 +172,7 @@ def test_photo_search_in_your_size_first(client, monkeypatch):
     from app.ai import service
     _put({"body_profile": {"usual_sizes": {"top": "M"}}}, [_mk("a", sizes=NO_M), _mk("b"), _mk("c", sizes=NO_M)])
     monkeypatch.setattr(service, "tag_fit", lambda url: [{"label": "white tee", "category": "top"}])
-    monkeypatch.setattr(service, "shop_fit", lambda uid, tags: [
+    monkeypatch.setattr(service, "shop_fit", lambda uid, tags, keep=None: [
         {"id": pid, "reason": f"why {pid}", "score": s, "matched_tag": "white tee"}
         for pid, s in (("a", 0.9), ("b", 0.8), ("c", 0.7))])
     r = client.post("/search/photo", data={"user_id": "u"}, files={"file": ("fit.png", b"\x89PNG fake", "image/png")})

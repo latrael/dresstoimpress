@@ -77,6 +77,28 @@ def test_grouped_keep_filter_drops_cards_not_tags(monkeypatch):
     assert len(groups) == 3
 
 
+def test_keep_filters_catalog_before_matching(monkeypatch):
+    """6 women's tees outrank 3 men's tees: filtering after the top 6 would leave a men viewer 0 cards."""
+    from app.ai import service
+
+    tees = ([_p(f"w{i}", f"Womens Tee {i}", "top", department="women") for i in range(6)]
+            + [_p(f"m{i}", f"Mens Tee {i}", "top", department="men") for i in range(3)])
+    by_id = {p["id"]: p for p in tees}
+
+    def find_products(tag, products, n=3):  # ranks what it is given: women's tees first
+        return sorted(products, key=lambda p: p["department"] != "women")[:n]
+
+    monkeypatch.setattr("app.ai.finder.find_products", find_products)
+    monkeypatch.setattr(service, "get_product", lambda pid: by_id.get(pid))
+    monkeypatch.setattr(service, "list_products", lambda: list(by_id.values()))
+    men = lambda p: p.get("department") in ("men", "unisex", None)  # noqa: E731
+    tag = [{"label": "white tee", "category": "top"}]
+
+    assert [p["id"] for p in service.shop_fit_grouped("u_g", tag, keep=men)[0]["products"]] == ["m0", "m1", "m2"]
+    assert [p["id"] for p in service.shop_fit("u_g", tag, keep=men)] == ["m0", "m1", "m2"]
+    assert [p["id"] for p in service.shop_fit_grouped("u_g", tag)[0]["products"]] == [f"w{i}" for i in range(6)]
+
+
 @pytest.fixture(scope="module")
 def client(tmp_path_factory):
     data = tmp_path_factory.mktemp("shop_grouped")

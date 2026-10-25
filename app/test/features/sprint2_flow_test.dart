@@ -232,7 +232,7 @@ void main() {
     final api = Api(client: MockClient((r) async {
       calls.add('${r.method} ${r.url.path}');
       if (r.url.path == '/fits/create') {
-        expect(jsonDecode(r.body)['occasion'], 'class');
+        expect(jsonDecode(r.body)['occasion'], 'date night in SF, 55°F, walking a lot');
         return response({
           'fits': [
             {
@@ -275,7 +275,8 @@ void main() {
         home: FitsScreen(
             store: StoreController(api: api, demo: false),
             onProduct: (_) {})));
-    await t.tap(find.text('class'));
+    await t.enterText(find.byKey(const ValueKey('fits-occasion')),
+        'date night in SF, 55°F, walking a lot');
     await t.tap(find.text('Create 3 fits'));
     await t.pumpAndSettle();
     expect(find.text('My shirt'), findsWidgets);

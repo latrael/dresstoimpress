@@ -17,7 +17,7 @@ _FORMATS = {
     "vibe": dict(q="rooftop party"),
     "style_from_closet": dict(items_json="[]"),
     "body_scan": dict(height_cm=180, weight_part=""),
-    "fit_creator": dict(body="b", fit="f", style_text="s", occasion="o", budget=100, must_include="[]",
+    "fit_creator": dict(body="b", fit="f", style_text="s", occasion="o", season="mid", budget=100, must_include="[]",
                         closet_json="[]", products_json="[]", count=2),
     "summary": dict(name="n", category="top", color="c", style="s", label_part="", description="none"),
     "fit_critic": dict(items_json="[]", occasion="none", styles="streetwear"),

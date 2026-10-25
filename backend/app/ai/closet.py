@@ -192,24 +192,54 @@ def best_source(item: dict) -> tuple[str, list | None] | None:
     return max(cands, key=lambda c: source_key(*c))
 
 
-def clean_shot(source_url: str) -> str | None:
-    """Generated product photo of just this garment (from its crop). None when image AI is off or fails."""
+def clean_shot_matches(image_url: str, piece: dict | None) -> bool:
+    """Cheap vision check: does the generated shot show this piece (and only it)? A failed check call
+    counts as a pass (we'd rather keep a plausible shot than lose it to a network blip)."""
+    if not piece or not piece.get("label"):
+        return True
+    from .llm import ai_json
+
+    prompt = prompts.CLEAN_SHOT_CHECK.format(label=piece.get("label"), color=piece.get("color") or "",
+                                             category=piece.get("category") or "item")
+    try:
+        out = ai_json(prompt, image_url=image_url, max_tokens=120)
+    except Exception as e:  # noqa: BLE001
+        log.warning("clean shot check skipped: %s", e)
+        return True
+    ok = bool(isinstance(out, dict) and out.get("match"))
+    if not ok:
+        log.warning("clean shot rejected for %r: shows %r", piece.get("label"), (out or {}).get("seen") if isinstance(out, dict) else out)
+    return ok
+
+
+def clean_shot(source_url: str, piece: dict | None = None) -> str | None:
+    """Generated product photo of just this piece (from the crop of its best source photo), named in the prompt
+    by label / colour / category and checked afterwards (CLEAN_SHOT_CHECK). One retry with a stronger prompt;
+    None when image AI is off, it fails, or both renders show the wrong item (the caller then keeps the crop)."""
     if not clean_shots_on():
         return None
-    try:
-        img = gemini_image(CLEAN_SHOT, [source_url])
-    except BadModelOutput as e:
-        log.warning("clean shot skipped: %s", e)
-        return None
-    except Exception as e:  # noqa: BLE001 - never let a nicety break an upload
-        log.warning("clean shot failed: %s", e)
-        return None
-    if not img:
-        return None
-    name = f"{uuid.uuid4().hex}-clean.png"
-    (DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
-    (DATA_DIR / "uploads" / name).write_bytes(img)
-    return _public_url(name)
+    for attempt in (0, 1):
+        try:
+            img = gemini_image(prompts.clean_shot_prompt(piece, retry=bool(attempt)), [source_url])
+        except BadModelOutput as e:
+            log.warning("clean shot skipped: %s", e)
+            return None
+        except Exception as e:  # noqa: BLE001 - never let a nicety break an upload
+            log.warning("clean shot failed: %s", e)
+            return None
+        if not img:
+            return None
+        name = f"{uuid.uuid4().hex}-clean.png"
+        (DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
+        (DATA_DIR / "uploads" / name).write_bytes(img)
+        url = _public_url(name)
+        if clean_shot_matches(url, piece):
+            return url
+        try:
+            (DATA_DIR / "uploads" / name).unlink()
+        except OSError:
+            pass
+    return None
 
 
 def _source_crop(item: ClosetItem) -> str | None:
@@ -234,7 +264,8 @@ def _set_display(item: ClosetItem) -> None:
     image_url mirrors it. Never the catalog photo: an owned piece always shows the user's own picture
     (sprint-3 §1.2)."""
     source = _source_crop(item) if clean_shots_on() else item.crop_image_url
-    item.display_image_url = clean_shot(source) or item.crop_image_url
+    item.display_image_url = clean_shot(source, {"label": item.label, "color": item.color,
+                                                 "category": item.category}) or item.crop_image_url
     item.image_url = item.display_image_url
 
 

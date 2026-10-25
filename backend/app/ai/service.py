@@ -141,7 +141,7 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     user = store.get("users", user_id) or {}
     pieces = [p for pid in product_ids if (p := get_product(pid))]
     pieces += [c for cid in closet_item_ids if (c := store.get("closet_items", cid))]
-    garments = [g["image_url"] for g in pieces]
+    garments = [g.get("hero_image_url") or g["image_url"] for g in pieces]  # product-only shot when the store has one
     slots = [g.get("category") or "garment" for g in pieces]
     if not garments:
         raise ValueError("no garment images found for given ids")

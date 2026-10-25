@@ -136,7 +136,7 @@ def test_catalog_match_sets_product_but_never_the_display_image(client, monkeypa
     _tagger(monkeypatch, {"label": "black baby tee", "category": "top", "color": "black", "pattern": "solid",
                           "formality": 2, "brand": None})
     item = client.post("/closet/upload", data={"user_id": "u_c", "kind": "piece"}, files=_files(1)).json()["added"][0]
-    assert item["product_id"] == PRODUCT["id"] and item["brand"] == "H&M"
+    assert item["product_id"] == PRODUCT["id"] and item["brand"] is None  # catalog match never sets the brand
     assert item["catalog_image_url"] == PRODUCT["image_url"]  # kept for "shop similar", never shown
     assert item["display_image_url"] == item["crop_image_url"] == item["image_url"]  # sprint-3 §1.2
     assert 0.7 <= item["match_confidence"] <= 1.0
@@ -338,7 +338,7 @@ def test_prompts_ask_for_every_garment_and_brand():
     from app.ai import prompts
 
     assert '"brand"' in prompts.TAGGER and prompts.TAGGER_VERSION == "v3"
-    assert '"brand"' in prompts.DIGITIZE and "accessory" in prompts.DIGITIZE and prompts.DIGITIZE_VERSION == "v2"
+    assert '"brand"' in prompts.DIGITIZE and "accessory" in prompts.DIGITIZE and prompts.DIGITIZE_VERSION == "v3"
     for word in ("mirror selfie", "shoes", "watch", "bag", "cap", "Never collapse"):
         assert word in prompts.DIGITIZE
     assert prompts.PAIR_VERSION == "v5" and "brand" in prompts.PAIR

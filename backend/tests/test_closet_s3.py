@@ -84,7 +84,7 @@ def test_owned_pieces_never_show_a_catalog_photo(client, monkeypatch):
     store.put("products", PRODUCT["id"], PRODUCT)
     _detect(monkeypatch, [_garment("black baby tee", "top", "black", [0, 0, 1, 1])])
     item = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"}, files=_files(1)).json()["added"][0]
-    assert item["product_id"] == PRODUCT["id"] and item["brand"] == "H&M"
+    assert item["product_id"] == PRODUCT["id"] and item["brand"] is None  # catalog match never sets the brand
     assert item["display_image_url"] == item["crop_image_url"] == item["image_url"] != PRODUCT["image_url"]
     # with image AI on: a clean shot generated from the user's crop, still never the catalog photo
     monkeypatch.setattr(closet, "mock_mode", lambda key: False)

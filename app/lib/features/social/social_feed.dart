@@ -111,9 +111,10 @@ class _SocialFeedState extends State<SocialFeed> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (_) => Padding(
+        // the sheet's own context: it rebuilds when the keyboard opens, so the search box stays above it
+        builder: (sheet) => Padding(
             padding: EdgeInsets.fromLTRB(
-                16, 16, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+                16, 16, 16, 16 + MediaQuery.viewInsetsOf(sheet).bottom),
             child: SingleChildScrollView(
                 child: FriendsCard(api: widget.store.api))));
     refresh();
@@ -927,17 +928,22 @@ class _FitPostCardState extends State<FitPostCard>
 /// pieces to shop. Tapping a product opens it (size + add to cart).
 class FindSimilarSheet extends StatefulWidget {
   const FindSimilarSheet(
-      {super.key, required this.api, required this.post, required this.onShop});
+      {super.key, required this.api, this.post, this.load, required this.onShop})
+      : assert(post != null || load != null);
   final Api api;
-  final FitCheckPost post;
+  final FitCheckPost? post;
+
+  /// Where the groups come from when it isn't an Inspo post (a Discover pin: `api.pinSimilar`).
+  final Future<List<SimilarLookGroup>> Function()? load;
   final void Function(List<RankedProduct>) onShop;
   @override
   State<FindSimilarSheet> createState() => _FindSimilarSheetState();
 }
 
 class _FindSimilarSheetState extends State<FindSimilarSheet> {
-  late Future<List<SimilarLookGroup>> groups =
-      widget.api.similarLook(widget.post.id);
+  Future<List<SimilarLookGroup>> fetch() =>
+      widget.load?.call() ?? widget.api.similarLook(widget.post!.id);
+  late Future<List<SimilarLookGroup>> groups = fetch();
 
   void shop(List<RankedProduct> products) {
     if (products.isEmpty) return;
@@ -1032,7 +1038,7 @@ class _FindSimilarSheetState extends State<FindSimilarSheet> {
                       padding: const EdgeInsets.all(20),
                       child: TextButton(
                           onPressed: () => setState(() {
-                                groups = widget.api.similarLook(widget.post.id);
+                                groups = fetch();
                               }),
                           child: const Text(
                               'Could not load similar pieces. Retry'))),

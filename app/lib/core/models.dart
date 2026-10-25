@@ -1318,6 +1318,71 @@ class ReactionResult {
       postId: _str(j['post_id']), reactions: _reactionCounts(j['reactions']), myReaction: _strN(j['my_reaction']));
 }
 
+/// A Pinterest outfit pin on the Discover board (GET /discover/board). [tagged] = its pieces, for "Similar".
+class Pin {
+  const Pin({required this.id, required this.imageUrl, this.w = 3, this.h = 4, this.title = '', this.pinUrl = '',
+      this.dominantColor, this.style = '', this.tagged = const []});
+
+  final String id;
+  final String imageUrl;
+  final int w;
+  final int h;
+  final String title;
+  final String pinUrl; // the pin on pinterest.com (credit + "open on Pinterest")
+  final String? dominantColor; // "#79635d": placeholder while the photo loads
+  final String style;
+  final List<FitTag> tagged;
+
+  double get aspect => h <= 0 ? 0.75 : w / h;
+
+  factory Pin.fromJson(Json j) => Pin(
+      id: _str(j['id']),
+      imageUrl: _str(j['image_url']),
+      w: _int(j['w'], 3),
+      h: _int(j['h'], 4),
+      title: _str(j['title']),
+      pinUrl: _str(j['pin_url']),
+      dominantColor: _strN(j['dominant_color']),
+      style: _str(j['style']),
+      tagged: _list(j['tagged'], FitTag.fromJson));
+}
+
+/// One tile on the Discover board: exactly one of [pin], [product] (a buyable card) or [post] (an Inspo outfit).
+class BoardItem {
+  const BoardItem({required this.kind, this.pin, this.product, this.post});
+
+  final String kind; // pin | product | post
+  final Pin? pin;
+  final RankedProduct? product;
+  final FitCheckPost? post;
+
+  String get id => pin?.id ?? product?.id ?? post?.id ?? '';
+
+  static BoardItem? fromJson(Json j) => switch (_str(j['kind'])) {
+        'pin' => BoardItem(kind: 'pin', pin: Pin.fromJson(_obj(j['pin']))),
+        'product' => BoardItem(kind: 'product', product: RankedProduct.fromJson(_obj(j['product']))),
+        'post' => BoardItem(kind: 'post', post: FitCheckPost.fromJson(_obj(j['post']))),
+        _ => null, // a kind this build doesn't know: skipped
+      };
+}
+
+/// GET /discover/board: one page of the board. [styles] = the styles it was built from (the tapped chip, else
+/// the viewer's own); [nextOffset] null on the last page.
+class DiscoverBoard {
+  const DiscoverBoard({this.style, this.styles = const [], this.items = const [], this.nextOffset});
+
+  final String? style;
+  final List<String> styles;
+  final List<BoardItem> items;
+  final int? nextOffset;
+
+  factory DiscoverBoard.fromJson(Json j) => DiscoverBoard(
+      style: _strN(j['style']),
+      styles: _strs(j['styles']),
+      items: _list<BoardItem?>(j['items'], BoardItem.fromJson).whereType<BoardItem>().toList(),
+      nextOffset: _intN(j['next_offset']));
+}
+
 /// GET /fitcheck/{id}/similar: one tagged piece of a post, the viewer's own similar [closet] pieces first,
 /// then [products] to buy (up to 6, closest first).
 class SimilarLookGroup {

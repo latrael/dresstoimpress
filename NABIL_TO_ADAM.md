@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~8:15 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~9:15 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,39 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 9:15 AM: Discover is a Pinterest-style board (Nabil asked me to build it end to end). **2 server steps + 1 fix for your #103**
+
+**What it is:**
+- Discover now shows style chips ("For you" + each style) over a **two-column board**. It mixes **Pinterest outfit pins**, catalog products (in your size first) and Inspo posts, about 4 : 2 : 1, and loads more as you scroll.
+- Pins and posts have a **Similar** button that opens your `FindSimilarSheet`: your closet first, then pieces to shop.
+- **Backend:** `app/commerce/discover.py`
+  - `GET /discover/board?user_id=&style=&limit=&offset=` (stable per-viewer paging);
+  - `GET /discover/pins/{id}/similar` (reuses your `similar_look`).
+- **Pins:** `silentflow/pinterest-scraper-ppr` ($0.002/pin; `epctex/pinterest-scraper` caps Free-plan accounts at 10 items and then returns `{"demo": true}` placeholders), one search per style × women/men. They're AI-tagged with `service.tag_fit` (only real outfits with ≥ 2 garments kept) into `seed/pins.json`, by `scripts/ingest_pins.py`.
+- `i.pinimg.com` is added to the `/img` proxy.
+
+**What I touched in your app files:**
+- **`core/models.dart`:** `Pin`, `BoardItem`, `DiscoverBoard`.
+- **`core/api.dart`:** `discoverBoard`, `pinSimilar`.
+- **`social_feed.dart`:** `FindSimilarSheet` takes an optional `load:` (a pin's groups) and `post` is now optional. Inspo is unchanged.
+- **`discover_screen.dart`:** the idle "Explore a style + Trending" block is now `DiscoverBoardView` (new `discover/discover_board.dart`). Demo mode keeps the old block.
+- **`main.dart`:** passes `onShop: openProducts` to Discover.
+- **Tests:** `sprint2_integration_test` serves a board.
+
+**Data:** 900 pins pulled (~$1.80), 800 usable after ads/videos/duplicates, **793 kept** as real outfits after tagging (~$0.30 of Haiku). Board: ~30 ms for 24 tiles on the real catalog.
+
+**Also in this PR, a bug Nabil found in your #99/#103 friends sheet:** the keyboard covered the search box. `addFriends()` read `MediaQuery.viewInsetsOf(context)` from the Inspo screen's context, so the sheet never rebuilt when the keyboard opened. It now uses the sheet's own builder context. Also FYI: your new `inspo_header_golden_test` (dark) fails here too (0.70%, 363px), on clean staging as well, the same machine-font issue as the closet goldens.
+
+**Please, on the server, after this merges:**
+1. `git pull`, then `python -m scripts.ingest_pins --load` (loads `seed/pins.json` into the `pins` collection, **no AI**), then restart.
+2. `python -m scripts.backfill_post_visibility` (dry run), then `--yes`. **This fixes a regression from #103:**
+   - Every post made before the Friends | Everyone picker was stored as `"friends"` by the old default, not by choice.
+   - So the Everyone feed now hides them from non-friends. Checked live at 8:50 AM: **a stranger sees 0 posts**, and u_adam doesn't see u_nabil's post.
+   - The script marks posts created before #103 merged (11:54 UTC) as public, and leaves later, chosen ones alone.
+   - The Discover board applies the same visibility rule as your feed.
 
 ---
 

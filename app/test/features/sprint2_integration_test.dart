@@ -115,6 +115,16 @@ void main() {
       if (r.url.path == '/search/styles') {
         return reply({'styles': [], 'trending': []});
       }
+      if (r.url.path == '/discover/board') {
+        // Discover is a board now: the product tile opens Home seeded with it, like the old grid did
+        return reply({
+          'styles': [],
+          'items': [
+            {'kind': 'product', 'product': piece()}
+          ],
+          'next_offset': null
+        });
+      }
       if (r.url.path.endsWith('/tryons')) {
         return reply({
           'p': {'status': 'needs_photo'}
@@ -129,9 +139,9 @@ void main() {
     Future<void> choose() async {
       await t.tap(find.byKey(const ValueKey('tab-1')));
       await t.pumpAndSettle();
-      await t.ensureVisible(find.byKey(const ValueKey('suggested-p')));
+      await t.ensureVisible(find.byKey(const ValueKey('board-product-p')));
       await t.pumpAndSettle();
-      await t.tap(find.byKey(const ValueKey('suggested-p')));
+      await t.tap(find.byKey(const ValueKey('board-product-p')));
       await t.pumpAndSettle();
     }
 

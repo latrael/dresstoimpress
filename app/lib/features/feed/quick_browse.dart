@@ -30,7 +30,8 @@ class QuickBrowse extends StatefulWidget {
   final int sizingRevision;
   final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
-  final Future<({String url, String label})?> Function(String id)? onTryOn;
+  final Future<({String url, String label, String? sourcePhotoUrl})?> Function(
+      String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
 
   @override
@@ -111,7 +112,8 @@ class _ProductPage extends StatefulWidget {
   final int sizingRevision;
   final Future<void> Function()? onSizingSetup;
   final Future<String?> Function(String id)? onSizeAdvice;
-  final Future<({String url, String label})?> Function(String id)? onTryOn;
+  final Future<({String url, String label, String? sourcePhotoUrl})?> Function(
+      String id)? onTryOn;
   final void Function(String id)? onCompleteLook;
 
   @override
@@ -143,7 +145,8 @@ class _ProductPageState extends State<_ProductPage>
   bool adding = false;
   bool advising = false;
   bool generating = false;
-  ({String url, String label})? personalPhoto;
+  ({String url, String label, String? sourcePhotoUrl})? personalPhoto;
+  bool showOriginal = false;
   String? error;
   final PageController photos = PageController();
   @override
@@ -317,7 +320,10 @@ class _ProductPageState extends State<_ProductPage>
               .where((s) => s.isNotEmpty)
               .toSet())
           .length;
-      setState(() => personalPhoto = result);
+      setState(() {
+        personalPhoto = result;
+        showOriginal = false;
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && photos.hasClients) {
           photos.animateToPage(retailerPhotos == 0 ? 1 : retailerPhotos,
@@ -346,7 +352,11 @@ class _ProductPageState extends State<_ProductPage>
     if (gallery.isEmpty && (p['image_url'] as String? ?? '').isNotEmpty) {
       gallery.add(p['image_url'] as String);
     }
-    if (personalPhoto != null) gallery.add(personalPhoto!.url);
+    if (personalPhoto != null) {
+      gallery.add(showOriginal && personalPhoto!.sourcePhotoUrl != null
+          ? personalPhoto!.sourcePhotoUrl!
+          : personalPhoto!.url);
+    }
     final sizes = (p['sizes'] as List? ?? []).cast<Map>();
     final description = p['description'] as String?;
     final fullDescription = p['full_description'] as String?;
@@ -501,11 +511,19 @@ class _ProductPageState extends State<_ProductPage>
                 ),
               ),
             ),
-          if (personalPhoto != null && photo == gallery.length - 1)
+          if (personalPhoto != null && photo == gallery.length - 1) ...[
             Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(personalPhoto!.label,
+                child: Text(
+                    showOriginal ? 'Your original photo' : personalPhoto!.label,
                     style: const TextStyle(fontWeight: FontWeight.w600))),
+            if (personalPhoto!.sourcePhotoUrl?.isNotEmpty == true)
+              TextButton.icon(
+                  onPressed: () => setState(() => showOriginal = !showOriginal),
+                  icon: const Icon(Icons.compare_outlined),
+                  label: Text(
+                      showOriginal ? 'Show try-on' : 'Compare with original')),
+          ],
           const SizedBox(height: 12),
           Text(
             (p['brand'] ?? p['retailer'] ?? '').toString().toUpperCase(),

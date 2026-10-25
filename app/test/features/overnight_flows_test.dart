@@ -198,7 +198,8 @@ void main() {
                   generated.add(id);
                   return (
                     url: 'https://example.test/$id-board.jpg',
-                    label: 'Outfit board · collage, not a photo of you'
+                    label: 'Outfit board · collage, not a photo of you',
+                    sourcePhotoUrl: null
                   );
                 })));
     for (final id in ['a', 'b', 'c']) {
@@ -264,7 +265,7 @@ void main() {
   testWidgets('try-on uses existing photo and labels collage response honestly',
       (tester) async {
     final paths = <String>[];
-    ({String url, String label})? result;
+    ({String url, String label, String? sourcePhotoUrl})? result;
     final api = mockApi((r) async {
       paths.add(r.url.path);
       return r.method == 'GET'
@@ -292,6 +293,8 @@ void main() {
       'complete look scores catalog and owned items through their distinct fields',
       (tester) async {
     final api = mockApi((r) async {
+      if (r.url.path.startsWith('/closet/')) return json([]);
+      if (r.url.path == '/products/shoe') return json(piece('shoe'));
       if (r.url.path == '/complete-look') {
         return json({
           'items': [

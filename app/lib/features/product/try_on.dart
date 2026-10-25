@@ -4,7 +4,7 @@ import '../shared/pick_photo.dart';
 import '../shared/feature_ui.dart';
 
 /// Results stay in the current product's gallery, never the shared catalog.
-Future<({String url, String label})?> requestTryOn(
+Future<({String url, String label, String? sourcePhotoUrl})?> requestTryOn(
     BuildContext context, Api api, String productId,
     {PhotoPicker picker = pickPhoto}) async {
   final user = await api.getUser();
@@ -34,6 +34,7 @@ Future<({String url, String label})?> requestTryOn(
   if (result.imageUrl.isEmpty) throw Exception('No preview was returned.');
   return (
     url: result.imageUrl,
+    sourcePhotoUrl: result.mode == 'ai' ? result.sourcePhotoUrl : null,
     label: result.isOutfitBoard
         ? 'Outfit board · collage, not a photo of you'
         : result.mode == 'ai'

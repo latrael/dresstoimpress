@@ -75,7 +75,7 @@ def test_save_new_product_and_dry_run(store):
     assert p["label"] == TAGGED["label"] and p["price_usd"] == 19.99  # what would be saved...
     assert store.get("products", "hm:1:black") == TAGGED               # ...but nothing written
     [q] = ingest.save([_fresh(id="hm:2:black")])
-    assert q["label"] == "" and "summary" not in q  # nothing stored to carry over
+    assert q["label"] == "" and not q.get("summary")  # nothing stored to carry over (Product.summary may be None)
 
 
 def test_process_reingest_keeps_tags(store):

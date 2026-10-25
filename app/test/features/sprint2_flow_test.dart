@@ -61,6 +61,11 @@ void main() {
     }));
     await t.pumpWidget(NicheApp(store: StoreController(api: api, demo: false)));
     await t.pumpAndSettle();
+    // Continue with Google leads; the team/test sign-ins are folded under "Testing:"
+    expect(find.byKey(const ValueKey('google-sign-in')), findsOneWidget);
+    expect(find.text('New account'), findsNothing);
+    await t.tap(find.byKey(const ValueKey('testing-toggle')));
+    await t.pumpAndSettle();
     expect(find.text('New account'), findsOneWidget);
     expect(find.text('Use team test profile'), findsOneWidget);
     expect(find.byKey(const ValueKey('product-stream')), findsNothing);

@@ -142,7 +142,7 @@ class Product {
 class RankedProduct {
   const RankedProduct(
       {required this.product, this.reason, this.score, this.pairsWith = const [], this.matchedTag, this.yourSize,
-      this.inYourSize});
+      this.inYourSize, this.heroImageUrl, this.closetPicks = const [], this.tryOn});
   final Product product;
   final String? reason;
   final double? score;
@@ -156,6 +156,13 @@ class RankedProduct {
   final String? yourSize;
   final bool? inYourSize;
 
+  /// Sprint 4 §10.1 (reels Home). [heroImageUrl]: slide 1, the item on its own (null on older servers: use
+  /// `product.imageUrl`). [closetPicks]: slide 3, the user's own pieces that go with it (0-4, one per
+  /// square). [tryOn]: slide 2's state (null on older servers = treat as [TryOnState.none]).
+  final String? heroImageUrl;
+  final List<ClosetPick> closetPicks;
+  final TryOnState? tryOn;
+
   String get id => product.id;
 
   factory RankedProduct.fromJson(Json j) => RankedProduct(
@@ -166,7 +173,44 @@ class RankedProduct {
         matchedTag: _strN(j['matched_tag']),
         yourSize: _strN(j['your_size']),
         inYourSize: _boolN(j['in_your_size']),
+        heroImageUrl: _strN(j['hero_image_url']),
+        closetPicks: _list(j['closet_picks'], ClosetPick.fromJson),
+        tryOn: j['tryon'] is Map ? TryOnState.fromJson(_obj(j['tryon'])) : null,
       );
+}
+
+/// Sprint 4 §10.1 `closet_picks[]`: one of the user's closet pieces shown on slide 3.
+class ClosetPick {
+  const ClosetPick({required this.id, required this.label, required this.category, this.imageUrl});
+  final String id;
+  final String label;
+  final String category;
+  final String? imageUrl;
+
+  factory ClosetPick.fromJson(Json j) => ClosetPick(
+      id: _str(j['id']), label: _str(j['label']), category: _str(j['category']), imageUrl: _strN(j['image_url']));
+}
+
+/// Sprint 4 §10.1 `tryon`: slide 2. [status] is one of ready | pending | none | needs_photo | unavailable
+/// (unknown values read as none). [imageUrl] is set when ready, or the free collage when unavailable.
+/// [mode]: "ai" | "collage".
+class TryOnState {
+  const TryOnState({required this.status, this.imageUrl, this.mode});
+  static const none = TryOnState(status: 'none');
+  static const _known = {'ready', 'pending', 'none', 'needs_photo', 'unavailable'};
+  final String status;
+  final String? imageUrl;
+  final String? mode;
+
+  bool get isReady => status == 'ready';
+  bool get isPending => status == 'pending';
+  bool get needsPhoto => status == 'needs_photo';
+  bool get isUnavailable => status == 'unavailable';
+
+  factory TryOnState.fromJson(Json j) {
+    final st = _str(j['status'], 'none');
+    return TryOnState(status: _known.contains(st) ? st : 'none', imageUrl: _strN(j['image_url']), mode: _strN(j['mode']));
+  }
 }
 
 // ---------------------------------------------------------------- Discover (search)

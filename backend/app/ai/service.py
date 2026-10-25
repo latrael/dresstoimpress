@@ -624,3 +624,7 @@ def summarize_product(p: dict, force: bool = False) -> str:
         text = rules_summary(p)
     store.put("summary_cache", key, {"summary": text})
     return text
+
+
+# ---------- sprint 4 §10: reels Home (closet picks, try-on status, prefetch) ----------
+from .feed_tryon import closet_picks, prefetch_tryons, tryon_status  # noqa: E402,F401

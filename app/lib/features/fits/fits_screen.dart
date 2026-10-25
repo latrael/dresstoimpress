@@ -4,11 +4,10 @@ import '../../core/models.dart';
 import '../shared/feature_ui.dart';
 import '../store/store_controller.dart';
 import '../closet/closet_screen.dart';
-import '../shared/store_names.dart';
 
-String _retailerName(String retailer) => storeName(retailer);
-String _dollars(num value) => '\$${value.toStringAsFixed(2)}';
-
+/// "Create 3 fits": outfits built only from the user's own closet (sprint 4). No shop pieces are
+/// substituted, nothing is rendered on the body photo and nothing goes to the cart; the visual is a
+/// board of the closet pieces themselves.
 class FitsScreen extends StatefulWidget {
   const FitsScreen({super.key, required this.store, required this.onProduct});
   final StoreController store;
@@ -22,9 +21,7 @@ class _FitsScreenState extends State<FitsScreen> {
   bool loading = false;
   String? error;
   List<OutfitFit> fits = [];
-  final working = <String>{};
-  final previews = <String, ({String url, String mode})>{};
-  final messages = <String, String>{};
+
   Future<void> generate() async {
     setState(() {
       loading = true;
@@ -33,13 +30,7 @@ class _FitsScreenState extends State<FitsScreen> {
     try {
       final result =
           await widget.store.api.createFits(occasion: occasion, count: 3);
-      if (mounted) {
-        setState(() {
-          fits = result;
-          previews.clear();
-          messages.clear();
-        });
-      }
+      if (mounted) setState(() => fits = result);
     } catch (e) {
       if (mounted) setState(() => error = featureError(e));
     } finally {
@@ -47,153 +38,133 @@ class _FitsScreenState extends State<FitsScreen> {
     }
   }
 
-  Future<void> action(OutfitFit fit, {required bool cart}) async {
-    if (working.contains(fit.id)) return;
-    setState(() {
-      working.add(fit.id);
-      messages.remove(fit.id);
-    });
-    try {
-      if (cart) {
-        await widget.store.api.addFitToCart(fit.id);
-        await widget.store.refreshCart();
-        if (mounted) {
-          setState(() => messages[fit.id] =
-              'New pieces added. Review sizes in your cart.');
-        }
-      } else {
-        final result = await widget.store.api.fitTryOn(fit.id);
-        if (mounted) {
-          setState(() => previews[fit.id] =
-              (url: result.imageUrl, mode: result.mode ?? 'unknown'));
-        }
-      }
-    } catch (e) {
-      if (mounted) setState(() => messages[fit.id] = featureError(e));
-    } finally {
-      if (mounted) setState(() => working.remove(fit.id));
-    }
-  }
+  void _openCloset() => Navigator.push<void>(context,
+      MaterialPageRoute(builder: (_) => ClosetScreen(api: widget.store.api)));
 
   @override
-  Widget build(BuildContext context) => FeaturePage(
-      title: 'Fits for you',
-      child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-          children: [
-            const Text(
-                'Outfits built around your style, size and closet. Only new pieces go into your cart.'),
-            const SizedBox(height: 16),
-            Wrap(spacing: 8, children: [
-              for (final choice in [
-                'everyday',
-                'class',
-                'date',
-                'rooftop party'
-              ])
-                ChoiceChip(
-                    label: Text(choice),
-                    selected: occasion == choice,
-                    onSelected: loading
-                        ? null
-                        : (_) => setState(() => occasion = choice))
-            ]),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-                onPressed: loading || working.isNotEmpty || widget.store.demo
-                    ? null
-                    : generate,
-                icon: const Icon(NicheIcons.autoAwesome),
-                label: Text(loading ? 'Creating your fits…' : 'Create 3 fits')),
-            if (widget.store.demo)
-              const Padding(
-                  padding: EdgeInsets.all(12),
-                  child:
-                      Text('Connect your account to create personal outfits.')),
-            if (error != null)
-              Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
-            if (!loading && fits.isEmpty && error == null)
-              const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Text('Choose an occasion to get started.')),
-            for (final fit in fits)
-              Card(
-                  margin: const EdgeInsets.only(top: 20),
-                  child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(fit.name,
-                                style: Theme.of(context).textTheme.titleLarge),
-                            Text(fit.reason),
-                            for (final piece in fit.pieces)
-                              ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: piece.imageUrl.isEmpty
-                                      ? const Icon(NicheIcons.checkroom)
-                                      : Image.network(
-                                          widget.store.imageUrl(piece.imageUrl),
-                                          width: 52,
-                                          height: 64,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              const Icon(NicheIcons.checkroom)),
-                                  title: Text(piece.label),
-                                  subtitle: Text(piece.fromCloset
-                                      ? 'In your closet'
-                                      : '${_retailerName(piece.product?.retailer ?? '')} · ${piece.yourSize == null ? 'Review size' : 'Size ${piece.yourSize}'}${piece.inYourSize == false ? ' · alternative fit' : ''}'),
-                                  onTap: () {
-                                    if (piece.fromCloset) {
-                                      Navigator.push<void>(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) => ClosetScreen(
-                                                  api: widget.store.api)));
-                                    } else if (piece.product != null) {
-                                      widget.onProduct(RankedProduct(
-                                          product: piece.product!,
-                                          yourSize: piece.yourSize,
-                                          inYourSize: piece.inYourSize));
-                                    }
-                                  }),
-                            Text(
-                                '${fit.closetCount} from your closet · New pieces ${_dollars(fit.newTotalUsd)}',
-                                style: Theme.of(context).textTheme.titleMedium),
-                            if (previews[fit.id] != null ||
-                                fit.tryOnUrl != null) ...[
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return FeaturePage(
+        title: 'Fits from your closet',
+        child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+            children: [
+              const Text(
+                  'Three outfits put together from what you already own.'),
+              const SizedBox(height: 16),
+              Wrap(spacing: 8, children: [
+                for (final choice in [
+                  'everyday',
+                  'class',
+                  'date',
+                  'rooftop party'
+                ])
+                  ChoiceChip(
+                      label: Text(choice),
+                      selected: occasion == choice,
+                      onSelected: loading
+                          ? null
+                          : (_) => setState(() => occasion = choice))
+              ]),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                  onPressed: loading || widget.store.demo ? null : generate,
+                  icon: const Icon(NicheIcons.autoAwesome),
+                  label: Text(loading ? 'Creating your fits…' : 'Create 3 fits')),
+              if (widget.store.demo)
+                const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Connect your account to create fits.')),
+              if (error != null)
+                Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(error!),
+                          TextButton(
+                              onPressed: _openCloset,
+                              child: const Text('Add to your closet')),
+                        ])),
+              if (!loading && fits.isEmpty && error == null)
+                const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Text('Choose an occasion to get started.')),
+              for (final fit in fits)
+                Card(
+                    key: ValueKey('fit-${fit.id}'),
+                    margin: const EdgeInsets.only(top: 20),
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(fit.name, style: text.titleLarge),
+                              const SizedBox(height: 4),
+                              Text(fit.reason),
                               const SizedBox(height: 12),
-                              Text((previews[fit.id]?.mode ?? fit.tryOnMode) ==
-                                      'collage'
-                                  ? 'Outfit board — not a photo of you'
-                                  : 'Your virtual try-on'),
-                              Image.network(
-                                  widget.store.imageUrl(
-                                      previews[fit.id]?.url ?? fit.tryOnUrl!),
-                                  height: 340,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Text(
-                                      'Preview could not load. Try again.')),
-                            ],
-                            if (messages[fit.id] != null)
-                              Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  child: Text(messages[fit.id]!)),
-                            Wrap(spacing: 8, children: [
-                              OutlinedButton(
-                                  onPressed: working.contains(fit.id)
-                                      ? null
-                                      : () => action(fit, cart: false),
-                                  child: Text(working.contains(fit.id)
-                                      ? 'Working…'
-                                      : 'Try on this fit')),
-                              FilledButton(
-                                  onPressed: working.contains(fit.id)
-                                      ? null
-                                      : () => action(fit, cart: true),
-                                  child: const Text('Add fit to cart')),
-                            ]),
-                          ]))),
-          ]));
+                              _PieceBoard(
+                                  pieces: fit.pieces,
+                                  imageUrl: widget.store.imageUrl),
+                              const SizedBox(height: 8),
+                              for (final piece in fit.pieces)
+                                ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
+                                    leading: const Icon(NicheIcons.checkroom),
+                                    title: Text(piece.label),
+                                    subtitle: Text(_slotName(piece.slot)),
+                                    onTap: _openCloset),
+                              if (fit.missing.isNotEmpty)
+                                Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                        'Add ${fit.missing.map(_slotName).join(' and ')} to your closet to finish this one.',
+                                        style: text.bodySmall)),
+                            ]))),
+            ]));
+  }
+}
+
+String _slotName(String slot) => switch (slot) {
+      'top' => 'top',
+      'bottom' => 'bottoms',
+      'shoes' => 'shoes',
+      'outerwear' => 'a layer',
+      'dress' => 'dress',
+      'accessory' => 'accessory',
+      _ => slot,
+    };
+
+/// The closet pieces of one fit, laid out as a 2-column board (the "outfit board" visual).
+class _PieceBoard extends StatelessWidget {
+  const _PieceBoard({required this.pieces, required this.imageUrl});
+  final List<FitPiece> pieces;
+  final String Function(String) imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1,
+        children: [
+          for (final piece in pieces)
+            ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: piece.imageUrl.isEmpty
+                        ? const Center(child: Icon(NicheIcons.checkroom))
+                        : Image.network(imageUrl(piece.imageUrl),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Center(child: Icon(NicheIcons.checkroom))))),
+        ]);
+  }
 }

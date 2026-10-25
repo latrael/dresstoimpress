@@ -125,3 +125,55 @@ def test_route_and_fit_creator_return_source_photo_url(env, monkeypatch):
     monkeypatch.setattr(fit_creator, "store", env)
     out = fit_creator._try_on("u", {"pieces": [{"source": "catalog", "product": {"id": "tee"}}]})
     assert out == {"image_url": "https://img/tee.jpg", "mode": "collage", "source_photo_url": fit}
+
+
+# ---------- season / layer compatibility (sprint-4: "it put shorts when I'm wearing a trench coat") ----------
+
+def test_warmth_keywords():
+    from app.ai.tryon_source import warmth
+    assert warmth("Linen Shorts", "bottom") == 0 and warmth("Regular Fit T-shirt", "top") == 0
+    assert warmth("camel wool overcoat", "outerwear") == 2 and warmth("brown ribbed sweater", "top") == 2
+    assert warmth("black leather boots", "shoes") == 2 and warmth("tan suede shoes", "shoes") == 1
+    assert warmth("navy chinos", "bottom") == 1 and warmth("denim jacket", "outerwear") == 2
+
+
+def test_shorts_pick_the_summer_photo_not_the_trench_coat_one(env):
+    from app.ai.tryon_source import pick_source_photo, score_photo
+    store = env
+    # winter photo: trench coat over a sweater, jeans, boots (full body, big boxes)
+    # summer photo: tee, jeans, sneakers (full body too)
+    store.put("users", "u", {"id": "u", "display_name": "u"})
+    winter, summer = "http://x/winter.jpg", "http://x/summer.jpg"
+    def item(cid, cat, label, photo, box):
+        store.put("closet_items", cid, {"id": cid, "user_id": "u", "category": cat, "label": label, "color": "black",
+                                       "image_url": "http://x/i.jpg", "worn_in": [{"photo_url": photo, "box": box}]})
+    item("w_coat", "outerwear", "beige trench coat", winter, [0.2, 0.1, 0.8, 0.7])
+    item("w_knit", "top", "grey sweater", winter, [0.3, 0.15, 0.7, 0.5])
+    item("w_jeans", "bottom", "black jeans", winter, [0.3, 0.5, 0.7, 0.9])
+    item("w_boots", "shoes", "black leather boots", winter, [0.3, 0.88, 0.7, 0.99])
+    item("s_tee", "top", "white tee", summer, [0.3, 0.15, 0.7, 0.5])
+    item("s_jeans", "bottom", "light blue jeans", summer, [0.3, 0.5, 0.7, 0.9])
+    item("s_sneak", "shoes", "white sneakers", summer, [0.3, 0.88, 0.7, 0.98])
+    shorts = {"id": "p_shorts", "name": "Linen Shorts", "category": "bottom", "colors": ["beige"], "style_tags": []}
+    best = pick_source_photo("u", [shorts])
+    assert best["url"] == summer
+    # a parka goes the other way: the winter photo wins
+    parka = {"id": "p_parka", "name": "Down Parka", "category": "outerwear", "colors": ["black"], "style_tags": []}
+    assert pick_source_photo("u", [parka])["url"] == winter
+    # a tee prefers the photo where the top is the outer layer (no coat kept on over it)
+    tee = {"id": "p_tee", "name": "Regular Fit T-shirt", "category": "top", "colors": ["white"], "style_tags": []}
+    assert pick_source_photo("u", [tee])["url"] == summer
+    # the penalty is explicit: the winter photo scores far below the summer one for shorts
+    from app.ai.tryon_source import candidate_photos
+    by = {ph["url"]: ph for ph in candidate_photos("u")}
+    assert score_photo(by[winter], [shorts])[0] + 4 < score_photo(by[summer], [shorts])[0]
+
+
+def test_only_photo_still_used_even_if_wrong_season(env):
+    from app.ai.tryon_source import pick_source_photo
+    store = env
+    store.put("users", "u", {"id": "u", "display_name": "u"})
+    store.put("closet_items", "c", {"id": "c", "user_id": "u", "category": "outerwear", "label": "wool coat", "color": "grey",
+                                    "image_url": "http://x/i.jpg", "worn_in": [{"photo_url": "http://x/one.jpg", "box": [0.2, 0.1, 0.8, 0.9]}]})
+    shorts = {"id": "p", "name": "Swim Shorts", "category": "bottom", "colors": ["blue"], "style_tags": []}
+    assert pick_source_photo("u", [shorts])["url"] == "http://x/one.jpg"

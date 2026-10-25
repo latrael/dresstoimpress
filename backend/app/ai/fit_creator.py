@@ -1,11 +1,12 @@
-"""AI Fit Creator: complete outfits built for the user's body (body scan), mixing closet pieces with
-in-stock catalog pieces in their size.
+"""AI Fit Creator: complete outfits built ONLY from the user's own closet (sprint-4 ask: "3 fits only
+from closet" — no catalog fill, no try-on render).
 
-Pool = the user's closet + catalog products that are buyable, in their department, inside their price
-ranges / budget and (when a body profile exists) have a size pick. Claude (FIT_CREATOR prompt) picks
-`count` outfits from that pool; ids are validated, incomplete fits are filled by the outfit rules, and
-when AI is off or fails the rules build one fit around each top closet piece (complete_look).
-Fits are cached for an hour and addressable by id (try-on, add to cart).
+Pool = the user's closet pieces. Claude (FIT_CREATOR prompt) picks `count` outfits from it; ids are
+validated, a missing top/bottom is filled by the outfit rules from the closet, and when AI is off or fails
+the rules build one fit around each closet piece (complete_look, closet only). A slot the closet can't
+fill (e.g. no shoes) is left out and listed in `missing`, so the app can say "add shoes to your closet".
+Fits are cached for an hour and addressable by id. `candidate_pool` is kept for the department tests and
+`/fits/{id}/cart` + `/fits/{id}/try-on` stay as routes but have nothing to buy / are not auto-rendered.
 """
 from __future__ import annotations
 
@@ -172,8 +173,9 @@ def _pid(piece: dict) -> str:
 
 
 def _complete(pieces: list[dict]) -> bool:
+    """Wearable: top + bottom, or a dress. Shoes are wanted but a closet without shoes still gets fits."""
     slots = {p["slot"] for p in pieces}
-    return "shoes" in slots and ("dress" in slots or {"top", "bottom"} <= slots)
+    return "dress" in slots or {"top", "bottom"} <= slots
 
 
 def _missing(pieces: list[dict]) -> list[str]:
@@ -215,23 +217,9 @@ def _best_for_slot(slot: str, pieces: list[dict], closet: list[dict], catalog: l
     return _piece(hit, "catalog") if hit else None
 
 
-NEW_PIECE_SLOTS = ("top", "outerwear", "shoes")
-
-
 def _ensure_new(pieces: list[dict], catalog: list[dict], style_text: str, budget_usd: float | None) -> list[dict] | None:
-    """Fits are "fits with new clothes": when every piece is from the closet, swap one slot (top, else outerwear,
-    else shoes) for the best-scoring in-size catalog candidate. None when the catalog has nothing for any of them."""
-    if any(p["source"] == "catalog" for p in pieces):
-        return pieces
-    have = {p["slot"] for p in pieces}
-    for slot in NEW_PIECE_SLOTS:
-        if slot not in have and slot != "outerwear":
-            continue  # don't add a top to a dress fit; outerwear may be added since it's optional
-        rest = [p for p in pieces if p["slot"] != slot]
-        added = _best_for_slot(slot, rest, [], catalog, style_text, budget_usd, catalog_only=True)
-        if added is not None:
-            return rest + [added]
-    return None
+    """Fits are closet-only now: nothing is swapped in from the catalog (kept as a hook; always a no-op)."""
+    return pieces
 
 
 def _fill(pieces: list[dict], closet: list[dict], catalog: list[dict], style_text: str,
@@ -261,12 +249,13 @@ def _finish(fit_id: str, name: str, reason: str, occasion: str | None, pieces: l
     pieces = sorted(pieces, key=lambda p: order.get(p["slot"], 9))
     return {"id": fit_id, "name": name, "occasion": occasion, "reason": reason, "pieces": pieces,
             "new_total_usd": round(sum(_price(p["product"]) for p in pieces if p["source"] == "catalog"), 2),
-            "closet_count": sum(1 for p in pieces if p["source"] == "closet"), "try_on": None}
+            "closet_count": sum(1 for p in pieces if p["source"] == "closet"), "try_on": None,
+            "missing": _missing(pieces)}
 
 
 def _rules_reason(body: str, anchor: dict | None, occasion: str | None) -> str:
     who = f"{body}: " if body else ""
-    around = f"built around your {_closet_label(anchor)}" if anchor else "all new pieces in your size"
+    around = f"built around your {_closet_label(anchor)}" if anchor else "all from your closet"
     tail = f" for {occasion}" if occasion else ""
     s = f"{who}{around}{tail}."
     return s[0].upper() + s[1:]
@@ -404,7 +393,8 @@ def _remember(key: str, user_id: str, fits: list[dict], source: str) -> None:
 
 def create_fits(user_id: str, count: int = 3, occasion: str | None = None, must_include: list[str] | None = None,
                 budget_usd: float | None = None, tryon: bool = False) -> dict:
-    """{"fits": [...], "source": "ai"|"rules"}. Raises NoFits when the pool can't make a single outfit."""
+    """{"fits": [...], "source": "ai"|"rules"}, built only from the closet. `must_include`, `budget_usd` and
+    `tryon` are accepted for old clients and ignored. Raises NoFits when the closet can't make one outfit."""
     user = store.get("users", user_id) or {}
     closet = [c for c in store.list("closet_items", user_id=user_id) if c.get("category") in SLOTS]
     must_include = [m for m in (must_include or []) if m]
@@ -413,8 +403,8 @@ def create_fits(user_id: str, count: int = 3, occasion: str | None = None, must_
     if hit and time.time() - hit.get("at", 0) < FIT_TTL:
         fits, source = hit["fits"], hit["source"]
     else:
-        catalog = candidate_pool(user, must_include, budget_usd)
-        must = [p for p in catalog if p["id"] in must_include]
+        catalog: list[dict] = []  # closet only: no shop pieces, ever
+        must: list[dict] = []
         fits, source = [], "rules"
         if not text_mock():
             try:
@@ -430,11 +420,9 @@ def create_fits(user_id: str, count: int = 3, occasion: str | None = None, must_
                 if frozenset(_pid(p) for p in f["pieces"]) not in have:
                     fits.append(f)
         if not fits:
-            raise NoFits("no complete outfit possible from the closet and catalog")
+            raise NoFits("no complete outfit possible from the closet (needs a top + bottom, or a dress)")
         _remember(key, user_id, fits, source)
-    if tryon and user.get("body_photo_url"):
-        fits = [{**f, "try_on": f.get("try_on") or _try_on(user_id, f)} for f in fits]
-        _remember(key, user_id, fits, source)
+    # `tryon` is accepted for old clients but ignored: fits are closet outfits, not try-on renders.
     return {"fits": fits, "source": source}
 
 

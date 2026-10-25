@@ -14,6 +14,8 @@ import re
 from typing import Any
 
 from app.ai.outfit_rules import score_product
+from app.ai.outfit_score import STYLES, rules_criteria, score_outfit
+from app.ai.outfit_score import _clean_item as _score_item  # noqa: PLC2701 — same item shape, same cleaning
 
 VALID_CATEGORIES: frozenset[str] = frozenset(
     {"top", "bottom", "outerwear", "shoes", "dress", "accessory"}
@@ -207,22 +209,98 @@ def _as_product_shape(item: dict[str, Any], source: str) -> dict[str, Any]:
     return prod
 
 
+# ---- Fit Score v2 rubric for candidates (Adam, Oct 24): no leather belts on athletic tees ----
+
+# Vibes that must never be mixed in one outfit. A piece has a vibe when its style_tags or label words say so;
+# an "athletic" anchor hard-excludes every "formal" candidate and the reverse.
+_ATHLETIC_TAGS = {"athleisure"}
+_ATHLETIC_WORDS = {"athletic", "activewear", "sports", "sport", "training", "performance", "running", "gym",
+                   "jogger", "joggers", "sweatpants", "leggings", "legging", "jersey", "slides", "workout",
+                   "windbreaker", "basketball", "soccer", "compression", "trackpants", "tracksuit"}
+_FORMAL_TAGS = {"business"}
+_FORMAL_WORDS = {"belt", "blazer", "suit", "tie", "oxford", "oxfords", "loafer", "loafers", "heels", "pumps",
+                 "brogue", "brogues", "derby", "slacks", "cufflinks", "tuxedo", "waistcoat", "formal",
+                 "dressshoes", "dressshirt", "dresspants", "leatherbelt", "pencilskirt"}
+_FORMAL_MIN_FORMALITY = 4
+
+
+def _vibes(repr_item: dict[str, Any]) -> set[str]:
+    """{'athletic'} / {'formal'} / both / empty, from the closet-shaped repr (tags, label words, formality)."""
+    toks = re.findall(r"[a-z0-9]+", str(repr_item.get("label") or "").lower())
+    words = set(toks) | {a + b for a, b in zip(toks, toks[1:])}  # "dress shoes" -> "dressshoes"
+    if "tiedye" in words:
+        words.discard("tie")
+    if "sportcoat" in words or "sportsjacket" in words:
+        words -= {"sport", "sports"}
+    tags = set(repr_item.get("style_tags") or [])
+    formality = repr_item.get("formality")
+    out: set[str] = set()
+    if (tags & _ATHLETIC_TAGS and not tags & _FORMAL_TAGS) or words & _ATHLETIC_WORDS:
+        out.add("athletic")
+    if (tags & _FORMAL_TAGS and not tags & _ATHLETIC_TAGS) or words & _FORMAL_WORDS \
+            or (isinstance(formality, int) and formality >= _FORMAL_MIN_FORMALITY):
+        out.add("formal")
+    if out == {"athletic", "formal"}:  # "athletic dress shirt": label words beat tags, call it mixed -> no vibe
+        return set()
+    return out
+
+
+def clashes_with(anchor_repr: dict[str, Any], candidate_repr: dict[str, Any]) -> bool:
+    """Hard exclusion: athletic/activewear anchor -> no leather belts, dress shoes, blazers, ties; formal anchor ->
+    no joggers, athletic tees, slides. Also any pair three or more formality steps apart."""
+    a, c = _vibes(anchor_repr), _vibes(candidate_repr)
+    if ("athletic" in a and "formal" in c) or ("formal" in a and "athletic" in c):
+        return True
+    af, cf = anchor_repr.get("formality"), candidate_repr.get("formality")
+    return isinstance(af, int) and isinstance(cf, int) and abs(af - cf) >= 3
+
+
+def anchor_primary_style(anchor_repr: dict[str, Any]) -> str | None:
+    """The style the anchor executes best on its own (Fit Score v2 style_scores), None when untagged."""
+    if not anchor_repr.get("style_tags"):
+        return None
+    scores = score_outfit([anchor_repr], use_ai=False).get("style_scores") or {}
+    return max(STYLES, key=lambda s: scores.get(s, 0)) if scores else None
+
+
+def _rubric_fit(candidate_repr: dict[str, Any], chosen_context: list[dict[str, Any]], primary_style: str | None) -> float:
+    """0-1: how the outfit (context + candidate) does on style coherence, formality and colour under the v2 rubric,
+    plus a bump when the candidate carries the anchor's primary style."""
+    cleaned = [c for raw in (*chosen_context, candidate_repr) if (c := _score_item(raw))]
+    if not cleaned:
+        return 0.5
+    crit, _, _ = rules_criteria(cleaned)
+    base = (crit["style"] * 1.5 + crit["formality"] * 1.5 + crit["color"]) / 40.0  # weights 1.5/1.5/1 over 0-10
+    if primary_style and primary_style in (candidate_repr.get("style_tags") or []):
+        base += 0.1
+    return max(0.0, min(1.0, base))
+
+
 def _evaluate_candidate(
     candidate: dict[str, Any],
     source: str,
     chosen_context: list[dict[str, Any]],
     style_text: str,
+    primary_style: str | None = None,
 ) -> tuple[float, str]:
-    """Score a candidate against the already-chosen outfit items using score_product."""
+    """Score a candidate against the already-chosen outfit: 0.0 when it clashes with the anchor (first item of
+    the context), else the mean of score_product (closet pairing + style_text) and the v2 rubric fit."""
     prod_view = _as_product_shape(candidate, source)
+    cand_repr = _as_closet_shape(candidate, source)
+    if chosen_context and clashes_with(chosen_context[0], cand_repr):
+        return 0.0, "clashes with the anchor"
     try:
         res = score_product(prod_view, chosen_context, style_text=style_text)
         raw_score = float(res.get("score", 0.0))
-        score = max(0.0, min(1.0, raw_score)) if math.isfinite(raw_score) else 0.0
+        pair = max(0.0, min(1.0, raw_score)) if math.isfinite(raw_score) else 0.0
         reason = _truncate_reason(res.get("reason", "completes your look"))
-        return score, reason
     except Exception:
-        return 0.0, "completes your look"
+        pair, reason = 0.0, "completes your look"
+    try:
+        rubric = _rubric_fit(cand_repr, chosen_context, primary_style)
+    except Exception:
+        rubric = 0.5
+    return round(0.5 * pair + 0.5 * rubric, 6), reason
 
 
 def _determine_required_slots(
@@ -327,6 +405,8 @@ def complete_look(
             "new_items_total_usd": 0.0,
             "missing": ["top", "bottom", "shoes"],
             "score": 0.0,
+            "fit_score": None,
+            "primary_style": None,
         }
 
     anchor_id = str(anchor.get("id") if anchor.get("id") is not None else "")
@@ -377,6 +457,8 @@ def complete_look(
 
     added_records: list[dict[str, Any]] = []
     missing_slots: list[str] = []
+    # complete in the anchor's own style: candidates carrying it get a bump in _rubric_fit
+    primary_style = anchor_primary_style(anchor_closet_repr) if chosen_context else None
 
     def _pick_for_slot(slot: str, is_optional: bool) -> bool:
         nonlocal new_items_total, remaining_budget
@@ -394,7 +476,9 @@ def complete_look(
             c_id = str(c_item.get("id") if c_item.get("id") is not None else f"closet_{idx}")
             if c_cat != slot or c_id in used_ids:
                 continue
-            sc, rsn = _evaluate_candidate(c_item, "closet", chosen_context, safe_style_text)
+            if chosen_context and clashes_with(chosen_context[0], _as_closet_shape(c_item, "closet")):
+                continue  # hard exclusion: no leather belt on an athletic tee
+            sc, rsn = _evaluate_candidate(c_item, "closet", chosen_context, safe_style_text, primary_style)
             closet_scored.append((sc, -idx, c_item, rsn))
 
         closet_scored.sort(key=lambda x: (round(x[0], 6), x[1]), reverse=True)
@@ -435,8 +519,10 @@ def complete_look(
             p_price = _safe_price(p_item)
             if valid_budget is not None and (new_items_total + p_price) > valid_budget + 1e-9:
                 continue
+            if chosen_context and clashes_with(chosen_context[0], _as_closet_shape(p_item, "catalog")):
+                continue  # hard exclusion: no athletic tee under a leather belt
 
-            sc, rsn = _evaluate_candidate(p_item, "catalog", chosen_context, safe_style_text)
+            sc, rsn = _evaluate_candidate(p_item, "catalog", chosen_context, safe_style_text, primary_style)
             if sc >= min_catalog_score:
                 # Tie-break by higher score, lower price, then original catalog order
                 catalog_scored.append((sc, -p_price, -idx, p_item, rsn))
@@ -508,10 +594,20 @@ def complete_look(
             4,
         )
 
+    # Fit Score v2 of the completed outfit (anchor + picks), said as the anchor's style when it has one
+    outfit_items = ([anchor_closet_repr] if anchor_cat in VALID_CATEGORIES else []) + \
+        [_as_closet_shape(rec["raw"], rec["source"]) for rec in added_records]
+    try:
+        fit = score_outfit(outfit_items, target_style=primary_style, use_ai=False) if outfit_items else None
+    except Exception:
+        fit = None
+
     return {
         "anchor_id": anchor_id,
         "items": [rec["entry"] for rec in added_records],
         "new_items_total_usd": round(new_items_total, 2),
         "missing": missing_slots,
         "score": final_score,
+        "fit_score": fit,
+        "primary_style": (fit or {}).get("primary_style") or primary_style,
     }

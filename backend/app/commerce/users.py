@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import Annotated, Optional, get_args
+from typing import Annotated, Literal, Optional, get_args
 
 from fastapi import APIRouter, HTTPException
 from pydantic import AfterValidator, BaseModel, Field
@@ -90,6 +90,7 @@ class UserCreate(BaseModel):
     style_text: str = Field("", max_length=500)
     price_ranges: Ranges = None
     friends: list[str] = []
+    shop_for: Literal["men", "women", "both"] = "both"
 
 
 class UserPatch(BaseModel):
@@ -97,12 +98,16 @@ class UserPatch(BaseModel):
     style_text: Optional[str] = Field(None, max_length=500)
     price_ranges: Ranges = None
     friends: Optional[list[str]] = None
+    preferred_stores: Optional[list[str]] = None
+    onboarded: Optional[bool] = None
+    shop_for: Optional[Literal["men", "women", "both"]] = None
 
 
 class Onboarding(BaseModel):
     user_id: Optional[str] = Field(None, min_length=1, max_length=64)
     display_name: Optional[str] = Field(None, min_length=1, max_length=60)
     text: str = Field("", max_length=500)
+    shop_for: Optional[Literal["men", "women", "both"]] = None  # None keeps the saved value
 
 
 def _new_id(name: str) -> str:
@@ -130,7 +135,7 @@ def create_user(req: UserCreate):
         raise HTTPException(409, "user already exists")
     ranges = req.price_ranges if req.price_ranges is not None else parse_prefs(req.style_text)["budgets"]
     return _save({"id": uid, "display_name": req.display_name, "style_text": req.style_text,
-                  "price_ranges": ranges, "friends": req.friends})
+                  "price_ranges": ranges, "friends": req.friends, "shop_for": req.shop_for})
 
 
 @router.get("/users/{user_id}", response_model=User)
@@ -163,4 +168,6 @@ def onboarding(req: Onboarding):
         uid = req.user_id or _new_id(name)
         user = {"id": uid, "display_name": name, "style_text": req.text, "price_ranges": parsed["budgets"],
                 "friends": [f for f in DEMO_FRIENDS if f != uid and store.get("users", f)]}
+    if req.shop_for:
+        user["shop_for"] = req.shop_for
     return {"user": _save(user), "parsed": parsed}

@@ -62,8 +62,11 @@ def test_upload_tags_and_serves(client):
     r = client.post("/closet/upload", data={"user_id": "u_demo"},
                     files={"file": ("shirt.png", PNG_1PX, "image/png")})
     assert r.status_code == 200, r.text
-    url = r.json()["image_url"]
-    assert "/static/uploads/" in url
+    item = r.json()
+    # closet v2: the mock tagger says "black tee" again, so this merges into the /closet/tag item above and the
+    # photo lands in worn_in; image_url/display_image_url may be a catalog match. The upload is still served.
+    url = item["worn_in"][-1]["photo_url"]
+    assert "/static/uploads/" in url and item["image_url"] == item["display_image_url"]
     assert client.get(url.split("8000", 1)[1]).content == PNG_1PX
 
 
@@ -352,7 +355,7 @@ def test_fallback_uses_outfit_rules(client, monkeypatch):
     monkeypatch.setattr(service, "text_mock", lambda: True)  # force the no-AI path
     got = service.pair("u_demo", ["hm-demo-1", "zara-demo-1", "mango-demo-1"])
     assert got[-1].product_id == "mango-demo-1"  # over budget goes last
-    assert got[0].reason.startswith("goes with your")  # names a closet item now
+    assert got[0].reason.lower().startswith("goes with your")  # names a closet item now
 
 
 def test_to_canonical_unifies_both_shapes():
@@ -376,7 +379,7 @@ def test_seeded_products_match_schema(client):
             Product.model_validate(p)
 
 
-def test_tryon_collage_when_ai_unavailable(client, monkeypatch, tmp_path):
+def test_tryon_unavailable_caches_nothing_and_never_makes_a_board(client, monkeypatch, tmp_path):
     import io
     from PIL import Image
     from app.ai import service
@@ -396,16 +399,18 @@ def test_tryon_collage_when_ai_unavailable(client, monkeypatch, tmp_path):
     def no_images(*a, **k):
         raise service.BadModelOutput("429 quota")
     monkeypatch.setattr(service, "gemini_image", no_images)
-    url, cached, mode = service.try_on("u_board", ["board-tee"], [])
-    assert mode == "collage" and not cached and url.endswith("-board.png")
-    img = Image.open(io.BytesIO((service.TRYON_DIR / url.rsplit("/", 1)[1]).read_bytes()))
-    assert img.size == (1024, 1280)
-    assert service.try_on("u_board", ["board-tee"], [])[1] is True  # cached within retry window
+    import pytest
+    with pytest.raises(service.TryOnUnavailable):
+        service.try_on("u_board", ["board-tee"], [])
+    assert store.list("tryon_cache", user_id="u_board") == []  # nothing cached: next call retries
+    assert not list(service.TRYON_DIR.glob("*-board.png")) if service.TRYON_DIR.exists() else True
+    r = client.post("/tryon", json={"user_id": "u_board", "product_ids": ["board-tee"]})
+    assert r.status_code == 503 and r.json()["detail"]["error"] == "tryon_unavailable"
 
 
-def test_tryon_without_body_photo_still_returns_board(client):
+def test_tryon_without_body_photo_is_unavailable(client):
     r = client.post("/tryon", json={"user_id": "nobody", "product_ids": ["hm-demo-1"]})
-    assert r.status_code == 200 and r.json()["mode"] in {"ai", "collage"}
+    assert r.status_code == 503 and r.json()["detail"]["error"] == "tryon_unavailable"
 
 
 def test_complete_look_endpoint(client):

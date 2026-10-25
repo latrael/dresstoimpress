@@ -1,8 +1,24 @@
 .env
 __pycache__/
 *.pyc
-.venv/
+.venv
 .pytest_cache/
 backend/data/
 .DS_Store
 *.bundle
+.venv
+
+# team handoff / planning notes (kept locally, not published)
+*_TO_*.md
+/ADAM.md
+/NABIL.md
+/RYAN.md
+/ryan-nabil.md
+docs/progress.md
+docs/sprint-*.md
+docs/handoff-*.md
+docs/demo-plan.md
+docs/tryon-budget.md
+docs/council-*.md
+docs/plan-sat/
+docs/ryan-*.md

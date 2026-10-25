@@ -17,7 +17,9 @@ from ..store import store
 
 BASE = "https://api.nessieisreal.com"
 DEMO_USER = "u_demo"  # NESSIE_ACCOUNT_ID, if set, is used for this user instead of creating one
-MERCHANTS = {"hm": "H&M", "uniqlo": "Uniqlo", "zara": "Zara", "mango": "Mango", "asos": "ASOS"}
+MERCHANTS = {"hm": "H&M", "uniqlo": "Uniqlo", "zara": "Zara", "mango": "Mango", "asos": "ASOS",
+             "princesspolly": "Princess Polly", "edikted": "Edikted", "brandymelville": "Brandy Melville",
+             "trueclassic": "True Classic", "kith": "Kith", "stussy": "Stüssy"}
 ADDRESS = {"street_number": "2650", "street_name": "Telegraph Ave", "city": "Berkeley", "state": "CA",
            "zip": "94704"}
 GEOCODE = {"lat": 37.8611, "lng": -122.2588}
@@ -67,6 +69,17 @@ def create_purchase(account_id: str, merchant_id: str, amount: float, descriptio
 
 def list_purchases(account_id: str) -> list[dict]:
     return _call("GET", f"/accounts/{account_id}/purchases")
+
+
+def get_account(account_id: str) -> dict:
+    return _call("GET", f"/accounts/{account_id}")
+
+
+def account_of(user_id: str) -> str | None:
+    """The user's Nessie account id if they have one (never creates it: reads stay side-effect free)."""
+    if user_id == DEMO_USER and os.getenv("NESSIE_ACCOUNT_ID"):
+        return os.environ["NESSIE_ACCOUNT_ID"]
+    return ((store.get("nessie", "accounts") or {}).get(user_id) or {}).get("account_id")
 
 
 def ensure_merchant(retailer: str) -> str:

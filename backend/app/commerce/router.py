@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import uuid
 from datetime import datetime, timezone
 from itertools import zip_longest
@@ -18,9 +19,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..ai import memory
+from ..ai.colors import _label_words, same_color
+from ..ai.compat import as_product
+from ..ai.complete_look import _as_closet_shape
+from ..ai.outfit_rules import score_product
+from ..ai.router import _usual_size
 from ..ai.service import _in_budget, pair
+from ..ai.sizing import recommend_size
 from ..store import store
-from . import nessie
+from . import nessie, reels
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["commerce"])
@@ -40,6 +47,11 @@ class CartAdd(BaseModel):
     product_id: str
     size: str
     qty: int = Field(1, ge=1)
+
+
+class CartSizeChange(BaseModel):
+    size: str
+    new_size: str
 
 
 def _now() -> str:
@@ -65,6 +77,12 @@ def _size_ok(s: dict) -> bool:
 def _buyable(p: dict) -> bool:
     sizes = _sizes(p)
     return p.get("in_stock", True) and (not sizes or any(_size_ok(s) for s in sizes))
+
+
+def _dept_ok(p: dict, shop_for: Optional[str]) -> bool:
+    """User.shop_for filter: "men" / "women" also get unisex and unknown-department items (e.g. live search
+    results); "both" or missing gets everything."""
+    return shop_for not in ("men", "women") or p.get("department") in (shop_for, "unisex", None)
 
 
 def _price(p: dict) -> float:
@@ -110,29 +128,150 @@ def _swiped(user_id: str) -> set[str]:
 
 # ---------- feed / products ----------
 
+SEED_LEAD = 5        # seeded feed: this many similar cards right after the seed...
+SEED_EVERY = 4       # ...then every 4th card is an other-category item that goes with the seed
+GOES_WITH_MIN = 0.5  # outfit_rules score for "goes with the seed" (the bar complete_look uses for closet items)
+PREFERRED_RUN = 2    # plain feed, per size group: 2 preferred-store cards for every other-store card
+
+
+def _size_pick(p: dict, bp: dict) -> Optional[str]:
+    """POST /size's pick for a contract-shape product, from an already loaded body_profile (no store reads)."""
+    usual = (bp.get("usual_sizes") or {}).get(p.get("category"))
+    if not (bp.get("height_cm") and bp.get("weight_kg")):
+        return (_usual_size(p, usual) or {}).get("size") if usual else None
+    out = recommend_size(p, bp["height_cm"], bp["weight_kg"], fit=bp.get("fit") or "regular",
+                         shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in"), chest_in=bp.get("chest_in"),
+                         hip_in=bp.get("hip_in"), inseam_in=bp.get("inseam_in"), usual_size=usual)
+    if not out.get("size") and usual:
+        out = _usual_size(p, usual) or out
+    return out.get("size")
+
+
+def _size_fields(p: dict, bp: dict) -> dict:
+    """your_size: what POST /size would pick (in-stock sizes only). in_your_size: that's also what we'd pick if
+    nothing were sold out (false = their size is sold out and your_size is the nearest one left). Both null
+    when we know nothing about their size, or can't size this item for them (e.g. shoes without a shoe size)."""
+    if not ((bp.get("height_cm") and bp.get("weight_kg")) or bp.get("usual_sizes")):
+        return {"your_size": None, "in_your_size": None}
+    shaped = as_product(p)
+    yours = _size_pick(shaped, bp)
+    ideal = _size_pick({**shaped, "sizes": [s["name"] for s in _sizes(p)]}, bp)
+    return {"your_size": yours, "in_your_size": None if ideal is None else yours == ideal}
+
+
+def _size_first(products: list[dict], bp: dict) -> list[dict]:
+    """Discover's soft size ranking: adds your_size/in_your_size; in-your-size first, otherwise the given order
+    (stable sort, nothing hidden)."""
+    cards = [{**p, **_size_fields(p, bp)} for p in products]
+    return sorted(cards, key=lambda c: c["in_your_size"] is not True)
+
+
+def _card(p: dict, bp: dict, r=None) -> dict:
+    return {**p, "reason": r.reason if r else "", "score": r.score if r else 0.0,
+            "pairs_with": r.pairs_with if r else [], **_size_fields(p, bp)}
+
+
+def _style_words(p: dict) -> set[str]:
+    return _label_words(f"{p.get('label') or ''} {p.get('name') or ''}")
+
+
+def _similarity(seed: dict, p: dict) -> float:
+    """Rule-based look-alike score: shared colour, style tags, pattern, label words (fit/type: "baggy", "jeans")."""
+    color = any(same_color(a, b) for a in seed.get("colors") or [] for b in p.get("colors") or [])
+    tags = len(set(seed.get("style_tags") or []) & set(p.get("style_tags") or []))
+    pattern = bool(seed.get("pattern")) and seed.get("pattern") == p.get("pattern")
+    return 2.0 * color + tags + pattern + len(_style_words(seed) & _style_words(p))
+
+
+def _weave(similar: list[dict], extra: list[dict]) -> list[dict]:
+    """SEED_LEAD similar cards, then an `extra` card as every SEED_EVERY-th; leftovers of either at the end."""
+    out, extra = similar[:SEED_LEAD], iter(extra)
+    for n, p in enumerate(similar[SEED_LEAD:]):
+        if n % (SEED_EVERY - 1) == 0 and (x := next(extra, None)):
+            out.append(x)
+        out.append(p)
+    return out + list(extra)
+
+
+def _seeded(user_id: str, seed: dict, cands: dict, bp: dict, boosted, limit: int,
+            seed_shown: bool = False) -> list[dict]:
+    """Seed first (left out once `seed_shown`), then its category by similarity (in your size first), other
+    categories that go with it woven in, then the rest as the plain feed tiers it. One pair() call, for reasons
+    only: it never reorders."""
+    in_size = {pid: _size_fields(p, bp)["in_your_size"] is True for pid, p in cands.items()}
+    styles = {(seed.get("retailer"), seed.get("name", "").strip().lower())}  # drops the seed's colour variants
+    same = [p for p in cands.values() if p.get("category") == seed.get("category")]
+    same.sort(key=lambda p: (not in_size[p["id"]], -_similarity(seed, p), not boosted(p)))
+    anchor = [_as_closet_shape(as_product(seed), "catalog")]
+    scored = [(score_product(as_product(p), anchor)["score"], p) for p in cands.values()
+              if p.get("category") != seed.get("category")]
+    goes = [p for s, p in sorted(scored, key=lambda r: (not in_size[r[1]["id"]], -r[0])) if s >= GOES_WITH_MIN]
+    cards = [*([] if seed_shown else [seed]), *_weave(_dedupe(same, styles), _dedupe(goes, styles))]
+    used = {p["id"] for p in cards}
+    rest = sorted((p for p in cands.values() if p["id"] not in used),
+                  key=lambda p: (not in_size[p["id"]], not boosted(p)))
+    cards = (cards + _mix(_dedupe(rest, styles)))[:limit]
+    reasons = {r.product_id: r for r in pair(user_id, [p["id"] for p in cards], k=min(24, limit * 2))}
+    return [_card(p, bp, reasons.get(p["id"])) for p in cards]
+
+
 @router.get("/feed")
-def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None):
-    """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with."""
-    ranges = (store.get("users", user_id) or {}).get("price_ranges", {})
+def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer: Optional[str] = None,
+         seed: Optional[str] = None, seed_shown: bool = False):
+    """In-stock, in-budget, unswiped products ordered by ai.service.pair(), plus reason/score/pairs_with and
+    your_size/in_your_size. In-your-size items come first; within each size group, 2 preferred-store cards per
+    other-store card (_two_to_one). Nothing is hidden for size.
+    Only the user's shop_for department (+ unisex/unknown) is shown.
+    `seed` (product id, 404 if unknown): that product first even if swiped, then similar items (see _seeded).
+    `seed_shown=true`: the app has already shown the seed card, so later loads of the same seeded feed leave it
+    out (still "similar to seed"; the page is filled with one more similar item instead)."""
+    seed_p = _product(seed) if seed else None
+    user = store.get("users", user_id) or {}
+    bp, ranges = user.get("body_profile") or {}, user.get("price_ranges", {})
+    preferred = {str(s).lower() for s in user.get("preferred_stores") or []}
     swiped = _swiped(user_id)
     where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
     cands = {p["id"]: p for p in store.list("products", **where)
-             if p["id"] not in swiped and _buyable(p) and _in_budget(p, ranges)}
+             if p["id"] not in swiped and p["id"] != seed and _buyable(p) and _in_budget(p, ranges)
+             and _dept_ok(p, user.get("shop_for"))}
+
+    def boosted(p: dict) -> bool:
+        return str(p.get("retailer", "")).lower() in preferred
+
+    if seed_p:
+        return reels.decorate(user_id, _seeded(user_id, seed_p, cands, bp, boosted, limit, seed_shown))
     if not cands:
         return []
 
+    # size group (in your size first), then preferred stores; pure rules, computed once per candidate
+    tier = {pid: (_size_fields(p, bp)["in_your_size"] is not True, not boosted(p)) for pid, p in cands.items()}
+    order = sorted(cands, key=tier.get)  # stable; with >50 candidates the AI sees the best tiers
     # Claude sees up to 50 candidates (pair caps it) but writes ~24 reasons (one per ranked item, the slow
     # part); the unranked rest tops up the page so de-duping styles and mixing stores still fills it
-    ranked = pair(user_id, list(cands), k=min(24, limit * 2))
-    picked = [{**cands[r.product_id], "reason": r.reason, "score": r.score, "pairs_with": r.pairs_with}
-              for r in ranked if r.product_id in cands]
+    ranked = pair(user_id, order, k=min(24, limit * 2))
+    picked = [_card(cands[r.product_id], bp, r) for r in ranked if r.product_id in cands]
     seen = {p["id"] for p in picked}
-    rest = [{**p, "reason": "", "score": 0.0, "pairs_with": []} for pid, p in cands.items() if pid not in seen]
+    rest = [_card(cands[pid], bp) for pid in order if pid not in seen]
     styles: set = set()
-    cards = _mix(_dedupe(picked, styles))  # ranked cards always come first
-    if len(cards) < limit:
-        cards += _mix(_dedupe(rest, styles))  # unranked top-up never repeats a ranked style
-    return cards[:limit]
+    cards: list[dict] = []
+    for size_group in sorted({t[0] for t in tier.values()}):
+        sides = []
+        for t in ((size_group, False), (size_group, True)):  # preferred stores, then the others
+            # in each tier: ranked cards first, then the unranked top-up (never repeats a ranked style)
+            sides.append(_mix(_dedupe([p for p in picked if tier[p["id"]] == t], styles))
+                         + _mix(_dedupe([p for p in rest if tier[p["id"]] == t], styles)))
+        cards += _two_to_one(*sides)
+        if len(cards) >= limit:
+            break
+    return reels.decorate(user_id, cards[:limit])
+
+
+def _two_to_one(preferred: list[dict], other: list[dict]) -> list[dict]:
+    """PREFERRED_RUN preferred-store cards per other-store card, each side in its own order; leftovers at the end."""
+    out = []
+    for n in range(max(-(-len(preferred) // PREFERRED_RUN), len(other))):
+        out += preferred[n * PREFERRED_RUN:(n + 1) * PREFERRED_RUN] + other[n:n + 1]
+    return out
 
 
 def _hits(p: dict, words: list[str]) -> Optional[int]:
@@ -146,14 +285,15 @@ def _hits(p: dict, words: list[str]) -> Optional[int]:
 @router.get("/products")
 def search_products(q: str = "", category: Optional[str] = None, retailer: Optional[str] = None,
                     in_stock: bool = True, sort: Literal["relevance", "price_asc", "price_desc"] = "relevance",
-                    limit: int = 24, offset: int = 0):
-    """Catalog search: every word of `q` must match somewhere; `next_offset` is null on the last page."""
+                    limit: int = 24, offset: int = 0, department: Optional[Literal["men", "women", "both"]] = None):
+    """Catalog search: every word of `q` must match somewhere; `next_offset` is null on the last page.
+    `department` (pass the user's shop_for): men/women also keep unisex and unknown items; none/both = all."""
     limit, offset = max(1, min(limit, 100)), max(0, offset)
     words = q.lower().split()
     where = {k: v for k, v in {"category": category, "retailer": retailer}.items() if v}
     rows = []
     for p in store.list("products", **where):
-        if in_stock and not _buyable(p):
+        if (in_stock and not _buyable(p)) or not _dept_ok(p, department):
             continue
         if (hits := _hits(p, words)) is not None:
             rows.append((hits, p))
@@ -165,6 +305,22 @@ def search_products(q: str = "", category: Optional[str] = None, retailer: Optio
     items = [p for _, p in rows[offset:offset + limit]]
     return {"items": items, "total": total, "limit": limit, "offset": offset,
             "next_offset": offset + limit if offset + limit < total else None}
+
+
+@router.get("/stores")
+def stores():
+    """Stores we carry, for onboarding chips and cart headings: [{id, name, count, departments}], biggest
+    first. `count` = in-stock products; `departments` = in-stock products per men/women/unisex."""
+    by: dict[str, dict] = {}
+    for p in store.list("products"):
+        if p.get("source") == "seed" or not _buyable(p):
+            continue
+        s = by.setdefault(p["retailer"], {"id": p["retailer"], "count": 0, "departments": {}})
+        s["count"] += 1
+        if dept := p.get("department"):
+            s["departments"][dept] = s["departments"].get(dept, 0) + 1
+    return [{**s, "name": nessie.MERCHANTS.get(s["id"], s["id"].title())}
+            for s in sorted(by.values(), key=lambda s: (-s["count"], s["id"]))]
 
 
 @router.get("/products/{product_id:path}")  # ids are "{retailer}:{code}:{color}"; :path keeps a "/" colour working
@@ -258,6 +414,18 @@ def _check_size(p: dict, size: str) -> None:
         raise HTTPException(422, msg)
 
 
+def _unavailable_reason(p: Optional[dict], size: str) -> Optional[str]:
+    """Short reason a cart line can't be bought right now (None = buyable); the app shows it as-is."""
+    if not p:
+        return "no longer available"  # product dropped from the catalog
+    s = next((s for s in _sizes(p) if s.get("name") == size), None)
+    if not s:
+        return "size no longer offered"
+    if not _size_ok(s) or not p.get("in_stock", True):
+        return "size sold out"
+    return None
+
+
 def _cart(user_id: str) -> dict:
     return store.get("carts", user_id) or {"user_id": user_id, "items": []}
 
@@ -268,23 +436,42 @@ def _add_to_cart(user_id: str, product_id: str, size: str, qty: int) -> dict:
     if item:
         item["qty"] += qty
     else:
-        cart["items"].append({"product_id": product_id, "size": size, "qty": qty, "added_at": _now()})
+        # name + photo are kept on the line so the cart can still show it if the product leaves the catalog
+        p = store.get("products", product_id) or {}
+        cart["items"].append({"product_id": product_id, "size": size, "qty": qty, "added_at": _now(),
+                              "name": p.get("name", ""), "image_url": p.get("image_url")})
     store.put("carts", user_id, cart)
     return cart
 
 
+def _line_name(i: dict, p: Optional[dict]) -> str:
+    return (p or {}).get("name") or i.get("name") or i["product_id"]
+
+
+def _line_image(i: dict, p: Optional[dict]) -> Optional[str]:
+    """The photo saved on the line; lines saved before it was kept fall back to the product's (None if gone)."""
+    return i.get("image_url") or (p or {}).get("image_url")
+
+
 def _grouped(user_id: str) -> dict:
+    """Buyable lines grouped by retailer. Lines that can't be bought go to `unavailable` (available: false,
+    unavailable_reason, no price toward the totals) so the user sees them and can remove them.
+    `count` covers every line, so a cart holding only unavailable items isn't shown as empty."""
     groups: dict[str, dict] = {}
+    unavailable, count = [], 0
     for i in _cart(user_id)["items"]:
+        count += i["qty"]
         p = store.get("products", i["product_id"])
-        if not p:
-            continue  # product dropped from the catalog
+        if reason := _unavailable_reason(p, i["size"]):
+            unavailable.append({**i, "name": _line_name(i, p), "image_url": _line_image(i, p), "product": p,
+                                "available": False, "unavailable_reason": reason})
+            continue
         g = groups.setdefault(p["retailer"], {"retailer": p["retailer"], "items": [], "subtotal_usd": 0.0})
-        g["items"].append({**i, "product": p})
+        g["items"].append({**i, "image_url": _line_image(i, p), "product": p, "available": True})
         g["subtotal_usd"] = round(g["subtotal_usd"] + _price(p) * i["qty"], 2)
     gs = list(groups.values())
     return {"user_id": user_id, "groups": gs, "total_usd": round(sum(g["subtotal_usd"] for g in gs), 2),
-            "count": sum(i["qty"] for g in gs for i in g["items"])}
+            "count": count, "unavailable": unavailable}
 
 
 @router.post("/cart/{user_id}/items")
@@ -309,6 +496,33 @@ def cart_remove(user_id: str, product_id: str, size: Optional[str] = None):
     return _grouped(user_id)
 
 
+@router.patch("/cart/{user_id}/items/{product_id}")
+def cart_change_size(user_id: str, product_id: str, req: CartSizeChange):
+    """Moves the `size` line to `new_size` with the same qty, merging into an existing `new_size` line.
+    One store write, so it can't half-fail. Same size = no-op. 404 no such line, 409 new_size not buyable."""
+    cart = _cart(user_id)
+    line = next((i for i in cart["items"] if i["product_id"] == product_id and i["size"] == req.size), None)
+    if not line:
+        raise HTTPException(404, f"size {req.size} of {product_id} is not in the cart")
+    if req.new_size == req.size:
+        return _grouped(user_id)
+    p = store.get("products", product_id)
+    if msg := (_size_problem(p, req.new_size) if p else f"{_line_name(line, p)} is no longer available"):
+        raise HTTPException(409, msg)
+    target = next((i for i in cart["items"] if i["product_id"] == product_id and i["size"] == req.new_size), None)
+    if target:
+        target["qty"] += line["qty"]
+        cart["items"].remove(line)
+    else:
+        target = line
+        line["size"] = req.new_size
+    # name + photo (re)saved from the live product, like on add (older lines may not have the photo yet)
+    target.update(name=p.get("name") or target.get("name", ""),
+                  image_url=p.get("image_url") or target.get("image_url"))
+    store.put("carts", user_id, cart)
+    return _grouped(user_id)
+
+
 # ---------- checkout ----------
 
 def _pay(user_id: str, purchase: dict) -> None:
@@ -321,6 +535,7 @@ def _pay(user_id: str, purchase: dict) -> None:
         purchase["merchant_id"] = nessie.ensure_merchant(purchase["retailer"])
         res = nessie.create_purchase(account_id, purchase["merchant_id"], purchase["amount_usd"], desc)
         purchase.update(status="paid", nessie_id=res["_id"], nessie_account_id=account_id)
+        purchase.pop("error", None)  # a retry that succeeds clears the earlier failure
     except Exception as e:  # noqa: BLE001
         log.warning("nessie purchase failed: %s", e)
         purchase.update(status="nessie_failed", error=str(e)[:200])
@@ -329,14 +544,15 @@ def _pay(user_id: str, purchase: dict) -> None:
 @router.post("/checkout/{user_id}")
 def checkout(user_id: str):
     """One Nessie purchase per retailer (`paid`), or `pending_nessie` when NESSIE_API_KEY isn't set.
-    409 {message, unavailable: [{product_id, size}]} if any item went out of stock; nothing is charged."""
+    409 {message, unavailable: [{product_id, size, name, reason}]} if any item can't be bought (sold out or
+    gone from the catalog): nothing is charged or skipped, and the cart is kept so the user can remove them."""
     bad, msgs = [], []
     for i in _cart(user_id)["items"]:  # stock may have changed since add: charge nothing, keep the cart
         p = store.get("products", i["product_id"])
-        msg = _size_problem(p, i["size"]) if p else f"{i['product_id']} is no longer available"
-        if msg:
-            bad.append({"product_id": i["product_id"], "size": i["size"]})
-            msgs.append(msg)
+        if reason := _unavailable_reason(p, i["size"]):
+            name = _line_name(i, p)
+            bad.append({"product_id": i["product_id"], "size": i["size"], "name": name, "reason": reason})
+            msgs.append(_size_problem(p, i["size"]) if p else f"{name} is no longer available")
     if bad:
         raise HTTPException(409, {"message": "; ".join(msgs), "unavailable": bad})
     cart = _grouped(user_id)
@@ -358,10 +574,45 @@ def checkout(user_id: str):
              "total_usd": cart["total_usd"], "created_at": _now()}
     store.put("orders", order_id, order)
     store.put("carts", user_id, {"user_id": user_id, "items": []})
-    return {"order_id": order_id, "purchases": purchases, "total_usd": cart["total_usd"],
+    return _receipt(order)
+
+
+def _receipt(order: dict) -> dict:
+    return {"order_id": order["id"], "purchases": order["purchases"], "total_usd": order["total_usd"],
             "created_at": order["created_at"]}
 
 
 @router.get("/orders/{user_id}")
 def orders(user_id: str):
     return sorted(store.list("orders", user_id=user_id), key=lambda o: o["created_at"], reverse=True)
+
+
+RETRYABLE = ("nessie_failed", "pending_nessie")  # pending_nessie = no Nessie call was ever made (no key)
+_retry_lock = threading.Lock()  # two concurrent retries of one order must not both charge it
+
+
+@router.post("/orders/{order_id}/retry")
+def retry_order(order_id: str, user_id: str, retailer: Optional[str] = None):
+    """Re-attempt only this order's unpaid store purchases (all of them, or just `retailer`). `paid` purchases
+    are never touched, so this is safe to repeat: an all-paid order comes back unchanged with no Nessie call.
+    No stock re-check: the order already exists and the amount is the one recorded at checkout.
+    404 unknown order/retailer, 403 not the owner, 503 no NESSIE_API_KEY (nothing changes)."""
+    with _retry_lock:
+        order = store.get("orders", order_id)
+        if not order:
+            raise HTTPException(404, "unknown order")
+        if order.get("user_id") != user_id:
+            raise HTTPException(403, "not your order")
+        targets = [p for p in order["purchases"] if retailer is None or p["retailer"] == retailer]
+        if retailer is not None and not targets:
+            raise HTTPException(404, f"no {retailer} purchase in this order")
+        todo = [p for p in targets if p.get("status") in RETRYABLE]
+        if not todo:
+            return _receipt(order)
+        if not os.getenv("NESSIE_API_KEY"):
+            raise HTTPException(503, "payments are not configured on this server")
+        for p in todo:
+            p["retried_at"] = _now()
+            _pay(user_id, p)
+        store.put("orders", order_id, order)
+        return _receipt(order)

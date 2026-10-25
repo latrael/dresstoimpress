@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -89,7 +90,7 @@ void main() {
   });
 
   testWidgets(
-    'vertical browse resets photo and size and single image hides dots',
+    'continuous browse keeps nearby selections separate and single image hides dots',
     (tester) async {
       await mount(tester);
       await tester.tap(find.widgetWithText(ChoiceChip, 'S').first);
@@ -98,27 +99,27 @@ void main() {
         const Offset(-350, 0),
       );
       await tester.pumpAndSettle();
-      await tester.drag(
-        find.byKey(const ValueKey('details-a')),
-        const Offset(0, -1000),
-      );
+      await tester.ensureVisible(find.text('Piece b'));
       await tester.pumpAndSettle();
       expect(find.text('Piece b'), findsOneWidget);
       expect(find.bySemanticsLabel('Photo 1 of 1'), findsNothing);
       expect(
-        tester.widget<FilledButton>(find.byType(FilledButton).first).onPressed,
+        tester
+            .widget<FilledButton>(find.descendant(
+                of: find.byKey(const ValueKey('details-b')),
+                matching: find.byType(FilledButton)))
+            .onPressed,
         isNull,
       );
-      await tester.drag(
-          find.byKey(const ValueKey('details-b')), const Offset(0, 1000));
+      await tester.ensureVisible(find.byKey(const ValueKey('photos-a')));
       await tester.pumpAndSettle();
       final returnedPhotos = find.byKey(const ValueKey('photos-a'));
-      expect(tester.widget<PageView>(returnedPhotos).controller!.page, 0);
+      expect(tester.widget<PageView>(returnedPhotos).controller!.page, 1);
       expect(
           tester
               .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'S').first)
               .selected,
-          isFalse);
+          isTrue);
     },
   );
 
@@ -135,6 +136,16 @@ void main() {
     await tester.tap(photos);
     await tester.pump(const Duration(milliseconds: 70));
     await tester.tap(photos);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+        tester
+            .widget<Opacity>(find
+                .ancestor(
+                    of: find.byIcon(NicheIcons.favorite).first,
+                    matching: find.byType(Opacity))
+                .first)
+            .opacity,
+        greaterThan(0));
     await tester.pumpAndSettle();
     expect(saved, isTrue);
     await tester.tap(find.widgetWithText(ChoiceChip, 'S').first);

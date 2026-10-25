@@ -52,7 +52,7 @@ PRICES = {
 # endpoint uses its non-AI fallback instead. Set 0 to disable.
 AI_BUDGET_USD = float(os.getenv("AI_BUDGET_USD", "5"))
 # Gemini try-ons are the expensive part; cap how many fresh ones we generate.
-MAX_TRYONS = int(os.getenv("MAX_TRYONS", "150"))
+MAX_TRYONS = int(os.getenv("MAX_TRYONS", "400"))  # see docs/tryon-budget.md
 
 
 class BudgetExceeded(Exception):
@@ -119,6 +119,70 @@ class BadModelOutput(Exception):
     pass
 
 
+# Determinism: Gemini text calls run at temperature 0 with a fixed seed, so the same prompt + image gives the same
+# JSON. Claude takes neither: Haiku 5.5 accepts only its default sampling (a non-default temperature is a 400, and
+# API version 2026-10-21 / SDK 2.x drop the parameter), so its determinism is the per-prompt schema check alone.
+# Override with AI_TEMPERATURE / AI_SEED for experiments only.
+TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0"))
+SEED = int(os.getenv("AI_SEED", "7"))
+
+_TYPES = {"object": dict, "array": list, "string": str, "boolean": bool, "null": type(None)}
+
+
+def validate_schema(obj: Any, schema: dict | None, path: str = "$") -> None:
+    """Tiny JSON-schema check (type, required, properties, items, enum, anyOf, min/maxItems).
+    Raises BadModelOutput naming the first violation; no-op when schema is None."""
+    if not schema:
+        return
+    if "anyOf" in schema:
+        errs = []
+        for sub in schema["anyOf"]:
+            try:
+                validate_schema(obj, sub, path)
+                return
+            except BadModelOutput as e:
+                errs.append(str(e))
+        raise BadModelOutput(f"{path}: matches no alternative ({'; '.join(errs)})")
+    types = schema.get("type")
+    if types:
+        allowed = [types] if isinstance(types, str) else list(types)
+        ok = False
+        for t in allowed:
+            if t == "number":
+                ok = ok or (isinstance(obj, (int, float)) and not isinstance(obj, bool))
+            elif t == "integer":
+                ok = ok or (isinstance(obj, int) and not isinstance(obj, bool)) or (isinstance(obj, float) and obj.is_integer())
+            else:
+                ok = ok or isinstance(obj, _TYPES[t])
+        if not ok:
+            raise BadModelOutput(f"{path}: expected {types}, got {type(obj).__name__}")
+    if "enum" in schema and obj not in schema["enum"]:
+        raise BadModelOutput(f"{path}: {obj!r} not in {schema['enum']}")
+    if isinstance(obj, dict):
+        for key in schema.get("required", []):
+            if key not in obj:
+                raise BadModelOutput(f"{path}: missing {key!r}")
+        for key, sub in schema.get("properties", {}).items():
+            if key in obj and obj[key] is not None or (key in obj and "null" in (sub.get("type") or [])):
+                validate_schema(obj[key], sub, f"{path}.{key}")
+    if isinstance(obj, list):
+        if "maxItems" in schema and len(obj) > schema["maxItems"]:
+            raise BadModelOutput(f"{path}: {len(obj)} items > {schema['maxItems']}")
+        if "minItems" in schema and len(obj) < schema["minItems"]:
+            raise BadModelOutput(f"{path}: {len(obj)} items < {schema['minItems']}")
+        if "items" in schema:
+            for i, el in enumerate(obj):
+                validate_schema(el, schema["items"], f"{path}[{i}]")
+
+
+def _checked(obj: Any, prompt: str, schema: dict | None) -> Any:
+    """Validate a parsed reply against the prompt's schema (explicit, else looked up by prompt)."""
+    from . import prompts
+
+    validate_schema(obj, schema if schema is not None else prompts.schema_for(prompt))
+    return obj
+
+
 def extract_json(text: str) -> Any:
     """Pull the first JSON object/array out of a model reply (handles ```json fences)."""
     m = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
@@ -134,8 +198,9 @@ def extract_json(text: str) -> Any:
     return obj
 
 
+
 def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
-                model: str | None = None) -> Any:
+                model: str | None = None, schema: dict | None = None) -> Any:
     """Call Claude and return parsed JSON. Retries once on unparseable output.
     Raises BadModelOutput (incl. when over budget) so callers fall back."""
     from anthropic import Anthropic
@@ -159,6 +224,8 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
             messages=[{"role": "user", "content": content}],
             # Haiku 5.5 thinks by default; that burned the whole token budget on pairing and cut the
             # JSON off. These are short structured tasks: no thinking = faster, cheaper, complete.
+            # Never send temperature/top_p/top_k: Haiku 5.5 rejects non-default values (400), which made every
+            # Claude call fail over to Gemini.
             **({} if os.getenv("CLAUDE_THINKING") == "on" else {"thinking": {"type": "disabled"}}),
         )
         try:
@@ -167,13 +234,14 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
             pass
         text = "".join(b.text for b in msg.content if b.type == "text")
         try:
-            return extract_json(text)
+            return _checked(extract_json(text), prompt, schema)
         except BadModelOutput as e:
             last_err = e
     raise BadModelOutput(str(last_err))
 
 
-def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500) -> Any:
+def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
+                schema: dict | None = None) -> Any:
     """Same contract as claude_json, on Gemini Flash text. Retries once on bad JSON."""
     from google import genai
     from google.genai import types
@@ -184,10 +252,11 @@ def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
         data, mime = fetch_image(image_url)
         parts.append(types.Part.from_bytes(data=data, mime_type=mime))
     parts.append(prompt)
+    det = {"temperature": TEMPERATURE, "seed": SEED, "response_mime_type": "application/json"}
     cfg = types.GenerateContentConfig(
         max_output_tokens=max_tokens,
-        response_mime_type="application/json",
         thinking_config=types.ThinkingConfig(thinking_budget=0),  # no thinking: cheaper, faster, no empty replies
+        **det,
     )
     last_err: Exception | None = None
     for _ in range(2):
@@ -197,8 +266,7 @@ def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
             if "thinking" not in str(e).lower():
                 raise
             # newer models may not accept thinking_budget=0; retry with defaults
-            cfg = types.GenerateContentConfig(max_output_tokens=max_tokens * 4,
-                                              response_mime_type="application/json")
+            cfg = types.GenerateContentConfig(max_output_tokens=max_tokens * 4, **det)
             resp = client.models.generate_content(model=GEMINI_TEXT_MODEL, contents=parts, config=cfg)
         try:
             meta = resp.usage_metadata
@@ -206,24 +274,26 @@ def gemini_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
         except Exception:  # noqa: BLE001
             pass
         try:
-            return extract_json(resp.text or "")
+            return _checked(extract_json(resp.text or ""), prompt, schema)
         except BadModelOutput as e:
             last_err = e
     raise BadModelOutput(str(last_err))
 
 
 def ai_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
-            model: str | None = None) -> Any:
-    """Route a JSON-returning text task to Claude or Gemini (see module doc)."""
+            model: str | None = None, schema: dict | None = None) -> Any:
+    """Route a JSON-returning text task to Claude or Gemini (see module doc).
+    The reply is validated against `schema` (default: the one `prompts.schema_for(prompt)` finds);
+    a reply that doesn't match counts as bad output, so the provider retries once, then callers fall back."""
     if text_provider() == "gemini":
         try:
-            return gemini_json(prompt, image_url=image_url, max_tokens=max_tokens)
+            return gemini_json(prompt, image_url=image_url, max_tokens=max_tokens, schema=schema)
         except BadModelOutput:
             raise
         except Exception as e:  # noqa: BLE001 — network/quota errors become fallbacks
             raise BadModelOutput(f"gemini: {e}") from e
     try:
-        return claude_json(prompt, image_url=image_url, max_tokens=max_tokens, model=model)
+        return claude_json(prompt, image_url=image_url, max_tokens=max_tokens, model=model, schema=schema)
     except Exception as e:  # noqa: BLE001 — no credits, auth, network, budget, bad JSON
         claude_err = e
     # Claude failed: try Gemini before giving up, so the app keeps working
@@ -231,7 +301,7 @@ def ai_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
     _note_fallback(str(claude_err))
     if os.getenv("GEMINI_API_KEY") and os.getenv("AI_TEXT_PROVIDER") != "claude":
         try:
-            return gemini_json(prompt, image_url=image_url, max_tokens=max_tokens)
+            return gemini_json(prompt, image_url=image_url, max_tokens=max_tokens, schema=schema)
         except Exception as e:  # noqa: BLE001
             raise BadModelOutput(f"claude: {claude_err}; gemini: {e}") from e
     raise BadModelOutput(f"claude: {claude_err}") from claude_err
@@ -276,17 +346,34 @@ def fetch_image(url: str) -> tuple[bytes, str]:
         return path.read_bytes(), _guess_mime(path.name)
     if url.startswith(marker):
         path = safe(url[len(marker):])
-        return path.read_bytes(), _guess_mime(path.name)
-    local = os.getenv("PUBLIC_BASE", "http://localhost:8000").rstrip("/") + marker
-    if url.startswith(local):
-        path = safe(url[len(local):])
-        if path.exists():
-            return path.read_bytes(), _guess_mime(path.name)
+        b = path.read_bytes()
+        return b, _sniff_mime(b, _guess_mime(path.name))
+    from ..static_urls import local_static_path
+
+    # our own uploads / try-ons, whatever host the URL names (old tunnel, localhost, current tunnel)
+    path = local_static_path(url, DATA_DIR)
+    if path is not None:
+        b = path.read_bytes()
+        return b, _sniff_mime(b, _guess_mime(path.name))
 
     r = httpx.get(url, timeout=20, follow_redirects=True, headers=_UA)
     r.raise_for_status()
     mime = r.headers.get("content-type", "").split(";")[0] or _guess_mime(url)
-    return r.content, mime
+    return r.content, _sniff_mime(r.content, mime)
+
+
+def _sniff_mime(data: bytes, fallback: str) -> str:
+    """The real type from the bytes: Gemini hands back JPEG bytes that we store under .png names, and
+    Claude rejects a mislabelled image outright."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    return fallback
 
 
 def _guess_mime(name: str) -> str:
@@ -325,8 +412,11 @@ def gemini_image(prompt: str, image_urls: list[str]) -> bytes:
         raise BadModelOutput(str(e)) from e
     client = genai.Client()
     parts: list[Any] = []
-    for url in image_urls:
+    for i, url in enumerate(image_urls, start=1):
         data, mime = fetch_image(url)
+        # Label every image in-line so "image 1" in the prompt is unambiguous (without this the model
+        # sometimes answers with a reference photo instead of editing the first one).
+        parts.append(f"IMAGE {i}:" if i == 1 else f"IMAGE {i} (reference only, do not output it):")
         parts.append(types.Part.from_bytes(data=data, mime_type=mime))
     parts.append(prompt)
 

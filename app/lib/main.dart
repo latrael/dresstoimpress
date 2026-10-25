@@ -1,26 +1,226 @@
+import 'features/feed/reels_bindings.dart';
+import 'package:flutter/services.dart';
+import 'features/shared/niche_theme.dart';
+import 'features/shared/niche_shell.dart';
+import 'features/shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'features/profile/shopper_profile.dart';
+import 'features/profile/body_photo_card.dart';
 
 import 'core/api.dart';
+import 'features/auth/google_auth.dart';
+import 'features/auth/google_logo.dart';
 import 'core/config.dart';
 import 'core/models.dart';
-import 'features/feed/quick_browse.dart';
+import 'features/feed/reels_browse.dart';
+import 'features/social/social_feed.dart';
+import 'features/discover/discover_screen.dart';
+import 'features/closet/closet_screen.dart';
+import 'features/shared/feature_ui.dart';
+import 'features/profile/profile_screen.dart';
+import 'features/profile/onboarding_screen.dart';
+import 'features/product/try_on.dart' show BodyPhotoButton;
+import 'features/product/complete_look_screen.dart';
 import 'features/store/cart_screen.dart';
+import 'features/store/wallet_screen.dart';
 import 'features/store/store_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark));
   await Config.load();
   runApp(NicheApp(
       store: StoreController(
           api: Api.instance, demo: Config.current.apiKey.isEmpty)));
 }
 
-class NicheApp extends StatelessWidget {
+class NicheApp extends StatefulWidget {
   const NicheApp({super.key, required this.store});
   final StoreController store;
   @override
+  State<NicheApp> createState() => _NicheAppState();
+}
+
+class _NicheAppState extends State<NicheApp> {
+  final navigation = GlobalKey<NavigatorState>();
+  final routes = _RouteTracker();
+  void openTop(String name, Widget page) {
+    if (routes.top?.settings.name == name) return;
+    navigation.currentState?.popUntil((r) => r.isFirst);
+    navigation.currentState?.push(MaterialPageRoute<void>(
+        settings: RouteSettings(name: name), builder: (_) => page));
+  }
+
+  final shell = GlobalKey<_ShopShellState>();
+  final entry = GlobalKey<_FirstVisitState>();
+  StoreController get store => widget.store;
+  void open(Widget page) => navigation.currentState
+      ?.push(MaterialPageRoute<void>(builder: (_) => page));
+  void seed(RankedProduct product) {
+    navigation.currentState?.popUntil((r) => r.isFirst);
+    shell.currentState?.openProducts([product]);
+  }
+
+  void settings() {
+    navigation.currentState
+        ?.push(MaterialPageRoute<void>(
+            builder: (_) => ConnectionScreen(store: store)))
+        .whenComplete(() {
+      entry.currentState?.reload();
+    });
+  }
+
+  /// Attach a Google account to the profile in use (a team account), once; afterwards it signs in with Google.
+  Future<void> linkGoogle(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final idToken = await GoogleAuth.idToken();
+      if (idToken == null) return;
+      final session = await store.api
+          .signInWithGoogle(idToken, linkUserId: store.api.settings.userId);
+      await Config.save(store.api.settings
+          .copyWith(userId: session.user.id, sessionToken: session.token));
+      messenger
+          .showSnackBar(const SnackBar(content: Text('Google account linked')));
+      if (mounted) setState(() {});
+    } on ApiError catch (e) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(e.status == 409
+              ? 'That Google account or profile is already linked.'
+              : e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Could not link Google. Try again.')));
+    }
+  }
+
+  void user() => openTop(
+      'User',
+      FeaturePage(
+          title: 'You',
+          child: ListView(padding: const EdgeInsets.all(20), children: [
+            for (final section in [
+              ('Your style', 1),
+              ('Shop for', 7),
+              ('Stores you like', 2),
+              ('Body scan', 3),
+              ('Measurements & size', 4),
+              ('Price preferences', 5)
+            ])
+              ListTile(
+                  title: Text(section.$1),
+                  trailing: const Icon(NicheIcons.chevronRight),
+                  onTap: () => open(OnboardingScreen(
+                      api: store.api,
+                      demo: store.demo,
+                      initialStep: section.$2,
+                      onConnect: () =>
+                          connectForSetup(navigation.currentContext!, store),
+                      onSaved: () async {
+                        await store.loadProfile(fromServer: !store.demo);
+                        await store.load();
+                      }))),
+            if (!store.demo)
+              ListTile(
+                  title: const Text('Style DNA'),
+                  trailing: const Icon(NicheIcons.chevronRight),
+                  onTap: () => open(ProfileScreen(
+                      api: store.api,
+                      onChanged: () async {
+                        await store.loadProfile(fromServer: !store.demo);
+                        await store.load();
+                      }))),
+            if (!store.demo)
+              ListTile(
+                  key: const ValueKey('niche-card'),
+                  title: const Text('Niche Card'),
+                  subtitle: const Text('Your purchases, live from Capital One Nessie'),
+                  leading: const Icon(NicheIcons.receiptLong),
+                  onTap: () => open(WalletScreen(api: store.api))),
+            ListTile(
+                title: const Text('Orders'),
+                leading: const Icon(NicheIcons.receiptLongOutlined),
+                onTap: store.demo
+                    ? null
+                    : () => open(OrderHistory(api: store.api))),
+            ListTile(
+                title: const Text('Connection settings'),
+                leading: const Icon(NicheIcons.tune),
+                onTap: settings),
+            if (!store.demo)
+              ListTile(
+                  title: const Text('Private scan & try-on photo'),
+                  leading: const Icon(NicheIcons.lockOutline),
+                  onTap: () => open(BodyPhotoCard(api: store.api))),
+            if (GoogleAuth.available &&
+                !store.demo &&
+                store.api.settings.sessionToken.isEmpty)
+              ListTile(
+                  key: const ValueKey('link-google'),
+                  title: const Text('Link Google account'),
+                  subtitle: const Text(
+                      'Sign in to this profile with Google from now on'),
+                  leading: const Icon(NicheIcons.personOutline),
+                  onTap: () => linkGoogle(navigation.currentContext!)),
+            ListTile(
+                title: const Text('Log out on this device'),
+                leading: const Icon(NicheIcons.logout),
+                onTap: () async {
+                  if (store.api.settings.sessionToken.isNotEmpty) {
+                    try {
+                      await store.api
+                          .logout(); // the token stops working on the server too
+                    } catch (_) {/* offline: forgetting it locally is enough */}
+                    await Config.save(
+                        store.api.settings.copyWith(sessionToken: ''));
+                    await GoogleAuth.signOut();
+                  }
+                  final p = await SharedPreferences.getInstance();
+                  await p.remove('niche.activeUser');
+                  await p.setBool('niche.signedOut', true);
+                  navigation.currentState?.popUntil((r) => r.isFirst);
+                  entry.currentState?.logOut();
+                }),
+            ListTile(
+                title: const Text('Restart setup'),
+                onTap: () async {
+                  final yes = await showDialog<bool>(
+                      context: navigation.currentContext!,
+                      builder: (context) => AlertDialog(
+                              title: const Text('Restart setup?'),
+                              content: const Text(
+                                  'Review your onboarding answers again. Your measurements and account are kept.'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel')),
+                                FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Restart'))
+                              ]));
+                  if (yes != true) return;
+                  await store.profile
+                      .withCompletion(false)
+                      .save(store.api.settings.userId);
+                  await store.loadProfile();
+                  navigation.currentState?.popUntil((r) => r.isFirst);
+                  entry.currentState?.restart();
+                }),
+          ])));
+  @override
   Widget build(BuildContext context) => MaterialApp(
+      navigatorKey: navigation,
+      navigatorObservers: [routes],
       scrollBehavior: const MaterialScrollBehavior().copyWith(dragDevices: {
         PointerDeviceKind.touch,
         PointerDeviceKind.mouse,
@@ -29,22 +229,319 @@ class NicheApp extends StatelessWidget {
       }),
       title: 'Niche',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFFFFBF0),
-          colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF722F42),
-              surface: const Color(0xFFFFFBF0)),
-          appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFFFFFBF0), centerTitle: false),
-          inputDecorationTheme: InputDecorationTheme(
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(24))),
-          filledButtonTheme: FilledButtonThemeData(
-              style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF722F42),
-                  foregroundColor: Colors.white))),
-      home: ShopShell(store: store));
+      theme: Niche.theme,
+      darkTheme: Niche.darkTheme,
+      themeMode: ThemeMode.system,
+      builder: (context, child) => NicheInsets(
+          bottom: MediaQuery.viewPaddingOf(context).bottom,
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: Niche.overlay(context),
+              child: ColoredBox(
+                  color: Niche.of(context).cream,
+                  child: Overlay.wrap(
+                      child: Stack(children: [
+                    Positioned.fill(
+                        top: MediaQuery.paddingOf(context).top + 56,
+                        child: MediaQuery.removePadding(
+                            context: context,
+                            removeTop: true,
+                            child: child ?? const SizedBox.shrink())),
+                    Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: AnimatedBuilder(
+                            animation: store,
+                            builder: (context, _) => NicheHeader(
+                                count: store.cart.count,
+                                initial: store.displayName,
+                                onLiked: () => openTop('Liked',
+                                    LikedScreen(store: store, onOpen: seed)),
+                                onCart: () =>
+                                    openTop('Cart', CartScreen(store: store)),
+                                onCloset: () => openTop(
+                                    'Closet',
+                                    store.demo
+                                        ? const FeaturePage(
+                                            title: 'Closet',
+                                            child: Center(
+                                                child: Text(
+                                                    'Connect your account to digitize your closet.')))
+                                        : ClosetScreen(
+                                            api: store.api,
+                                            store: store,
+                                            onProduct: seed)),
+                                onUser: user)))
+                  ]))))),
+      home: FirstVisit(key: entry, store: store, shellKey: shell));
+}
+
+class FirstVisit extends StatefulWidget {
+  const FirstVisit({super.key, required this.store, this.shellKey});
+  final GlobalKey? shellKey;
+  final StoreController store;
+  @override
+  State<FirstVisit> createState() => _FirstVisitState();
+}
+
+class _FirstVisitState extends State<FirstVisit> {
+  late Future<void> ready = load();
+  bool active = false;
+  bool hasReturning = false;
+  void reload() {
+    final next = load();
+    setState(() {
+      ready = next;
+    });
+  }
+
+  void logOut() => setState(() => active = false);
+  void restart() => setState(() => active = true);
+  bool busy = false;
+  bool showTesting = false;
+
+  /// The team / test sign-ins: folded under "Testing:" when Google sign-in is offered, always open without it.
+  bool get testingOpen =>
+      showTesting || !GoogleAuth.available || widget.store.demo;
+  String? error;
+  Future<void> load() async {
+    final p = await SharedPreferences.getInstance();
+    try {
+      await widget.store.loadProfile(fromServer: !widget.store.demo);
+    } on ApiError catch (e) {
+      if (e.status != 404) rethrow;
+      await widget.store.loadProfile();
+      hasReturning = false;
+      active = false;
+      return;
+    }
+    hasReturning =
+        p.containsKey(ShopperProfile.key(widget.store.api.settings.userId)) ||
+            p.getString('niche.activeUser') != null;
+    active = p.getBool('niche.signedOut') != true &&
+        (p.getString('niche.activeUser') == widget.store.api.settings.userId ||
+            (hasReturning && widget.store.profile.completed));
+  }
+
+  /// Team accounts until real sign-in lands: one tap opens that person's server profile.
+  static const teamAccounts = [
+    ('Adam', 'u_adam'),
+    ('Nabil', 'u_nabil'),
+    ('Ryan', 'u_ryan'),
+  ];
+
+  Future<void> enter(
+      {bool create = false, bool test = false, String? asUser}) async {
+    String? displayName;
+    if (create) {
+      displayName = await showDialog<String>(
+          context: context, builder: (_) => const _NewAccountDialog());
+      if (displayName == null) return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      var id = widget.store.api.settings.userId;
+      if (asUser != null) {
+        id = asUser;
+        test = true; // same completion handling as the test profile
+      }
+      if (test && asUser == null) {
+        id = 'u_demo';
+      }
+      if (create) {
+        id = widget.store.demo
+            ? 'local_${DateTime.now().microsecondsSinceEpoch}'
+            : (await widget.store.api.createUser(displayName: displayName!)).id;
+      }
+      final settings =
+          widget.store.api.settings.copyWith(userId: id, sessionToken: '');
+      await Config.save(settings);
+      widget.store.api.settings = settings;
+      await widget.store.loadProfile(fromServer: !widget.store.demo);
+      if (test && widget.store.demo && !widget.store.profile.completed) {
+        await const ShopperProfile(
+            completed: true, usualSize: 'M', usualSizes: {'top': 'M'}).save(id);
+        await widget.store.loadProfile(fromServer: !widget.store.demo);
+      }
+      if (test && !widget.store.profile.completed) {
+        await widget.store.profile.withCompletion(true).save(id);
+        await widget.store.loadProfile();
+      }
+      final p = await SharedPreferences.getInstance();
+      await p.setBool('niche.signedOut', false);
+      await p.setString('niche.activeUser', id);
+      hasReturning = true;
+      if (mounted) setState(() => active = true);
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Could not open your profile. Check your connection and retry.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  /// Continue with Google: Google's account picker -> POST /auth/google -> our session token. A new Google
+  /// user lands in onboarding (their profile isn't completed yet); a returning one goes straight in.
+  Future<void> google() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final idToken = await GoogleAuth.idToken();
+      if (idToken == null) return; // cancelled in Google's sheet
+      final session = await widget.store.api.signInWithGoogle(idToken);
+      final settings = widget.store.api.settings
+          .copyWith(userId: session.user.id, sessionToken: session.token);
+      await Config.save(settings);
+      widget.store.api.settings = settings;
+      await widget.store.loadProfile(fromServer: true);
+      final p = await SharedPreferences.getInstance();
+      await p.setBool('niche.signedOut', false);
+      await p.setString('niche.activeUser', session.user.id);
+      hasReturning = true;
+      if (mounted) setState(() => active = true);
+    } on ApiError catch (e) {
+      if (mounted) {
+        setState(() => error = 'Google sign-in failed: ${e.message}');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            error = 'Google sign-in failed. Check your connection and retry.');
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<void>(
+      future: ready,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+              body: Center(
+                  child: TextButton(
+                      onPressed: reload,
+                      child:
+                          const Text('Could not load your profile. Retry'))));
+        }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        if (!active) {
+          return FeaturePage(
+              title: 'Welcome',
+              child: ListView(padding: const EdgeInsets.all(24), children: [
+                Text('Find your next favorite fit',
+                    style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 16),
+                Text(GoogleAuth.available && !widget.store.demo
+                    ? 'Sign in with Google to keep your closet, fits and cart on every device.'
+                    : 'Login reopens the profile saved on this device.'),
+                const SizedBox(height: 24),
+                if (GoogleAuth.available && !widget.store.demo) ...[
+                  FilledButton.icon(
+                      key: const ValueKey('google-sign-in'),
+                      onPressed: busy ? null : google,
+                      icon: const GoogleLogo(),
+                      label: const Text('Continue with Google')),
+                  const SizedBox(height: 16),
+                  // team / test sign-ins stay reachable, folded away under "Testing:"
+                  Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                          key: const ValueKey('testing-toggle'),
+                          onPressed: () =>
+                              setState(() => showTesting = !showTesting),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('Testing:',
+                                style: Theme.of(context).textTheme.labelSmall),
+                            const SizedBox(width: 4),
+                            AnimatedRotation(
+                                turns: showTesting
+                                    ? -0.25
+                                    : 0.25, // the chevron points down closed, up open
+                                duration: const Duration(milliseconds: 200),
+                                child: const Icon(NicheIcons.chevronRight,
+                                    size: 14)),
+                          ]))),
+                ],
+                AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: !testingOpen
+                        ? const SizedBox(width: double.infinity)
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                                if (!widget.store.demo) ...[
+                                  Text('Who are you?',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium),
+                                  const SizedBox(height: 8),
+                                  Wrap(spacing: 8, runSpacing: 8, children: [
+                                    for (final (name, id) in teamAccounts)
+                                      FilledButton.tonal(
+                                          key: ValueKey('team-$id'),
+                                          onPressed: busy
+                                              ? null
+                                              : () => enter(asUser: id),
+                                          child: Text(name)),
+                                  ]),
+                                  const SizedBox(height: 16),
+                                ],
+                                FilledButton(
+                                    onPressed: busy || !hasReturning
+                                        ? null
+                                        : () => enter(),
+                                    child: const Text('Login')),
+                                OutlinedButton(
+                                    onPressed:
+                                        busy ? null : () => enter(create: true),
+                                    child: const Text('New account')),
+                                TextButton.icon(
+                                    onPressed: () async {
+                                      await connectForSetup(
+                                          context, widget.store);
+                                      if (mounted) reload();
+                                    },
+                                    icon: const Icon(NicheIcons.link),
+                                    label:
+                                        const Text('Connect to the live app')),
+                                TextButton(
+                                    onPressed:
+                                        busy ? null : () => enter(test: true),
+                                    child: const Text('Use team test profile')),
+                                if (widget.store.demo)
+                                  const Text(
+                                      'Sample mode: new profiles stay on this device until you connect.'),
+                              ])),
+                if (error != null) Text(error!),
+              ]));
+        }
+        if (!widget.store.profile.completed) {
+          return OnboardingScreen(
+              api: widget.store.api,
+              firstRun: true,
+              onConnect: () => connectForSetup(context, widget.store),
+              demo: widget.store.demo,
+              onSaved: () async {
+                await widget.store.loadProfile(fromServer: !widget.store.demo);
+                if (mounted) setState(() {});
+              });
+        }
+        return ShopShell(key: widget.shellKey, store: widget.store);
+      });
 }
 
 class ShopShell extends StatefulWidget {
@@ -56,106 +553,207 @@ class ShopShell extends StatefulWidget {
 
 class _ShopShellState extends State<ShopShell> {
   int tab = 0;
-  int anchor = 0;
-  bool savedOnly = false;
-  String query = '';
-  final search = TextEditingController();
-  StoreController get store => widget.store;
-  @override
-  void initState() {
-    super.initState();
-    store.load();
+  final tabs = PageController();
+  void changeTab(int value) {
+    if (!mounted) return;
+    setState(() => tab = value);
+    if (tabs.hasClients) {
+      tabs.animateToPage(value,
+          duration: Niche.reduced(context) ? Duration.zero : Niche.duration,
+          curve: Curves.easeInOutCubicEmphasized);
+    }
   }
 
   @override
   void dispose() {
-    search.dispose();
+    tabs.dispose();
     super.dispose();
   }
 
-  List<RankedProduct> get visible {
-    final words = query
-        .toLowerCase()
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((s) => s.isNotEmpty);
-    return store.feed.where((card) {
-      final p = card.product;
-      final text =
-          '${p.name} ${p.brand} ${p.label} ${p.category} ${p.colors.join(' ')} ${p.styleTags.join(' ')}'
-              .toLowerCase();
-      return (!savedOnly || store.saved.contains(p.id)) &&
-          words.every(text.contains);
-    }).toList();
+  RankedProduct? seed;
+  String? discoverQuery;
+  int feedRevision = 0;
+  List<RankedProduct>? seeded;
+  String? seedError;
+  int seedGeneration = 0;
+  bool seedWasShown = false;
+  Future<void> refreshHome() async {
+    if (seed == null || store.demo) {
+      await store.load();
+      return;
+    }
+    final selected = seed!;
+    final request = ++seedGeneration;
+    try {
+      final cards =
+          await store.api.feed(seed: selected.id, seedShown: seedWasShown);
+      if (mounted && request == seedGeneration) {
+        setState(() {
+          seeded = cards;
+          seedWasShown = true;
+          seedError = null;
+          feedRevision++;
+        });
+      }
+    } catch (_) {
+      if (mounted && request == seedGeneration) {
+        setState(() => seedError = 'Could not load similar items. Retry.');
+      }
+    }
   }
 
-  void browse(int index) => setState(() {
-        anchor = index;
-        tab = 1;
+  void clearSeed() => setState(() {
+        seed = null;
+        seedWasShown = false;
+        seeded = null;
+        seedError = null;
+        seedGeneration++;
+        feedRevision++;
       });
-  Future<void> settings() async {
-    await Navigator.push<void>(context,
-        MaterialPageRoute(builder: (_) => ConnectionScreen(store: store)));
-    if (mounted) {
-      setState(() {
-        anchor = 0;
+  StoreController get store => widget.store;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) store.load();
+    });
+  }
+
+  void openProducts(List<RankedProduct> products) {
+    if (products.isEmpty) return;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    final request = ++seedGeneration;
+    setState(() {
+      seed = products.first;
+      seedWasShown = true;
+      seeded = null;
+      seedError = null;
+      tab = 0;
+      feedRevision++;
+    });
+    changeTab(0);
+    if (!store.demo) {
+      store.api.feed(seed: products.first.id).then((cards) {
+        if (mounted && request == seedGeneration) {
+          setState(() {
+            seeded = cards;
+            seedWasShown = true;
+          });
+        }
+      }).catchError((Object e) {
+        if (mounted && request == seedGeneration) {
+          setState(() => seedError = 'Could not load similar items. Retry.');
+        }
       });
     }
+  }
+
+  void searchTag(String query) {
+    Navigator.of(context).popUntil((r) => r.isFirst);
+    setState(() {
+      discoverQuery = query;
+      tab = 1;
+    });
+    changeTab(1);
+  }
+
+  Future<void> editSizing() async {
+    await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => OnboardingScreen(
+                api: store.api,
+                demo: store.demo,
+                initialStep: 4,
+                onSaved: () async {
+                  await store.loadProfile(fromServer: !store.demo);
+                  await store.load();
+                })));
+    await store.loadProfile(fromServer: !store.demo);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> openBodyPhoto() async {
+    await showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        builder: (_) => Padding(
+            padding: const EdgeInsets.all(24),
+            child: BodyPhotoButton(api: store.api)));
+    if (mounted) await refreshHome();
+  }
+
+  Future<void> openClosetPiece(String? id) async {
+    if (store.demo || id == null) {
+      await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => store.demo
+                  ? const FeaturePage(
+                      title: 'Closet',
+                      child: Center(
+                          child: Text(
+                              'Connect your account to digitize your closet.')))
+                  : ClosetScreen(
+                      api: store.api,
+                      store: store,
+                      onProduct: (p) => openProducts([p]))));
+      if (mounted && !store.demo) await refreshHome();
+      return;
+    }
+    try {
+      final pieces = await store.api.closet();
+      if (!mounted) return;
+      final matches = pieces.where((p) => p.id == id);
+      await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => matches.isEmpty
+                  ? ClosetScreen(
+                      api: store.api,
+                      store: store,
+                      onProduct: (p) => openProducts([p]))
+                  : ClosetPieceScreen(api: store.api, initial: matches.first)));
+      if (mounted) await refreshHome();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not open your closet. Try again.')));
+      }
+    }
+  }
+
+  void completeLook(String id) => Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => CompleteLookScreen(
+              api: store.api,
+              productId: id,
+              onProduct: (product) =>
+                  openProducts([RankedProduct(product: product)]))));
+  List<RankedProduct> get home {
+    if (seed == null) return store.feed;
+    if (!store.demo) return seeded ?? [seed!];
+    final rest = store.feed.where((p) => p.id != seed!.id).toList();
+    rest.sort((a, b) => (b.product.category == seed!.product.category ? 1 : 0)
+        .compareTo(a.product.category == seed!.product.category ? 1 : 0));
+    return [seed!, ...rest];
   }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
       animation: store,
       builder: (context, _) {
-        final cards = visible;
-        final start = anchor < cards.length ? anchor : 0;
-        final ordered = [...cards.skip(start), ...cards.take(start)];
         return Scaffold(
-          appBar: AppBar(
-              title: Text(
-                  tab == 0
-                      ? 'Niche'
-                      : tab == 1
-                          ? 'Quick Browse'
-                          : 'Fit Check',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              actions: [
-                IconButton(
-                    tooltip: savedOnly ? 'Show all pieces' : 'Saved pieces',
-                    onPressed: () => setState(() {
-                          savedOnly = !savedOnly;
-                          anchor = 0;
-                          tab = 0;
-                        }),
-                    icon: Icon(
-                        savedOnly ? Icons.favorite : Icons.favorite_border)),
-                IconButton(
-                    tooltip: 'Settings',
-                    onPressed: settings,
-                    icon: const Icon(Icons.tune)),
-                Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Badge(
-                        label: Text('${store.cart.count}'),
-                        isLabelVisible: store.cart.count > 0,
-                        child: IconButton(
-                            tooltip: 'Your cart',
-                            onPressed: () => Navigator.push<void>(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => CartScreen(store: store))),
-                            icon: const Icon(Icons.shopping_bag_outlined)))),
-              ]),
+          extendBody: true,
           body: Column(children: [
             if (store.demo)
               Material(
-                  color: const Color(0xFFF0E5E5),
+                  color: Niche.of(context).blush,
                   child: ListTile(
                       dense: true,
                       title: const Text(
-                          'Demo mode · sample catalog and local cart'),
-                      trailing: TextButton(
-                          onPressed: settings, child: const Text('Connect')))),
+                          'Demo mode · sample catalog and local cart'))),
             if (store.accountWarning != null)
               ListTile(
                   title: Text(store.accountWarning!),
@@ -165,190 +763,71 @@ class _ShopShellState extends State<ShopShell> {
                 child: Center(
                     child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 540),
-                        child: store.loading
-                            ? const Center(
-                                child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                    CircularProgressIndicator(),
-                                    SizedBox(height: 16),
-                                    Text('Finding pieces for you…')
-                                  ]))
-                            : store.error != null
-                                ? Center(
-                                    child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                        Padding(
-                                            padding: const EdgeInsets.all(24),
-                                            child: Text(store.error!)),
-                                        FilledButton(
-                                            onPressed: store.load,
-                                            child: const Text('Try again'))
-                                      ]))
-                                : tab == 2
-                                    ? SocialFeed(
-                                        key: ValueKey(
-                                            '${store.demo}:${store.api.settings.userId}'),
-                                        store: store,
-                                        onShop: (products) {
-                                          Navigator.push<void>(
-                                              context,
-                                              MaterialPageRoute(
-                                                  builder: (_) => Scaffold(
-                                                      appBar: AppBar(
-                                                          title: const Text(
-                                                              'Shop this fit')),
-                                                      body: QuickBrowse(
-                                                          products: products
-                                                              .map(browseMap)
-                                                              .toList(),
-                                                          savedIds: store.saved,
-                                                          onSave: store.save,
-                                                          onAddToCart:
-                                                              store.add,
-                                                          imageUrl: store
-                                                              .imageUrl))));
-                                        })
-                                    : tab == 1
-                                        ? QuickBrowse(
-                                            key: ValueKey(
-                                                '$query:$savedOnly:$start'),
-                                            products:
-                                                ordered.map(browseMap).toList(),
-                                            savedIds: store.saved,
-                                            onSave: store.save,
-                                            onAddToCart: store.add,
-                                            imageUrl: store.imageUrl)
-                                        : cards.isEmpty
+                        child: PageView(
+                            controller: tabs,
+                            physics: const ClampingScrollPhysics(),
+                            onPageChanged: (value) {
+                              Niche.select();
+                              setState(() => tab = value);
+                            },
+                            children: [
+                              Column(children: [
+                                if (seedError != null && seed != null)
+                                  TextButton(
+                                      onPressed: refreshHome,
+                                      child: Text(seedError!)),
+                                Expanded(
+                                    child: store.loading
+                                        ? const Center(
+                                            child: CircularProgressIndicator())
+                                        : store.error != null
                                             ? Center(
-                                                child: Text(savedOnly
-                                                    ? 'Double-tap a piece to save it here.'
-                                                    : 'No matches. Try a different search.'))
-                                            : CustomScrollView(slivers: [
-                                                SliverToBoxAdapter(
-                                                    child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .fromLTRB(
-                                                                20, 20, 20, 16),
-                                                        child: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Text(
-                                                                  savedOnly
-                                                                      ? 'Your saved pieces'
-                                                                      : 'Suggested for you',
-                                                                  style: Theme.of(
-                                                                          context)
-                                                                      .textTheme
-                                                                      .headlineSmall),
-                                                              const SizedBox(
-                                                                  height: 6),
-                                                              const Text(
-                                                                  'Find something that feels like you.'),
-                                                            ]))),
-                                                SliverPadding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 20),
-                                                    sliver: SliverGrid(
-                                                        gridDelegate:
-                                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                                                crossAxisCount:
-                                                                    2,
-                                                                crossAxisSpacing:
-                                                                    14,
-                                                                mainAxisSpacing:
-                                                                    16,
-                                                                childAspectRatio:
-                                                                    .67),
-                                                        delegate:
-                                                            SliverChildBuilderDelegate(
-                                                                (context, i) {
-                                                          final p =
-                                                              cards[i].product;
-                                                          return InkWell(
-                                                              key: ValueKey(
-                                                                  'suggested-${p.id}'),
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          14),
-                                                              onTap: () =>
-                                                                  browse(i),
-                                                              child: Column(
-                                                                  crossAxisAlignment:
-                                                                      CrossAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    Expanded(
-                                                                        child: SizedBox(
-                                                                            width:
-                                                                                double.infinity,
-                                                                            child: ClipRRect(borderRadius: BorderRadius.circular(14), child: ProductPhoto(url: store.imageUrl(p.imageUrl), name: p.name)))),
-                                                                    const SizedBox(
-                                                                        height:
-                                                                            8),
-                                                                    Text(p.name,
-                                                                        maxLines:
-                                                                            2,
-                                                                        overflow:
-                                                                            TextOverflow
-                                                                                .ellipsis,
-                                                                        style: const TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.w600)),
-                                                                    Text(
-                                                                        '${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
-                                                                  ]));
-                                                        },
-                                                                childCount: cards
-                                                                    .length))),
-                                                const SliverToBoxAdapter(
-                                                    child:
-                                                        SizedBox(height: 24)),
-                                              ])))),
-            if (tab != 2)
-              Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                  child: Center(
-                      child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 500),
-                          child: TextField(
-                            controller: search,
-                            textInputAction: TextInputAction.search,
-                            decoration: InputDecoration(
-                                hintText: 'Search a look…',
-                                prefixIcon: const Icon(Icons.search),
-                                suffixIcon: IconButton(
-                                    tooltip: 'Search catalog',
-                                    icon: const Icon(Icons.arrow_upward),
-                                    onPressed: () => setState(() {
-                                          query = search.text;
-                                          anchor = 0;
-                                          tab = 1;
-                                        }))),
-                            onSubmitted: (value) => setState(() {
-                              query = value;
-                              anchor = 0;
-                              tab = 1;
-                            }),
-                          )))),
+                                                child: TextButton(
+                                                    onPressed: store.load,
+                                                    child: Text(store.error!)))
+                                            : ReelsBrowse(
+                                                key: ValueKey(
+                                                    'home-$feedRevision'),
+                                                active: tab == 0,
+                                                products: home
+                                                    .map(browseMap)
+                                                    .toList(),
+                                                savedIds: store.saved,
+                                                prepareTryOns: store.demo
+                                                    ? null
+                                                    : ReelsBindings(store.api)
+                                                        .prepare,
+                                                loadTryOns: store.demo
+                                                    ? null
+                                                    : ReelsBindings(store.api)
+                                                        .load,
+                                                onSave: store.save,
+                                                onAddToCart: store.add,
+                                                imageUrl: store.imageUrl,
+                                                onSizeAdvice:
+                                                    store.automaticSize,
+                                                onRefresh: refreshHome,
+                                                seedLabel: seed?.product.name,
+                                                onClearSeed: clearSeed,
+                                                onCloset: openClosetPiece,
+                                                onBodyPhoto: store.demo
+                                                    ? null
+                                                    : openBodyPhoto)),
+                              ]),
+                              DiscoverScreen(
+                                  key: ValueKey('discover-$discoverQuery'),
+                                  initialQuery: discoverQuery,
+                                  store: store,
+                                  onOpen: (p) => openProducts([p]),
+                                  onShop: openProducts),
+                              SocialFeed(
+                                  store: store,
+                                  onShop: openProducts,
+                                  onTagSearch: searchTag),
+                            ])))),
           ]),
-          bottomNavigationBar: NavigationBar(
-              selectedIndex: tab,
-              onDestinationSelected: (value) => setState(() => tab = value),
-              destinations: const [
-                NavigationDestination(
-                    icon: Icon(Icons.home_outlined), label: 'Home'),
-                NavigationDestination(
-                    icon: Icon(Icons.explore_outlined), label: 'Discover'),
-                NavigationDestination(
-                    icon: Icon(Icons.people_outline), label: 'Social'),
-              ]),
+          bottomNavigationBar:
+              NicheNavigation(controller: tabs, index: tab, onTap: changeTab),
         );
       });
 }
@@ -359,16 +838,16 @@ class ProductPhoto extends StatelessWidget {
   final String name;
   @override
   Widget build(BuildContext context) => ColoredBox(
-      color: const Color(0xFFEDEAE4),
+      color: Niche.of(context).stone,
       child: url.isEmpty
-          ? const Center(child: Icon(Icons.image_outlined))
+          ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,
               fit: BoxFit.contain,
               webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
               semanticLabel: name,
               errorBuilder: (_, error, stack) => const Center(
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.image_outlined),
+                    Icon(NicheIcons.imageOutlined),
                     SizedBox(height: 8),
                     Text('Photo unavailable')
                   ]))));
@@ -483,88 +962,76 @@ class _ConnectionScreenState extends State<ConnectionScreen> {
               ]))));
 }
 
-class SocialFeed extends StatefulWidget {
-  const SocialFeed({super.key, required this.store, required this.onShop});
-  final StoreController store;
-  final void Function(List<RankedProduct>) onShop;
+class _NewAccountDialog extends StatefulWidget {
+  const _NewAccountDialog();
   @override
-  State<SocialFeed> createState() => _SocialFeedState();
+  State<_NewAccountDialog> createState() => _NewAccountDialogState();
 }
 
-class _SocialFeedState extends State<SocialFeed> {
-  late Future<List<FitCheckPost>> posts =
-      widget.store.demo ? Future.value([]) : widget.store.api.fitCheckFeed();
-  String? busyId;
-  String? error;
-  Future<void> shop(FitCheckPost post) async {
-    setState(() {
-      busyId = post.id;
-      error = null;
-    });
-    try {
-      final products = await widget.store.api.shopFitCheck(post.id);
-      if (mounted) widget.onShop(products);
-    } catch (_) {
-      if (mounted) {
-        setState(
-            () => error = 'Could not find these pieces. Please try again.');
-      }
-    } finally {
-      if (mounted) setState(() => busyId = null);
-    }
+class _NewAccountDialogState extends State<_NewAccountDialog> {
+  final name = TextEditingController();
+  @override
+  void dispose() {
+    name.dispose();
+    super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<List<FitCheckPost>>(
-      future: posts,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-              child: TextButton(
-                  onPressed: () =>
-                      setState(() => posts = widget.store.api.fitCheckFeed()),
-                  child: const Text('Could not load fits. Retry')));
-        }
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.data!.isEmpty) {
-          return Center(
-              child: Text(widget.store.demo
-                  ? 'Connect to see your friends’ fits.'
-                  : 'No fits yet. Your next look could be the first.'));
-        }
-        return ListView(padding: const EdgeInsets.all(20), children: [
-          if (error != null) Text(error!),
-          for (final post in snapshot.data!)
-            Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
-                              child: Icon(Icons.person_outline)),
-                          title: Text(post.authorName ?? post.userId)),
-                      AspectRatio(
-                          aspectRatio: .85,
-                          child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: ProductPhoto(
-                                  url: widget.store.api.imageUrl(post.photoUrl),
-                                  name:
-                                      'Outfit by ${post.authorName ?? post.userId}'))),
-                      if (post.caption != null)
-                        Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Text(post.caption!)),
-                      FilledButton.tonal(
-                          onPressed: busyId == null ? () => shop(post) : null,
-                          child: Text(busyId == post.id
-                              ? 'Finding pieces…'
-                              : 'Shop this fit')),
-                    ])),
-        ]);
-      });
+  Widget build(BuildContext context) => AlertDialog(
+          title: const Text('New account'),
+          content: TextField(
+              controller: name,
+              decoration:
+                  const InputDecoration(labelText: 'Your display name')),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () {
+                  if (name.text.trim().isNotEmpty) {
+                    Navigator.pop(context, name.text.trim());
+                  }
+                },
+                child: const Text('Create profile'))
+          ]);
+}
+
+class _RouteTracker extends NavigatorObserver {
+  Route<dynamic>? top;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    top = route;
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    top = previousRoute;
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    top = newRoute;
+  }
+}
+
+Future<bool> connectForSetup(
+    BuildContext context, StoreController store) async {
+  await Navigator.push<void>(context,
+      MaterialPageRoute(builder: (_) => ConnectionScreen(store: store)));
+  if (store.demo) return false;
+  try {
+    try {
+      await store.api.getUser();
+    } on ApiError catch (e) {
+      if (e.status != 404 || !store.api.settings.userId.startsWith('local_')) {
+        return false;
+      }
+      await store.api.createUser(
+          id: store.api.settings.userId, displayName: 'Your profile');
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
 }

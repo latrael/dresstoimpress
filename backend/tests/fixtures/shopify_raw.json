@@ -1,0 +1,136 @@
+[
+ {
+  "title": "Whimsy Halter Top Red Gingham",
+  "brand": "Princess Polly",
+  "categories": [
+   "KNIT TOPS"
+  ],
+  "description": "<ul><li>Halter gingham top</li><li>Good stretch</li></ul>",
+  "options": [
+   {
+    "type": "Size",
+    "values": [
+     {
+      "id": "US 0",
+      "name": "US 0"
+     },
+     {
+      "id": "US 2",
+      "name": "US 2"
+     },
+     {
+      "id": "US 4",
+      "name": "US 4"
+     },
+     {
+      "id": "US 6",
+      "name": "US 6"
+     },
+     {
+      "id": "US 8",
+      "name": "US 8"
+     },
+     {
+      "id": "US 10",
+      "name": "US 10"
+     },
+     {
+      "id": "US 12",
+      "name": "US 12"
+     }
+    ]
+   },
+   {
+    "type": "Colour",
+    "values": [
+     {
+      "id": "Red Gingham",
+      "name": "Red Gingham"
+     }
+    ]
+   }
+  ],
+  "price": {
+   "current": 1200,
+   "previous": 3900,
+   "stockStatus": "InStock"
+  },
+  "source": {
+   "id": "7523756114004",
+   "canonicalUrl": "https://us.princesspolly.com/products/whimsy-halter-top-red-gingham",
+   "retailer": "Princess Polly",
+   "language": "en",
+   "currency": "USD",
+   "createdUTC": 1726806348000,
+   "updatedUTC": 1792886824000,
+   "publishedUTC": 1741931559000
+  },
+  "tags": [
+   "2 Piece Sets",
+   "2025 GLOBAL VACATION SHOP",
+   "2025 GLOBAL VACATION SHOP EURO SUMMER"
+  ],
+  "variants": [
+   {
+    "id": "41587859030100",
+    "options": [
+     "US 0",
+     "Red Gingham"
+    ],
+    "price": {
+     "current": 1200,
+     "previous": 3900,
+     "stockStatus": "InStock"
+    }
+   },
+   {
+    "id": "41587859062868",
+    "options": [
+     "US 2",
+     "Red Gingham"
+    ],
+    "price": {
+     "current": 1200,
+     "previous": 3900,
+     "stockStatus": "InStock"
+    }
+   },
+   {
+    "id": "41587859095636",
+    "options": [
+     "US 4",
+     "Red Gingham"
+    ],
+    "price": {
+     "current": 1200,
+     "previous": 3900,
+     "stockStatus": "OutOfStock"
+    }
+   },
+   {
+    "id": "41587859128404",
+    "options": [
+     "US 6",
+     "Red Gingham"
+    ],
+    "price": {
+     "current": 1200,
+     "previous": 3900,
+     "stockStatus": "OutOfStock"
+    }
+   }
+  ],
+  "medias": [
+   {
+    "url": "https://cdn.shopify.com/s/files/1/0061/8627/0804/files/0-modelinfo-ella-us4_1eb97c8a-230f-417a-93bb-9bd1eb5f1c05.jpg?v=1736917944",
+    "type": "Image",
+    "variantIds": []
+   },
+   {
+    "url": "https://cdn.shopify.com/s/files/1/0061/8627/0804/files/1-modelinfo-ella-us4_0f35738e-f5a4-452d-8846-77fed41a7ddf.jpg?v=1736917944",
+    "type": "Image",
+    "variantIds": []
+   }
+  ]
+ }
+]

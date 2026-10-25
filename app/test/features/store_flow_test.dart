@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dress_to_impress/features/profile/shopper_profile.dart';
 
 import 'package:dress_to_impress/core/api.dart';
 import 'package:dress_to_impress/core/settings.dart';
@@ -57,21 +59,29 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final requests = <http.Request>[];
+    var inCart =
+        false; // the cart screen re-reads the server copy when it opens
     final api = Api(client: MockClient((request) async {
       requests.add(request);
       expect(request.headers['X-DTI-Key'], 'test-only');
       Object data;
-      if (request.url.path == '/feed') {
+      if (request.url.path == '/users/u_demo') {
+        return http.Response(
+            jsonEncode(
+                {'id': 'u_demo', 'display_name': 'Demo', 'onboarded': true}),
+            200);
+      } else if (request.url.path == '/feed') {
         data = [piece];
       } else if (request.url.path.endsWith('/ids')) {
         data = <String>[];
       } else if (request.url.path == '/cart/u_demo') {
-        data = cartJson();
+        data = cartJson(filled: inCart);
       } else if (request.method == 'PUT') {
         data = {'user_id': 'u_demo', 'product_id': piece['id'], 'saved': true};
       } else if (request.url.path == '/cart/u_demo/items') {
         expect(jsonDecode(request.body),
             {'product_id': piece['id'], 'size': 'M', 'qty': 1});
+        inCart = true;
         data = cartJson(filled: true);
       } else {
         throw StateError('Unexpected route ${request.url.path}');
@@ -80,21 +90,26 @@ void main() {
     }))
       ..settings = const Settings(
           baseUrl: 'https://api.example.test', apiKey: 'test-only');
+    SharedPreferences.setMockInitialValues({});
+    await const ShopperProfile(completed: true, usualSize: 'M').save('u_demo');
     final store = StoreController(api: api, demo: false);
     await tester.pumpWidget(NicheApp(store: store));
     await tester.pumpAndSettle();
-    expect(find.text('Suggested for you'), findsOneWidget);
-    await tester.tap(find.byKey(ValueKey('suggested-${piece['id']}')));
+    expect(find.byKey(const ValueKey('product-stream')), findsOneWidget);
+    expect(find.text('Retailer description'), findsNothing);
+    await tester.tap(find.text('see more'));
     await tester.pumpAndSettle();
     expect(find.text('Retailer description'), findsOneWidget);
-    await tester.drag(find.text('Retailer description'), const Offset(-200, 0));
+    await tester.tap(find.text('less'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Save item'));
+    final photo = find.byKey(ValueKey("reel-photos-${piece['id']}"));
+    await tester.tap(photo);
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.tap(photo);
     await tester.pumpAndSettle();
     expect(store.saved, contains(piece['id']));
-    await tester.tap(find.widgetWithText(ChoiceChip, 'M'));
-    await tester.pump();
-    await tester.tap(find.widgetWithText(FilledButton, 'Add to Cart'));
+    expect(find.widgetWithText(ChoiceChip, 'M'), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add to cart'));
     await tester.pumpAndSettle();
     expect(store.cart.count, 1);
     await tester.tap(find.byTooltip('Your cart'));
@@ -109,7 +124,12 @@ void main() {
   test('checkout 409 retains cart and exposes unavailable product/size',
       () async {
     final api = Api(client: MockClient((request) async {
-      if (request.url.path == '/feed') {
+      if (request.url.path == '/users/u_demo') {
+        return http.Response(
+            jsonEncode(
+                {'id': 'u_demo', 'display_name': 'Demo', 'onboarded': true}),
+            200);
+      } else if (request.url.path == '/feed') {
         return http.Response(jsonEncode([piece]), 200);
       }
       if (request.url.path.endsWith('/ids')) return http.Response('[]', 200);

@@ -1,68 +1,206 @@
-# DressToImpress | Niche
+<p align="center">
+  <img src="docs/readme/icon.png" width="96" alt="Niche app icon: a merlot arch with a hanger-hook dot">
+</p>
 
-A swipe feed of real, in-stock clothes from H&M and Uniqlo, ranked against your own closet, with one cart and one checkout across stores.
+<h1 align="center">niche</h1>
 
-Claude (Anthropic) tags every product and closet photo and writes the pairings; see Adam's notes in [`ADAM.md`](ADAM.md) and the AI section of [`backend/README.md`](backend/README.md#ai-endpoints-adam).
+<p align="center"><strong>Your clothes. Your fit. Your niche.</strong></p>
 
-## Where Apify and Capital One Nessie run
+<p align="center">
+  A shopping and styling app built around the closet you already own.<br>
+  Real clothes from 8 stores, in your size, tried on <em>you</em>, and paid for in one cart.
+</p>
 
-| Sponsor tool | What depends on it | Code |
+<p align="center">
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-iOS%20%C2%B7%20Android%20%C2%B7%20web-02569B?logo=flutter&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white">
+  <img alt="Claude" src="https://img.shields.io/badge/Claude-Haiku-D97757?logo=anthropic&logoColor=white">
+  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-image-8E75B2?logo=googlegemini&logoColor=white">
+  <img alt="Apify" src="https://img.shields.io/badge/Apify-catalog%20%2B%20pins-97D700">
+  <img alt="Capital One Nessie" src="https://img.shields.io/badge/Capital%20One-Nessie-D03027">
+  <img alt="Cal Hacks 13.0" src="https://img.shields.io/badge/Cal%20Hacks-13.0-5B1F33">
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/readme/welcome.jpg" width="230" alt="The welcome screen: the niche arch, 'Your clothes. Your fit. Your niche.' and a mosaic of real outfits"></td>
+    <td align="center"><img src="docs/readme/item.jpg" width="230" alt="Home: one product per screen, an H&M oxford shirt with Add to cart"></td>
+    <td align="center"><img src="docs/readme/on-you.jpg" width="230" alt="The same shirt tried on the user's own photo"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Welcome</b><br>your style, your size, your closet</sub></td>
+    <td align="center"><sub><b>Home</b><br>one real product per screen</sub></td>
+    <td align="center"><sub><b>On you</b><br>the same shirt, on your own photo</sub></td>
+  </tr>
+</table>
+
+Niche is a shopping and styling app built around the closet you already own. You swipe real, in-stock clothes from 8 stores and see each piece on your own photo next to the things you already own that go with it. Then you check out across every store in one cart. Your closet is built from your outfit photos, and you share fits with friends or everyone.
+
+Built at **Cal Hacks 13.0** (Oct 2026).
+
+## Demo
+
+<p align="center">
+  <a href="https://youtu.be/LcWr5wsJTwA"><img src="https://img.youtube.com/vi/LcWr5wsJTwA/maxresdefault.jpg" width="640" alt="Niche demo video on YouTube"></a>
+  <br><sub>▶ <a href="https://youtu.be/LcWr5wsJTwA">Watch the demo on YouTube</a></sub>
+</p>
+
+---
+
+## Features
+
+- **Home (reels).** One product per screen, in your size and in stock, from H&M, Uniqlo, Princess Polly, Edikted, Brandy Melville, True Classic, Kith and Stüssy. Each post has three slides:
+  1. the item;
+  2. **on you**, your own photo with just that garment swapped in, pre-rendered before you scroll;
+  3. a 2×2 grid of **closet picks**, pieces you own that go with it.
+
+  Every card says why it was picked. Heart or double-tap to like; Add to cart is the only other button.
+- **Discover.** A Pinterest-style board mixing real outfit pins, products and Inspo posts, with style chips, search, and photo search. **Similar** on any pin shows your own closet first, then pieces to buy.
+- **Closet from photos.** Post outfit photos and Niche:
+  - splits each one into pieces, including partly hidden layers and accessories;
+  - makes a white-background shot of each piece, checked to match its label;
+  - only names a brand when a logo is visible;
+  - merges the same piece across outfits.
+
+  **Outfits** keep the photos you wore them in, each with an editable nickname and a **Fit Score** (0–100 on eight stylist criteria, given for a named style). **Create 3 fits** takes the occasion in your own words and builds three season-checked outfits from your closet only.
+- **Inspo.** Outfit-of-the-day posts visible to Friends or Everyone. Add friends by `@handle` or friend code, react with 🔥 😍 👀 💯, and comment. **Find similar look** breaks a post into its pieces: what you already own, then what to buy.
+- **One cart, every store.** Checkout makes one **Capital One Nessie** purchase per store. It handles sold-out items (nothing is charged) and lets you retry a failed store without double-charging. The **Niche Card** shows your Nessie balance and purchases live.
+- **Also:** Google sign-in, onboarding with photo-based measurements, sizing from your measurements (men's, women's, unisex), light and dark mode, iOS, Android and web.
+
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph APP["Flutter app · iOS · Android · web"]
+    H["Home reels"]
+    D["Discover board"]
+    I["Inspo"]
+    C["Closet"]
+    K["Cart · Niche Card"]
+  end
+
+  subgraph BE["FastAPI backend · every key stays on the server"]
+    RANK["Ranking<br/>rules shortlist → Claude Haiku re-rank + reason"]
+    TRY["Try-on<br/>your best photo → Gemini in-place edit → guard"]
+    CLO["Closet AI<br/>Claude vision split → Gemini clean shot"]
+    PAY["Checkout<br/>one payment per store, retry-safe"]
+    DB[("JSON store<br/>products · pins · closets · posts · caches")]
+  end
+
+  NES["Capital One Nessie<br/>purchases · live wallet"]
+
+  subgraph OFF["Offline catalog build"]
+    direction LR
+    AP["Apify scrapers<br/>8 stores + Pinterest"] --> NO["Normalize<br/>sizes · stock · dedupe"] --> TAG["Claude Haiku<br/>tags + photo labels"] --> SNAP[("Snapshot<br/>3,476 products · 793 pins")]
+  end
+
+  H -->|"/feed"| RANK
+  H -->|"/feed/tryons"| TRY
+  D -->|"/discover/board"| DB
+  D -->|"Similar"| RANK
+  I -->|"/fitcheck · Similar"| RANK
+  C -->|"/closet/upload"| CLO
+  K -->|"/checkout · /wallet"| PAY
+  PAY --> NES
+  RANK --> DB
+  TRY --> DB
+  CLO --> DB
+  SNAP -->|"load_products"| DB
+```
+
+- **Offline:** the catalog is scraped, cleaned and AI-tagged once, then committed as a snapshot. A server loads it in seconds with no AI cost.
+- **Live:** each screen calls one group of routes on the FastAPI backend, which owns all data and keys. The app never calls an outside service directly; it sends a shared `X-DTI-Key` and, when signed in with Google, a session token.
+- **Engines:** cheap rules run first (sizing, colour, clashes, budgets), and AI only where it adds something: Claude ranks and explains, Gemini renders. Every AI step has a cache and a fallback, so a screen never shows an error.
+
+## How the AI works
+
+**Recommendations (Claude + rules).**
+- **Rules first.** A rule-based shortlist removes style clashes (athletic ↔ formal, big formality gaps) and same-category pairings. Claude re-ranks the top 20 and writes the reason, blended 50/50 with the rule score, with deterministic tie-breaks.
+- **Deterministic calls.** A strict JSON schema per prompt with closed vocabularies, one retry, then a rules fallback. Gemini runs at temperature 0 with a fixed seed; Claude Haiku 5.5 only accepts its default sampling, so the schema check is its guard.
+- **Hard validators** on every card, for example no reason may mention a closet item you don't own.
+- **Measured.** [`docs/rec-eval.md`](docs/rec-eval.md) runs 20 cases × 3 runs against the real model:
+
+| Metric | Before | After |
 | --- | --- | --- |
-| Apify | Every feed card is a real listing pulled by an actor; Fit Check live search | `backend/app/commerce/ingest.py`, `backend/app/ai/finder.py` |
-| Capital One Nessie | Checkout: one cart, one purchase per store | `backend/app/commerce/nessie.py`, `POST /checkout/{user_id}` |
+| Top-5 stability (Jaccard) | 0.61 | **0.75** |
+| Style-clash pairings | 11% | **0%** |
+| Same-category pairings | 19% | **0%** |
+| Cost per ranking | | ≈ $0.001 |
 
-### Apify: the catalog
+**Try-on (Gemini).**
+- **Source photo.** We pick the user's best real photo for the product: one that already shows a garment of the same category, with matching warmth and layers, so shorts never go onto a coat photo.
+- **In-place edit.** Gemini swaps only that garment, true to size. Face, pose, background and every other piece stay.
+- **Labelled images.** Each image in the request is labelled inline ("IMAGE 1", "IMAGE 2 (reference only)"), so the model edits the right photo.
+- **Guard.** A perceptual-hash check rejects any output that looks more like the store's reference photo than the user, then retries once. If it still fails, the app shows "try-on unavailable · Retry", never a fake.
+- **Prefetch.** A small background pool renders the next posts with in-flight de-duplication and a per-user daily cap.
 
-**Actors and inputs**
+**Closet clean shots.** The request names the exact piece ("white wired earbuds, accessory"). A Claude vision check confirms the result shows only that piece. If not, it retries, then renders from the label alone, then falls back to a crop.
 
-| Retailer | Actor | Input |
-| --- | --- | --- |
-| H&M | `gauzy_penguin/HM-Product-Scraper` | search keywords, `Country: en_us` |
-| Uniqlo | `abotapi/uniqlo-com-scraper` | US categories, `fetchDetails: true` (sizes and stock) |
+**Plain rules (free, instant):** sizing, colour matching, warmth/season, duplicate detection.
 
-**Pipeline** (`backend/app/commerce/ingest.py`, CLI `backend/scripts/ingest.py`)
+## Design
 
-1. `run_actor` calls Apify's `run-sync-get-dataset-items`; `fetch_hm` and `fetch_uniqlo` build each actor's input.
-2. `normalize_hm` and `normalize_uniqlo` turn raw items into our `Product` shape:
-   - drop kids, baby and maternity items;
-   - one product per Uniqlo colour (capped), each with its own photos and per-colour stock;
-   - per-size stock; Uniqlo `LOW_STOCK` counts as in stock (the actor reports it as `inStock: false`, but it's buyable);
-   - image galleries (product + model shots) and plain-text descriptions where the retailer gives one (Uniqlo);
-   - a stable id `{retailer}:{code}:{color}`, so re-runs update instead of duplicating.
-3. `tag` sends each product photo to Claude, with the product name as a hint, for label, pattern, formality and style tags.
-4. `save` validates and writes to the store; `/feed` serves it.
+The original app wireframe: [WireframeSketch (made with Notability).pdf](<WireframeSketch (made with Notability).pdf>).
 
-**The result:** a 418-product snapshot (290 H&M, 128 Uniqlo) committed at `backend/seed/products.json`, with the raw actor pulls in `backend/seed/raw/`. That's what `/feed` swipes through.
+## Tech stack
 
-**Second use:** Fit Check's "shop this fit" looks for each tagged item in the catalog first. If nothing matches, `live_search` in `backend/app/ai/finder.py` (Adam's) runs the same H&M actor through `fetch_hm` + `normalize_hm` and shows the live hits.
+| Layer | Tools |
+| --- | --- |
+| App | Flutter / Dart, Young Serif + Manrope, `http`, `image_picker`, Google Sign-In |
+| Backend | Python, FastAPI, Pydantic, Uvicorn, httpx, Pillow |
+| AI | Anthropic Claude (Haiku), Google Gemini (text fallback + image) |
+| Data | Apify actors (`gauzy_penguin/HM-Product-Scraper`, `abotapi/uniqlo-com-scraper`, `autofacts/shopify`, a Pinterest scraper) |
+| Payments | Capital One Nessie API |
+| Testing | pytest, flutter_test (incl. golden tests) |
+| Hosting (demo) | Mac + Cloudflare quick tunnel |
 
-**Why these actors:** we tested about a dozen; the multi-store actor returned no sizes, and these two give sizes and stock for US stores (notes in [`NABIL.md`](NABIL.md#apify-findings-reference)).
+## Repo layout
 
-### Capital One Nessie: checkout
+```
+app/        Flutter app (lib/core = API + models, lib/features = screens)
+backend/    FastAPI service (app/ai = AI pipelines, app/commerce = catalog, cart, checkout), scripts/, seed/, tests/
+docs/       Technical docs: AI write-up, schema, rec eval, Google auth, Devpost, demo script
+frontend/   Early design specs and mock data
+```
 
-**Code:** `backend/app/commerce/nessie.py` (client) and `POST /checkout/{user_id}` in `backend/app/commerce/router.py`.
+## Run it locally
 
-**Flow**
-
-1. First checkout for a user creates a Nessie customer and a credit-card account. The first purchase at a retailer creates one Nessie merchant for it. Ids are cached in the store collection `nessie`, so each is created once.
-2. Checkout re-checks stock. If a size sold out, it returns 409 with the unavailable items, and nothing is charged.
-3. The cart is grouped by retailer, and each store gets one `POST /accounts/{id}/purchases`.
-4. Each store's purchase comes back `paid` with its `nessie_id`, or `nessie_failed` with the error. Without `NESSIE_API_KEY` it's `pending_nessie`.
-5. `GET /orders/{user_id}` lists past orders with their purchases.
-
-**Quirks:** the API only answers over https (http hangs), and amounts are stored as integers (cents are dropped).
-
-## How to run
-
-Full steps are in [`backend/README.md`](backend/README.md). In short:
+**Backend**
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # APIFY_TOKEN, NESSIE_API_KEY, ANTHROPIC_API_KEY (or MOCK_AI=1)
-python -m scripts.seed_demo && python -m scripts.load_products
-uvicorn app.main:app --reload --port 8000
+cp .env.example .env        # fill in the key names below; MOCK_AI=1 runs without AI keys
+python -m scripts.load_products
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Tests: `cd backend && .venv/bin/pytest -q` (no keys needed).
+`.env` keys, all listed in [`backend/.env.example`](backend/.env.example):
+- **Service keys:** `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `APIFY_TOKEN`, `NESSIE_API_KEY`, `API_SHARED_KEY`, `PUBLIC_BASE`, `GOOGLE_CLIENT_IDS`.
+- **Tuning:** `CLAUDE_MODEL`, `GEMINI_IMAGE_MODEL`, `AI_BUDGET_USD`, `MAX_TRYONS`, `PREFETCH_PER_USER_DAY`, `MOCK_AI`.
+
+Never commit `.env`.
+
+**App**
+
+```bash
+cd app
+flutter pub get
+flutter run --dart-define=DTI_API_BASE=http://127.0.0.1:8000 --dart-define=DTI_API_KEY=<your API_SHARED_KEY>
+```
+
+## Tests
+
+```bash
+cd backend && .venv/bin/pytest -q   # ~780 tests, no keys needed (AI is faked)
+cd app && flutter analyze && flutter test   # ~200 tests incl. goldens
+```
+
+## Team & roles
+
+| Who | Role |
+| --- | --- |
+| **Adam Abid** (`ACWArob`) | AI and infrastructure. Built the Claude and Gemini pipelines: product and closet tagging, feed ranking with its eval harness, try-on, clean shots, Fit Score, Create 3 fits, friends. Also ran backend hosting and the app core (`app/lib/core`), and in the final sprint the app screens (closet, Inspo, fits). |
+| **Nabil Djaber** (`latrael`) | Commerce backend. Built the Apify catalog ingest (8 stores + Pinterest pins), products, feed and cart routes, Capital One Nessie checkout and the Niche Card, Google sign-in, and the Discover board. |
+| **Ryan Djaber** (`ryantheribosome`) | Design and frontend. Built the Flutter design system and visual overhaul, reels Home, onboarding, and the Discover and Inspo screens. |

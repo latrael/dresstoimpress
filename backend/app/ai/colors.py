@@ -186,11 +186,61 @@ def _norm(v: Any) -> str:
     return str(v or "").strip().lower()
 
 
+# Words that name the same thing: "white wired earbuds" / "white earbuds with cord" / "white wired earphones"
+# are one pair of earbuds. Each group collapses to its first word before labels are compared.
+LABEL_SYNONYMS: tuple[tuple[str, ...], ...] = (
+    ("tshirt", "tee", "tees", "t-shirt", "t-shirts", "tshirts"),
+    ("earbuds", "earbud", "earphones", "earphone", "headphones", "headphone", "airpods", "headset", "buds"),
+    ("wired", "cord", "corded", "cable", "wire"),
+    ("sneakers", "sneaker", "trainers", "trainer", "kicks"),
+    ("jeans", "denims"),
+    ("watch", "wristwatch", "timepiece"),
+    ("glasses", "eyeglasses", "spectacles", "specs"),
+    ("sunglasses", "shades"),
+    ("bag", "tote", "handbag", "purse"),
+    ("pants", "trousers", "slacks"),
+    ("sweater", "jumper", "pullover", "knit"),
+    ("hoodie", "hoody", "hooded"),
+    ("cap", "hat"),
+    ("necklace", "chain", "pendant"),
+    ("button", "buttoned", "buttonup", "button-up", "buttondown", "button-down"),
+    ("shirt", "shirts"),
+    ("boots", "boot"),
+    ("loafers", "loafer"),
+    ("shoes", "shoe"),
+    ("shorts", "short"),
+)
+_SYNONYM: dict[str, str] = {w: g[0] for g in LABEL_SYNONYMS for w in g}
+_DESCRIPTOR_GROUPS = frozenset({"wired", "button"})  # groups that describe an item, not name it
+# descriptive filler that doesn't change what the item is
+_LABEL_FILLER = frozenset("classic plain basic simple regular casual style".split())
+
+
 def _label_words(label: Any) -> set[str]:
     if not isinstance(label, str):
         return set()
     text = re.sub(r"\b(?:t-?shirts?|tees?)\b", "tshirt", label.lower())
-    return {t for t in re.findall(r"[a-z0-9]+", text) if t not in LABEL_STOPWORDS and t not in _COLOR_WORDS}
+    text = re.sub(r"\b(button)[\s-]?(up|down)\b", r"\1", text)
+    out = set()
+    for t in re.findall(r"[a-z0-9]+", text):
+        if t in LABEL_STOPWORDS or t in _COLOR_WORDS or t in _LABEL_FILLER:
+            continue
+        out.add(_SYNONYM.get(t, t))
+    return out
+
+
+def label_noun(label: Any) -> Optional[str]:
+    """The canonical noun of a label ("white earbuds with cord" -> "earbuds"): the last word that belongs to a
+    synonym group, else the last non-colour word. None for an empty label."""
+    if not isinstance(label, str):
+        return None
+    text = re.sub(r"\b(button)[\s-]?(up|down)\b", r"\1", label.lower())
+    words = [t for t in re.findall(r"[a-z0-9]+", text)
+             if t not in LABEL_STOPWORDS and t not in _COLOR_WORDS and t not in _LABEL_FILLER]
+    for t in reversed(words):
+        if t in _SYNONYM and _SYNONYM[t] not in _DESCRIPTOR_GROUPS:
+            return _SYNONYM[t]
+    return words[-1] if words else None
 
 
 def _kind(label: Any) -> Optional[int]:
@@ -214,6 +264,7 @@ def find_duplicate(new_item: dict, closet: list[dict]) -> Optional[str]:
     if not (cat and color and words):
         return None
     kind = _kind(new_item.get("label"))
+    noun = label_noun(new_item.get("label"))
     best, best_ratio = None, 0.0
     for item in closet:
         if not isinstance(item, dict) or not item.get("id") or item.get("id") == new_item.get("id"):
@@ -229,6 +280,9 @@ def find_duplicate(new_item: dict, closet: list[dict]) -> Optional[str]:
         if not theirs:
             continue
         ratio = len(words & theirs) / min(len(words), len(theirs))
+        # same canonical noun in the same category + colour ("earbuds with cord" vs "wired earphones")
+        if noun and noun in _SYNONYM and noun == label_noun(item.get("label")):
+            ratio = max(ratio, DUPLICATE_OVERLAP)
         if ratio >= DUPLICATE_OVERLAP and ratio > best_ratio:
             best, best_ratio = str(item["id"]), ratio
     return best

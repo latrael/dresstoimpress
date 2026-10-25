@@ -1,3 +1,15 @@
+> Sprint 3: size labels omit “edit in cart”; size editing remains in the cart.
+
+> Sprint 2 supersedes the thick separator below: use a 1 px solid line with 24 px
+> spacing on each side. Keep dots, remove the numeric counter, preload nearby photos,
+> animate a heart on double tap, and reveal full retailer text behind More.
+> See docs/ryan-sprint-2-implementation.md.
+
+> Council update: the product feed is now **Home**. Discover is a separate two-section
+> search grid and Social is **Inspo**. The persistent header and floating island follow
+> docs/council-final-sprint.md and docs/ryan-council-implementation.md. The photo layout,
+> continuous scrolling and solid separator below remain the accepted product design.
+
 # Quick Browse: Ryan's accepted design
 
 Status: implemented in plain Flutter under `app/lib/features/feed/`. Ryan approved
@@ -14,18 +26,24 @@ Earlier FlutterFlow-specific implementation notes are superseded.
 4. Position dots immediately below the picture; no dots for a single image.
 5. Retailer and product name, readable description or honest retailer fallback,
    and pairing reason only when supplied. Do not invent fabric or model stats.
-6. Product-provided sizes, unavailable choices disabled, then Add to Cart.
+6. Onboarded sizing resolves automatically from saved explicit measurements or
+   an available usual letter size. One Add to Cart button replaces size chips and
+   the sizing sheet; the chosen size is shown quietly and editable with the cart pencil.
+   Missing or unavailable recommendations never select an arbitrary size.
 7. Description, sizes, cart button, search and navigation stay outside the photo
    carousel. Horizontal drags there do not change photos.
-8. Vertical browsing changes products; details scroll on shorter screens and
-   continue to the next product at the scroll boundary. Reset new-product state.
+8. One continuous vertical product list: details flow straight through a thick,
+   solid muted burgundy separator into the next product. No snap paging, arrow,
+   release-to-confirm, or boundary gestures. Build the visible items and about
+   one screen ahead/behind; distant product widgets and images load on approach.
+   Nearby products keep their own photo/size state; each new item starts separately.
 9. Double-tap a photo saves; explicit heart remains. Save uses independent wishlist
    PUT/DELETE. Photo changes and passive product browsing NEVER call `/swipe`.
 10. Failed images stay bounded and leave controls usable.
 
 Page 1 of the PDF also defines Home's suggested grid, persistent search and entry
 into Quick Browse. Page 2 shows retailer model photos and personal try-on slides.
-Personal try-on is the next phase; never put personal generated images in the
+Personal try-on is an explicitly requested generated slide; never put personal generated images in the
 shared catalog. A collage response is labeled Outfit board.
 
 ## Shared data and app integration
@@ -43,7 +61,21 @@ The older JSON fixture remains an explicitly mock historical design asset.
 
 ## Verification
 
-Eight Flutter tests currently cover original gesture/cart behavior and shared API
-integration. Run `cd app && flutter analyze && flutter test`. Backend health/feed
+Eighty Flutter tests cover original gestures/cart and the overnight feature flows.
+Connected mode uses paged catalog search; explicit demo mode stays local. Run `cd app && flutter analyze && flutter test`. Backend health/feed
 and image proxy were also verified with private runtime settings. The app loads
 live photos. Phone and live checkout verification remain separate checks.
+
+## Overnight product tools
+
+Find my size opens measurements and the backend's fit choices. It returns a
+recommendation with confidence/reason; only an available size can be selected.
+Try it on appends a generated photo inside the existing image section. A returned
+collage is labeled Outfit board, not a photo of the user. Complete the look opens
+owned/catalog suggestions and Fit Score. These controls stay outside horizontal
+photo swipes; product details scroll to expose controls on smaller screens.
+No model measurements, real descriptions or personal photos are invented.
+
+81 tests pass and Flutter analysis is clean. The overnight release web build succeeded. Overnight backend checks used
+mock AI and synthetic local fixtures. Shared live / phone / personal-photo quality
+acceptance remains pending; see RYAN.md and the staging morning report.

@@ -94,3 +94,67 @@ def test_odd_input_does_not_crash():
     for anchor, closet, catalog in [({}, [], []), (None, None, None), (TEE, [None, {}], [None, {"id": 1}])]:
         r = complete_look(anchor, closet, catalog)  # type: ignore[arg-type]
         assert set(r) >= {"anchor_id", "items", "new_items_total_usd", "missing", "score"}
+
+
+
+# ---- Fit Score v2 rubric in complete-the-look (Adam, Oct 24: "it paired an athletic shirt with a leather belt")
+
+from app.ai.complete_look import anchor_primary_style, clashes_with  # noqa: E402
+
+ATHLETIC_TEE = {**product("p-ath-tee", "top", 25.0, ("black",), ("athleisure",), name="Dri-fit athletic training shirt"),
+                "formality": 1, "label": "black athletic training shirt"}
+LEATHER_BELT = {**product("p-belt", "accessory", 45.0, ("brown",), ("classic", "business"), name="Leather belt"),
+                "formality": 4, "label": "brown leather belt"}
+CAP = {**product("p-cap", "accessory", 20.0, ("black",), ("athleisure", "streetwear"), name="Black cap"),
+       "formality": 1, "label": "black cap"}
+JOGGERS = {**product("p-joggers", "bottom", 40.0, ("grey",), ("athleisure",), name="Fleece joggers"), "formality": 1}
+TRAINERS = {**product("p-trainers", "shoes", 80.0, ("white",), ("athleisure",), name="Running trainers"), "formality": 1}
+DRESS_SHIRT = {**product("p-dress-shirt", "top", 60.0, ("white",), ("business", "classic"), name="White dress shirt"),
+               "formality": 4}
+TROUSERS = {**product("p-trousers", "bottom", 70.0, ("navy",), ("business", "classic"), name="Navy tailored trousers"),
+            "formality": 4}
+LOAFERS = {**product("p-loafers", "shoes", 120.0, ("brown",), ("business", "classic"), name="Leather loafers"),
+           "formality": 4}
+
+
+def test_athletic_tee_anchor_never_gets_a_leather_belt():
+    catalog = [LEATHER_BELT, CAP, JOGGERS, TRAINERS, TROUSERS, LOAFERS, DRESS_SHIRT]
+    r = complete_look(ATHLETIC_TEE, [], catalog)
+    ids = [i["id"] for i in r["items"]]
+    assert "p-belt" not in ids and "p-loafers" not in ids and "p-trousers" not in ids
+    assert set(cats(r)) >= {"bottom", "shoes"} and r["missing"] == []
+    assert r["primary_style"] == "athleisure"
+    fs = r["fit_score"]
+    assert fs and set(fs) >= {"score", "verdict", "criteria", "style_scores", "primary_style"}
+    assert fs["primary_style"] == "athleisure" and fs["verdict"].startswith(f"{fs['score']} as athleisure")
+
+
+def test_leather_belt_anchor_never_gets_an_athletic_shirt():
+    catalog = [ATHLETIC_TEE, DRESS_SHIRT, JOGGERS, TROUSERS, TRAINERS, LOAFERS]
+    r = complete_look(LEATHER_BELT, [], catalog)
+    ids = [i["id"] for i in r["items"]]
+    assert "p-ath-tee" not in ids and "p-joggers" not in ids and "p-trainers" not in ids
+    assert {"top", "bottom", "shoes"} <= set(cats(r))
+    assert r["primary_style"] in ("business", "classic")
+
+
+def test_clash_guard_words_and_tags():
+    assert clashes_with(ATHLETIC_TEE, LEATHER_BELT) and clashes_with(LEATHER_BELT, ATHLETIC_TEE)
+    assert clashes_with({"label": "grey joggers", "style_tags": [], "formality": 3},
+                        {"label": "navy blazer", "style_tags": [], "formality": 3})
+    assert clashes_with({"label": "white tee", "style_tags": [], "formality": 1},
+                        {"label": "black heels", "style_tags": [], "formality": 5})  # three steps apart
+    assert not clashes_with(ATHLETIC_TEE, CAP) and not clashes_with(ATHLETIC_TEE, JOGGERS)
+    assert not clashes_with({"label": "tie-dye hoodie", "style_tags": ["streetwear"], "formality": 1}, JOGGERS)
+    assert not clashes_with(TEE, JEANS_CLOSET)
+
+
+def test_candidates_prefer_the_anchor_primary_style():
+    assert anchor_primary_style({**ATHLETIC_TEE, "color": "black"}) == "athleisure"
+    assert anchor_primary_style({"label": "x", "category": "top", "style_tags": []}) is None
+    street_jeans = product("p-street", "bottom", 40.0, ("black",), ("streetwear",), name="Baggy black jeans")
+    preppy_chinos = product("p-chinos", "bottom", 40.0, ("black",), ("preppy", "classic"), name="Black chinos")
+    anchor = {**product("p-hoodie", "top", 50.0, ("grey",), ("streetwear",), name="Oversized grey hoodie"), "formality": 1}
+    r = complete_look(anchor, [], [preppy_chinos, street_jeans, product("p-snk", "shoes", 60.0)])
+    assert [i["id"] for i in r["items"] if i["category"] == "bottom"] == ["p-street"]
+    assert r["primary_style"] == "streetwear" and 0 <= r["fit_score"]["score"] <= 100

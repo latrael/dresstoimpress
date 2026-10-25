@@ -199,12 +199,20 @@ def delete_post(post_id: str, user_id: str):
 
 
 @router.get("/fitcheck/{post_id}/shop")
-def shop(post_id: str, user_id: str):
+def shop(post_id: str, user_id: str, grouped: bool = False):
     """Products for the post's tags, ranked against the viewer's closet (ai.service.shop_fit), kept to the
-    viewer's shop_for department (+ unisex/unknown, e.g. live search results)."""
-    items = service.shop_fit(user_id, _post(post_id, user_id).get("tagged") or [])
+    viewer's shop_for department (+ unisex/unknown, e.g. live search results).
+    `grouped=true`: one group per tagged piece, in post order, `[{tag: {label, category, color, box,
+    product_id}, products: [card...]}]` (up to 6 per piece; a piece with no match keeps `products: []`)."""
+    tagged = _post(post_id, user_id).get("tagged") or []
     shop_for = (store.get("users", user_id) or {}).get("shop_for")
-    return [p for p in items if _dept_ok(store.get("products", p.get("id")) or p, shop_for)]
+
+    def keep(p: dict) -> bool:
+        return _dept_ok(store.get("products", p.get("id")) or p, shop_for)
+
+    if grouped:
+        return service.shop_fit_grouped(user_id, tagged, keep=keep)
+    return [p for p in service.shop_fit(user_id, tagged) if keep(p)]
 
 
 @router.post("/fitcheck/{post_id}/like")

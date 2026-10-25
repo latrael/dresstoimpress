@@ -1038,6 +1038,20 @@ class FitTag {
       };
 }
 
+/// One tagged piece of a Fit Check post with its own similar items (`GET /fitcheck/{id}/shop?grouped=true`).
+/// Groups come back in post (tag) order; a piece with no match yet has an empty [products] so its chip /
+/// pin can still be shown. [tag] carries only label, category, color, box and productId.
+class ShopTagGroup {
+  const ShopTagGroup({required this.tag, this.products = const []});
+  final FitTag tag;
+  final List<RankedProduct> products; // up to 6, closest match first
+
+  bool get isEmpty => products.isEmpty;
+
+  factory ShopTagGroup.fromJson(Json j) =>
+      ShopTagGroup(tag: FitTag.fromJson(_obj(j['tag'])), products: _list(j['products'], RankedProduct.fromJson));
+}
+
 class FitCheckComment {
   const FitCheckComment(
       {required this.id, required this.userId, required this.text, this.createdAt, this.commentCount, String? authorName})

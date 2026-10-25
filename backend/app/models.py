@@ -176,6 +176,7 @@ class ShopFitRequest(BaseModel):
     viewer_id: str
     tagged: list[FitTag] = []
     photo_url: Optional[str] = None  # if set and tagged is empty, items are auto-tagged from the photo
+    grouped: bool = False  # true: one {tag, products} group per tagged piece (up to 6 each) instead of a flat list
 
 
 class SizeRequest(BaseModel):

@@ -473,6 +473,8 @@ def shop_fit(req: ShopFitRequest):
             tagged = service.tag_fit(req.photo_url)
         except BadModelOutput as e:
             raise _ai_down("outfit tagging", e)
+    if req.grouped:
+        return service.shop_fit_grouped(req.viewer_id, tagged)
     return service.shop_fit(req.viewer_id, tagged)
 
 

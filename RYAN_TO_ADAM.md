@@ -1,3 +1,9 @@
+# Phone update installed — Oct 24
+
+Ryan reconnected/unlocked his iPhone. The prepared PR #50 release (Shop-for, seeded refresh, flat cart photos, scan review/confirm, private connection defines) installed successfully and launched through devicectl. The device-unavailable blocker below is resolved. Physical gesture/camera acceptance remains Ryan's check. No credentials committed.
+
+---
+
 # Ryan merged-client integration ready — Oct 24
 
 Published `08b1625`; [PR #50](https://github.com/latrael/dresstoimpress/pull/50) is open into staging and unmerged. Ryan branch is clean and matches remote. Based on staging through #47 + your handoff. No direct core/backend edits.

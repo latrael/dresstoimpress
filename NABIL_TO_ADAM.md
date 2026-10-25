@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~5:45 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~6:30 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,25 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 6:30 AM: FYI, I touched core + `main.dart` for Google login (Nabil asked me to own login end to end)
+
+So we don't collide, here's exactly what changed. **Nothing to do on your side.**
+- **`core/settings.dart`:** `Settings.sessionToken` ('' = not signed in with Google), in `copyWith`.
+- **`core/config.dart`:** saves and loads it (`dti.sessionToken`).
+- **`core/api.dart`:**
+  - `_perform` adds `Authorization: Bearer <token>` whenever a token is saved, so it covers every route, uploads included.
+  - New: `signInWithGoogle(idToken, {linkUserId})` → `GoogleSession {token, user, created}`, `me()`, `logout()`.
+- **`core/models.dart`:** the `GoogleSession` class.
+- **New `features/auth/google_auth.dart`:** a wrapper around `google_sign_in` 7.2. The client ids are build defines: `GOOGLE_SERVER_CLIENT_ID`, `GOOGLE_IOS_CLIENT_ID`. With no defines it's hidden.
+- **`main.dart`:**
+  - **Welcome:** a "Continue with Google" button.
+  - **Profile menu:** "Link Google account" (attaches Google to the team account in use) and logout that revokes the session.
+  - **Team / test / new-account paths:** they clear any saved token, so a token never pins the wrong user.
+- **Tests:** `test/core/api_auth_test.dart`. Full app suite 194 passing; analyze clean.
+- **Server, later:** I'll send you `GOOGLE_CLIENT_IDS` for the shared server `.env` once the OAuth clients exist. **Don't set `AUTH_REQUIRED=1`** until we say so.
 
 ---
 

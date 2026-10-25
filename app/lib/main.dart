@@ -10,6 +10,7 @@ import 'features/profile/shopper_profile.dart';
 import 'features/profile/body_photo_card.dart';
 
 import 'core/api.dart';
+import 'features/auth/google_auth.dart';
 import 'core/config.dart';
 import 'core/models.dart';
 import 'features/feed/reels_browse.dart';
@@ -75,6 +76,24 @@ class _NicheAppState extends State<NicheApp> {
     });
   }
 
+  /// Attach a Google account to the profile in use (a team account), once; afterwards it signs in with Google.
+  Future<void> linkGoogle(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final idToken = await GoogleAuth.idToken();
+      if (idToken == null) return;
+      final session = await store.api.signInWithGoogle(idToken, linkUserId: store.api.settings.userId);
+      await Config.save(store.api.settings.copyWith(userId: session.user.id, sessionToken: session.token));
+      messenger.showSnackBar(const SnackBar(content: Text('Google account linked')));
+      if (mounted) setState(() {});
+    } on ApiError catch (e) {
+      messenger.showSnackBar(SnackBar(
+          content: Text(e.status == 409 ? 'That Google account or profile is already linked.' : e.message)));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Could not link Google. Try again.')));
+    }
+  }
+
   void user() => openTop(
       'User',
       FeaturePage(
@@ -126,10 +145,24 @@ class _NicheAppState extends State<NicheApp> {
                   title: const Text('Private scan & try-on photo'),
                   leading: const Icon(NicheIcons.lockOutline),
                   onTap: () => open(BodyPhotoCard(api: store.api))),
+            if (GoogleAuth.available && !store.demo && store.api.settings.sessionToken.isEmpty)
+              ListTile(
+                  key: const ValueKey('link-google'),
+                  title: const Text('Link Google account'),
+                  subtitle: const Text('Sign in to this profile with Google from now on'),
+                  leading: const Icon(NicheIcons.personOutline),
+                  onTap: () => linkGoogle(navigation.currentContext!)),
             ListTile(
                 title: const Text('Log out on this device'),
                 leading: const Icon(NicheIcons.logout),
                 onTap: () async {
+                  if (store.api.settings.sessionToken.isNotEmpty) {
+                    try {
+                      await store.api.logout(); // the token stops working on the server too
+                    } catch (_) {/* offline: forgetting it locally is enough */}
+                    await Config.save(store.api.settings.copyWith(sessionToken: ''));
+                    await GoogleAuth.signOut();
+                  }
                   final p = await SharedPreferences.getInstance();
                   await p.remove('niche.activeUser');
                   await p.setBool('niche.signedOut', true);
@@ -298,7 +331,7 @@ class _FirstVisitState extends State<FirstVisit> {
             ? 'local_${DateTime.now().microsecondsSinceEpoch}'
             : (await widget.store.api.createUser(displayName: displayName!)).id;
       }
-      final settings = widget.store.api.settings.copyWith(userId: id);
+      final settings = widget.store.api.settings.copyWith(userId: id, sessionToken: '');
       await Config.save(settings);
       widget.store.api.settings = settings;
       await widget.store.loadProfile(fromServer: !widget.store.demo);
@@ -321,6 +354,36 @@ class _FirstVisitState extends State<FirstVisit> {
         setState(() => error =
             'Could not open your profile. Check your connection and retry.');
       }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  /// Continue with Google: Google's account picker -> POST /auth/google -> our session token. A new Google
+  /// user lands in onboarding (their profile isn't completed yet); a returning one goes straight in.
+  Future<void> google() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final idToken = await GoogleAuth.idToken();
+      if (idToken == null) return; // cancelled in Google's sheet
+      final session = await widget.store.api.signInWithGoogle(idToken);
+      final settings =
+          widget.store.api.settings.copyWith(userId: session.user.id, sessionToken: session.token);
+      await Config.save(settings);
+      widget.store.api.settings = settings;
+      await widget.store.loadProfile(fromServer: true);
+      final p = await SharedPreferences.getInstance();
+      await p.setBool('niche.signedOut', false);
+      await p.setString('niche.activeUser', session.user.id);
+      hasReturning = true;
+      if (mounted) setState(() => active = true);
+    } on ApiError catch (e) {
+      if (mounted) setState(() => error = 'Google sign-in failed: ${e.message}');
+    } catch (_) {
+      if (mounted) setState(() => error = 'Google sign-in failed. Check your connection and retry.');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -349,9 +412,18 @@ class _FirstVisitState extends State<FirstVisit> {
                 Text('Find your next favorite fit',
                     style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 16),
-                const Text(
-                    'Login reopens the profile saved on this device. Google sign-in is coming later.'),
+                Text(GoogleAuth.available && !widget.store.demo
+                    ? 'Sign in with Google to keep your closet, fits and cart on every device.'
+                    : 'Login reopens the profile saved on this device.'),
                 const SizedBox(height: 24),
+                if (GoogleAuth.available && !widget.store.demo) ...[
+                  FilledButton.icon(
+                      key: const ValueKey('google-sign-in'),
+                      onPressed: busy ? null : google,
+                      icon: const Icon(NicheIcons.personOutline),
+                      label: const Text('Continue with Google')),
+                  const SizedBox(height: 24),
+                ],
                 if (!widget.store.demo) ...[
                   Text('Who are you?',
                       style: Theme.of(context).textTheme.titleMedium),

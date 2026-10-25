@@ -7,6 +7,7 @@ class Settings {
     this.userId = 'u_demo',
     this.heightCm = 170,
     this.weightKg = 65,
+    this.sessionToken = '',
   });
 
   final String baseUrl;
@@ -14,6 +15,9 @@ class Settings {
   final String userId;
   final double heightCm;
   final double weightKg;
+
+  /// Our session token from POST /auth/google ('' = not signed in with Google: team / test accounts).
+  final String sessionToken;
 
   /// Base URL without trailing slashes or whitespace.
   String get base {
@@ -24,12 +28,14 @@ class Settings {
     return b;
   }
 
-  Settings copyWith({String? baseUrl, String? apiKey, String? userId, double? heightCm, double? weightKg}) =>
+  Settings copyWith({String? baseUrl, String? apiKey, String? userId, double? heightCm, double? weightKg,
+          String? sessionToken}) =>
       Settings(
         baseUrl: baseUrl ?? this.baseUrl,
         apiKey: apiKey ?? this.apiKey,
         userId: userId ?? this.userId,
         heightCm: heightCm ?? this.heightCm,
         weightKg: weightKg ?? this.weightKg,
+        sessionToken: sessionToken ?? this.sessionToken,
       );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../fits/fits_screen.dart';
 import '../../core/models.dart';
 import '../store/store_controller.dart';
 import '../store/cart_screen.dart';
@@ -75,7 +76,9 @@ class _LikedScreenState extends State<LikedScreen> {
             if (snapshot.hasError) {
               return Center(
                   child: TextButton(
-                      onPressed: () => setState(() => products = load()),
+                      onPressed: () => setState(() {
+                            products = load();
+                          }),
                       child: const Text('Could not load liked pieces. Retry')));
             }
             if (!snapshot.hasData) {
@@ -175,6 +178,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> search(String value) async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final request = ++generation;
     setState(() {
       query = value.trim();
@@ -286,110 +290,141 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 120), children: [
-        Text('Discover', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 16),
-        TextField(
-            controller: text,
-            textInputAction: TextInputAction.search,
-            onSubmitted: search,
-            decoration: InputDecoration(
-                hintText: 'Search a look…',
-                prefixIcon: IconButton(
-                    tooltip: 'Search with a photo',
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    onPressed: loading ? null : photoSearch),
-                suffixIcon: IconButton(
-                    tooltip: 'Search catalog',
-                    icon: const Icon(Icons.arrow_forward),
-                    onPressed: () => search(text.text)))),
-        if (photo != null)
-          Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: SizedBox(
-                  height: 140,
-                  child: Image.memory(photo!.bytes, fit: BoxFit.contain))),
-        if (query.isNotEmpty)
-          Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                  onPressed: () {
-                    text.clear();
-                    search('');
-                  },
-                  child: const Text('Clear search'))),
-        const SizedBox(height: 20),
-        if (query.isEmpty && !loading)
-          FutureBuilder<StyleChips>(
-              future: idle,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return TextButton(
-                      onPressed: () => setState(() => idle = loadIdle()),
-                      child: const Text(
-                          'Could not load styles and trending. Retry'));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Explore a style'),
-                      const SizedBox(height: 12),
-                      Wrap(spacing: 8, runSpacing: 6, children: [
-                        for (final tag in snapshot.data!.styles)
-                          ActionChip(
-                              label: Text('${tag.tag} · ${tag.count}'),
-                              onPressed: () {
-                                text.text = tag.tag;
-                                search(tag.tag);
-                              })
-                      ]),
-                      const SizedBox(height: 24),
-                      Text(widget.store.demo ? 'For you' : 'Trending + for you',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 12),
-                      ProductGrid(
-                          products: mix(snapshot.data!.trending),
-                          store: widget.store,
-                          onOpen: widget.onOpen)
-                    ]);
-              })
-        else if (loading)
-          const Center(child: CircularProgressIndicator())
-        else if (error != null)
-          TextButton(
-              onPressed: () => photo != null ? photoSearch() : search(query),
-              child: Text(error!))
-        else ...[
-          Text('Similar items', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          if (similar.isEmpty)
-            const Text('No matches yet. Try another look.')
-          else
-            ProductGrid(
-                products: similar, store: widget.store, onOpen: widget.onOpen),
-          const SizedBox(height: 24),
-          Text('Goes with it', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          for (final item in owned)
-            ListTile(
-                leading: const Icon(Icons.checkroom_outlined),
-                title: Text(item.label ?? item.category),
-                subtitle: const Text('Already in your closet'),
-                onTap: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => ClosetScreen(api: widget.store.api)))),
-          if (goesWith.isEmpty && owned.isEmpty)
-            const Text('No matching pieces to show yet.')
-          else
-            ProductGrid(
-                products: goesWith, store: widget.store, onOpen: widget.onOpen),
-        ],
-      ]);
+  Widget build(BuildContext context) => ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+          children: [
+            Text('Discover', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 16),
+            TextField(
+                controller: text,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
+                textInputAction: TextInputAction.search,
+                onSubmitted: search,
+                decoration: InputDecoration(
+                    hintText: 'Search a look…',
+                    prefixIcon: IconButton(
+                        tooltip: 'Search with a photo',
+                        icon: const Icon(Icons.camera_alt_outlined),
+                        onPressed: loading ? null : photoSearch),
+                    suffixIcon: IconButton(
+                        tooltip: 'Search catalog',
+                        icon: const Icon(Icons.arrow_forward),
+                        onPressed: () => search(text.text)))),
+            if (photo != null)
+              Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: SizedBox(
+                      height: 140,
+                      child: Image.memory(photo!.bytes, fit: BoxFit.contain))),
+            if (query.isNotEmpty)
+              Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                      onPressed: () {
+                        text.clear();
+                        search('');
+                      },
+                      child: const Text('Clear search'))),
+            const SizedBox(height: 20),
+            if (query.isEmpty)
+              Card(
+                  child: ListTile(
+                      leading: const Icon(Icons.auto_awesome),
+                      title: const Text('Fits for you'),
+                      subtitle: const Text(
+                          'Create outfits from your closet and new pieces'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => FitsScreen(
+                                  store: widget.store,
+                                  onProduct: widget.onOpen))))),
+            if (query.isEmpty && !loading)
+              FutureBuilder<StyleChips>(
+                  future: idle,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return TextButton(
+                          onPressed: () => setState(() {
+                                idle = loadIdle();
+                              }),
+                          child: const Text(
+                              'Could not load styles and trending. Retry'));
+                    }
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Explore a style'),
+                          const SizedBox(height: 12),
+                          Wrap(spacing: 8, runSpacing: 6, children: [
+                            for (final tag in snapshot.data!.styles)
+                              ActionChip(
+                                  label: Text(tag.tag),
+                                  onPressed: () {
+                                    text.text = tag.tag;
+                                    search(tag.tag);
+                                  })
+                          ]),
+                          const SizedBox(height: 24),
+                          Text(
+                              widget.store.demo
+                                  ? 'For you'
+                                  : 'Trending + for you',
+                              style: Theme.of(context).textTheme.titleLarge),
+                          const SizedBox(height: 12),
+                          ProductGrid(
+                              products: mix(snapshot.data!.trending),
+                              store: widget.store,
+                              onOpen: widget.onOpen)
+                        ]);
+                  })
+            else if (loading)
+              const Center(child: CircularProgressIndicator())
+            else if (error != null)
+              TextButton(
+                  onPressed: () =>
+                      photo != null ? photoSearch() : search(query),
+                  child: Text(error!))
+            else ...[
+              Text('Similar items',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              if (similar.isEmpty)
+                const Text('No matches yet. Try another look.')
+              else
+                ProductGrid(
+                    products: similar,
+                    store: widget.store,
+                    onOpen: widget.onOpen),
+              const SizedBox(height: 24),
+              Text('Goes with it',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              for (final item in owned)
+                ListTile(
+                    leading: const Icon(Icons.checkroom_outlined),
+                    title: Text(item.label ?? item.category),
+                    subtitle: const Text('Already in your closet'),
+                    onTap: () => Navigator.push<void>(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                ClosetScreen(api: widget.store.api)))),
+              if (goesWith.isEmpty && owned.isEmpty)
+                const Text('No matching pieces to show yet.')
+              else
+                ProductGrid(
+                    products: goesWith,
+                    store: widget.store,
+                    onOpen: widget.onOpen),
+            ],
+          ]);
 }
 
 class _DiscoverViewResult {

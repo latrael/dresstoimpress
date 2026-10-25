@@ -135,6 +135,16 @@ void main() {
     await tester.tap(photos);
     await tester.pump(const Duration(milliseconds: 70));
     await tester.tap(photos);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+        tester
+            .widget<Opacity>(find
+                .ancestor(
+                    of: find.byIcon(Icons.favorite).first,
+                    matching: find.byType(Opacity))
+                .first)
+            .opacity,
+        greaterThan(0));
     await tester.pumpAndSettle();
     expect(saved, isTrue);
     await tester.tap(find.widgetWithText(ChoiceChip, 'S').first);

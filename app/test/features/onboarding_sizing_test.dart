@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:dress_to_impress/features/profile/measurement_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -222,6 +223,9 @@ void main() {
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
     for (var i = 0; i < 3; i++) {
+      await tester.scrollUntilVisible(find.text('Skip for now'), 250,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Skip for now'));
       await tester.pumpAndSettle();
     }
@@ -230,12 +234,13 @@ void main() {
       'Weight (kg)': '78',
       'Waist (cm)': '81.28'
     }.entries) {
-      final field = find.widgetWithText(TextField, e.key);
+      final field = find
+          .byWidgetPredicate((w) => w is MeasurementPicker && w.kind == e.key);
       await tester.scrollUntilVisible(field, 200,
           scrollable: find.byType(Scrollable).first);
-      await tester.enterText(field, e.value);
+      tester.widget<MeasurementPicker>(field).onChanged(double.parse(e.value));
+      await tester.pumpAndSettle();
     }
-    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Continue'), 300,
         scrollable: find.byType(Scrollable).first);

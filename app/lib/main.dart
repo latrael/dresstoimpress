@@ -36,6 +36,14 @@ class NicheApp extends StatefulWidget {
 
 class _NicheAppState extends State<NicheApp> {
   final navigation = GlobalKey<NavigatorState>();
+  final routes = _RouteTracker();
+  void openTop(String name, Widget page) {
+    if (routes.top?.settings.name == name) return;
+    navigation.currentState?.popUntil((r) => r.isFirst);
+    navigation.currentState?.push(MaterialPageRoute<void>(
+        settings: RouteSettings(name: name), builder: (_) => page));
+  }
+
   final shell = GlobalKey<_ShopShellState>();
   final entry = GlobalKey<_FirstVisitState>();
   StoreController get store => widget.store;
@@ -55,90 +63,98 @@ class _NicheAppState extends State<NicheApp> {
     });
   }
 
-  void user() => open(FeaturePage(
-      title: 'You',
-      child: ListView(padding: const EdgeInsets.all(20), children: [
-        for (final section in [
-          ('Your style', 1),
-          ('Stores you like', 2),
-          ('Body scan', 3),
-          ('Measurements & size', 4),
-          ('Price preferences', 5)
-        ])
-          ListTile(
-              title: Text(section.$1),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => open(OnboardingScreen(
-                  api: store.api,
-                  demo: store.demo,
-                  initialStep: section.$2,
-                  onSaved: () async {
-                    await store.loadProfile(fromServer: !store.demo);
-                    await store.load();
-                  }))),
-        if (!store.demo)
-          ListTile(
-              title: const Text('Style DNA'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => open(ProfileScreen(
-                  api: store.api,
-                  onChanged: () async {
-                    await store.loadProfile(fromServer: !store.demo);
-                    await store.load();
-                  }))),
-        ListTile(
-            title: const Text('Orders'),
-            leading: const Icon(Icons.receipt_long_outlined),
-            onTap:
-                store.demo ? null : () => open(OrderHistory(api: store.api))),
-        ListTile(
-            title: const Text('Connection settings'),
-            leading: const Icon(Icons.tune),
-            onTap: settings),
-        if (!store.demo)
-          ListTile(
-              title: const Text('Private scan & try-on photo'),
-              leading: const Icon(Icons.lock_outline),
-              onTap: () => open(BodyPhotoCard(api: store.api))),
-        ListTile(
-            title: const Text('Log out on this device'),
-            leading: const Icon(Icons.logout),
-            onTap: () async {
-              final p = await SharedPreferences.getInstance();
-              await p.remove('niche.activeUser');
-              await p.setBool('niche.signedOut', true);
-              navigation.currentState?.popUntil((r) => r.isFirst);
-              entry.currentState?.logOut();
-            }),
-        ListTile(
-            title: const Text('Restart setup'),
-            onTap: () async {
-              final yes = await showDialog<bool>(
-                  context: navigation.currentContext!,
-                  builder: (context) => AlertDialog(
-                          title: const Text('Restart setup?'),
-                          content: const Text(
-                              'Review your onboarding answers again. Your measurements and account are kept.'),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancel')),
-                            FilledButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Restart'))
-                          ]));
-              if (yes != true) return;
-              await store.profile
-                  .withCompletion(false)
-                  .save(store.api.settings.userId);
-              await store.loadProfile();
-              navigation.currentState?.popUntil((r) => r.isFirst);
-              entry.currentState?.restart();
-            }),
-      ])));
+  void user() => openTop(
+      'User',
+      FeaturePage(
+          title: 'You',
+          child: ListView(padding: const EdgeInsets.all(20), children: [
+            for (final section in [
+              ('Your style', 1),
+              ('Stores you like', 2),
+              ('Body scan', 3),
+              ('Measurements & size', 4),
+              ('Price preferences', 5)
+            ])
+              ListTile(
+                  title: Text(section.$1),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => open(OnboardingScreen(
+                      api: store.api,
+                      demo: store.demo,
+                      initialStep: section.$2,
+                      onConnect: () =>
+                          connectForSetup(navigation.currentContext!, store),
+                      onSaved: () async {
+                        await store.loadProfile(fromServer: !store.demo);
+                        await store.load();
+                      }))),
+            if (!store.demo)
+              ListTile(
+                  title: const Text('Style DNA'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => open(ProfileScreen(
+                      api: store.api,
+                      onChanged: () async {
+                        await store.loadProfile(fromServer: !store.demo);
+                        await store.load();
+                      }))),
+            ListTile(
+                title: const Text('Orders'),
+                leading: const Icon(Icons.receipt_long_outlined),
+                onTap: store.demo
+                    ? null
+                    : () => open(OrderHistory(api: store.api))),
+            ListTile(
+                title: const Text('Connection settings'),
+                leading: const Icon(Icons.tune),
+                onTap: settings),
+            if (!store.demo)
+              ListTile(
+                  title: const Text('Private scan & try-on photo'),
+                  leading: const Icon(Icons.lock_outline),
+                  onTap: () => open(BodyPhotoCard(api: store.api))),
+            ListTile(
+                title: const Text('Log out on this device'),
+                leading: const Icon(Icons.logout),
+                onTap: () async {
+                  final p = await SharedPreferences.getInstance();
+                  await p.remove('niche.activeUser');
+                  await p.setBool('niche.signedOut', true);
+                  navigation.currentState?.popUntil((r) => r.isFirst);
+                  entry.currentState?.logOut();
+                }),
+            ListTile(
+                title: const Text('Restart setup'),
+                onTap: () async {
+                  final yes = await showDialog<bool>(
+                      context: navigation.currentContext!,
+                      builder: (context) => AlertDialog(
+                              title: const Text('Restart setup?'),
+                              content: const Text(
+                                  'Review your onboarding answers again. Your measurements and account are kept.'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel')),
+                                FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Restart'))
+                              ]));
+                  if (yes != true) return;
+                  await store.profile
+                      .withCompletion(false)
+                      .save(store.api.settings.userId);
+                  await store.loadProfile();
+                  navigation.currentState?.popUntil((r) => r.isFirst);
+                  entry.currentState?.restart();
+                }),
+          ])));
   @override
   Widget build(BuildContext context) => MaterialApp(
       navigatorKey: navigation,
+      navigatorObservers: [routes],
       scrollBehavior: const MaterialScrollBehavior().copyWith(dragDevices: {
         PointerDeviceKind.touch,
         PointerDeviceKind.mouse,
@@ -187,7 +203,7 @@ class _NicheAppState extends State<NicheApp> {
                               IconButton(
                                   tooltip: 'Liked',
                                   icon: const Icon(Icons.favorite_border),
-                                  onPressed: () => open(
+                                  onPressed: () => openTop('Liked',
                                       LikedScreen(store: store, onOpen: seed))),
                               AnimatedBuilder(
                                   animation: store,
@@ -198,18 +214,20 @@ class _NicheAppState extends State<NicheApp> {
                                           tooltip: 'Your cart',
                                           icon: const Icon(
                                               Icons.shopping_bag_outlined),
-                                          onPressed: () =>
-                                              open(CartScreen(store: store))))),
+                                          onPressed: () => openTop('Cart',
+                                              CartScreen(store: store))))),
                               IconButton(
                                   tooltip: 'Closet',
                                   icon: const Icon(Icons.checkroom_outlined),
-                                  onPressed: () => open(store.demo
-                                      ? const FeaturePage(
-                                          title: 'Closet',
-                                          child: Center(
-                                              child: Text(
-                                                  'Connect your account to digitize your closet.')))
-                                      : ClosetScreen(api: store.api))),
+                                  onPressed: () => openTop(
+                                      'Closet',
+                                      store.demo
+                                          ? const FeaturePage(
+                                              title: 'Closet',
+                                              child: Center(
+                                                  child: Text(
+                                                      'Connect your account to digitize your closet.')))
+                                          : ClosetScreen(api: store.api))),
                               IconButton(
                                   tooltip: 'User',
                                   icon: const Icon(Icons.person_outline),
@@ -259,7 +277,7 @@ class _FirstVisitState extends State<FirstVisit> {
             p.getString('niche.activeUser') != null;
     active = p.getBool('niche.signedOut') != true &&
         (p.getString('niche.activeUser') == widget.store.api.settings.userId ||
-            widget.store.profile.completed);
+            (hasReturning && widget.store.profile.completed));
   }
 
   Future<void> enter({bool create = false, bool test = false}) async {
@@ -343,6 +361,13 @@ class _FirstVisitState extends State<FirstVisit> {
                 OutlinedButton(
                     onPressed: busy ? null : () => enter(create: true),
                     child: const Text('New account')),
+                TextButton.icon(
+                    onPressed: () async {
+                      await connectForSetup(context, widget.store);
+                      if (mounted) reload();
+                    },
+                    icon: const Icon(Icons.link),
+                    label: const Text('Connect to the live app')),
                 TextButton(
                     onPressed: busy ? null : () => enter(test: true),
                     child: const Text('Use team test profile')),
@@ -356,6 +381,7 @@ class _FirstVisitState extends State<FirstVisit> {
           return OnboardingScreen(
               api: widget.store.api,
               firstRun: true,
+              onConnect: () => connectForSetup(context, widget.store),
               demo: widget.store.demo,
               onSaved: () async {
                 await widget.store.loadProfile(fromServer: !widget.store.demo);
@@ -411,7 +437,9 @@ class _ShopShellState extends State<ShopShell> {
     if (!store.demo) {
       store.api.feed(seed: products.first.id).then((cards) {
         if (mounted && request == seedGeneration) {
-          setState(() => seeded = cards);
+          setState(() {
+            seeded = cards;
+          });
         }
       }).catchError((Object e) {
         if (mounted && request == seedGeneration) {
@@ -744,4 +772,43 @@ class _NewAccountDialogState extends State<_NewAccountDialog> {
                 },
                 child: const Text('Create profile'))
           ]);
+}
+
+class _RouteTracker extends NavigatorObserver {
+  Route<dynamic>? top;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    top = route;
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    top = previousRoute;
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    top = newRoute;
+  }
+}
+
+Future<bool> connectForSetup(
+    BuildContext context, StoreController store) async {
+  await Navigator.push<void>(context,
+      MaterialPageRoute(builder: (_) => ConnectionScreen(store: store)));
+  if (store.demo) return false;
+  try {
+    try {
+      await store.api.getUser();
+    } on ApiError catch (e) {
+      if (e.status != 404 || !store.api.settings.userId.startsWith('local_')) {
+        return false;
+      }
+      await store.api.createUser(
+          id: store.api.settings.userId, displayName: 'Your profile');
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
 }

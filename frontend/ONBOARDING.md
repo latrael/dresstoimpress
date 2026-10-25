@@ -17,7 +17,10 @@ in the private scan/try-on profile and can be previewed/deleted under User.
 Live style text uses onboarding; price limits, preferred stores (including other
 interests), and onboarded use updateUser. BodyProfile syncing saves height/weight,
 chest/waist/hips/inseam, shoe size, fit and usual top/bottom/shoe sizes on the server.
-Lengths are entered in cm; shared server-profile inch values are converted to cm.
+Measurements use US-unit scroll wheels (ft/in, lb, inches and US shoes). Values
+convert to cm/kg for the API; shared profile inches convert to the metric cache.
+Style begins with catalog/vibe chips plus optional own words. Connection can open
+inline from scan setup without losing draft measurements.
 Skipped/blank category budgets are omitted; editing the budget section can clear
 old caps using an explicit map. Device completion/preferences are a cache/session,
 not a password or secure sign-in service.
@@ -32,3 +35,5 @@ The cart pencil uses atomic size replacement, retaining quantity.
 Backend caveat: bodyScan currently persists its estimates while returning them.
 The app requires review/save before completing setup, but draft-only scan storage
 would need a backend draft/confirm contract. No photo is published to Inspo by scan.
+
+Sprint 2 status and pending Adam contracts: docs/ryan-sprint-2-implementation.md.

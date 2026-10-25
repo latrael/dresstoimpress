@@ -46,14 +46,15 @@ class _QuickBrowseState extends State<QuickBrowse> {
     return LayoutBuilder(builder: (context, viewport) {
       return ListView.separated(
         key: const ValueKey('product-stream'),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 112),
         // Build the visible products and roughly one screen ahead/behind.
         scrollCacheExtent: const ScrollCacheExtent.viewport(1),
         itemCount: widget.products.length,
         separatorBuilder: (context, index) => Container(
           key: ValueKey('product-separator-$index'),
-          height: 48,
-          margin: const EdgeInsets.symmetric(vertical: 12),
+          height: 1,
+          margin: const EdgeInsets.symmetric(vertical: 24),
           color: const Color(0xFFBDA7AD),
         ),
         itemBuilder: (context, index) => _ProductPage(
@@ -71,7 +72,9 @@ class _QuickBrowseState extends State<QuickBrowse> {
           onTryOn: widget.onTryOn,
           onCompleteLook: widget.onCompleteLook,
           imageHeight: (viewport.maxHeight * .46).clamp(180.0, 390.0),
-          position: '${index + 1} / ${widget.products.length}',
+          nextImage: index + 1 < widget.products.length
+              ? widget.products[index + 1]['image_url'] as String?
+              : null,
         ),
       );
     });
@@ -86,7 +89,7 @@ class _ProductPage extends StatefulWidget {
     required this.onSave,
     required this.onAddToCart,
     required this.imageUrl,
-    required this.position,
+    this.nextImage,
     required this.imageHeight,
     this.onSizeAdvice,
     required this.automaticSizing,
@@ -101,7 +104,7 @@ class _ProductPage extends StatefulWidget {
   final Future<void> Function(String, bool) onSave;
   final Future<void> Function(String, String) onAddToCart;
   final String Function(String) imageUrl;
-  final String position;
+  final String? nextImage;
   final double imageHeight;
   final bool automaticSizing;
   final bool hasSizingProfile;
@@ -115,7 +118,25 @@ class _ProductPage extends StatefulWidget {
   State<_ProductPage> createState() => _ProductPageState();
 }
 
-class _ProductPageState extends State<_ProductPage> {
+class _ProductPageState extends State<_ProductPage>
+    with SingleTickerProviderStateMixin {
+  late final heart = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 650));
+  bool expandedDescription = false;
+  final warmed = <String>{};
+  void warm(List<String> gallery) {
+    for (final source in [
+      if (gallery.isNotEmpty) gallery[photo.clamp(0, gallery.length - 1)],
+      if (photo + 1 < gallery.length) gallery[photo + 1],
+      if (widget.nextImage != null) widget.nextImage!
+    ]) {
+      final url = widget.imageUrl(source);
+      if (url.isNotEmpty && warmed.add(url)) {
+        precacheImage(NetworkImage(url), context, onError: (_, __) {});
+      }
+    }
+  }
+
   int photo = 0;
   String? size;
   bool saving = false;
@@ -217,6 +238,7 @@ class _ProductPageState extends State<_ProductPage> {
 
   @override
   void dispose() {
+    heart.dispose();
     photos.dispose();
     super.dispose();
   }
@@ -327,6 +349,10 @@ class _ProductPageState extends State<_ProductPage> {
     if (personalPhoto != null) gallery.add(personalPhoto!.url);
     final sizes = (p['sizes'] as List? ?? []).cast<Map>();
     final description = p['description'] as String?;
+    final fullDescription = p['full_description'] as String?;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) warm(gallery);
+    });
     final reason = p['reason'] as String?;
     final price = (p['sale_price_usd'] ?? p['price_usd']) as num;
     return Padding(
@@ -345,7 +371,10 @@ class _ProductPageState extends State<_ProductPage> {
                     child: ColoredBox(
                       color: const Color(0xFFEDEAE4),
                       child: GestureDetector(
-                        onDoubleTap: () => save(value: true),
+                        onDoubleTap: () {
+                          heart.forward(from: 0);
+                          save(value: true);
+                        },
                         child: gallery.isEmpty
                             ? const _ImageFailure()
                             : PageView.builder(
@@ -375,6 +404,26 @@ class _ProductPageState extends State<_ProductPage> {
                     ),
                   ),
                 ),
+                Positioned.fill(
+                    child: IgnorePointer(
+                        child: AnimatedBuilder(
+                  animation: heart,
+                  builder: (context, _) => Opacity(
+                      opacity: heart.isAnimating
+                          ? (heart.value < .55 ? 1 : (1 - heart.value) / .45)
+                          : 0,
+                      child: Transform.scale(
+                          scale: .7 +
+                              Curves.easeOutBack.transform(
+                                      (heart.value / .4).clamp(0, 1)) *
+                                  .3,
+                          child: const Icon(Icons.favorite,
+                              size: 92,
+                              color: Colors.white,
+                              shadows: [
+                                Shadow(color: Colors.black26, blurRadius: 12)
+                              ]))),
+                ))),
                 Positioned(
                   top: 8,
                   right: 8,
@@ -481,6 +530,16 @@ class _ProductPageState extends State<_ProductPage> {
                 : 'Description not provided by retailer.',
             style: const TextStyle(height: 1.5, color: Color(0xFF57514F)),
           ),
+          if (fullDescription != null &&
+              fullDescription.trim().isNotEmpty &&
+              fullDescription != description) ...[
+            if (expandedDescription)
+              Text(fullDescription, style: const TextStyle(height: 1.5)),
+            TextButton(
+                onPressed: () =>
+                    setState(() => expandedDescription = !expandedDescription),
+                child: Text(expandedDescription ? 'Less' : 'More')),
+          ],
           if (reason?.trim().isNotEmpty == true)
             Container(
               margin: const EdgeInsets.only(top: 14),
@@ -599,15 +658,6 @@ class _ProductPageState extends State<_ProductPage> {
                         label: const Text('Complete the look')),
                 ])),
           const SizedBox(height: 14),
-          Center(
-            child: Text(
-              widget.position,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF736D69),
-              ),
-            ),
-          ),
         ],
       ),
     );

@@ -52,6 +52,7 @@ class Product {
     this.productUrl,
     this.images = const [],
     this.description,
+    this.summary,
     this.label,
     this.styleTags = const [],
     this.pattern,
@@ -74,6 +75,9 @@ class Product {
   final String? productUrl;
   final List<ProductImage> images;
   final String? description;
+  /// Card text from the server (1–2 sentences, ≤ 160 chars): Haiku's condensed description, or a
+  /// one-liner from the attributes when the retailer has no text. Null until stage 2 has run.
+  final String? summary;
   // AI tags (filled at ingest)
   final String? label;
   final List<String> styleTags;
@@ -85,13 +89,19 @@ class Product {
   double get effectivePrice => (salePriceUsd != null && salePriceUsd! < priceUsd) ? salePriceUsd! : priceUsd;
   bool get isOnSale => effectivePrice < priceUsd;
 
-  /// One readable line for a card: the first sentence of the retailer blurb, bullets and
-  /// "- " markers stripped, capped at [maxChars]. Null when there is no description.
+  /// One readable line for a card. Prefers the server's [summary] (trimmed, whole); otherwise the
+  /// first sentence of the retailer blurb, bullets and "- " markers stripped. Either way capped at
+  /// [maxChars] on a word boundary. Null when there is neither.
   String? blurb({int maxChars = 110}) {
+    final s = (summary ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (s.isNotEmpty) return _cap(s, maxChars);
     final raw = (description ?? '').replaceAll(RegExp(r'[\r\n]+'), ' ').replaceAll(RegExp(r'\s*[-•·]\s+'), ' ').trim();
     if (raw.isEmpty) return null;
     final first = RegExp(r'^(.+?[.!?])(\s|$)').firstMatch(raw)?.group(1) ?? raw;
-    var out = first.trim();
+    return _cap(first.trim(), maxChars);
+  }
+
+  static String _cap(String out, int maxChars) {
     if (out.length > maxChars) {
       final cut = out.substring(0, maxChars);
       final space = cut.lastIndexOf(' ');
@@ -119,6 +129,7 @@ class Product {
         productUrl: _strN(j['product_url']),
         images: _list(j['images'], ProductImage.fromJson),
         description: _strN(j['description']),
+        summary: _strN(j['summary']),
         label: _strN(j['label']),
         styleTags: _strs(j['style_tags']),
         pattern: _strN(j['pattern']),
@@ -283,12 +294,16 @@ class SwipeResult {
 // ---------------------------------------------------------------- cart / checkout (Nabil)
 
 class CartItem {
-  const CartItem({required this.productId, required this.size, required this.qty, this.addedAt, this.product});
+  const CartItem(
+      {required this.productId, required this.size, required this.qty, this.addedAt, this.product, this.imageUrl});
   final String productId;
   final String size;
   final int qty;
   final String? addedAt;
   final Product? product;
+  /// Thumbnail for the line (the flat `image_url` the server puts on every line): the product's image,
+  /// still set when the product has left the catalog. Null only on older servers.
+  final String? imageUrl;
 
   factory CartItem.fromJson(Json j) => CartItem(
         productId: _str(j['product_id']),
@@ -296,6 +311,7 @@ class CartItem {
         qty: _int(j['qty'], 1),
         addedAt: _strN(j['added_at']),
         product: j['product'] is Map ? Product.fromJson(_obj(j['product'])) : null,
+        imageUrl: _strN(j['image_url']),
       );
 }
 
@@ -315,13 +331,16 @@ class CartGroup {
 class UnavailableItem {
   const UnavailableItem(
       {required this.productId, required this.size, required this.qty, required this.name, this.product,
-      required this.reason});
+      required this.reason, this.imageUrl});
   final String productId;
   final String size;
   final int qty;
   final String name;
   final Product? product; // null when the product left the catalog
   final String reason;
+  /// Thumbnail (flat `image_url` on the line): the image saved with the line when the product is gone
+  /// ([product] null), so the row can still show a picture. Null on older servers / lines.
+  final String? imageUrl;
 
   factory UnavailableItem.fromJson(Json j) => UnavailableItem(
         productId: _str(j['product_id']),
@@ -330,6 +349,7 @@ class UnavailableItem {
         name: _str(j['name']),
         product: j['product'] is Map ? Product.fromJson(_obj(j['product'])) : null,
         reason: _str(j['unavailable_reason'], _str(j['reason'])),
+        imageUrl: _strN(j['image_url']),
       );
 }
 
@@ -605,7 +625,7 @@ class ProductPage {
 class AppUser {
   const AppUser({required this.id, required this.displayName, this.styleText = '', this.priceRanges = const {},
       this.bodyPhotoUrl, this.friends = const [], this.bodyProfile, this.preferredStores = const [],
-      this.onboarded = false});
+      this.onboarded = false, this.shopFor = 'both'});
 
   final String id;
   final String displayName;
@@ -616,6 +636,7 @@ class AppUser {
   final BodyProfile? bodyProfile; // null until the user does a body scan
   final List<String> preferredStores; // retailer ids ("hm", "uniqlo"); the feed boosts them (D5)
   final bool onboarded; // set by the app at the end of onboarding (D6, screen 7)
+  final String shopFor; // men | women | both (default): the feed and Discover filter by it
 
   factory AppUser.fromJson(Json j) => AppUser(
         id: _str(j['id']),
@@ -627,6 +648,7 @@ class AppUser {
         bodyProfile: j['body_profile'] is Map ? BodyProfile.fromJson(_obj(j['body_profile'])) : null,
         preferredStores: _strs(j['preferred_stores']),
         onboarded: j['onboarded'] == true,
+        shopFor: _str(j['shop_for']).isEmpty ? 'both' : _str(j['shop_for']),
       );
 }
 
@@ -671,6 +693,14 @@ class BodyProfile {
         usualSizes: {for (final e in _obj(j['usual_sizes']).entries) e.key: _str(e.value)},
         manual: _strs(j['manual']),
       );
+
+  /// The server's snake_case shape (what `fromJson` read), for sending a reviewed profile back
+  /// (`Api.confirmBodyScan`). Nulls are kept so a cleared field stays cleared.
+  Json toJson() => {
+        'height_cm': heightCm, 'weight_kg': weightKg, 'chest_in': chestIn, 'waist_in': waistIn, 'hip_in': hipIn,
+        'inseam_in': inseamIn, 'build': build, 'source': source, 'full_body': fullBody, 'note': note,
+        'scanned_at': scannedAt, 'shoe_us': shoeUs, 'fit': fit, 'usual_sizes': usualSizes, 'manual': manual,
+      };
 }
 
 /// POST /ai/vibe: what a Discover search sentence means, as catalog filters.
@@ -696,15 +726,20 @@ class VibeQuery {
       );
 }
 
-/// POST /users/{id}/body-scan.
+/// POST /users/{id}/body-scan (and /body-scan/confirm).
 class BodyScanResult {
-  const BodyScanResult({required this.bodyPhotoUrl, required this.profile});
+  const BodyScanResult({required this.bodyPhotoUrl, required this.profile, this.committed = true});
 
   final String bodyPhotoUrl;
   final BodyProfile profile;
+  /// False for a draft (`bodyScan(commit: false)`): nothing is saved on the user until
+  /// `Api.confirmBodyScan(draft, ...)`. True (also on older servers) when the scan was saved.
+  final bool committed;
 
-  factory BodyScanResult.fromJson(Json j) =>
-      BodyScanResult(bodyPhotoUrl: _str(j['body_photo_url']), profile: BodyProfile.fromJson(_obj(j['body_profile'])));
+  factory BodyScanResult.fromJson(Json j) => BodyScanResult(
+      bodyPhotoUrl: _str(j['body_photo_url']),
+      profile: BodyProfile.fromJson(_obj(j['body_profile'])),
+      committed: j['committed'] != false);
 }
 
 /// POST /onboarding: the saved user plus what the rules parser understood.

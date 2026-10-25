@@ -94,11 +94,11 @@ void main() {
     expect(find.text('Piece 59'), findsNothing);
     expect(find.text('Piece 0'), findsNothing);
   });
-  testWidgets('a thick solid separator lies between consecutive products',
+  testWidgets('a thin spaced separator lies between consecutive products',
       (tester) async {
     await mount(tester);
     final marker = find.byKey(const ValueKey('product-separator-0'));
-    expect(tester.getSize(marker).height, 72);
+    expect(tester.getSize(marker).height, 49);
     expect(tester.widget<Container>(marker).color, const Color(0xFFBDA7AD));
     expect(tester.getBottomLeft(find.byKey(const ValueKey('details-0'))).dy,
         lessThanOrEqualTo(tester.getTopLeft(marker).dy));

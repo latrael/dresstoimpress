@@ -169,6 +169,16 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  Widget? thumbnail(String? url) => url == null || url.isEmpty
+      ? null
+      : SizedBox(
+          width: 44,
+          height: 56,
+          child: Image.network(widget.store.imageUrl(url),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.shopping_bag_outlined)));
+
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
       animation: widget.store,
@@ -279,6 +289,7 @@ class _CartScreenState extends State<CartScreen> {
                               style: TextStyle(fontWeight: FontWeight.w700)),
                           for (final item in cart.unavailable)
                             ListTile(
+                                leading: thumbnail(item.product?.imageUrl),
                                 title: Text(item.name),
                                 subtitle: Text(
                                     'Size ${item.size} · Qty ${item.qty} · ${item.reason}'),
@@ -302,18 +313,7 @@ class _CartScreenState extends State<CartScreen> {
                           for (final item in group.items)
                             ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                leading: item.product == null
-                                    ? null
-                                    : SizedBox(
-                                        width: 44,
-                                        height: 56,
-                                        child: Image.network(
-                                            widget.store.imageUrl(
-                                                item.product!.imageUrl),
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, e, s) =>
-                                                const Icon(
-                                                    Icons.checkroom_outlined))),
+                                leading: thumbnail(item.product?.imageUrl),
                                 title:
                                     Text(item.product?.name ?? item.productId),
                                 subtitle: Text(

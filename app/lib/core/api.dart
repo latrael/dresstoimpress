@@ -66,10 +66,16 @@ class Api {
 
   /// GET /feed. Cards carry [RankedProduct.yourSize] / [inYourSize] (soft size ranking, D3). With [seed]
   /// (a product id) the feed is "seeded" (D9): that item first, then similar items in your size.
-  Future<List<FeedCard>> feed({int limit = 20, String? category, String? retailer, String? seed}) async => _listOf(
-      await _send('GET', '/feed',
-          query: {'user_id': _user, 'limit': '$limit', 'category': category, 'retailer': retailer, 'seed': seed}),
-      RankedProduct.fromJson);
+  /// [seedShown] (only meaningful with [seed]): the app has already shown the seed card, so this reload of
+  /// the same seeded feed leaves it out. Sends `seed_shown=true` only when true.
+  Future<List<FeedCard>> feed(
+          {int limit = 20, String? category, String? retailer, String? seed, bool seedShown = false}) async =>
+      _listOf(
+          await _send('GET', '/feed', query: {
+            'user_id': _user, 'limit': '$limit', 'category': category, 'retailer': retailer, 'seed': seed,
+            'seed_shown': seedShown ? 'true' : null,
+          }),
+          RankedProduct.fromJson);
 
   // ------------------------------------------------------------ Discover (Nabil's routes, Adam's vibe parser)
 
@@ -218,11 +224,12 @@ class Api {
   // ------------------------------------------------------------ users / onboarding (Nabil)
 
   /// POST /users. 409 if [id] exists. Without [priceRanges], budgets are parsed from [styleText].
+  /// [shopFor]: `men` | `women` | `both` (the server defaults to `both` when not sent).
   Future<AppUser> createUser({required String displayName, String? id, String styleText = '',
-          Map<String, List<double>>? priceRanges, List<String> friends = const []}) async =>
+          Map<String, List<double>>? priceRanges, List<String> friends = const [], String? shopFor}) async =>
       AppUser.fromJson(await _send('POST', '/users', body: {
         'id': id, 'display_name': displayName, 'style_text': styleText, 'price_ranges': priceRanges,
-        'friends': friends,
+        'friends': friends, 'shop_for': shopFor,
       }));
 
   /// GET /users/{id} (defaults to the current user). 404 if unknown.
@@ -231,12 +238,13 @@ class Api {
 
   /// PATCH /users/{id} (current user). Only the fields you pass change; new [styleText] without
   /// [priceRanges] re-parses budgets and merges them over the old ones. [preferredStores] are retailer
-  /// ids ("hm", "uniqlo"); [onboarded] marks the end of onboarding (D5/D6).
+  /// ids ("hm", "uniqlo"); [onboarded] marks the end of onboarding (D5/D6). [shopFor]: `men` | `women` |
+  /// `both` (the feed and Discover filter by it); sent only when non-null.
   Future<AppUser> updateUser({String? displayName, String? styleText, Map<String, List<double>>? priceRanges,
-          List<String>? friends, List<String>? preferredStores, bool? onboarded}) async =>
+          List<String>? friends, List<String>? preferredStores, bool? onboarded, String? shopFor}) async =>
       AppUser.fromJson(await _send('PATCH', '/users/${_seg(_user)}', body: {
         'display_name': displayName, 'style_text': styleText, 'price_ranges': priceRanges, 'friends': friends,
-        'preferred_stores': preferredStores, 'onboarded': onboarded,
+        'preferred_stores': preferredStores, 'onboarded': onboarded, 'shop_for': shopFor,
       }));
 
   /// POST /onboarding: create or update a user from free text ("Y2K, tops under $40") and return what
@@ -284,10 +292,38 @@ class Api {
   /// POST /users/{id}/body-scan: full-body photo + height (weight optional) -> estimated measurements,
   /// saved on the user and used by [sizeAdvice]. The photo also becomes the try-on photo.
   /// 422 (ApiError) for a height outside 120-230 cm or weight outside 30-250 kg.
+  ///
+  /// [commit] false = **draft** for a review screen (`?commit=false`): the scan runs and the photo file is
+  /// kept, but nothing is saved on the user (no body photo, no measurements) until [confirmBodyScan].
+  /// The result then has [BodyScanResult.committed] false. Default true saves right away, as before.
   Future<BodyScanResult> bodyScan(List<int> bytes,
-          {required double heightCm, double? weightKg, String mimeType = 'image/jpeg'}) async =>
+          {required double heightCm, double? weightKg, String mimeType = 'image/jpeg', bool commit = true}) async =>
       BodyScanResult.fromJson(await _upload('/users/${_seg(_user)}/body-scan',
-          {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType));
+          {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType,
+          query: {'commit': commit ? null : 'false'}));
+
+  /// POST /users/{id}/body-scan/confirm: saves a reviewed [draft] from `bodyScan(commit: false)`: the photo
+  /// becomes the body / try-on photo and the profile is saved as the user's measurements.
+  ///
+  /// Pass only what the user **changed** on the review screen, in the profile's own units (cm for height,
+  /// kg for weight, inches for chest / waist / hip / inseam, US shoe size). Those fields are saved as typed
+  /// (`BodyProfile.manual`, they win over later scans); everything else is taken from the draft as the
+  /// scan's estimate, so measurements the user typed earlier keep winning over those. Returns the saved
+  /// profile with [BodyScanResult.committed] true. ApiError 422 for an impossible number or a draft photo
+  /// that isn't one of this server's uploads.
+  Future<BodyScanResult> confirmBodyScan(BodyScanResult draft,
+      {double? heightCm, double? weightKg, double? chestIn, double? waistIn, double? hipIn, double? inseamIn,
+      String? build, String? fit, double? shoeUs}) async {
+    final edits = <String, Object?>{
+      'height_cm': heightCm, 'weight_kg': weightKg, 'chest_in': chestIn, 'waist_in': waistIn, 'hip_in': hipIn,
+      'inseam_in': inseamIn, 'build': build, 'fit': fit, 'shoe_us': shoeUs,
+    }..removeWhere((_, v) => v == null);
+    return BodyScanResult.fromJson(await _send('POST', '/users/${_seg(_user)}/body-scan/confirm', body: {
+      'body_photo_url': draft.bodyPhotoUrl,
+      'profile': {...draft.profile.toJson(), ...edits},
+      'edited': edits.keys.toList(),
+    }));
+  }
 
   /// POST /ai/vibe (Discover): a sentence ("fit for a rooftop party") -> catalog filters: styles and
   /// categories from the catalog vocabularies, colors and item keywords. Never 502s (keyword rules
@@ -363,7 +399,8 @@ class Api {
 
   /// multipart/form-data: text [fields] plus one image in field `file`. Built by hand so the image part
   /// carries its real Content-Type (the server rejects anything that isn't jpeg/png/webp/heic).
-  Future<dynamic> _upload(String path, Map<String, String> fields, List<int> bytes, String mimeType) async {
+  Future<dynamic> _upload(String path, Map<String, String> fields, List<int> bytes, String mimeType,
+      {Map<String, String?>? query}) async {
     final boundary = 'dti-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 30)}';
     final ext = mimeType.split('/').last;
     final out = BytesBuilder();
@@ -376,7 +413,7 @@ class Api {
     out.add(bytes);
     add('\r\n--$boundary--\r\n');
 
-    final req = http.Request('POST', _uri(path, null))
+    final req = http.Request('POST', _uri(path, query))
       ..headers['X-DTI-Key'] = settings.apiKey
       ..headers['Content-Type'] = 'multipart/form-data; boundary=$boundary'
       ..bodyBytes = out.takeBytes();

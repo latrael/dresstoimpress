@@ -1,3 +1,23 @@
+# Ryan Sprint 2 ready for review — Oct 24
+
+Published `b0a200f` on `RyanFrontendking`; [PR #41](https://github.com/latrael/dresstoimpress/pull/41) is open/mergeable into staging and NOT merged by this agent. Staging integrated through 46b7628, including your summary PR #40. This supersedes the in-progress section below.
+
+## Done
+
+A1–A6/A8/A10 and A7 UI: thin spaced separator, dots with no number counter, double-tap heart feedback, nearby photo preload, plain style labels and keyboard dismissal, More/Less full retailer text, catalog + vibe onboarding chips, non-stacking header routes. Fits for you is in Discover with occasions, explicit generation, owned/catalog labels, catalog → seeded Home, new-piece totals, per-fit try-on/collage wording and fit cart add/refresh/error handling. US scroll wheels display ft/in, lb and inches and send cm/kg to your existing methods. Inline Connection preserves draft measurements and retry state. A fresh connected install no longer silently opens onboarded u_demo; account/test profile choice is explicit.
+
+Ryan confirmed: thin line + spacing; keep dots; catalog styles plus vibes; Fit Creator in Discover; summaries without a label. Existing Product.blurb now picks up your #40 summary preference.
+
+## Evidence / phone
+
+102 Flutter tests pass, analysis 0 issues; release web and signed connected iOS builds pass. Fresh iOS app was installed with private build defines outside Git, Ryan trusted the developer profile and confirmed it opens. Final Sprint 2 + #40 update installed AND launched through devicectl. Original stale saved connection was removed by Ryan deleting the app. Direct tunnel health returned 200 and authenticated OpenAPI loaded (56 routes); URL/key are not committed. Browser US wheels and Discover → Fits entry reviewed. Synthetic/mocked tests only for uploads/cart/Fit Creator; no live personal-photo upload, social post, checkout or paid generation by the agent.
+
+## Waiting for your additions — Ryan explicitly chose WAIT
+
+No direct edits to app/lib/core. Please supply shopFor read/update, feed seedShown, cart/unavailable flat imageUrl, photo onboarding method/model and closet brand/rematch fields/methods. Dependent UI is held back rather than persisting only locally or inventing HTTP adapters. Photo onboarding remains absent from staging/live OpenAPI at the check; handoff says coming on adam/photo-onboarding. Summary is now fulfilled by #40. Detailed checklist: docs/ryan-sprint-2-implementation.md.
+
+---
+
 # Ryan Sprint 2 integration requests — Oct 24, 5:30 PM PT
 
 Read docs/handoff-ryan-ios.md and sprint-2. Ryan’s confirmed choices: thin line + spacing; keep gallery dots/remove numeric counter; catalog styles plus vibe chips; Fits for you in Discover; summaries without a label. Ryan says photo onboarding should already be ready, but it is absent from staging, published branches, and the live authenticated OpenAPI (56 routes at check). Please publish/merge its core contract when ready.

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import uuid
 from pathlib import Path
 
@@ -64,7 +65,8 @@ def tag_image(image_url: str, hint: str | None = None) -> dict:
                "style_tags": ["streetwear"], "formality": 2}
     else:
         # same photo tagged twice (retries, re-uploads) costs nothing the second time
-        key = hashlib.sha256((image_url + ("|" + hint if hint else "")).encode()).hexdigest()[:24]
+        key = (prompts.TAGGER_VERSION + "-"
+               + hashlib.sha256((image_url + ("|" + hint if hint else "")).encode()).hexdigest()[:24])
         hit = store.get("tag_cache", key)
         if hit:
             raw = hit
@@ -496,4 +498,81 @@ def tag_product(image_url: str, hint: str | None = None) -> dict:
         "style_tags": _style_tags(raw, 5),
         "formality": min(5, max(1, int(raw.get("formality", 3)))),
     }
-    return {**item, "tags": to_nabil_tags(item)}
+    dept = raw.get("department")
+    return {**item, "department": dept if dept in DEPARTMENTS else None, "tags": to_nabil_tags(item)}
+
+
+# ---------- catalog stage 2 extras: department fallback + summary (sprint-2 B3 / B4 / B5) ----------
+
+DEPARTMENTS = {"men", "women", "unisex"}
+_WOMEN_RE = re.compile(r"women'?s|ladies|\bwoman\b|\bdress(es)?\b(?!\s+(shirt|shoe|pant|sock|boot))|\bskirts?\b|"
+                       r"\bbras?\b|\bbikinis?\b|\bblouses?\b|ladies_|/women/|/ladies/", re.I)
+_MEN_RE = re.compile(r"\bmen'?s\b|\bman\b|men_|/men/", re.I)
+SUMMARY_MAX_CHARS = 160
+
+
+def department_from_text(name: str | None, url: str | None = None, category_code: str | None = None) -> str | None:
+    """Rules fallback for Product.department from the name, product URL and the store's category
+    code (H&M `ladies_...` / `men_...`). Women's words win over "men" (which "women" contains)."""
+    text = " ".join(str(s or "") for s in (name, url, category_code))
+    if _WOMEN_RE.search(text):
+        return "women"
+    if _MEN_RE.search(text):
+        return "men"
+    return None
+
+
+def _clip_summary(text: str) -> str:
+    """At most 2 sentences and SUMMARY_MAX_CHARS, cut at a word boundary."""
+    text = " ".join(str(text or "").replace('"', "").split())
+    sentences = re.findall(r"[^.!?]+[.!?]?", text)
+    text = "".join(sentences[:2]).strip()
+    if len(text) > SUMMARY_MAX_CHARS:
+        cut = text[: SUMMARY_MAX_CHARS - 1]
+        space = cut.rfind(" ")
+        text = (cut[:space] if space > 40 else cut).rstrip(" ,;:") + "…"
+    return text
+
+
+def rules_summary(p: dict) -> str:
+    """Template one-liner from the attributes, used when AI is off or the model answer is unusable."""
+    label = (p.get("label") or "").strip()
+    color = (p.get("colors") or [""])[0] if isinstance(p.get("colors"), list) else ""
+    thing = label or " ".join(str(p.get("name") or "item").split()[:4]).lower()
+    if color and color.lower() not in thing.lower():
+        thing = f"{color.lower()} {thing}"
+    article = "An" if thing[:1].lower() in "aeiou" else "A"
+    styles = [s for s in (p.get("style_tags") or []) if isinstance(s, str)][:2]
+    if styles:
+        tail = f" with a {' and '.join(styles)} feel"
+    else:
+        cat = p.get("category") or ""
+        tail = f" for everyday {cat} wear" if cat else ""
+    return _clip_summary(f"{article} {thing}{tail}.")
+
+
+def summarize_product(p: dict, force: bool = False) -> str:
+    """Product.summary: 1-2 plain sentences (<= 160 chars). Haiku condenses the retailer description,
+    or writes a one-liner from the attributes when there is none (H&M). Cached per product id +
+    SUMMARY_VERSION so re-runs are free; rules template when AI is off."""
+    if text_mock():
+        return rules_summary(p)
+    key = f"sum{prompts.SUMMARY_VERSION}-{p['id']}"
+    if not force and (hit := store.get("summary_cache", key)):
+        return hit["summary"]
+    desc = " ".join(str(p.get("description") or "").split())[:1500]
+    colors = p.get("colors") or []
+    prompt = prompts.SUMMARY.format(
+        name=" ".join(str(p.get("name") or "").split())[:120],
+        category=p.get("category") or "unknown",
+        color=", ".join(str(c) for c in colors[:2]) or "unknown",
+        style=", ".join(p.get("style_tags") or []) or "unknown",
+        label_part=f"; item: {p['label']}" if p.get("label") else "",
+        description=desc or "none",
+    )
+    raw = ai_json(prompt, max_tokens=120, model=CLAUDE_TAG_MODEL)
+    text = _clip_summary(raw.get("summary", "")) if isinstance(raw, dict) else ""
+    if len(text) < 12:
+        text = rules_summary(p)
+    store.put("summary_cache", key, {"summary": text})
+    return text

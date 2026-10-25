@@ -52,6 +52,10 @@ class Product(BaseModel):
     description: Optional[str] = None     # real retailer text (plain), or null; never a pairing reason
     source: Literal["ingest", "live_search", "seed"] = "ingest"
     department: Optional[Literal["men", "women", "unisex"]] = None  # retailer's section; None = unknown (shown to all)
+    # Card text: at most 2 sentences / 160 chars, plain. Haiku condenses `description`, or writes a
+    # one-liner from name + colour + category + style tags when there is none (H&M). Stage 2
+    # (scripts.tag_catalog) fills it; None until then. Never invents fabric or fit.
+    summary: Optional[str] = Field(None, max_length=160)
 
 
 class ClosetItem(BaseModel):

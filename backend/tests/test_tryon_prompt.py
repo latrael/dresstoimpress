@@ -22,4 +22,11 @@ def test_prompt_without_profile_has_no_body_line():
 def test_prompt_version_bumped_so_old_cache_misses():
     from app.ai import prompts
 
-    assert prompts.TRYON_VERSION == "v3"
+    assert prompts.TRYON_VERSION == "v4"
+
+
+def test_prompt_asks_for_white_studio_background():
+    from app.ai import prompts
+
+    p = prompts.tryon_prompt(["top"])
+    assert "white studio backdrop" in p and "remove any mirror" in p

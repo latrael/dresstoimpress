@@ -394,7 +394,9 @@ class Api {
       req.headers['Content-Type'] = 'application/json';
       req.body = jsonEncode(Map.of(body)..removeWhere((_, v) => v == null));
     }
-    return _perform(req);
+    // Image generation (try-on, fits) takes 15-60 s on the server; give it the upload budget.
+    final slow = path == '/tryon' || path.startsWith('/fits');
+    return _perform(req, timeout: slow ? uploadTimeout : const Duration(seconds: 60));
   }
 
   /// multipart/form-data: text [fields] plus one image in field `file`. Built by hand so the image part

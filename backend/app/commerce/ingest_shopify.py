@@ -28,7 +28,8 @@ STORES = {
     "stussy.com": ("stussy", "Stüssy", "unisex"),
 }
 NOT_APPAREL = re.compile(r"gift ?card|e-?gift|beauty|fragrance|perfume|candle|skincare|makeup|lip ?gloss|"
-                         r"phone case|sticker|poster|home goods|homeware|mug|towel|insurance|shipping", re.I)
+                         r"phone case|sticker|poster|home goods|homeware|mug|towel|insurance|shipping|keychain|key ?ring|"
+                         r"storage bag", re.I)
 IN_STOCK = {"instock", "limitedavailability", "preorder", "backorder"}
 _US = re.compile(r"^US\s+", re.I)
 # Store words guess_category doesn't know (singular, glued or store-specific: "SHORT", "FLEECE PANT",

@@ -2,9 +2,27 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~4:30 PM PT. New: the backend for the council redesign (`docs/council-final-sprint.md`): Home size-first + seeded feed, Discover search, cart size change + unavailable items, Inspo for everyone.
+**Last updated:** Sat Oct 24, 2026, ~5:45 PM PT. New: ~3,200 products from 8 stores, and `GET /stores` for the onboarding chips and cart headings.
 
-## Oct 24, ~4:30 PM: backend for the council redesign (on `nabil`, PR into `staging`)
+## Oct 24, ~5:45 PM: way more clothes (sprint #2)
+
+- **Catalog:** 418 → ~3,200 products. Every one has `department` and sizes with stock.
+  - H&M ~1,250, Uniqlo ~800.
+  - **New:** Princess Polly ~345, Brandy Melville ~180, Edikted ~175 (women's); True Classic 180 (men's); Kith ~165 (mostly men's); Stüssy 94 (unisex).
+  - Accessories are new too (bags, caps, beanies, belts, jewelry): `category: "accessory"`.
+- **`retailer` can now be** `princesspolly, edikted, brandymelville, trueclassic, kith, stussy` as well as `hm, uniqlo`. The app hard-codes H&M/Uniqlo in two places that will show raw ids otherwise:
+  - `retailerName()` in `cart_screen.dart`.
+  - The Stores step in `onboarding_screen.dart` (+ `store_controller.dart`).
+- **`GET /stores`** (key required, like every route) → `[{id, name, count, departments: {men, women, unisex}}]`, biggest first, in-stock counts only. Use `name` for cart headings and the list for the onboarding chips, so new stores show up without an app change. `departments` lets you hide a women's-only store for someone shopping men's.
+- **Size names from the new stores:**
+  - Princess Polly: `0`–`12`.
+  - Brandy Melville: `XS/S`, `One Size`.
+  - True Classic jeans/chinos: `32x30` (waist×length).
+
+  These are the exact strings to send back as `size`.
+- **Images for the new stores are on `cdn.shopify.com`.** The `/img` proxy allows it; Adam's core `imageProxyHosts` needs it too (asked).
+
+ (on `nabil`, PR into `staging`)
 
 Every change only adds fields; nothing the app reads today was removed or renamed. Round two (~5:15 PM) is in the same PR, listed first.
 

@@ -2,9 +2,34 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~4:30 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~5:45 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
+
+## Sat 5:45 PM: sprint #2 catalog: 418 → ~3,200 products, 8 stores (PR from `nabil`)
+
+**Apify spent: ~$2.97 total for this sprint** (the 3 runs you thought were lost were recovered for $0). Raw pulls are in `seed/raw/`. Tagging uses your `tag_catalog` (Haiku, ~$0.00026/item, ~$0.72). Your files are unchanged except as noted.
+
+- **New stores (Shopify, `autofacts/shopify`):** Princess Polly, Edikted, Brandy Melville (women), True Classic (men), Kith (men, plus women by product), Stüssy (unisex). The normalizer is `app/commerce/ingest_shopify.py`.
+  - `Retailer` in `models.py` gains `princesspolly, edikted, brandymelville, trueclassic, kith, stussy` (the schema change Nabil OK'd).
+  - Nessie merchants added; `/img` allows `cdn.shopify.com` (`main.py`, one line).
+- **Your core, `app/lib/core/api.dart`:** please add `cdn.shopify.com` to `imageProxyHosts`, or web builds show no photos for the new stores. `GET /stores` → `[{id, name, count, departments}]` is new, if you want a core method for Ryan's onboarding chips and cart headings.
+- **Sizing: the new stores' size names, for your charts:**
+  - Princess Polly: women's numeric `0`–`12` ("US 4" → "4").
+  - Edikted / Kith / Stüssy tops: `XS`–`XXL`.
+  - Brandy Melville: `XS/S`, `One Size`.
+  - True Classic: `S`–`3XL`, waist `30`–`40`, and waist×length like `32x30`.
+  - Stüssy bottoms: waist `26`–`36`.
+- **Pipeline changes in `ingest.py` (mine):**
+  - Re-ingest keeps `label` / `pattern` / `formality` / `style_tags` / `summary`.
+  - `run_actor` starts async, polls and pages, so a 502 never loses a paid run.
+  - `--max-charge` is $2 per run by default (your `finder.py` live search gets the cap too).
+  - `--from-dataset <id>` ingests a finished run.
+- **Shared server, after the PR merges** (no Apify):
+  1. Restart (new routes, new `Retailer`s).
+  2. `python -m scripts.load_products` **without `--replace`**: ~3,200 products. The JSON store rewrites its file on every put, so expect 30–60 s.
+  3. Your `tag_catalog --summaries-only` and `--departments-only` when #summary-dept lands. Every new product already has a department.
+  4. `warm_demo --tryons 0`.
 
 ## Sat 4:30 PM: council-redesign backend, and what touches your code
 

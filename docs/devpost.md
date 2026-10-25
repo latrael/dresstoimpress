@@ -23,7 +23,7 @@ Niche learns who you are once, then everything you see is in your size, in stock
   - Pick the stores you like and whether you shop men's, women's or both.
   - Do a body scan: one full-body photo plus your height gives estimated measurements, which you confirm.
   - Every step after the first can be skipped.
-- **Home:** a scrolling feed of real H&M and Uniqlo products.
+- **Home:** a scrolling feed of real products from 8 stores (H&M, Uniqlo, Princess Polly, Edikted, Brandy Melville, True Classic, Kith, Stüssy).
   - Items in your size come first, with the size already picked. You only see sizes that are actually in stock.
   - Every card says *why* it's there: "goes with your black cargos."
 - **Discover.**
@@ -46,8 +46,8 @@ Niche learns who you are once, then everything you see is in your size, in stock
   - The app never talks to outside services directly; every API key stays on the server.
   - A shared request key protects the public tunnel.
 - **Catalog: Apify.**
-  - Two actors (`gauzy_penguin/HM-Product-Scraper` and `abotapi/uniqlo-com-scraper`) feed our ingest pipeline. It drops kids' items, splits Uniqlo by colour, keeps per-size stock, builds photo galleries, tags men's/women's/unisex from the store's own data, and AI-tags every product.
-  - The result is 418 products: 212 women's, 159 men's, 47 unisex.
+  - Three actors (`gauzy_penguin/HM-Product-Scraper`, `abotapi/uniqlo-com-scraper`, and `autofacts/shopify` for six Shopify brands) feed our ingest pipeline. It drops kids' items, splits Uniqlo by colour, keeps per-size stock, builds photo galleries, tags men's/women's/unisex from the store's own data, and AI-tags every product.
+  - The result is 3,188 products from 8 stores (1,727 women's, 1,170 men's, 291 unisex), for about $3 of Apify credit.
   - When a photo shows a piece we don't carry, the backend searches H&M live through Apify (capped and cached).
 - **Checkout: Capital One Nessie.**
   - Each user gets a Nessie customer and a credit-card account, and each retailer is a Nessie merchant.
@@ -118,7 +118,7 @@ Ticking is the team's call; this is the evidence for each. **Visa: do not tick, 
 
 | Track | Status | Where it's used (2–3 sentences for the Devpost field) |
 | --- | --- | --- |
-| **Apify** | built | Every product in the app is a real H&M or Uniqlo listing, pulled by two Apify actors and normalized by our ingest pipeline (`backend/app/commerce/ingest.py`): 418 products with per-size stock and men's/women's tags. Photo search and Inspo's "shop this fit" also run the H&M actor live when a piece isn't in our catalog (`backend/app/ai/finder.py`). |
+| **Apify** | built | Every product in the app is a real listing from one of 8 stores (H&M, Uniqlo and six Shopify brands), pulled by three Apify actors and normalized by our ingest pipeline (`backend/app/commerce/ingest.py`, `ingest_shopify.py`): 3,188 products with per-size stock and men's/women's tags, for about $3 of Apify credit. Photo search and Inspo's "shop this fit" also run the H&M actor live when a piece isn't in our catalog (`backend/app/ai/finder.py`). |
 | **Capital One Nessie** | built, verified | Checkout groups the cart by store and creates one Nessie purchase per store, on a Nessie customer and credit-card account per user, with a merchant per retailer (`backend/app/commerce/nessie.py`, `POST /checkout/{user_id}`). Stock is re-checked first, so a sold-out size returns 409 and nothing is charged; a failed store can be retried without re-charging the others. Evidence: the test orders below, visible through `GET /accounts/{id}/purchases`. |
 | **Meta: Bringing People Closer** | built | Inspo is a shared outfit-of-the-day feed: post a fit, the AI tags each piece, and anyone can tap a tag to find that item (or similar) in their own size, or "shop this fit" for the whole look. It turns "where did you get that?" into one tap between friends. |
 | **Anthropic** | built | Claude Haiku tags every product and photo, ranks the feed against each user's closet with a one-line reason per card, turns vibe searches into filters, splits closet photos into items and estimates measurements from a body scan. Community: college students building a wardrobe on a budget. Where it can go wrong: wrong tags (fixed with product-name hints, 37 → 0 errors out of 418) and body bias in sizing and try-on (the body photo stays private, measurements are always confirmed by the user, and try-on keeps body proportions unchanged). |

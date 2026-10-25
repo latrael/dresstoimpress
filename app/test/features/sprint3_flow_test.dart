@@ -135,7 +135,7 @@ void main() {
     expect(find.text('2 pieces'), findsOneWidget);
     await t.tap(find.text('2 pieces'));
     await t.pumpAndSettle();
-    await t.tap(find.widgetWithText(ActionChip, 'My shirt'));
+    await t.tap(find.text('My shirt'));
     await t.pumpAndSettle();
     expect(find.text('Edit piece'), findsOneWidget);
     expect(find.text('My brand'), findsOneWidget);

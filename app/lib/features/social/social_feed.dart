@@ -55,7 +55,7 @@ class _SocialFeedState extends State<SocialFeed> {
   Widget build(BuildContext context) => Column(children: [
         if (!widget.store.demo)
           Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 12, 4),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
               child: Row(children: [
                 Expanded(
                     child: Text(
@@ -424,6 +424,31 @@ class _FitPostCardState extends State<FitPostCard>
             style: Niche.display(16, 20, t.brand)));
   }
 
+  /// A solid tonal pill for actions on the page (glass is only legible over a photo).
+  Widget actionPill(BuildContext context,
+      {required Widget child,
+      required VoidCallback? onTap,
+      VoidCallback? onLongPress,
+      Key? key,
+      String? tooltip}) {
+    final t = Niche.of(context);
+    return NichePress(
+        child: Material(
+            color: t.isDark ? t.blush : t.stone,
+            borderRadius: BorderRadius.circular(999),
+            child: InkWell(
+                key: key,
+                onTap: onTap,
+                onLongPress: onLongPress,
+                borderRadius: BorderRadius.circular(999),
+                child: Tooltip(
+                    message: tooltip ?? '',
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 9),
+                        child: child)))));
+  }
+
   Widget glassPill(BuildContext context,
           {required Widget child,
           required VoidCallback? onTap,
@@ -459,7 +484,7 @@ class _FitPostCardState extends State<FitPostCard>
       Semantics(
           button: true,
           label: mine == null ? 'React to this fit' : 'Your reaction $mine',
-          child: glassPill(context,
+          child: actionPill(context,
               key: ValueKey('react-${post.id}'),
               tooltip: 'React',
               onTap: () => setState(() => picking = !picking),
@@ -481,7 +506,7 @@ class _FitPostCardState extends State<FitPostCard>
         Text(top, style: const TextStyle(fontSize: 14)),
       ],
       const SizedBox(width: 10),
-      glassPill(context,
+      actionPill(context,
           key: ValueKey('comments-${post.id}'),
           tooltip: 'Comments',
           onTap: openComments,
@@ -502,9 +527,12 @@ class _FitPostCardState extends State<FitPostCard>
           ? const SizedBox(width: double.infinity)
           : Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: NicheGlass(
-                  radius: 999,
-                  opacity: .9,
+              child: DecoratedBox(
+                  decoration: BoxDecoration(
+                      color: Niche.of(context).isDark
+                          ? Niche.of(context).blush
+                          : Niche.of(context).stone,
+                      borderRadius: BorderRadius.circular(999)),
                   child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 4),
@@ -524,7 +552,9 @@ class _FitPostCardState extends State<FitPostCard>
                                       decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: mine == e
-                                              ? Niche.of(context).blush
+                                              ? Niche.of(context)
+                                                  .brand
+                                                  .withValues(alpha: .22)
                                               : Colors.transparent),
                                       child: Text(e,
                                           style: TextStyle(
@@ -567,7 +597,9 @@ class _FitPostCardState extends State<FitPostCard>
                             PopupMenuItem(
                                 value: 'delete', child: Text('Delete post')),
                           ],
-                      icon: Icon(NicheIcons.unfoldMore, color: t.muted)),
+                      icon: Text('•••',
+                          style: Niche.ui(14, 18, FontWeight.w800, t.muted)
+                              .copyWith(letterSpacing: 1.5))),
               ])),
           NaturalPhotoFrame(
               url: widget.api.imageProxyUrl(post.photoUrl),

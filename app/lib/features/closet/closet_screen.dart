@@ -5,6 +5,7 @@ import '../../core/models.dart';
 import '../fits/fits_screen.dart';
 import '../product/complete_look_screen.dart' show fitScoreCard;
 import '../shared/feature_ui.dart';
+import '../shared/niche_photo.dart';
 import '../shared/niche_theme.dart';
 import '../shared/pick_photo.dart';
 import '../store/store_controller.dart';
@@ -242,48 +243,72 @@ class _ClosetScreenState extends State<ClosetScreen> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: .62),
+                              childAspectRatio: .66),
                       itemCount: pieces.length,
                       itemBuilder: (context, i) {
                         final item = pieces[i];
+                        final t = Niche.of(context);
                         return Card(
                             clipBehavior: Clip.antiAlias,
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                      child: InkWell(
-                                          onTap: () => openPiece(item),
-                                          child: PiecePhoto(
-                                              url: widget.api.imageProxyUrl(
-                                                  ownedClosetPhoto(item)),
-                                              label: item.label ??
-                                                  item.category))),
-                                  Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          10, 8, 8, 0),
-                                      child: Text(item.label ?? item.category,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis)),
-                                  if (item.brand?.trim().isNotEmpty == true)
-                                    Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10),
-                                        child: Text(item.brand!,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall)),
-                                  Align(
-                                      alignment: Alignment.centerRight,
-                                      child: IconButton(
-                                          tooltip: 'Remove closet piece',
-                                          onPressed:
-                                              busy ? null : () => remove(item),
-                                          icon: const Icon(
-                                              NicheIcons.deleteOutline)))
-                                ]));
+                            child: InkWell(
+                                onTap: () => openPiece(item),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                          child: Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                            PiecePhoto(
+                                                url: widget.api.imageProxyUrl(
+                                                    ownedClosetPhoto(item)),
+                                                label: item.label ??
+                                                    item.category),
+                                            Positioned(
+                                                top: 6,
+                                                right: 6,
+                                                child: NicheGlass(
+                                                    radius: 999,
+                                                    opacity: .75,
+                                                    child: IconButton(
+                                                        visualDensity:
+                                                            VisualDensity
+                                                                .compact,
+                                                        iconSize: 18,
+                                                        tooltip:
+                                                            'Remove closet piece',
+                                                        onPressed: busy
+                                                            ? null
+                                                            : () =>
+                                                                remove(item),
+                                                        icon: Icon(
+                                                            NicheIcons
+                                                                .deleteOutline,
+                                                            color: t.ink)))),
+                                          ])),
+                                      Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              12, 10, 12, 2),
+                                          child: Text(
+                                              item.label ?? item.category,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Niche.ui(13, 18,
+                                                  FontWeight.w600, t.ink))),
+                                      Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              12, 0, 12, 12),
+                                          child: Text(
+                                              item.brand?.trim().isNotEmpty ==
+                                                      true
+                                                  ? item.brand!
+                                                  : item.category,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Niche.ui(11, 14,
+                                                  FontWeight.w600, t.muted))),
+                                    ])));
                       });
                 })),
       ]));
@@ -427,7 +452,7 @@ class _OutfitGrid extends StatelessWidget {
                           children: [
                             Expanded(
                                 child: Stack(fit: StackFit.expand, children: [
-                              PiecePhoto(
+                              NichePhoto(
                                   url: api.imageProxyUrl(o.photoUrl),
                                   label: 'Your outfit'),
                               if (o.posted)
@@ -528,7 +553,7 @@ class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
                   borderRadius: BorderRadius.circular(Niche.radius),
                   child: AspectRatio(
                       aspectRatio: 3 / 4,
-                      child: PiecePhoto(
+                      child: NichePhoto(
                           url: widget.api.imageProxyUrl(outfit.photoUrl),
                           label: 'Your outfit'))),
               const SizedBox(height: 16),
@@ -548,16 +573,46 @@ class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
               if (outfit.pieces.isEmpty)
                 Text('No pieces left from this photo.',
                     style: Niche.ui(14, 20, FontWeight.w500, t.muted)),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final p in outfit.pieces)
-                  ActionChip(
-                      label: Text(p.label ?? p.category),
-                      onPressed: () => Navigator.push<void>(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => ClosetPieceScreen(
-                                  api: widget.api, initial: p))))
-              ])
+              SizedBox(
+                  height: 172,
+                  child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: outfit.pieces.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, i) {
+                        final p = outfit.pieces[i];
+                        return SizedBox(
+                            width: 104,
+                            child: InkWell(
+                                borderRadius: BorderRadius.circular(18),
+                                onTap: () => Navigator.push<void>(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => ClosetPieceScreen(
+                                            api: widget.api, initial: p))),
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(18),
+                                          child: SizedBox(
+                                              height: 128,
+                                              width: 104,
+                                              child: PiecePhoto(
+                                                  url: widget.api.imageProxyUrl(
+                                                      ownedClosetPhoto(p)),
+                                                  label:
+                                                      p.label ?? p.category))),
+                                      const SizedBox(height: 6),
+                                      Text(p.label ?? p.category,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Niche.ui(
+                                              12, 16, FontWeight.w600, t.ink)),
+                                    ])));
+                      })),
             ]));
   }
 }

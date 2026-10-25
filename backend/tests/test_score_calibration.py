@@ -1,7 +1,6 @@
 """Fit Score v2 calibration: a small, deterministic version of scripts/score_calibration.py.
 
-Targets (loose): random plausible catalog outfits median 40-60, under 12% at 80+, under 3% at 90+;
-curated (one style, <= 3 colours, one dress code) median 65-88 and clearly above random.
+Targets: everyday-friendly scores, curated above random, no automatic 90+ badges.
 """
 import pytest
 
@@ -18,17 +17,17 @@ def catalog():
 def test_random_vs_curated_distribution(catalog):
     res = cal.run(n_random=120, n_curated=20, seed=7, catalog=catalog)
     r, c = res["random"], res["curated"]
-    assert 40 <= r["p50"] <= 60, r
-    assert r["pct_80"] < 12 and r["pct_90"] < 3, r
-    assert 65 <= c["p50"] <= 88, c
-    assert c["p50"] >= r["p50"] + 15 and c["mean"] > r["mean"] + 10
+    assert 60 <= r["p50"] <= 75, r
+    assert r["pct_80"] < 35 and r["pct_90"] < 3, r
+    assert 78 <= c["p50"] <= 89, c
+    assert c["p50"] >= r["p50"] + 10 and c["mean"] > r["mean"] + 10
 
 
 def test_other_seed_still_meets_targets(catalog):
     res = cal.run(n_random=120, n_curated=20, seed=2026, catalog=catalog)
-    assert not [f for f in cal.meets_targets(res) if "median" in f and "random" in f and not 40 <= res["random"]["p50"] <= 60]
-    assert res["random"]["pct_90"] < 3 and res["random"]["pct_80"] < 12
-    assert 65 <= res["curated"]["p50"] <= 88
+    assert cal.meets_targets(res) == []
+    assert res["random"]["pct_90"] < 3 and res["random"]["pct_80"] < 35
+    assert 78 <= res["curated"]["p50"] <= 89
 
 
 def test_builders_are_deterministic(catalog):

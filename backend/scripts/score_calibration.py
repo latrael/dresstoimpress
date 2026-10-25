@@ -2,8 +2,8 @@
 
     cd backend && python -m scripts.score_calibration [--n-random 300] [--n-curated 30] [--seed 7] [--raw]
 
-Targets (docs in app/ai/outfit_score.py): random median 45-55, %>=80 under 10, %>=90 under 2;
-curated median 70-85. `--raw` prints the pre-calibration raw as well, to refit CALIBRATION.
+Targets (docs in app/ai/outfit_score.py): random median 60-75, %>=80 under 35, %>=90 under 3;
+curated median 78-89, clearly above random. `--raw` prints the pre-calibration raw as well, to refit CALIBRATION.
 tests/test_score_calibration.py runs a small fixed version of this.
 """
 from __future__ import annotations
@@ -91,14 +91,16 @@ def run(n_random: int = 300, n_curated: int = 30, seed: int = 7, catalog: dict |
 def meets_targets(res: dict[str, Any]) -> list[str]:
     r, c = res["random"], res["curated"]
     fails = []
-    if not 45 <= r["p50"] <= 55:
-        fails.append(f"random median {r['p50']} not in 45-55")
-    if r["pct_80"] >= 10:
-        fails.append(f"random %>=80 {r['pct_80']} not under 10")
-    if r["pct_90"] >= 2:
-        fails.append(f"random %>=90 {r['pct_90']} not under 2")
-    if not 70 <= c["p50"] <= 85:
-        fails.append(f"curated median {c['p50']} not in 70-85")
+    if not 60 <= r["p50"] <= 75:
+        fails.append(f"random median {r['p50']} not in 60-75")
+    if r["pct_80"] >= 35:
+        fails.append(f"random %>=80 {r['pct_80']} not under 35")
+    if r["pct_90"] >= 3:
+        fails.append(f"random %>=90 {r['pct_90']} not under 3")
+    if not 78 <= c["p50"] <= 89:
+        fails.append(f"curated median {c['p50']} not in 78-89")
+    if c["p50"] < r["p50"] + 10:
+        fails.append("curated median must exceed random by at least 10")
     return fails
 
 

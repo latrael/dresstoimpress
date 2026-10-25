@@ -9,6 +9,7 @@ import '../store/cart_screen.dart';
 import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
 import '../closet/closet_screen.dart';
+import 'discover_board.dart';
 
 class ProductGrid extends StatelessWidget {
   const ProductGrid(
@@ -158,17 +159,23 @@ class DiscoverScreen extends StatefulWidget {
       {super.key,
       required this.store,
       required this.onOpen,
+      this.onShop,
       this.initialQuery,
       this.picker});
   final String? initialQuery;
   final PhotoPicker? picker;
   final StoreController store;
   final void Function(RankedProduct) onOpen;
+
+  /// Opens several products at once (a "Similar" section's shop list); defaults to opening the first.
+  final void Function(List<RankedProduct>)? onShop;
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
+  static const _allStyles = ['y2k', 'streetwear', 'minimalist', 'preppy', 'athleisure', 'vintage', 'business',
+      'boho', 'grunge', 'classic'];
   final text = TextEditingController();
   List<RankedProduct> similar = [], goesWith = [];
   List<ClosetItem> owned = [];
@@ -401,6 +408,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     }
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!widget.store.demo) {
+                      // the Pinterest-style board: style chips + two columns of pins, products and Inspo outfits
+                      final chips = [for (final t in snapshot.data!.styles) t.tag];
+                      return DiscoverBoardView(
+                          store: widget.store,
+                          styles: chips.isEmpty ? _allStyles : chips,
+                          onOpen: widget.onOpen,
+                          onShop: widget.onShop ??
+                              (products) => widget.onOpen(products.first));
                     }
                     return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

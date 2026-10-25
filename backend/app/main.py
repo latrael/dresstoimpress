@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from .ai.router import router as ai_router  # noqa: E402
 from .auth import make_auth_guard, router as auth_router  # noqa: E402
+from .commerce.discover import router as discover_router  # noqa: E402
 from .commerce.fitcheck import router as fitcheck_router  # noqa: E402
 from .commerce.fitcheck_extras import router as fitcheck_extras_router  # noqa: E402
 from .commerce.fitcheck_web import router as fitcheck_web_router  # noqa: E402
@@ -73,7 +74,8 @@ def _rebase_image_urls():
 # images drawn on a canvas. Only these hosts are fetched (so it's not an open proxy), and it needs
 # no key because image widgets can't send headers.
 IMG_HOSTS = {"image.hm.com", "lp2.hm.com", "image.uniqlo.com", "picsum.photos", "fastly.picsum.photos",
-             "images.unsplash.com", "cdn.shopify.com"}  # cdn.shopify.com: the Shopify stores (sprint #2)
+             "images.unsplash.com", "cdn.shopify.com",  # cdn.shopify.com: the Shopify stores (sprint #2)
+             "i.pinimg.com"}  # Discover board pins
 IMG_MAX_BYTES = 8 * 1024 * 1024
 
 
@@ -106,6 +108,7 @@ app.include_router(ai_router)
 app.include_router(commerce_router)  # /feed /products /swipe /cart /wishlist /checkout
 app.include_router(reels_router)  # Home reels: /feed/{user}/tryons prefetch + poll (sprint-4)
 app.include_router(search_router)  # Discover: /search, /search/styles, /search/photo
+app.include_router(discover_router)  # Discover board: /discover/board, /discover/pins/{id}/similar
 app.include_router(fitcheck_extras_router)
 app.include_router(fitcheck_router)  # /fitcheck posts, feed, tags, likes, comments, shop
 app.include_router(users_router)  # /users CRUD, /onboarding

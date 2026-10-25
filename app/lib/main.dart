@@ -810,7 +810,8 @@ class _ShopShellState extends State<ShopShell> {
                                   key: ValueKey('discover-$discoverQuery'),
                                   initialQuery: discoverQuery,
                                   store: store,
-                                  onOpen: (p) => openProducts([p])),
+                                  onOpen: (p) => openProducts([p]),
+                                  onShop: openProducts),
                               SocialFeed(
                                   store: store,
                                   onShop: openProducts,

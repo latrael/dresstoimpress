@@ -527,6 +527,16 @@ class Api {
   Future<ReactionResult> setFitCheckReaction(String postId, String? emoji) async => ReactionResult.fromJson(
       await _send('PUT', '/fitcheck/${_seg(postId)}/reaction', body: {'user_id': _user, 'emoji': emoji}));
 
+  /// GET /discover/board: Pinterest pins + products + Inspo posts for the two-column Discover board. [style] = a
+  /// tapped style chip (null = the user's own styles); page with [offset] = the previous page's `nextOffset`.
+  Future<DiscoverBoard> discoverBoard({String? style, int limit = 20, int offset = 0}) async =>
+      DiscoverBoard.fromJson(await _send('GET', '/discover/board',
+          query: {'user_id': _user, 'style': style, 'limit': '$limit', 'offset': '$offset'}));
+
+  /// GET /discover/pins/{id}/similar: "Similar" on a pin, same groups as [similarLook] for an Inspo post.
+  Future<List<SimilarLookGroup>> pinSimilar(String pinId) async => _listOf(
+      await _send('GET', '/discover/pins/${_seg(pinId)}/similar', query: {'user_id': _user}), SimilarLookGroup.fromJson);
+
   /// GET /fitcheck/{id}/similar: find similar look, one [SimilarLookGroup] per tagged piece in post order:
   /// the viewer's own similar closet pieces, then products to buy.
   Future<List<SimilarLookGroup>> similarLook(String postId) async => _listOf(

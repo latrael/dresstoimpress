@@ -6,8 +6,8 @@ Connected account creation uses Api.createUser and remembers its returned ID;
 sample-mode profiles are explicitly local. Invalid/missing saved server profiles
 return to entry instead of impersonating another user.
 
-First setup is seven screens: Welcome → Style → Stores → Scan → Measurements →
-Budget → Done. Every optional step has Skip for now; Welcome can skip setup.
+First setup is eight screens: Welcome → Style → Shop for → Stores → Scan →
+Measurements → Budget → Done. Every optional step has Skip for now; Welcome can skip setup.
 User exposes each section for editing later. Scan precedes manual review. Height
 is the reference, weight optional; camera/gallery choices use the existing picker.
 AI estimates and fallback estimates are labeled, notes/head-to-feet warnings shown,
@@ -32,8 +32,8 @@ Only available sizes can reach the cart. Unknown sizes prompt setup; a known
 unavailable fit offers an explicit alternative chooser and stays in the feed.
 The cart pencil uses atomic size replacement, retaining quantity.
 
-Backend caveat: bodyScan currently persists its estimates while returning them.
-The app requires review/save before completing setup, but draft-only scan storage
-would need a backend draft/confirm contract. No photo is published to Inspo by scan.
-
-Sprint 2 status and pending Adam contracts: docs/ryan-sprint-2-implementation.md.
+Scans now use the merged draft/confirm contract: upload does not alter the user's
+profile; reviewed Save confirms it. Cancel/skip/discard leaves the draft unattached.
+Only changed dimensions are sent as manual edits; unchanged estimates stay estimates.
+Server store metadata still needs Adam's client method; all eight published stores
+are recognized in a central fallback meanwhile. See docs/ryan-sprint-2-integration.md.

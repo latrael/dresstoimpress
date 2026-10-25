@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
 import '../profile/shopper_profile.dart';
+import '../shared/store_names.dart';
 
 /// App state and adapters; the shared client remains the only API transport.
 class StoreController extends ChangeNotifier {
@@ -31,11 +32,12 @@ class StoreController extends ChangeNotifier {
       profile = ShopperProfile(
           completed: user.onboarded || profile.completed,
           style: user.styleText,
+          shopFor: user.shopFor,
           preferredStores: user.preferredStores
-              .where((s) => ['hm', 'uniqlo'].contains(s))
+              .where((s) => storeNames.containsKey(s))
               .toList(),
           otherStores: user.preferredStores
-              .where((s) => !['hm', 'uniqlo'].contains(s))
+              .where((s) => !storeNames.containsKey(s))
               .join(', '),
           fit: body?.fit ?? profile.fit,
           usualSize: profile.usualSize,
@@ -330,7 +332,7 @@ Map<String, dynamic> browseMap(RankedProduct card) {
   return {
     'id': p.id,
     'retailer': p.retailer,
-    'brand': p.brand ?? p.retailer,
+    'brand': p.brand ?? storeName(p.retailer),
     'name': p.name,
     'price_usd': p.priceUsd,
     'sale_price_usd': p.isOnSale ? p.effectivePrice : null,

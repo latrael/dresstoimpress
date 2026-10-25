@@ -3,12 +3,9 @@ import '../../core/models.dart';
 import '../shared/feature_ui.dart';
 import '../store/store_controller.dart';
 import '../closet/closet_screen.dart';
+import '../shared/store_names.dart';
 
-String _retailerName(String retailer) => retailer == 'hm'
-    ? 'H&M'
-    : retailer == 'uniqlo'
-        ? 'Uniqlo'
-        : retailer;
+String _retailerName(String retailer) => storeName(retailer);
 String _dollars(num value) => '\$${value.toStringAsFixed(2)}';
 
 class FitsScreen extends StatefulWidget {

@@ -5,6 +5,7 @@ import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
 import 'shopper_profile.dart';
 import 'measurement_picker.dart';
+import '../shared/store_names.dart';
 
 /// The same sections power first-time setup and the User editor.
 class OnboardingScreen extends StatefulWidget {
@@ -36,7 +37,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     'Body scan',
     'Measurements & size',
     'Your budget',
-    'Ready for you'
+    'Ready for you',
+    'Shop for'
   ];
   final name = TextEditingController(),
       style = TextEditingController(),
@@ -61,6 +63,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       s: TextEditingController()
   };
   final stores = <String>{};
+  bool loadedRemote = false;
+  final restoredMeasures = <String, double?>{};
   late bool demo = widget.demo;
   Future<void> connectInline() async {
     bool connected;
@@ -81,6 +85,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   late int step = widget.firstRun ? 0 : widget.initialStep;
   String fit = 'regular';
+  String shopFor = 'both';
+  final preScan = <String, String>{};
+  final filledByScan = <String, String>{};
   final styles = <String>{};
   static const styleChoices = [
     'minimalist',
@@ -131,6 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (!demo) {
         user = await widget.api.getUser();
         remote = user.bodyProfile;
+        loadedRemote = true;
       }
       if (!mounted) return;
       name.text = user?.displayName ?? '';
@@ -145,12 +153,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       style.text = ownWords.join(', ');
       fit = remote?.fit ?? local.fit;
+      shopFor = user?.shopFor ?? local.shopFor;
       stores.addAll((user?.preferredStores ?? local.preferredStores)
-          .where((s) => ['hm', 'uniqlo'].contains(s)));
+          .where((s) => storeNames.containsKey(s)));
       other.text = user == null
           ? local.otherStores
           : user.preferredStores
-              .where((s) => !['hm', 'uniqlo'].contains(s))
+              .where((s) => !storeNames.containsKey(s))
               .join(', ');
       final values = [
         remote?.heightCm ?? local.heightCm,
@@ -165,6 +174,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       for (final c in measures.values) {
         c.text = values[i++]?.toStringAsFixed(1) ?? '';
       }
+      restoredMeasures.clear();
+      restoredMeasures.addAll({
+        for (final e in measures.entries) e.key: double.tryParse(e.value.text)
+      });
       for (final e in sizes.entries) {
         e.value.text = remote?.usualSizes[e.key] ??
             local.usualSizes[e.key] ??
@@ -232,8 +245,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           : choosePhoto(context));
       if (photo == null) return;
       final estimate = await widget.api.bodyScan(photo.bytes,
-          heightCm: height, weightKg: weight, mimeType: photo.mimeType);
+          heightCm: height,
+          weightKg: weight,
+          mimeType: photo.mimeType,
+          commit: false);
       if (!mounted) return;
+      for (final e in filledByScan.entries) {
+        if (measures[e.key]!.text == e.value) {
+          measures[e.key]!.text = preScan[e.key] ?? '';
+        }
+      }
+      preScan.clear();
+      preScan.addAll({for (final e in measures.entries) e.key: e.value.text});
+      filledByScan.clear();
       final p = estimate.profile;
       final estimates = {
         'Chest (cm)': p.chestIn,
@@ -244,6 +268,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       for (final e in estimates.entries) {
         if (measures[e.key]!.text.trim().isEmpty && e.value != null) {
           measures[e.key]!.text = (e.value! * 2.54).toStringAsFixed(1);
+          filledByScan[e.key] = measures[e.key]!.text;
         }
       }
       setState(() => scan = estimate);
@@ -252,6 +277,92 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  void discardScan() => setState(() {
+        for (final e in filledByScan.entries) {
+          if (measures[e.key]!.text == e.value) {
+            measures[e.key]!.text = preScan[e.key] ?? '';
+          }
+        }
+        scan = null;
+        filledByScan.clear();
+      });
+  void skip() {
+    if ((step == 3 || step == 4) && scan != null) discardScan();
+    setState(() {
+      step = step == 1
+          ? 7
+          : step == 7
+              ? 2
+              : step + 1;
+      error = null;
+    });
+  }
+
+  Future<void> saveMeasurements(ShopperProfile profile) async {
+    final draft = scan;
+    if (draft == null) {
+      if (!loadedRemote) {
+        await profile.syncToServer(widget.api);
+        return;
+      }
+      double? changed(String field) {
+        final current = value(field), old = restoredMeasures[field];
+        if (old != null && current == null) {
+          throw Exception(
+              'Choose a value for your saved measurement. Clearing saved measurements is not available yet.');
+        }
+        return current != null && (old == null || (current - old).abs() > .06)
+            ? current
+            : null;
+      }
+
+      await widget.api.updateBodyProfile(
+          heightCm: changed('Height (cm)'),
+          weightKg: changed('Weight (kg)'),
+          chestCm: changed('Chest (cm)'),
+          waistCm: changed('Waist (cm)'),
+          hipCm: changed('Hips (cm)'),
+          inseamCm: changed('Inseam (cm)'),
+          shoeUs: changed('Shoe size (US)'),
+          fit: fit,
+          usualSizes: profile.usualSizes);
+      return;
+    }
+    final p = draft.profile;
+    final baseline = <String, double?>{
+      'Height (cm)': p.heightCm,
+      'Weight (kg)': p.weightKg,
+      'Chest (cm)': p.chestIn == null ? null : p.chestIn! * 2.54,
+      'Waist (cm)': p.waistIn == null ? null : p.waistIn! * 2.54,
+      'Hips (cm)': p.hipIn == null ? null : p.hipIn! * 2.54,
+      'Inseam (cm)': p.inseamIn == null ? null : p.inseamIn! * 2.54,
+      'Shoe size (US)': p.shoeUs
+    };
+    double? edit(String field, {bool inches = false}) {
+      final v = value(field), old = baseline[field];
+      if (v == null && old != null) {
+        throw Exception(
+            'Discard this scan to skip its estimates, or review a value before saving.');
+      }
+      return v != null && (old == null || (v - old).abs() > .06)
+          ? (inches ? v / 2.54 : v)
+          : null;
+    }
+
+    scan = await widget.api.confirmBodyScan(draft,
+        heightCm: edit('Height (cm)'),
+        weightKg: edit('Weight (kg)'),
+        chestIn: edit('Chest (cm)', inches: true),
+        waistIn: edit('Waist (cm)', inches: true),
+        hipIn: edit('Hips (cm)', inches: true),
+        inseamIn: edit('Inseam (cm)', inches: true),
+        shoeUs: edit('Shoe size (US)'),
+        fit: p.fit == fit ? null : fit);
+    // Keep unchanged estimates as estimates; only preferences go through the manual endpoint.
+    await widget.api
+        .updateBodyProfile(fit: fit, usualSizes: profile.usualSizes);
   }
 
   Future<void> save({bool skipAll = false}) async {
@@ -270,6 +381,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   .where((s) => s.isNotEmpty)
                   .join(', '),
           fit: fit,
+          shopFor: shopFor,
           preferredStores: skipAll ? [] : stores.toList(),
           otherStores: skipAll ? '' : other.text.trim(),
           usualSize: skipAll ? '' : sizes['top']!.text.trim().toUpperCase(),
@@ -305,9 +417,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           result = await widget.api.onboarding(input,
               displayName: name.text.trim().isEmpty ? null : name.text.trim());
         }
-        await profile.syncToServer(widget.api);
+        await saveMeasurements(profile);
         await widget.api.updateUser(
             displayName: name.text.trim().isEmpty ? null : name.text.trim(),
+            shopFor: shopFor,
             preferredStores: [
               ...profile.preferredStores,
               ...profile.otherStores
@@ -391,12 +504,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           field(style, 'Type your own (optional)',
               hint: 'Y2K fits, baggy jeans, no skinny anything…')
         ];
+      case 7:
+        return [
+          const Text('Which clothing would you like to browse?'),
+          const SizedBox(height: 16),
+          Wrap(spacing: 8, children: [
+            for (final e
+                in {'men': 'Men', 'women': 'Women', 'both': 'Both'}.entries)
+              ChoiceChip(
+                  label: Text(e.value),
+                  selected: shopFor == e.key,
+                  onSelected:
+                      busy ? null : (_) => setState(() => shopFor = e.key))
+          ]),
+        ];
       case 2:
         return [
           const Text('Stores we carry'),
           const SizedBox(height: 12),
           Wrap(spacing: 8, children: [
-            for (final e in {'hm': 'H&M', 'uniqlo': 'Uniqlo'}.entries)
+            for (final e in storeNames.entries)
               FilterChip(
                   label: Text(e.value),
                   selected: stores.contains(e.key),
@@ -409,7 +536,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           field(other, 'Other stores you love (optional)'),
           const SizedBox(height: 12),
           const Text(
-              'Other stores are saved as interests. We currently carry H&M and Uniqlo.')
+              'Other stores are saved as interests. Choose your favorites from the current catalog above.')
         ];
       case 3:
         return [
@@ -435,11 +562,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             if (scan!.profile.fullBody == false)
               const Text(
                   'Please retake with one person visible from head to feet.'),
-            Text(scan!.profile.note)
+            Text(scan!.profile.note),
+            Text(scan!.committed
+                ? 'This scan has been saved to your profile.'
+                : 'This scan is a draft until you save your reviewed measurements.'),
+            if (!scan!.committed)
+              TextButton(
+                  onPressed: busy ? null : discardScan,
+                  child: const Text('Discard scan'))
           ]
         ];
       case 4:
         return [
+          if (scan != null && !scan!.committed)
+            TextButton(
+                onPressed: busy ? null : discardScan,
+                child: const Text('Discard scan')),
           const Text(
               'Check or edit every measurement. Photo estimates are a starting point, not an exact measurement.'),
           for (final e in measures.entries) measurement(e.key),
@@ -481,7 +619,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if ((step == 3 || step == 4) && !validate(measures.values)) return;
     if (step == 5 && !validate(budgets.values)) return;
     setState(() {
-      step++;
+      step = step == 1
+          ? 7
+          : step == 7
+              ? 2
+              : step + 1;
       error = null;
     });
   }
@@ -498,7 +640,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   if (widget.firstRun)
                     Padding(
                         padding: const EdgeInsets.only(bottom: 20),
-                        child: LinearProgressIndicator(value: (step + 1) / 7)),
+                        child: LinearProgressIndicator(
+                            value:
+                                ([0, 1, 7, 2, 3, 4, 5, 6].indexOf(step) + 1) /
+                                    8)),
                   ...section(),
                   const SizedBox(height: 24),
                   if (error != null)
@@ -541,11 +686,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: const Text('Skip setup')),
                   if (widget.firstRun && step != 0 && step != 6)
                     TextButton(
-                        onPressed: busy ? null : next,
+                        onPressed: busy ? null : skip,
                         child: const Text('Skip for now')),
                   if (widget.firstRun && step > 0)
                     TextButton(
-                        onPressed: busy ? null : () => setState(() => step--),
+                        onPressed: busy
+                            ? null
+                            : () => setState(() => step = step == 2
+                                ? 7
+                                : step == 7
+                                    ? 1
+                                    : step - 1),
                         child: const Text('Back')),
                   if (result != null && !widget.firstRun) ...[
                     Text('Saved for ${result!.user.displayName}'),

@@ -9,6 +9,7 @@ class ShopperProfile {
       {this.completed = false,
       this.style = '',
       this.fit = 'regular',
+      this.shopFor = 'both',
       this.usualSize = '',
       this.usualSizes = const {},
       this.preferredStores = const [],
@@ -22,7 +23,7 @@ class ShopperProfile {
       this.shoeUs,
       this.budgets = const {}});
   final bool completed;
-  final String style, fit, usualSize;
+  final String style, fit, usualSize, shopFor;
   final Map<String, String> usualSizes;
   final List<String> preferredStores;
   final String otherStores;
@@ -40,6 +41,7 @@ class ShopperProfile {
           completed: j['completed'] == true,
           style: j['style'] as String? ?? '',
           fit: j['fit'] as String? ?? 'regular',
+          shopFor: j['shopFor'] as String? ?? 'both',
           usualSize: j['usualSize'] as String? ?? '',
           usualSizes: Map<String, String>.from(j['usualSizes'] as Map? ?? {}),
           preferredStores:
@@ -72,6 +74,7 @@ class ShopperProfile {
         completed: completed,
         style: style,
         fit: gapsOnly ? fit : b.fit ?? fit,
+        shopFor: shopFor,
         usualSize: usualSize,
         usualSizes: {...usualSizes, ...b.usualSizes},
         preferredStores: preferredStores,
@@ -107,6 +110,7 @@ class ShopperProfile {
       completed: value,
       style: style,
       fit: fit,
+      shopFor: shopFor,
       usualSize: usualSize,
       usualSizes: usualSizes,
       preferredStores: preferredStores,
@@ -128,6 +132,7 @@ class ShopperProfile {
           'completed': completed,
           'style': style,
           'fit': fit,
+          'shopFor': shopFor,
           'usualSize': usualSize,
           'usualSizes': usualSizes,
           'preferredStores': preferredStores,

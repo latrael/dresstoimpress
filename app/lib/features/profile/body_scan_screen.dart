@@ -28,6 +28,7 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
   bool busy = false;
   String? error;
   BodyProfile? result;
+  BodyScanResult? draft;
 
   static String _text(double? v) =>
       v == null || v <= 0 ? '' : v.toStringAsFixed(v % 1 == 0 ? 0 : 1);
@@ -60,14 +61,38 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
       final photo = await widget.picker();
       if (photo == null) return;
       final scanned = await widget.api.bodyScan(photo.bytes,
-          heightCm: h, weightKg: w, mimeType: photo.mimeType);
-      if (mounted) setState(() => result = scanned.profile);
+          heightCm: h, weightKg: w, mimeType: photo.mimeType, commit: false);
+      if (mounted) {
+        setState(() {
+          draft = scanned;
+          result = scanned.profile;
+        });
+      }
     } on ApiError catch (e) {
       if (mounted) {
         setState(() => error = e.status == 422
             ? 'Check your height and weight, then try again.'
             : 'Could not scan this photo. Try again.');
       }
+    } catch (e) {
+      if (mounted) setState(() => error = featureError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> confirm() async {
+    if (draft == null || busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final h = double.tryParse(height.text), w = double.tryParse(weight.text);
+      final saved = await widget.api.confirmBodyScan(draft!,
+          heightCm: h != draft!.profile.heightCm ? h : null,
+          weightKg: w != draft!.profile.weightKg ? w : null);
+      if (mounted) Navigator.pop(context, saved.profile);
     } catch (e) {
       if (mounted) setState(() => error = featureError(e));
     } finally {
@@ -116,7 +141,7 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
                         TextStyle(color: Theme.of(context).colorScheme.error))),
           if (r != null) ...[
             const SizedBox(height: 24),
-            Text('Your estimates',
+            Text('Draft estimates — review before saving',
                 style: Theme.of(context).textTheme.titleLarge),
             if (r.fullBody == false)
               const Text(
@@ -127,8 +152,8 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
                   padding: const EdgeInsets.only(top: 8), child: Text(r.note)),
             const SizedBox(height: 16),
             FilledButton(
-                onPressed: () => Navigator.pop(context, r),
-                child: const Text('Use these measurements')),
+                onPressed: busy ? null : confirm,
+                child: Text(busy ? 'Saving…' : 'Confirm these measurements')),
           ],
         ]));
   }

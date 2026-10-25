@@ -162,3 +162,19 @@ def test_similar_puts_own_closet_pieces_first_per_tag(client):
     assert [c["id"] for c in groups[0]["closet"]] == ["ci_tee"]  # the viewer's own, same type; not jeans
     assert isinstance(groups[0]["products"], list)
     assert client.get("/fitcheck/nope/similar", params={"user_id": "u_b"}).status_code == 404
+
+
+def test_unlike_through_old_routes_clears_the_reaction(client):
+    """React 🔥, unlike through PUT or POST /like, like again -> a plain 😍, not the stale 🔥 (Nabil, after #78)."""
+    from app.store import store
+
+    for unlike in ({"method": "put", "json": {"user_id": "u_b", "liked": False}},
+                   {"method": "post", "json": {"user_id": "u_b"}}):
+        pid = _post(client)["id"]
+        client.put(f"/fitcheck/{pid}/reaction", json={"user_id": "u_b", "emoji": "🔥"})
+        r = getattr(client, unlike["method"])(f"/fitcheck/{pid}/like", json=unlike["json"]).json()
+        assert r["liked"] is False and r["like_count"] == 0
+        assert "u_b" not in str(store.get("fitcheck_posts", pid).get("reactions"))  # nothing stale left behind
+        client.put(f"/fitcheck/{pid}/like", json={"user_id": "u_b", "liked": True})
+        view = client.get(f"/fitcheck/{pid}", params={"user_id": "u_b"}).json()
+        assert view["reactions"] == {"😍": 1} and view["my_reaction"] == "😍"

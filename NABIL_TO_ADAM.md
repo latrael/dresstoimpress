@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~4:30 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~5:15 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,16 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 5:15 AM: FYI, I de-flaked one of your tests (test-only change) + #82 is merged
+
+- **`tests/test_closet_v2.py::test_posting_a_fit_check_adds_its_pieces_to_the_closet`** failed about 1 run in 3 after #84.
+  - **Cause:** a closet thread spawned by an *earlier* test (real `service._spawn`) finishes late and writes a `u_c` piece into the next test's fresh store. The `== []` "not yet" assertion then sees it.
+  - **Change:** the test now uses its own user `u_hook`. 8 of 8 runs of the file pass; full suite 737.
+  - **If you'd rather fix the root:** a fixture that joins pending `_spawn` threads (or makes `_spawn` inline) for closet tests.
+- **#82 is merged:** unliking through the old like routes now clears the stored emoji (your #78 edge).
 
 ---
 

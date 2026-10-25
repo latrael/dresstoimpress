@@ -237,22 +237,24 @@ def test_posting_a_fit_check_adds_its_pieces_to_the_closet(client, monkeypatch):
 
     ran = []
     monkeypatch.setattr(service, "_spawn", lambda fn: ran.append(fn))  # call the hook synchronously below
-    r = client.post("/fitcheck", data={"user_id": "u_c", "caption": "fit"}, files={"file": ("f.jpg", _jpeg(), "image/jpeg")})
+    # its own user: a closet thread left running by an earlier test can still write u_c pieces into this store
+    store.put("users", "u_hook", {"id": "u_hook", "display_name": "H", "price_ranges": {}, "friends": []})
+    r = client.post("/fitcheck", data={"user_id": "u_hook", "caption": "fit"}, files={"file": ("f.jpg", _jpeg(), "image/jpeg")})
     assert r.status_code == 200, r.text
     post = r.json()
-    assert len(post["tagged"]) == 2 and store.list("closet_items", user_id="u_c") == []  # not yet: background
+    assert len(post["tagged"]) == 2 and store.list("closet_items", user_id="u_hook") == []  # not yet: background
     assert len(ran) == 1
     ran[0]()
-    items = store.list("closet_items", user_id="u_c")
+    items = store.list("closet_items", user_id="u_hook")
     assert {i["label"] for i in items} == {t["label"] for t in post["tagged"]}
     for i in items:
         assert i["worn_in"] == [{"photo_url": post["photo_url"], "at": i["worn_in"][0]["at"], "source": "fitcheck",
                                  "box": i["worn_in"][0]["box"]}] and i["worn_in"][0]["box"] is not None
         assert "/static/uploads/" in i["crop_image_url"] and i["crop_image_url"] != post["photo_url"]  # cropped by box
     # posting the same fit again merges (worn twice), never duplicates
-    out = closet.add_from_fit("u_c", "http://localhost:8000/static/uploads/again.jpg", None, post["tagged"])
+    out = closet.add_from_fit("u_hook", "http://localhost:8000/static/uploads/again.jpg", None, post["tagged"])
     assert out["added"] == [] and len(out["merged"]) == 2
-    assert all(len(m["worn_in"]) == 2 for m in out["merged"]) and len(store.list("closet_items", user_id="u_c")) == 2
+    assert all(len(m["worn_in"]) == 2 for m in out["merged"]) and len(store.list("closet_items", user_id="u_hook")) == 2
 
 
 def test_fit_check_hook_never_fails_the_post(client, monkeypatch):

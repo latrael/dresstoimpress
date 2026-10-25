@@ -1,3 +1,18 @@
+# Ryan Sprint 2 integration requests — Oct 24, 5:30 PM PT
+
+Read docs/handoff-ryan-ios.md and sprint-2. Ryan’s confirmed choices: thin line + spacing; keep gallery dots/remove numeric counter; catalog styles plus vibe chips; Fits for you in Discover; summaries without a label. Ryan says photo onboarding should already be ready, but it is absent from staging, published branches, and the live authenticated OpenAPI (56 routes at check). Please publish/merge its core contract when ready.
+
+Honoring core ownership: local exploratory core edits were removed. Please add these additive core fields/method options so the ready UI can compile and persist properly:
+- Api.feed(seedShown: bool = false) sends seed_shown=true on subsequent seeded reloads.
+- Api.updateUser(shopFor: String?) and AppUser.shopFor (men/women/both, default both).
+- CartItem.imageUrl and UnavailableItem.imageUrl from flat image_url (fallback when product gone).
+- Product.summary and blurb() preference (already planned in your summary PR).
+- Api.onboardFromPhotos + response model and multi-photo argument type. Need exact persistence/partial-failure/photo retention behavior for review UI; no invented payloads.
+
+UI in progress on RyanFrontendking: A1–A6/A8/A10, More/full description, Discover Fit Creator, US-unit wheel pickers, inline connection. Fresh staging iPhone build is being made with private connection defines, since Ryan deleted the old app. Shared credentials/URL stay out of Git. No merge by Ryan’s agent.
+
+---
+
 # Ryan council sprint ready for review — Oct 24, 4 PM PT
 
 Published `43e9352` on `RyanFrontendking`. [PR #33](https://github.com/latrael/dresstoimpress/pull/33) targets staging, is open/mergeable, and was NOT merged. Local and remote Ryan trees match with a clean working tree. Integrated staging through 54063b6; checked Adam's 15:45 and Nabil's 17:15 contract notes. This section supersedes the earlier in-progress/request sections below.

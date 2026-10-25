@@ -34,11 +34,73 @@ class SocialFeed extends StatefulWidget {
   State<SocialFeed> createState() => _SocialFeedState();
 }
 
+/// Inspo scope: posts by friends (+ mine) or by everyone.
+enum InspoScope { friends, everyone }
+
 class _SocialFeedState extends State<SocialFeed> {
+  /// null until the friends list has loaded once (then Friends when I have any, else Everyone).
+  InspoScope? scope;
+  Set<String> friendIds = {};
   late Future<List<FitCheckPost>> posts = load();
-  Future<List<FitCheckPost>> load() => widget.store.demo
-      ? Future.value([])
-      : widget.store.api.fitCheckFeed(limit: 100, author: widget.authorId);
+
+  Future<List<FitCheckPost>> load() async {
+    if (widget.store.demo) return [];
+    final api = widget.store.api;
+    // Friends | Everyone is filtered here: /fitcheck/feed is Nabil's and has no scope yet.
+    if (widget.authorId == null && scope == null) {
+      try {
+        friendIds = (await api.friends()).map((f) => f.id).toSet();
+      } catch (_) {
+        friendIds = {};
+      }
+      scope = friendIds.isEmpty ? InspoScope.everyone : InspoScope.friends;
+    }
+    final all = await api.fitCheckFeed(limit: 100, author: widget.authorId);
+    if (widget.authorId != null || scope != InspoScope.friends) return all;
+    final me = api.settings.userId;
+    return [for (final p in all) if (p.userId == me || friendIds.contains(p.userId)) p];
+  }
+
+  void setScope(InspoScope s) {
+    if (s == scope) return;
+    setState(() {
+      scope = s;
+      posts = load();
+    });
+  }
+
+  Widget scopeToggle(BuildContext context) {
+    final t = Niche.of(context);
+    Widget seg(InspoScope s, String label) {
+      final on = scope == s;
+      return Expanded(
+          child: GestureDetector(
+              onTap: () => setScope(s),
+              child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  padding: const EdgeInsets.symmetric(vertical: 7),
+                  decoration: BoxDecoration(
+                      color: on ? t.brand : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Text(label,
+                      textAlign: TextAlign.center,
+                      style: Niche.ui(13, 18, FontWeight.w600, on ? t.cream : t.muted)))));
+    }
+
+    return Semantics(
+        label: 'Inspo scope',
+        child: NicheGlass(
+            radius: 22,
+            opacity: .55,
+            blur: 12,
+            child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: Row(children: [
+                  seg(InspoScope.friends, 'Friends'),
+                  seg(InspoScope.everyone, 'Everyone'),
+                ]))));
+  }
   void refresh() => setState(() {
         posts = load();
       });
@@ -58,12 +120,12 @@ class _SocialFeedState extends State<SocialFeed> {
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
               child: Row(children: [
                 Expanded(
-                    child: Text(
-                        widget.authorId == null
-                            ? 'Fits from everyone'
-                            : 'Their fits',
-                        style: Niche.ui(
-                            14, 20, FontWeight.w600, Niche.of(context).muted))),
+                    child: widget.authorId == null
+                        ? scopeToggle(context)
+                        : Text('Their fits',
+                            style: Niche.ui(
+                                14, 20, FontWeight.w600, Niche.of(context).muted))),
+                const SizedBox(width: 6),
                 IconButton(
                     tooltip: 'Refresh fits',
                     onPressed: refresh,
@@ -90,7 +152,9 @@ class _SocialFeedState extends State<SocialFeed> {
                     return Center(
                         child: Text(widget.store.demo
                             ? 'Connect to explore Inspo.'
-                            : 'No fits yet. Your next look could be the first.'));
+                            : scope == InspoScope.friends
+                                ? 'No fits from friends yet. Add friends from your profile.'
+                                : 'No fits yet. Your next look could be the first.'));
                   }
                   return RefreshIndicator(
                       onRefresh: () async {

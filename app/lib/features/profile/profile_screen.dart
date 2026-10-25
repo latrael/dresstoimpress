@@ -7,6 +7,7 @@ import '../product/try_on.dart';
 import '../closet/closet_screen.dart';
 import 'body_scan_screen.dart';
 import 'onboarding_screen.dart';
+import 'friends_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.api, required this.onChanged});
@@ -158,6 +159,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onPressed: busy ? null : apply,
                   child: Text(busy ? 'Saving…' : 'Use learned budgets')),
               if (message != null) Text(message!),
+              const SizedBox(height: 24),
+              FriendsCard(api: widget.api),
               const SizedBox(height: 24),
               Text('Personal try-on',
                   style: Theme.of(context).textTheme.titleLarge),

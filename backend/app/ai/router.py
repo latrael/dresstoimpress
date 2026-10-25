@@ -650,3 +650,39 @@ def fit_cart_route(fit_id: str, user_id: str):
     if cart is None:
         raise HTTPException(404, "unknown or expired fit")
     return cart
+
+
+# ---- Friends (Inspo: Friends | Everyone) ----
+
+class FriendAdd(BaseModel):
+    handle_or_code: str
+
+
+@router.get("/users/{user_id}/code")
+def friend_code(user_id: str):
+    """My handle + friend code (generated on first read) and friends count."""
+    from . import friends
+
+    return friends.identity(user_id)
+
+
+@router.get("/users/{user_id}/friends")
+def list_friends(user_id: str):
+    from . import friends
+
+    return friends.list_friends(user_id)
+
+
+@router.post("/users/{user_id}/friends")
+def add_friend(user_id: str, req: FriendAdd):
+    """Add by handle (@adam) or friend code (NCH-7K2P). Mutual: both users become friends."""
+    from . import friends
+
+    return friends.add_friend(user_id, req.handle_or_code)
+
+
+@router.delete("/users/{user_id}/friends/{friend_id}")
+def remove_friend(user_id: str, friend_id: str):
+    from . import friends
+
+    return friends.remove_friend(user_id, friend_id)

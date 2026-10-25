@@ -455,6 +455,24 @@ class Api {
   /// fallback). ApiError 422 for an empty or >200-character query.
   Future<VibeQuery> vibe(String q) async => VibeQuery.fromJson(await _send('POST', '/ai/vibe', body: {'q': q}));
 
+  // ------------------------------------------------------------ Friends (Adam)
+
+  /// GET /users/{me}/code: my handle + friend code (generated on first read) and friends count.
+  Future<FriendIdentity> myCode() async =>
+      FriendIdentity.fromJson(await _send('GET', '/users/${_seg(_user)}/code'));
+
+  /// GET /users/{me}/friends.
+  Future<List<Friend>> friends() async => _listOf(await _send('GET', '/users/${_seg(_user)}/friends'), Friend.fromJson);
+
+  /// POST /users/{me}/friends {handle_or_code}: mutual add by handle (`@nabil`) or code (`NCH-7K2P`).
+  /// ApiError 404 when nobody matches, 422 for yourself.
+  Future<List<Friend>> addFriend(String handleOrCode) async => _listOf(
+      await _send('POST', '/users/${_seg(_user)}/friends', body: {'handle_or_code': handleOrCode}), Friend.fromJson);
+
+  /// DELETE /users/{me}/friends/{id}: mutual remove.
+  Future<List<Friend>> removeFriend(String friendId) async =>
+      _listOf(await _send('DELETE', '/users/${_seg(_user)}/friends/${_seg(friendId)}'), Friend.fromJson);
+
   // ------------------------------------------------------------ Fit Check (Nabil)
 
   /// GET /fitcheck/feed: one Inspo feed for everyone (D4). [author] (a user id) = only that person's posts.

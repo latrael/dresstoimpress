@@ -2,6 +2,12 @@
 
 Sat Oct 24, 2026, ~7 PM PT. For the council session. `staging` is at `6ff18f2` (583 backend tests pass). Sprint #2 is `docs/sprint-2.md`. **[decide]** = a call for the council. Nothing here has been acted on yet: read it, decide, then each owner acts.
 
+**Decided at the council (~7:10 PM):**
+- **Inspo starts empty** after the rebuild (no re-posted fits).
+- **Owned closet pieces never show a catalog photo** (1.2).
+- **Tall Inspo photos are capped at 9:16** (height ≤ 16/9 × width), centre-cropped (3.1).
+- **Login is tackled last;** the one-tap team accounts stay until then (4).
+
 ---
 
 ## 0. Carry-overs from sprint #2 (do these first)
@@ -19,7 +25,7 @@ Sat Oct 24, 2026, ~7 PM PT. For the council session. `staging` is at `6ff18f2` (
 | # | Problem (Nabil's words) | What's going on | Change | Owner |
 | --- | --- | --- | --- | --- |
 | 1.1 | Uploading a full outfit only adds **one** clothing item | #51 added multi-garment detection (`POST /closet/digitize`), but the upload Nabil used still lands as one item. Either the app calls `/closet/upload` (one item per photo) for that button, or digitize is falling back to one item. | **Verify which route the closet's upload button calls** on the current build. Every closet photo should go through digitize, which detects every garment. | Ryan (which route) + Adam (digitize) |
-| 1.2 | **Wrong catalog photos on closet items.** A corduroy shirt we don't carry got a random, unrelated catalog picture | `ai/closet.py` `catalog_match()` takes the best-scoring catalog product above `CONFIDENT_SCORE` and swaps in its `catalog_image_url`. When we don't carry the item, the "best" match is still wrong. | Only show a catalog photo when it's really the same item: a much higher bar, and label words + colour + pattern/fabric must agree. **Otherwise keep the user's own crop** (or the clean shot). Never show a catalog photo that contradicts the tag. **[decide]** Show the catalog photo at all, or only as a "shop this" link? | Adam |
+| 1.2 | **Wrong catalog photos on closet items.** A corduroy shirt we don't carry got a random, unrelated catalog picture | `ai/closet.py` `catalog_match()` takes the best-scoring catalog product above `CONFIDENT_SCORE` and swaps in its `catalog_image_url`. When we don't carry the item, the "best" match is still wrong. | **Decided: never show a catalog photo for an owned piece.** The closet always shows the user's own crop (or the clean shot). `catalog_match` may still set `product_id` / `brand` for "shop similar", but only above a much higher bar, where label words + colour + pattern/fabric agree. `catalog_image_url` is never used as the closet photo. | Adam |
 | 1.3 | The closet should hold **both outfits and separate pieces** | Today it's a flat list of pieces | Two views: **Outfits** (the full photo you uploaded, with its pieces tagged, like an Inspo post) and **Pieces** (each garment, its own photo). An outfit upload creates 1 outfit + N pieces linked to it. Backend: an `outfit_id` on closet items + `GET /closet/{user}/outfits`. | Adam (data), Ryan (UI) |
 
 ## 2. Home
@@ -32,7 +38,7 @@ Sat Oct 24, 2026, ~7 PM PT. For the council session. `staging` is at `6ff18f2` (
 
 | # | Problem | Where | Change | Owner |
 | --- | --- | --- | --- | --- |
-| 3.1 | Photos look stretched or cut off | `features/social/social_feed.dart:321`: every post is forced to `AspectRatio(.85)` | Use **each photo's own aspect ratio**: scale to the app's width, height follows. No stretching, no bars; a wide photo just makes a shorter post. **[decide]** a max height for very tall photos (e.g. 1.5× width) and crop the middle. Backend can send `width`/`height` per post so the layout doesn't jump while loading. | Ryan (+ Nabil: `photo_w`, `photo_h` on posts) |
+| 3.1 | Photos look stretched or cut off | `features/social/social_feed.dart:321`: every post is forced to `AspectRatio(.85)` | Use **each photo's own aspect ratio**: scale to the app's width, height follows. No stretching, no bars; a wide photo just makes a shorter post. **Decided:** tall photos are capped at **9:16** (height ≤ 16/9 × width) and centre-cropped; anything wider shows whole. Backend can send `width`/`height` per post so the layout doesn't jump while loading. | Ryan (+ Nabil: `photo_w`, `photo_h` on posts) |
 | 3.2 | Buttons under each post are squished; the comment bar is too big | Post card footer | Margin between the action row and the next post; smaller comment input, or a "Add a comment…" line that opens the sheet (3.4) | Ryan |
 | 3.3 | Liking is slow | `POST /fitcheck/{id}/like` **toggles**, so the app has to wait to know the result | **Optimistic:** flip the heart and count locally right away, send in the background, and roll back only on error. Backend: an idempotent `PUT /fitcheck/{id}/like {user_id, liked: true\|false}`, so a retried or queued request can't double-toggle. The old POST stays. | Nabil (route), Ryan (UI) |
 | 3.4 | Comments show up oddly | Comments are inline under the post | A **comment sheet** that slides up: newest at the bottom, input pinned at the bottom, keyboard-safe. Backend: `GET /fitcheck/{id}/comments?limit=&before=` (paged, with author names), so the feed doesn't ship every comment. | Nabil (route), Ryan (UI) |
@@ -53,7 +59,7 @@ Today the Welcome screen has one-tap team accounts (#45). There's no sign-in, an
 - `users` gets an auth identity.
 - Login returns a **session token**.
 - Every route reads the user from the token instead of trusting `user_id` from the app. Keep the `X-DTI-Key` too, for the tunnel.
-- Team accounts stay as a dev shortcut **[decide]**: keep them or hide them behind a flag.
+- **Decided:** login is the **last** item this sprint. The one-tap team accounts stay as they are until then.
 
 Owners: Nabil (auth routes + token check), Adam (core `Api` sends the token), Ryan (screens).
 
@@ -72,7 +78,7 @@ Owners: Nabil (auth routes + token check), Adam (core `Api` sends the token), Ry
 | `seed/raw/*` (git) | Keep | The Apify pulls; re-normalizing is free |
 | `users` | Reset | Everyone re-onboards (or logs in, section 4) |
 | `closet_items`, `fits`, `fit_cache` | Reset | The "stinky" generated closet matches and fits |
-| `fitcheck_posts` | Reset **[decide]**: re-post the team's real fits (`post_real_fits`) or start empty | |
+| `fitcheck_posts` | Reset: **decided, Inspo starts empty** | |
 | `carts`, `orders`, `swipes`, `wishlist` | Reset | |
 | `pair_cache`, `tryon_cache`, `uploads/`, `tryon/` | Reset | Generated reasons, try-on images and uploaded photos (incl. body photos: privacy win) |
 | `ai_usage` | Reset | Fresh budget counter |
@@ -108,7 +114,7 @@ Owners: Nabil (auth routes + token check), Adam (core `Api` sends the token), Ry
 
 ## Open questions for the council
 
-1. Login: **A**, **B** or **C**? Keep the team one-tap accounts?
-2. Rebuild: when (now, or after login)? Keep `tag_cache` / `summary_cache`? Re-post the real fits to Inspo, or start empty?
-3. Closet: show a catalog photo for an owned piece at all (1.2)?
-4. Inspo: a max height for tall photos (3.1)?
+1. Login (tackled last): **A**, **B** or **C**?
+2. Rebuild: when? Login is now last, so "after login" may be late; tonight before the dry run is the other option. Keep `tag_cache` / `summary_cache` (free re-tagging)?
+
+~~Closet catalog photos~~ (no) · ~~Inspo max height~~ (9:16) · ~~Inspo re-post~~ (start empty) · ~~team accounts~~ (stay): decided above.

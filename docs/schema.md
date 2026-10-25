@@ -209,12 +209,12 @@ Every `GET /feed` card (plain and `?seed=`) also has:
 | --- | --- | --- |
 | `hero_image_url` | string | Slide 1: the garment alone; `image_url` when the store has no such shot |
 | `closet_picks` | `[{id, label, category, image_url}]`, 0–4 | Slide 3: the user's own closet pieces that go with it, one per square (`ai.service.closet_picks`, Adam). `[]` with an empty closet |
-| `tryon` | `{status, image_url?, mode?}` | Slide 2. `status`: `ready` (`image_url` set; `mode` `ai` or `collage`), `pending` (rendering), `none` (not started), `needs_photo` (no photo of the user), `unavailable` (AI off / budget spent; `image_url` = the collage when there is one). `ai.service.tryon_status`, Adam |
+| `tryon` | `{status, image_url?, mode?}` | Slide 2. `status`: `ready` (`image_url` set; `mode` `ai`), `pending` (rendering), `none` (not started), `needs_photo` (no photo of the user), `unavailable` (AI off / budget spent; no image since #92: the app shows a retry card). `ai.service.tryon_status`, Adam |
 
 - `POST /feed/{user_id}/tryons` `{product_ids: [≤ 5]}` → `{product_id: tryon}`.
   - Starts the try-on of each product **with its `closet_picks`** in the background (`ai.service.prefetch_tryons`, Adam) and answers at once.
   - Idempotent: a cached or already-rendering try-on isn't started again. Duplicate ids are ignored.
   - Errors: 404 unknown product, 422 for 0 or more than 5 ids.
 - `GET /feed/{user_id}/tryons?ids=a,b,c` (≤ 5) → `{product_id: tryon}`, for polling a `pending` post every ~3 s.
-- Each user gets `PREFETCH_PER_USER_DAY` (default 20) AI pre-renders a day; past it, `unavailable` with the free collage. Accessories never go into the render.
+- Each user gets `PREFETCH_PER_USER_DAY` (default 20) AI pre-renders a day; past it, `unavailable` with no image (the app shows a retry card; there is no collage since #92). Accessories never go into the render.
 

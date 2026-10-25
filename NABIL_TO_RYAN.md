@@ -11,16 +11,16 @@ The full shapes are in `docs/schema.md` → "Home reels". Every `/feed` card (pl
   - Coverage: a real product-only photo for 941 / 3,188 products (all of Kith and Stüssy, 99% True Classic, 34% H&M, 8% Uniqlo, ~2% Princess Polly, none for Brandy Melville and Edikted, which only shoot on models). The rest fall back to `image_url`, so slide 1 always has a photo.
 - **`closet_picks`:** slide 3, `[{id, label, category, image_url}]`, 0–4, one per square, from Adam's `closet_picks`. Accessories show here but never go into the try-on render. It's `[]` for an empty closet, so build the "+ add from your closet" tiles.
 - **`tryon`:** slide 2, `{status, image_url?, mode?}`.
-  - `ready` → show `image_url` (`mode` `ai`, or `collage` = "outfit board").
+  - `ready` → show `image_url` (`mode` `ai`).
   - `pending` → shimmer + "Dressing you…".
   - `none` → not started yet.
   - `needs_photo` → the "Add a photo of you" card.
-  - `unavailable` → the collage `image_url` if present.
+  - `unavailable` → no image (since #92 there's no collage): the "try-on unavailable" card with retry.
   - It's the try-on of exactly the pieces in that card's `closet_picks`.
 - **Pre-loading:**
   - `POST /feed/{user}/tryons {product_ids: [≤5]}` → `{id: tryon}` starts the next posts' try-ons. Call it on load for posts 1–3, then for n+1…n+3 as the user lands on post n.
   - `GET /feed/{user}/tryons?ids=a,b` → poll every ~3 s while a visible post is `pending`.
-  - Each user gets ~20 AI pre-renders a day; past that, cards say `unavailable` with the free collage.
+  - Each user has a daily AI pre-render budget (`PREFETCH_PER_USER_DAY`); past it, cards say `unavailable`.
 - **Live on the shared server** once Adam deploys (his next step 1). The core fields, methods and mocks are already in Adam's #66 (`heroImageUrl`, `closetPicks`, `tryOn`, `prefetchTryOns`, `tryOnStatus`).
 
 ---

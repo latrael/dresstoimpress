@@ -18,7 +18,7 @@ Sun Oct 25, 2026, ~12:30 AM PT. Written by Nabil for the team. `staging` is at `
 | File | What it is |
 | --- | --- |
 | `docs/sprint-4/current-home.png` | Today's Home on Nabil's iPhone 16: the black band at the top, the system font, the letterboxed photo, buttons hidden behind the nav bar |
-| `docs/sprint-4/logo-board.png` | **The logo board** (arch mark + "niche" wordmark). **Nabil: save the logo image here; it isn't in the repo yet.** |
+| `docs/sprint-4/logo-board.png` | **The logo board:** the arch mark (an arch = a niche, the dot = the hanger hook) on merlot and on cream, plus the "niche" wordmark. The reference for the wordmark and the welcome animation (§2, §5.1). |
 | `docs/sprint-4/font-banks.html` | **Five font pairings, rendered** on a Niche product card in our colours. Bank C is the team's pick (§2). |
 
 ---
@@ -393,5 +393,5 @@ For every section, Ryan posts **before/after screenshots from the iPhone 16 and 
 ## 14. Files to attach
 - `docs/sprint-4/current-home.png`: **added** (Nabil's iPhone 16 screenshot).
 - `docs/sprint-4/font-banks.html`: **added** (open it in any browser).
-- `docs/sprint-4/logo-board.png`: **Nabil to add.** The logo-board screenshot (arch mark + "niche" wordmark) is the reference for the wordmark font and the welcome animation.
+- `docs/sprint-4/logo-board.png`: **added** (the arch mark + "niche" wordmark): the reference for the wordmark and the welcome animation.
 - **Optional:** a screen recording of a reels app's swipe feel, if anyone has a reference they like, at `docs/sprint-4/reference-*.mp4|png`.

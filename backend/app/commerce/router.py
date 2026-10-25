@@ -140,7 +140,8 @@ def _size_pick(p: dict, bp: dict) -> Optional[str]:
     if not (bp.get("height_cm") and bp.get("weight_kg")):
         return (_usual_size(p, usual) or {}).get("size") if usual else None
     out = recommend_size(p, bp["height_cm"], bp["weight_kg"], fit=bp.get("fit") or "regular",
-                         shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in"))
+                         shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in"), chest_in=bp.get("chest_in"),
+                         hip_in=bp.get("hip_in"), inseam_in=bp.get("inseam_in"), usual_size=usual)
     if not out.get("size") and usual:
         out = _usual_size(p, usual) or out
     return out.get("size")

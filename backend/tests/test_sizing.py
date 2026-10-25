@@ -267,7 +267,7 @@ def test_waist_inseam_sizes_pick_waist_then_length() -> None:
     jeans = _bottom(["28/30", "28/32", "30/30", "30/32", "32/30", "32/32", "34/32"])
     tall = recommend_size(jeans, 185.0, 75.0, waist_in=32)
     short = recommend_size(jeans, 165.0, 75.0, waist_in=32)
-    assert tall == {"size": "32/32", "confidence": "high", "reason": "nearest waist size to 32 in"}
+    assert tall == {"size": "32/32", "confidence": "high", "reason": "waist 32 in → 32/32"}
     assert short["size"] == "32/30"
     est = recommend_size(jeans, 175.0, 70.0)
     assert est["size"] in {"30/32", "32/32"} and est["confidence"] == "low"

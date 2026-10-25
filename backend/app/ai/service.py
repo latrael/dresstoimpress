@@ -36,6 +36,10 @@ PAIR_TTL = int(os.getenv("PAIR_CACHE_SECONDS", "600"))
 PAIR_REUSE = os.getenv("PAIR_REUSE", "1") != "0"
 PAIR_BANK_TTL = int(os.getenv("PAIR_BANK_SECONDS", "3600"))
 PAIR_BANK_MAX = 120
+# Rules-first pairing: Claude re-ranks at most this many rules-shortlisted candidates (>= k), and its score
+# counts PAIR_LLM_WEIGHT of the blend (the rest is the rules score), so a re-run gives the same order.
+PAIR_SHORTLIST = int(os.getenv("PAIR_SHORTLIST", "20"))
+PAIR_LLM_WEIGHT = float(os.getenv("PAIR_LLM_WEIGHT", "0.5"))
 _refreshing: set[str] = set()
 _refresh_lock = threading.Lock()
 CATEGORIES = {"top", "bottom", "outerwear", "shoes", "dress", "accessory"}
@@ -262,15 +266,58 @@ def _safe_reason(r: PairResult, product: dict, closet: list[dict]) -> PairResult
     return r.model_copy(update={"reason": f"pairs with your {label}", "pairs_with": [item["id"]]})
 
 
+def _closet_repr(c: dict) -> dict:
+    return {"category": c.get("category"), "color": c.get("color"), "pattern": c.get("pattern"),
+            "style_tags": c.get("style_tags") or [], "formality": c.get("formality"), "label": c.get("label")}
+
+
+def _bad_pair(product: dict, item: dict) -> bool:
+    """A closet item that can't be worn with the product: a hard clash (athletic<->formal, 3+ formality steps)
+    or the same category (a top doesn't 'pair with' another top)."""
+    from .complete_look import _as_closet_shape, clashes_with
+
+    if item.get("category") == product.get("category") and product.get("category") != "accessory":
+        return True
+    return clashes_with(_as_closet_shape(product, "catalog"), _closet_repr(item))
+
+
+def _rules_rank(cands: list[dict], closet: list[dict], style_text: str) -> list[dict]:
+    """Every candidate scored by the outfit rules, with pairs_with filtered to wearable closet items."""
+    from .outfit_rules import rank
+
+    by_id = {c["id"]: c for c in closet}
+    prods = {p["id"]: p for p in cands}
+    out = []
+    for r in rank(cands, closet, style_text, k=len(cands)):
+        p = prods.get(r["product_id"]) or {}
+        pw = [c for c in r.get("pairs_with", []) if c in by_id and not _bad_pair(p, by_id[c])]
+        if not pw:
+            pw = [c["id"] for c in closet if not _bad_pair(p, c)][:1]
+        out.append({**r, "pairs_with": pw})
+    return out
+
+
+def _validated(r: PairResult, product: dict, closet: list[dict], rule: dict | None) -> PairResult:
+    """Drop pairs_with items that clash with or duplicate the product. When Claude's pairing was built on a
+    clashing item, its reason is about that item too, so the rules' reason and pairing take over."""
+    by_id = {c["id"]: c for c in closet}
+    keep = [c for c in r.pairs_with if c in by_id and not _bad_pair(product, by_id[c])]
+    if keep == list(r.pairs_with):
+        return r
+    if keep:
+        return r.model_copy(update={"pairs_with": keep})
+    rule = rule or {}
+    return r.model_copy(update={"pairs_with": rule.get("pairs_with", []),
+                                "reason": polish_reason(rule.get("reason", "")) or "Pairs with your closet"})
+
+
 def _fallback(cands: list[dict], ranges: dict, k: int, closet: list[dict] | None = None,
               style_text: str = "") -> list[PairResult]:
     """No-AI ranking (Claude off, over budget, or bad output): in-budget first, then the
     outfit rules scorer (category fit, color harmony, patterns, style overlap)."""
-    from .outfit_rules import rank
-
     in_budget = [p for p in cands if _in_budget(p, ranges)]
     over = [p for p in cands if not _in_budget(p, ranges)]
-    ranked = rank(in_budget, closet or [], style_text, k) + rank(over, closet or [], style_text, k)
+    ranked = _rules_rank(in_budget, closet or [], style_text)[:k] + _rules_rank(over, closet or [], style_text)[:k]
     return [PairResult(product_id=r["product_id"], id=r["product_id"], score=r["score"],
                        reason=polish_reason(r["reason"]) or r["reason"], pairs_with=r["pairs_with"])
             for r in ranked[:k]]
@@ -321,7 +368,7 @@ def _refresh_later(ckey: str, bkey: str, prompt: str, user_id: str) -> None:
 
     def run():
         try:
-            _remember(ckey, bkey, ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL), user_id)
+            _remember(ckey, bkey, ai_json(prompt, max_tokens=4096, model=CLAUDE_PAIR_MODEL), user_id)
         except Exception as e:  # noqa: BLE001 - a failed refresh just leaves the bank as it was
             log.warning("background pair refresh failed: %s", e)
         finally:
@@ -348,6 +395,13 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
 
     if text_mock() or not closet:
         return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
+
+    # Rules first (free, deterministic): score every candidate with the outfit rules, then hand Claude only a
+    # short list to re-rank and explain. A 30-50 item pointwise ranking moved around between identical calls;
+    # a 2k shortlist with blended scores and fixed tie-breaks doesn't, and the prompt is a third of the size.
+    rules = {r["product_id"]: r for r in _rules_rank(cands, closet, user.get("style_text", ""))}
+    cands = sorted(cands, key=lambda p: (not _in_budget(p, ranges), -rules.get(p["id"], {}).get("score", 0.0), p["id"]))
+    cands = cands[:max(k, min(PAIR_SHORTLIST, 2 * k))]
 
     slim_closet = [{"id": c["id"], "label": c.get("label") or f'{c["color"]} {c["category"]}',
                     "brand": c.get("brand"),  # so a reason can say "your Stüssy tee"
@@ -380,7 +434,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         _refresh_later(ckey, bkey, prompt, user_id)
     else:
         try:
-            raw = ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL)
+            raw = ai_json(prompt, max_tokens=4096, model=CLAUDE_PAIR_MODEL)
         except BadModelOutput:
             return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
         _remember(ckey, bkey, raw, user_id)
@@ -398,8 +452,13 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
             pairs_with=[c for c in r.get("pairs_with", []) if c in closet_ids],
         ))
     by_id = {p["id"]: p for p in cands}
+    out = [_validated(r, by_id[r.product_id], closet, rules.get(r.product_id)) for r in out]
     out = [_safe_reason(r, by_id[r.product_id], closet) for r in out]
-    out.sort(key=lambda r: r.score, reverse=True)
+    # blended score: half Claude, half rules; ties broken by the rules score then id, so a re-run is identical
+    out = [r.model_copy(update={"score": round(PAIR_LLM_WEIGHT * r.score
+                                               + (1 - PAIR_LLM_WEIGHT) * rules.get(r.product_id, {}).get("score", 0.5), 4)})
+           for r in out]
+    out.sort(key=lambda r: (-r.score, -rules.get(r.product_id, {}).get("score", 0.0), r.product_id))
     out = out[:k]
     if not out:
         return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
@@ -413,7 +472,8 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
     # budget-first: anything in the user's price range ranks above anything outside it
     # one consistent voice on every card (capitalized, no dangling "...with your", <= 12 words)
     out = [r.model_copy(update={"reason": polish_reason(r.reason) or r.reason}) for r in out]
-    out.sort(key=lambda r: (not _in_budget(by_id.get(r.product_id) or get_product(r.product_id), ranges), -r.score))
+    out.sort(key=lambda r: (not _in_budget(by_id.get(r.product_id) or get_product(r.product_id), ranges), -r.score,
+                            r.product_id))
     return out
 
 

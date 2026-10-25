@@ -198,6 +198,7 @@ def extract_json(text: str) -> Any:
     return obj
 
 
+
 def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
                 model: str | None = None, schema: dict | None = None) -> Any:
     """Call Claude and return parsed JSON. Retries once on unparseable output.

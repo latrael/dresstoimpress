@@ -157,4 +157,4 @@ def test_pair_reason_naming_unknown_closet_item_is_replaced():
     assert "black tee" not in fixed.reason and fixed.pairs_with and fixed.pairs_with[0] in {"c1", "c2"}
     good = PairResult(product_id="p1", id="p1", score=0.9, reason="layer it over your white baby tee", pairs_with=["c1"])
     assert service._safe_reason(good, product, closet) is good
-    assert "ONLY items they own" in prompts.PAIR and prompts.PAIR_VERSION == "v4"
+    assert "ONLY items they own" in prompts.PAIR and prompts.PAIR_VERSION == "v5"

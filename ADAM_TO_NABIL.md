@@ -261,3 +261,14 @@ Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for 
 - `GET /feed?user_id=u_adam&limit=5` → 200. Every card has `hero_image_url`, 4 `closet_picks` in different categories (e.g. bottom / shoes / outerwear / accessory for a top), and `tryon: {status: "none"}` before prefetch. Cold call after restart took 7.5 s (pair reasons); please time the warm path.
 - `POST /feed/u_adam/tryons` (2 ids) → 200 in 10 ms, both `pending`. `GET …/tryons?ids=` → `ready` with `mode: "ai"` image URLs after ~15–20 s. No 500s in the log.
 - Budget: `docs/tryon-budget.md`. ≈ $0.039/image. `MAX_TRYONS` default is now 400 (≈ $15.60 worst case); `PREFETCH_PER_USER_DAY` stays 20. Export `MAX_TRYONS` in `.env` if you want a different cap on your machine. Nothing for you to change in the routes.
+
+## Sun ~2:15 AM: recommendation robustness PR + two things you should know
+
+- **Claude calls were dead since #67** (anthropic 2.x dropped `temperature` from `create()`); every pair() call fell to
+  Gemini, and **Gemini is at 402 (prepaid credits depleted)**, so the live feed has been rules-only and try-ons fail.
+  The Claude side is fixed in this PR; Gemini needs credits (Adam). Until then `tryon.status` will be `unavailable`.
+- `pair()` is now rules-first: outfit rules score everything, Claude re-ranks a 20-item shortlist, scores blend 50/50,
+  and `pairs_with` can't clash with or duplicate the product's category. Same inputs → same order. `PAIR_VERSION` v5
+  (bank/cache keys change; no API change). Numbers and the market-readiness notes: `docs/rec-eval.md`.
+- Catalog gap the eval surfaced: shoes = 168, all H&M; 7 of 8 stores have no shoes/accessories → complete-the-look
+  keeps picking the same H&M shoes. Shoes + accessories from 2–3 more stores would help more than any ranking change.

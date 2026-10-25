@@ -131,7 +131,7 @@ HARD RULES:
 6. {_ONLY_JSON}
 OUTPUT: array of {{k}} objects, best first:
 [{{{{"product_id": string, "score": number 0-1, "reason": string, "pairs_with": [string]}}}}]"""
-PAIR_VERSION = "v4"  # bump when PAIR changes so cached rankings and the reason bank start fresh (v4: strict closet refs)
+PAIR_VERSION = "v5"  # bump when PAIR changes so cached rankings and the reason bank start fresh (v5: rules-first shortlist)
 
 FIT_TAGGER = f"""ROLE: fashion cataloguer. The image is an outfit photo (mirror selfie, street photo or flat-lay).
 HARD RULES:

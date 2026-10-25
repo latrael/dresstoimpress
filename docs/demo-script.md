@@ -43,7 +43,7 @@ Only if we demo it live (25 s). Otherwise, say the line and start on Home.
 ## 0:40–1:15 · Home as reels (Ryan drives, Adam narrates the AI)
 
 - **One product fills the screen.** Swipe up for the next one (`GET /feed`). Slide through its 3 photos:
-  1. **The item on its own:** the store's product shot (`hero_image_url`; 941 of 3,188 products have one, the rest use their main photo).
+  1. **The item on its own:** the store's product shot (`hero_image_url`; 1,167 of 3,476 products have one, the rest use their main photo).
   2. **On you:** the item tried on *your* photo with pieces from your closet, already rendered before you got there (`tryon`, prefetched with `POST /feed/{user}/tryons`). Label: "on you".
   3. **Goes with:** a 2×2 grid of pieces **you already own** that go with it, accessories included (`closet_picks`). These are your own photos, never a store's.
 - **Adam:** "Every post is a real listing pulled by Apify, in your size and in stock, ranked by Claude against your closet. Slide two is Gemini putting it on you, with the pieces from slide three."
@@ -117,7 +117,7 @@ Only if we demo it live (25 s). Otherwise, say the line and start on Home.
 ## Judge Q&A crib
 
 - **Is the data real?**
-  - Yes: 3,188 products from 8 stores (H&M, Uniqlo and six Shopify brands like Princess Polly, Kith and Stüssy), via three Apify actors, with per-size stock (1,727 women's, 1,170 men's, 291 unisex).
+  - Yes: 3,476 products from 8 stores (H&M, Uniqlo and six Shopify brands like Princess Polly, Kith and Stüssy), via three Apify actors, with per-size stock (1,922 women's, 1,218 men's, 336 unisex), including shoes from H&M, Princess Polly and Kith and accessories from six stores.
   - It's a snapshot taken at ingest. The only live scraping is photo search and "shop this fit": if a piece isn't in our catalog, it searches H&M live (capped and cached).
 - **Is the payment real?** Yes, against Capital One's Nessie sandbox API: one purchase per store, and each one can be checked by its purchase id.
 - **How does it know my size?**

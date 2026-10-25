@@ -458,11 +458,14 @@ def save(products: list[dict], dry_run: bool = False) -> list[dict]:
     dry_run. Returns what was (or would be) saved."""
     from ..store import store  # lazy: DATA_DIR is read at import (tests set it late)
 
+    from . import image_kinds
+
     uniq = {p["id"]: p for p in products}
     stored = {p.get("id"): p for p in store.list("products")} if uniq else {}  # one read, not one per product
+    kinds = image_kinds.load_cache()  # photo labels from scripts.classify_images: free to re-apply
     good = []
     for pid, p in uniq.items():
-        merged = keep_ai_fields(p, stored.get(pid))
+        merged = image_kinds.apply(keep_ai_fields(p, stored.get(pid)), kinds)
         q = _valid(merged)
         if q:  # validation drops fields the model doesn't define yet (summary): carry them over as they are
             good.append({**q, **{k: merged[k] for k in AI_FIELDS if k in merged and k not in q}})

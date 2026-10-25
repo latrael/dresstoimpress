@@ -38,7 +38,8 @@ Source of truth: `backend/app/models.py` → `Product`. Use these exact names.
 | `label` | string | `ivory ribbed sweater` | from `POST /products/tag` |
 | `scraped_at` | ISO string or null | `2026-10-24T02:16:01Z` | |
 | `source` | enum | `ingest` | `ingest` (Nabil), `live_search` (Fit Check lookups), `seed` (demo) |
-| `images` | `{url, kind}[]` | `[{"url": "...", "kind": "product"}, {"url": "...", "kind": "retailer_model"}]` | gallery for Ryan's carousel; same product + colour only; `image_url` stays primary; `kind` = `product` (garment only) or `retailer_model` |
+| `images` | `{url, kind}[]` | `[{"url": "...", "kind": "product"}, {"url": "...", "kind": "retailer_model"}]` | gallery for Ryan's carousel; same product + colour only; `image_url` stays primary; `kind` = `product` (the garment alone and whole), `retailer_model` (worn by a person), `detail` (close-up) or `other` (size chart, graphic). Labelled by `scripts.classify_images` (sprint 4); the labels are cached per photo in `seed/image_kinds.json` and re-applied on every ingest |
+| `hero_image_url` | string or null | `"https://cdn.shopify.com/.../KHMA030579-001-Detail.jpg?v=1"` | the first `product` photo in the gallery: Home slide 1 (sprint-4 §6.2). Null when the store only has model shots. **On `/feed` cards it's never null:** it falls back to `image_url` |
 | `description` | string or null | `"Soft cotton tee with a relaxed fit."` | real retailer text as plain text, else null; never a pairing `reason`; the app shows it behind "More" |
 | `summary` | string or null | `"A light-wash baggy jean with a relaxed, streetwear fit."` | card text: ≤ 2 sentences, ≤ 160 chars, plain. Stage 2 (`scripts.tag_catalog`) fills it: Haiku condenses `description`, or writes a one-liner from name + colour + category + style tags when there is none (all H&M). Never invents fabric or fit. Cached per id + `SUMMARY_VERSION`; rules template when AI is off. The app's `Product.blurb()` prefers it and falls back to the first sentence of `description`. Null until stage 2 has run |
 | `department` | enum or null | `women` | `men`, `women`, `unisex`; null = unknown (shown to everyone). Set by the ingest normalizer (H&M `ladies_`/`men_` category code, Uniqlo `genderCategory`). **Fallback in stage 2** for nulls only, never overwriting a value: rules from the name / URL (`women's`, `ladies`, `dress`, `skirt`, `blouse`… → women; `men's`, `mens`, `/men/` → men), then the tagger's `department` answer. `tag_catalog --departments-only` backfills just this |
@@ -200,3 +201,20 @@ Response: `{closet_added: [ClosetItem], closet_skipped_duplicates: int, body_pro
 
 `POST /users/{id}/body-scan` now takes 1–6 image parts named `files` (the single `file` part still works). Every photo is scanned; the full-body ones are averaged (chest/waist/hip/inseam to the nearest 0.5 in, `build` and `presenting` by majority vote). New `body_profile` fields: `scan_photos` (full-body photos used; 0 = formula only) and `confidence: "low"|"medium"|"high"` (1 / 2 / 3+ full-body photos). Response adds `skipped` (photos ignored because not full-body). `body_photo_url` is the first full-body photo. `?commit=false` and `/body-scan/confirm` carry the new fields through. App: `Api.bodyScanMany(photos, heightCm:, weightKg:, mimeTypes:, commit:)`, `BodyProfile.scanPhotos` / `.confidence`, `BodyScanResult.skipped`.
 - App: `Api.onboardFromPhotos(photos, heightCm:, weightKg:, styleHint:, mimeTypes:)` → `PhotoOnboardingResult{closetAdded, skippedDuplicates, bodyProfile?, bodyPhotoUrl, styleText, styleTags, colors, formality, shopFor, user}`.
+
+## Home reels (sprint 4): extra `/feed` card fields + try-on prefetch
+
+Every `GET /feed` card (plain and `?seed=`) also has:
+| Field | Shape | Meaning |
+| --- | --- | --- |
+| `hero_image_url` | string | Slide 1: the garment alone; `image_url` when the store has no such shot |
+| `closet_picks` | `[{id, label, category, image_url}]`, 0–4 | Slide 3: the user's own closet pieces that go with it, one per square (`ai.service.closet_picks`, Adam). `[]` with an empty closet, or until Adam's part lands |
+| `tryon` | `{status, image_url?, mode?}` | Slide 2. `status`: `ready` (`image_url` set; `mode` `ai` or `collage`), `pending` (rendering), `none` (not started), `needs_photo` (no photo of the user), `unavailable` (AI off / budget spent; `image_url` = the collage when there is one). `ai.service.tryon_status`, Adam |
+
+- `POST /feed/{user_id}/tryons` `{product_ids: [≤ 5]}` → `{product_id: tryon}`.
+  - Starts the try-on of each product **with its `closet_picks`** in the background (`ai.service.prefetch_tryons`, Adam) and answers at once.
+  - Idempotent: a cached or already-rendering try-on isn't started again. Duplicate ids are ignored.
+  - Errors: 404 unknown product, 422 for 0 or more than 5 ids.
+- `GET /feed/{user_id}/tryons?ids=a,b,c` (≤ 5) → `{product_id: tryon}`, for polling a `pending` post every ~3 s.
+- Both routes answer **501** until Adam's renderer is on the server. Until then cards carry `tryon: {"status": "none"}`.
+

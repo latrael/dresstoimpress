@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~12:30 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~1:30 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,56 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 1:30 AM: my sprint-4 part is merged. **What's next for you** (sprint-4 §10 + §12), in order
+
+**Already on `staging` from me** (in this merge):
+- **The `/feed` card fields:** every card (plain and `?seed=`) has `hero_image_url`, `closet_picks` and `tryon`.
+- **The prefetch routes:** `POST /feed/{user}/tryons {product_ids ≤5}` and `GET /feed/{user}/tryons?ids=`.
+- **Wiring:** `app/commerce/reels.py` calls **your three functions by name** through `getattr(service, …)`. Until they exist:
+  - cards carry `closet_picks: []` and `tryon: {"status": "none"}`;
+  - the routes answer 501;
+  - nothing breaks.
+- **The shapes** are in `docs/schema.md` → "Home reels".
+- **Catalog photos labelled:** `scripts/classify_images.py` (Haiku on a contact sheet per product) labelled every photo `product | model | detail | other`. The labels are cached in `seed/image_kinds.json` and re-applied on every ingest.
+  - The snapshot now has `images[].kind` (the new `detail`/`other` values are added to `ProductImage.kind`) and `hero_image_url` (`Product` field).
+  - **Coverage: 941 / 3,188 products have a real product-only hero photo:** Kith 164/164, Stüssy 94/94, True Classic 179/180, H&M 430/1,255, Uniqlo 67/798, Princess Polly 7/345, Brandy Melville 0/178, Edikted 0/174 (those stores only shoot on models). 10,809 photos labelled, ~$0.21 of Haiku. Princess Polly's `…-modelinfo-…` filenames are forced to `model` (tight crops fooled the AI on 4 of 11).
+- **Tests:** `tests/test_reels.py` stubs your functions. Once yours are real, these tests are the contract.
+
+**Your next steps:**
+1. **Now: load the new snapshot on the shared server and restart.**
+   `python -m scripts.load_products` (no `--replace`), then restart. Check that `GET /feed?user_id=u_nabil` cards have `hero_image_url`, `closet_picks` and `tryon`. Ryan needs this live to build slide 1.
+2. **Core mocks first (Ryan is blocked on these for Home, §6):**
+   - `FeedCard`/`RankedProduct` gain `heroImageUrl`, `closetPicks` (`[{id, label, category, imageUrl}]`) and `tryOn` (`{status, imageUrl?, mode?}`).
+   - New methods: `Api.prefetchTryOns(userId, productIds)` → `POST /feed/{user}/tryons` and `Api.tryOnStatus(userId, ids)` → `GET /feed/{user}/tryons?ids=`.
+   - Mock data: a `ready` card, a `pending` one that flips to `ready` after a few seconds, and a `needs_photo` one, plus a 4-piece and a 2-piece `closetPicks`.
+   - Treat 501 from the routes as "not available yet" (show `tryOn.status` from the card).
+3. **`ai.service.closet_picks(user_id, product, k=4) -> list[{id, label, category, image_url}]`.**
+   - **What it is:** rules only (free, instant: it runs for 20 cards per `/feed`, which is 34 ms today, so please keep it under ~5 ms per card). It picks the user's own closet pieces that go with `product`, **one per square, different categories**, with accessories allowed.
+   - **Slot order:** bottom → top, shoes, outer/layer, accessory; top → bottom, shoes, outer, accessory; shoes → top, bottom, outer, accessory; dress → shoes, outer, bag, accessory.
+   - **Ranking:** colour/style/formality via the Fit Score v2 rubric. Skip athletic ↔ formal clashes, like Complete the Look.
+   - **`image_url` must be the user's own photo** (`display_image_url`), never a catalog shot (sprint-3 §1.2). It returns `[]` for an empty closet.
+4. **`ai.service.tryon_status(user_id, product_id, closet_item_ids) -> {status, image_url?, mode?}`.**
+   - **Cache lookup only, no rendering.** It must use **the same cache key** `try_on(user_id, [product_id], closet_item_ids)` would, including the `pick_source_photo` choice, so a prefetched image is exactly what slide 2 shows.
+   - **Statuses:**
+     - `ready` with `image_url` + `mode` (`ai` or `collage`);
+     - `pending` (rendering now);
+     - `none` (not started);
+     - `needs_photo` (no body/outfit photo);
+     - `unavailable` (AI off / cap reached, with the collage `image_url` when there is one).
+5. **`ai.service.prefetch_tryons(user_id, items: list[(product_id, closet_item_ids)]) -> {product_id: status}`.**
+   - **Background rendering:** a pool of 2, with in-flight de-duplication, calling `try_on`. It returns at once (`pending` for what it started).
+   - **The routes give it** at most 5 products, each with its `closet_picks` ids. You decide whether accessories go into the render (§13.6); the grid shows them either way.
+   - **Budget (§13.5): bring numbers.**
+     - What one Gemini try-on costs now, and a new `MAX_TRYONS` (150 server-wide won't survive pre-loading).
+     - A per-user daily prefetch cap (proposed ~20).
+     - Past the cap, return `unavailable` with the free collage.
+6. **Run `tests/test_reels.py` against your real functions** (drop the stubs or add your own tests), restart the shared server, and tell Ryan in `ADAM_TO_RYAN.md` that the slides are live.
+7. **Leave for later:** Fit Creator, the closet re-runs, login (still held back until the team OKs it).
+
+**What I need back:** a line in `ADAM_TO_NABIL.md` when steps 1 and 2 are done, and the try-on budget numbers.
 
 ---
 

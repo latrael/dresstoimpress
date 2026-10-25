@@ -24,32 +24,14 @@ REPLACES = {
 UPPER = {"top", "outerwear", "dress"}
 LOWER = {"bottom", "dress"}
 
-# Season / layer compatibility: shorts never go into a trench-coat photo. 0 = light (summer), 1 = mid, 2 = heavy.
-_LIGHT = ("shorts", "short-sleeve", "short sleeve", "tank", "tee", "t-shirt", "tshirt", "linen", "sandal", "flip-flop",
-          "slide", "swim", "crop", "sleeveless", "camisole", "polo", "skirt", "mini")
-_HEAVY = ("coat", "trench", "overcoat", "puffer", "parka", "wool", "boot", "sweater", "hoodie", "fleece", "knit",
-          "cardigan", "turtleneck", "scarf", "beanie", "thermal", "shearling", "down")
+# Season / layer compatibility lives in warmth.py (shared with the fit creator): shorts never go into a
+# trench-coat photo.
+from .warmth import piece_warmth as _piece_warmth  # noqa: E402
+from .warmth import product_warmth as _product_warmth  # noqa: E402
+from .warmth import warmth  # noqa: E402,F401  (re-exported for tests)
+
 HEAVY_PENALTY = 6.0  # heavy-vs-light: effectively disqualified unless it's the only photo
 MID_PENALTY = 1.5
-
-
-def warmth(text: str | None, category: str | None = None) -> int:
-    """0 light / 1 mid / 2 heavy, from the label or product name (+ tags) and the category."""
-    t = (text or "").lower()
-    if any(w in t for w in _HEAVY):
-        return 2
-    if any(w in t for w in _LIGHT):
-        return 0
-    return 2 if category == "outerwear" else 1
-
-
-def _product_warmth(prod: dict) -> int:
-    text = " ".join([str(prod.get("name") or prod.get("label") or ""), *map(str, prod.get("style_tags") or [])])
-    return warmth(text, prod.get("category"))
-
-
-def _piece_warmth(piece: dict) -> int:
-    return warmth(piece.get("label"), piece.get("category"))
 
 
 def _box(v: Any) -> list[float] | None:

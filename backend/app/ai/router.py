@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from ..models import (BodyProfileUpdate, ClosetItem, ClosetOutfit, CompleteLookRequest, FitCreateRequest, FitScoreRequest, PairRequest,
+from ..models import (BodyProfileUpdate, ClosetItem, ClosetOutfit, CompleteLookRequest, OutfitRename, FitCreateRequest, FitScoreRequest, PairRequest,
                       PairResult, ShopFitRequest,
                       SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse, VibeRequest)
 from ..store import DATA_DIR, store
@@ -160,6 +160,18 @@ def closet_outfits(user_id: str):
     from . import closet
 
     return closet.list_outfits(user_id)
+
+
+@router.patch("/closet/{user_id}/outfits/{outfit_id}", response_model=ClosetOutfit)
+def closet_outfit_rename(user_id: str, outfit_id: str, body: OutfitRename):
+    """Give an outfit a nickname (`{"name": "Date night"}`); blank restores the automatic one. 404 if it
+    isn't that user's."""
+    from . import closet
+
+    out = closet.rename_outfit(user_id, outfit_id, body.name)
+    if out is None:
+        raise HTTPException(404, "unknown outfit")
+    return out
 
 
 @router.delete("/closet/{user_id}/outfits/{outfit_id}")

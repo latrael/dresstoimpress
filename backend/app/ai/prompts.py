@@ -280,21 +280,23 @@ INPUT:
 Body: {{body}}
 Fit preference: {{fit}}
 Style: {{style_text}}
-Occasion: {{occasion}}
+Occasion (the person's own words, follow them): {{occasion}}
+Season for it: {{season}} (light = hot day: no coats, boots or knits; heavy = cold: no shorts, skirts, sandals or
+tanks; mid = either, but never shorts/sandals under a coat)
 Closet (what they already own): {{closet_json}}
 HARD RULES:
 1. Build exactly {{count}} different complete outfits from the CLOSET ONLY: top + bottom (or dress); add shoes,
    outerwear and one accessory when the closet has fitting ones. If the closet has no piece for a slot, leave the
    slot out; never substitute or suggest something they don't own.
 2. The {{count}} outfits must differ in at least two pieces. Prefer pieces that match in colour, formality and style
-   (no athletic with formal, no clashing patterns).
+   (no athletic with formal, no clashing patterns). Every outfit must suit the Season above.
 3. Use only ids from Closet, one piece per slot. Never invent ids, garments or brands.
 4. reason: 1-2 sentences, casual second person, naming the build or a measurement (e.g. "slim build, 30.5 in
    waist") and the closet piece the look is built around. {_NO_LOOKS}
 5. {_ONLY_JSON}
 OUTPUT: array of {{count}} objects:
 [{{{{"name": string 2-4 words, "reason": string, "pieces": [{{{{"slot": "{"|".join(SLOTS)}", "id": string}}}}]}}}}]"""
-FIT_CREATOR_VERSION = "v4"  # bump when FIT_CREATOR changes so cached fits are rebuilt (v4: closet only)
+FIT_CREATOR_VERSION = "v5"  # bump when FIT_CREATOR changes so cached fits are rebuilt (v5: free-text occasion + season)
 
 
 # ---- Catalog summaries (sprint-2 A7 / B4): Product.summary, 1-2 plain sentences for the card ----

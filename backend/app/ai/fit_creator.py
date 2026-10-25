@@ -23,6 +23,7 @@ from .complete_look import _as_closet_shape, complete_look
 from .llm import CLAUDE_PAIR_MODEL, BadModelOutput, ai_json, text_mock
 from .outfit_rules import score_product
 from .sizing import recommend_size
+from .warmth import HEAVY, coherent, exposed_light, fits_season, occasion_season, season_label
 
 log = logging.getLogger(__name__)
 
@@ -244,10 +245,42 @@ def _fill(pieces: list[dict], closet: list[dict], catalog: list[dict], style_tex
     return pieces
 
 
+def _season_fix(pieces: list[dict], season: int) -> list[dict]:
+    """Make a fit season-coherent, deterministically: drop pieces that clash with the occasion's season
+    (shorts in the cold, coats in the heat), then if light and heavy pieces still coexist, keep the side the
+    season asks for (mid season: keep the heavier side; a coat over a tee is fine, shorts under a coat is not).
+    Dropped slots show up in `missing` so the app can say what the closet lacks."""
+    out = [p for p in pieces if fits_season([p], season)]
+    if not coherent(out):  # mid season with both: keep the heavy side, drop the exposed light pieces
+        out = [p for p in out if not exposed_light(p)]
+    return out
+
+
+def _season_missing(pieces: list[dict], season: int) -> list[str]:
+    """Why a slot is empty for THIS season: "no warm layer in your closet" etc."""
+    notes = []
+    slots = {p["slot"] for p in pieces}
+    if season == HEAVY and "outerwear" not in slots:
+        notes.append("no warm layer in your closet")
+    return notes
+
+
+def _season_check(fit: dict, season: int) -> dict | None:
+    """Validator: repair a fit that mixes shorts with coats or ignores the occasion's season; None if it can't
+    stay a complete outfit afterwards."""
+    pieces = _season_fix(fit["pieces"], season)
+    if not _complete(pieces):
+        return None
+    fit = {**fit, "pieces": pieces, "missing": _missing(pieces) + _season_missing(pieces, season)}
+    return fit
+
+
 def _finish(fit_id: str, name: str, reason: str, occasion: str | None, pieces: list[dict]) -> dict:
     order = {s: i for i, s in enumerate(("outerwear", "top", "dress", "bottom", "shoes", "accessory"))}
     pieces = sorted(pieces, key=lambda p: order.get(p["slot"], 9))
-    return {"id": fit_id, "name": name, "occasion": occasion, "reason": reason, "pieces": pieces,
+    season = occasion_season(occasion)
+    return {"id": fit_id, "name": name, "occasion": occasion, "season": season_label(season), "reason": reason,
+            "pieces": pieces,
             "new_total_usd": round(sum(_price(p["product"]) for p in pieces if p["source"] == "catalog"), 2),
             "closet_count": sum(1 for p in pieces if p["source"] == "closet"), "try_on": None,
             "missing": _missing(pieces)}
@@ -341,6 +374,7 @@ def ai_fits(key: str, user: dict, closet: list[dict], catalog: list[dict], count
     prompt = prompts.FIT_CREATOR.format(
         body=body_summary(bp) or "not scanned yet", fit=bp.get("fit") or "regular",
         style_text=style_text or "not given", occasion=occasion or "everyday",
+        season=season_label(occasion_season(occasion)),
         budget="no limit" if budget_usd is None else f"{budget_usd:g}",
         must_include=json.dumps([m["id"] for m in must]) if must else "none",
         closet_json=json.dumps(slim_closet), products_json=json.dumps(slim_cands), count=count)
@@ -397,6 +431,10 @@ def create_fits(user_id: str, count: int = 3, occasion: str | None = None, must_
     `tryon` are accepted for old clients and ignored. Raises NoFits when the closet can't make one outfit."""
     user = store.get("users", user_id) or {}
     closet = [c for c in store.list("closet_items", user_id=user_id) if c.get("category") in SLOTS]
+    season = occasion_season(occasion)
+    # season first: shorts stay home when it's cold, coats when it's hot (rule-based, so it's deterministic)
+    in_season = [c for c in closet if fits_season([c], season)]
+    closet = in_season or closet
     must_include = [m for m in (must_include or []) if m]
     key = _cache_key(user_id, closet, count, occasion, must_include, budget_usd)
     hit = store.get("fit_cache", key)
@@ -419,6 +457,7 @@ def create_fits(user_id: str, count: int = 3, occasion: str | None = None, must_
                     break
                 if frozenset(_pid(p) for p in f["pieces"]) not in have:
                     fits.append(f)
+        fits = [f for f in (_season_check(f, season) for f in fits) if f]
         if not fits:
             raise NoFits("no complete outfit possible from the closet (needs a top + bottom, or a dress)")
         _remember(key, user_id, fits, source)

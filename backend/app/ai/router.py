@@ -573,8 +573,11 @@ def complete_look_route(req: CompleteLookRequest):
 
 @router.post("/ai/fit-score")
 def fit_score(req: FitScoreRequest):
-    """Fit Score badge: {score 0-100, verdict, notes, breakdown}. Rules only: free and instant.
-    Send a Fit Check post's `tagged` as `items`, or ids for a complete-the-look / closet outfit."""
+    """Fit Score v2 badge: {score 0-100, verdict "68 as streetwear: ...", notes, breakdown (v1 keys), criteria
+    [{name, score_10, note}], style_scores {style: 0-100}, primary_style, raw_score, source}. Calibrated rubric,
+    rules only unless `photo_url` is given with AI on (one cached Claude vision critique, blended 50/50).
+    Send a Fit Check post's `tagged` as `items` (+ its `photo_url`), or ids for a complete-the-look / closet outfit.
+    `target_style` scores the outfit as that style; `occasion` adds the occasion criterion."""
     from .compat import get_product
     from .outfit_score import score_outfit
 
@@ -591,7 +594,7 @@ def fit_score(req: FitScoreRequest):
         if not c:
             raise HTTPException(404, f"unknown closet item {cid}")
         items.append(c)
-    return score_outfit(items)
+    return score_outfit(items, occasion=req.occasion, target_style=req.target_style, photo_url=req.photo_url)
 
 
 

@@ -74,57 +74,60 @@ def _ai(monkeypatch, reply):
     return calls
 
 
-# ---------- rules (mock AI) ----------
+# ---------- rules (mock AI): closet only ----------
 
-def test_rules_fits_are_complete_use_pool_ids_and_sizes(client):
-    _put(user={"body_profile": BP}, closet=[_closet("c_top", "top", "white", "white tee"), _closet("c_bot", "bottom", "navy")])
+FULL_CLOSET = [_closet("c_top", "top", "white", "white tee"), _closet("c_top2", "top", "black", "black polo"),
+               _closet("c_bot", "bottom", "navy", "navy chinos"), _closet("c_bot2", "bottom", "grey", "grey jeans"),
+               _closet("c_shoe", "shoes", "black", "black loafers"), _closet("c_bag", "accessory", "brown", "brown leather bag")]
+
+
+def test_rules_fits_use_closet_only(client):
+    _put(user={"body_profile": BP}, closet=FULL_CLOSET)
     r = client.post("/fits/create", json={"user_id": "u", "count": 2, "occasion": "class"})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["source"] == "rules" and 1 <= len(body["fits"]) <= 2
-    pool = {p["id"] for p in CATALOG} | {"c_top", "c_bot"}
+    closet_ids = {c["id"] for c in FULL_CLOSET}
     for f in body["fits"]:
-        assert f["id"].startswith("fit_") and _complete(f) and _ids(f) <= pool
+        assert f["id"].startswith("fit_") and _complete(f) and _ids(f) <= closet_ids
+        assert all(p["source"] == "closet" and p["product"] is None for p in f["pieces"])
+        assert f["new_total_usd"] == 0.0 and f["closet_count"] == len(f["pieces"]) and f["try_on"] is None
         assert f["occasion"] == "class" and "class" in f["reason"]
-        assert "slim build" in f["reason"].lower() and "30.5 in waist" in f["reason"]
-        assert f["closet_count"] >= 1 and f["try_on"] is None
-        assert "p_women" not in _ids(f) and "p_out" not in _ids(f)
-        for p in f["pieces"]:
-            if p["source"] == "catalog":
-                assert p["your_size"] is not None and p["in_your_size"] is True
-                assert p["product"]["your_size"] == p["your_size"]
-            else:
-                assert p["closet_item"]["id"].startswith("c_") and p["your_size"] is None
-        assert f["new_total_usd"] == round(sum(p["product"]["price_usd"] for p in f["pieces"] if p["source"] == "catalog"), 2)
+        assert "slim build" in f["reason"].lower()
+        assert f["missing"] == []  # shoes are in the closet
     assert body["fits"][0]["name"] == "white top fit"
 
 
-def test_no_body_profile_means_no_size_filter_and_null_sizes(client):
-    _put(closet=[_closet("c_top", "top")])
-    fits = client.post("/fits/create", json={"user_id": "u"}).json()["fits"]
-    assert fits and all(_complete(f) for f in fits)
-    assert all(p["your_size"] is None for f in fits for p in f["pieces"] if p["source"] == "catalog")
-
-
-def test_empty_closet_builds_all_new_fits(client):
-    _put(user={"body_profile": BP})
+def test_catalog_never_leaks_into_fits(client):
+    """A catalog full of in-size pieces changes nothing: no 'crossbody' when they already own a leather bag."""
+    _put(user={"body_profile": BP}, products=CATALOG + [_mk("a_cross", "accessory", "Crossbody Bag", sizes={}, department="men")],
+         closet=FULL_CLOSET)
     fits = client.post("/fits/create", json={"user_id": "u", "count": 3}).json()["fits"]
-    assert fits and all(_complete(f) and f["closet_count"] == 0 for f in fits)
+    assert fits
+    assert all(p["source"] == "closet" for f in fits for p in f["pieces"])
+    assert not any("a_cross" in _ids(f) or "p_top" in _ids(f) for f in fits)
 
 
-def test_must_include_and_budget(client):
-    _put(user={"body_profile": BP}, closet=[_closet("c_top", "top")])
-    r = client.post("/fits/create", json={"user_id": "u", "must_include": ["p_jacket"], "budget_usd": 50})
-    fits = r.json()["fits"]
-    assert fits and all("p_jacket" in _ids(f) for f in fits)  # even though $60 > budget: must-include always wins
-    # nothing else over budget is in the pool
-    assert all(p["product"]["price_usd"] <= 50 for f in fits for p in f["pieces"]
-               if p["source"] == "catalog" and p["product"]["id"] != "p_jacket")
+def test_missing_slot_is_left_out_and_reported(client):
+    _put(closet=[_closet("c_top", "top"), _closet("c_bot", "bottom")])  # no shoes in the closet
+    fits = client.post("/fits/create", json={"user_id": "u", "count": 1}).json()["fits"]
+    assert fits and _slots(fits[0]) == {"top", "bottom"} and fits[0]["missing"] == ["shoes"]
+
+
+def test_empty_closet_is_502_not_shop_fits(client):
+    _put(user={"body_profile": BP})  # catalog present, closet empty
+    assert client.post("/fits/create", json={"user_id": "u", "count": 3}).status_code == 502
+
+
+def test_must_include_and_budget_are_ignored(client):
+    _put(user={"body_profile": BP}, closet=FULL_CLOSET)
+    fits = client.post("/fits/create", json={"user_id": "u", "must_include": ["p_jacket"], "budget_usd": 50}).json()["fits"]
+    assert fits and all("p_jacket" not in _ids(f) and all(p["source"] == "closet" for p in f["pieces"]) for f in fits)
 
 
 def test_cache_hit_and_get_fit(client, monkeypatch):
     from app.ai import fit_creator
-    _put(user={"body_profile": BP}, closet=[_closet("c_top", "top")])
+    _put(user={"body_profile": BP}, closet=FULL_CLOSET)
     first = client.post("/fits/create", json={"user_id": "u", "occasion": "date"}).json()
     monkeypatch.setattr(fit_creator, "rules_fits", lambda *a, **k: pytest.fail("should be cached"))
     second = client.post("/fits/create", json={"user_id": "u", "occasion": "date"}).json()
@@ -133,13 +136,12 @@ def test_cache_hit_and_get_fit(client, monkeypatch):
     assert client.get(f"/fits/{fid}", params={"user_id": "u"}).json() == first["fits"][0]
     assert client.get(f"/fits/{fid}", params={"user_id": "someone_else"}).status_code == 404
     assert client.get("/fits/fit_nope", params={"user_id": "u"}).status_code == 404
-    # a different occasion is a different cache entry
     monkeypatch.setattr(fit_creator, "rules_fits", fit_creator.__dict__["rules_fits"])
 
 
 def test_expired_fit_is_404(client, monkeypatch):
     from app.ai import fit_creator
-    _put(closet=[_closet("c_top", "top")])
+    _put(closet=FULL_CLOSET)
     fid = client.post("/fits/create", json={"user_id": "u"}).json()["fits"][0]["id"]
     monkeypatch.setattr(fit_creator.time, "time", lambda: 1e12)
     assert client.get(f"/fits/{fid}", params={"user_id": "u"}).status_code == 404
@@ -153,30 +155,31 @@ def test_empty_pool_is_502(client):
 # ---------- AI path ----------
 
 def test_ai_fits_validate_ids_fill_slots_and_pass_occasion(client, monkeypatch):
-    _put(user={"body_profile": BP, "style_text": "clean streetwear"}, closet=[_closet("c_top", "top", "white", "white tee")])
+    _put(user={"body_profile": BP, "style_text": "clean streetwear"}, closet=FULL_CLOSET)
     calls = _ai(monkeypatch, [
-        {"name": "Rooftop Clean", "reason": "Slim build, 30.5 in waist: tapered denim under your white tee.",
-         "pieces": [{"slot": "top", "id": "c_top"}, {"slot": "bottom", "id": "p_bot"}, {"slot": "shoes", "id": "p_shoe"}]},
-        {"name": "Missing Shoes", "reason": "needs filling", "pieces": [{"slot": "top", "id": "p_top"}, {"slot": "bottom", "id": "p_bot"}]},
-        {"name": "Fake", "reason": "hallucinated", "pieces": [{"slot": "top", "id": "p_nope"}, {"slot": "shoes", "id": "p_shoe"}]},
+        {"name": "Rooftop Clean", "reason": "Slim build, 30.5 in waist: navy chinos under your white tee.",
+         "pieces": [{"slot": "top", "id": "c_top"}, {"slot": "bottom", "id": "c_bot"}, {"slot": "shoes", "id": "c_shoe"}]},
+        {"name": "Missing Bottom", "reason": "needs filling", "pieces": [{"slot": "top", "id": "c_top2"}, {"slot": "shoes", "id": "c_shoe"}]},
+        {"name": "Fake", "reason": "hallucinated", "pieces": [{"slot": "top", "id": "p_top"}, {"slot": "bottom", "id": "c_bot2"}]},
     ])
     r = client.post("/fits/create", json={"user_id": "u", "count": 3, "occasion": "rooftop party"})
     body = r.json()
     assert body["source"] == "ai" and len(calls) == 1
-    assert "rooftop party" in calls[0] and "slim build" in calls[0] and "white tee" in calls[0] and "p_bot" in calls[0]
+    assert "rooftop party" in calls[0] and "slim build" in calls[0] and "white tee" in calls[0]
+    assert "p_bot" not in calls[0] and "Catalog candidates" not in calls[0]  # no shop items offered to the AI
     fits = body["fits"]
-    assert fits[0]["name"] == "Rooftop Clean" and _ids(fits[0]) == {"c_top", "p_bot", "p_shoe"}
+    assert fits[0]["name"] == "Rooftop Clean" and _ids(fits[0]) == {"c_top", "c_bot", "c_shoe"}
     assert fits[0]["reason"].startswith("Slim build") and fits[0]["occasion"] == "rooftop party"
-    assert fits[0]["closet_count"] == 1 and fits[0]["new_total_usd"] == 40.0
-    assert fits[1]["name"] == "Missing Shoes" and "shoes" in _slots(fits[1])  # rules filled the missing slot
-    pool = {p["id"] for p in CATALOG} | {"c_top"}
-    assert all(_complete(f) and _ids(f) <= pool for f in fits) and len(fits) == 3  # third topped up by rules
-    assert "p_nope" not in {i for f in fits for i in _ids(f)}
+    assert fits[0]["closet_count"] == 3 and fits[0]["new_total_usd"] == 0.0
+    assert fits[1]["name"] == "Missing Bottom" and "bottom" in _slots(fits[1])  # rules filled it from the closet
+    closet_ids = {c["id"] for c in FULL_CLOSET}
+    assert all(_complete(f) and _ids(f) <= closet_ids for f in fits) and len(fits) == 3  # third topped up by rules
+    assert "p_top" not in {i for f in fits for i in _ids(f)}  # catalog id = hallucinated
 
 
 def test_ai_failure_falls_back_to_rules(client, monkeypatch):
     from app.ai.llm import BadModelOutput
-    _put(closet=[_closet("c_top", "top")])
+    _put(closet=FULL_CLOSET)
 
     def boom(prompt, **kw):
         raise BadModelOutput("nope")
@@ -185,80 +188,33 @@ def test_ai_failure_falls_back_to_rules(client, monkeypatch):
     assert body["source"] == "rules" and body["fits"]
 
 
-def test_ai_must_include_is_enforced(client, monkeypatch):
-    _put(user={"body_profile": BP}, closet=[_closet("c_top", "top")])
-    _ai(monkeypatch, [{"name": "Forgot", "reason": "r", "pieces": [{"slot": "top", "id": "c_top"},
-                                                                    {"slot": "bottom", "id": "p_bot"}, {"slot": "shoes", "id": "p_shoe"}]}])
-    fits = client.post("/fits/create", json={"user_id": "u", "count": 1, "must_include": ["p_jacket"]}).json()["fits"]
-    assert all("p_jacket" in _ids(f) for f in fits)
+# ---------- try-on and cart (routes stay; fits don't render or buy) ----------
 
-
-# ---------- try-on and cart ----------
-
-def test_tryon_only_on_request_and_lazy_route(client):
-    _put(user={"body_profile": BP, "body_photo_url": "http://localhost:8000/static/uploads/me.jpg"}, closet=[_closet("c_top", "top")])
-    plain = client.post("/fits/create", json={"user_id": "u", "count": 1}).json()["fits"][0]
+def test_create_never_renders_tryon(client, monkeypatch):
+    from app.ai import fit_creator
+    _put(user={"body_profile": BP, "body_photo_url": "http://localhost:8000/static/uploads/me.jpg"}, closet=FULL_CLOSET)
+    monkeypatch.setattr(fit_creator, "_try_on", lambda *a, **k: pytest.fail("fits must not render try-ons"))
+    plain = client.post("/fits/create?tryon=true", json={"user_id": "u", "count": 1}).json()["fits"][0]
     assert plain["try_on"] is None
-    lazy = client.post(f"/fits/{plain['id']}/try-on", params={"user_id": "u"}).json()
-    assert lazy["mode"] == "collage" and lazy["image_url"].startswith("http")  # MOCK_AI placeholder
-    assert client.get(f"/fits/{plain['id']}", params={"user_id": "u"}).json()["try_on"] == lazy
-    eager = client.post("/fits/create?tryon=true", json={"user_id": "u", "count": 1}).json()["fits"][0]
-    assert eager["try_on"] == lazy
     assert client.post("/fits/fit_nope/try-on", params={"user_id": "u"}).status_code == 404
 
 
-def test_add_fit_to_cart_uses_your_size(client):
-    _put(user={"body_profile": BP}, closet=[_closet("c_top", "top")])
+def test_add_fit_to_cart_has_nothing_to_buy(client):
+    _put(user={"body_profile": BP}, closet=FULL_CLOSET)
     fit = client.post("/fits/create", json={"user_id": "u", "count": 1}).json()["fits"][0]
     r = client.post(f"/fits/{fit['id']}/cart", params={"user_id": "u"})
     assert r.status_code == 200, r.text
-    cart = r.json()
-    lines = {(i["product_id"], i["size"]) for g in cart["groups"] for i in g["items"]}
-    want = {(p["product"]["id"], p["your_size"]) for p in fit["pieces"] if p["source"] == "catalog"}
-    assert lines == want and cart["count"] == len(want) and cart["total_usd"] == fit["new_total_usd"]
-    assert client.get("/cart/u").json() == cart
+    assert r.json()["count"] == 0
     assert client.post("/fits/fit_nope/cart", params={"user_id": "u"}).status_code == 404
 
 
-# ---------- always at least one new piece ----------
-
-def test_ai_closet_only_fit_gets_a_catalog_piece_injected(client, monkeypatch):
-    closet = [_closet("c_top", "top", "white", "white tee"), _closet("c_bot", "bottom", "navy"), _closet("c_shoe", "shoes", "black")]
-    _put(user={"body_profile": BP}, closet=closet)
-    _ai(monkeypatch, [{"name": "All Closet", "reason": "nothing new", "pieces": [
-        {"slot": "top", "id": "c_top"}, {"slot": "bottom", "id": "c_bot"}, {"slot": "shoes", "id": "c_shoe"}]}])
-    fits = client.post("/fits/create", json={"user_id": "u", "count": 1}).json()["fits"]
-    assert len(fits) == 1
-    f = fits[0]
-    assert f["name"] == "All Closet" and _complete(f)
-    new = [p for p in f["pieces"] if p["source"] == "catalog"]
-    assert len(new) == 1 and new[0]["slot"] == "top" and new[0]["product"]["id"] == "p_top"  # top is swapped first
-    assert "c_top" not in _ids(f) and {"c_bot", "c_shoe"} <= _ids(f)
-    assert f["closet_count"] == 2 and f["new_total_usd"] == 20.0 and new[0]["in_your_size"] is True
-
-
-def test_ai_closet_only_fit_is_dropped_when_catalog_has_nothing_in_size(client, monkeypatch):
-    closet = [_closet("c_top", "top"), _closet("c_bot", "bottom"), _closet("c_shoe", "shoes")]
-    _put(user={"body_profile": BP}, products=[_mk("p_women", "top", "Crop Top", department="women")], closet=closet)
-    _ai(monkeypatch, [{"name": "All Closet", "reason": "r", "pieces": [
-        {"slot": "top", "id": "c_top"}, {"slot": "bottom", "id": "c_bot"}, {"slot": "shoes", "id": "c_shoe"}]}])
-    assert client.post("/fits/create", json={"user_id": "u", "count": 1}).status_code == 502  # nothing with new clothes
-
-
-def test_rules_fit_never_closet_only(client):
-    closet = [_closet("c_top", "top"), _closet("c_bot", "bottom"), _closet("c_shoe", "shoes")]
-    _put(user={"body_profile": BP}, closet=closet)
-    fits = client.post("/fits/create", json={"user_id": "u", "count": 2}).json()["fits"]
-    assert fits and all(any(p["source"] == "catalog" for p in f["pieces"]) and _complete(f) for f in fits)
-
-
-def test_prompt_demands_new_pieces_and_cache_version_bumped(client, monkeypatch):
+def test_prompt_is_closet_only_and_cache_version_bumped(client, monkeypatch):
     from app.ai import prompts
-    assert prompts.FIT_CREATOR_VERSION != "v1"
-    _put(closet=[_closet("c_top", "top")])
+    assert prompts.FIT_CREATOR_VERSION not in ("v1", "v2", "v3")
+    _put(closet=FULL_CLOSET)
     calls = _ai(monkeypatch, [])
     client.post("/fits/create", json={"user_id": "u", "count": 1})
-    assert "MUST add 1-2 new" in calls[0]
+    assert "CLOSET ONLY" in calls[0] and "new pieces" not in calls[0]
 
 
 # ---------- department filter on every slot ----------
@@ -291,11 +247,3 @@ def test_pool_department_filter_covers_accessories():
     assert {a["id"] for a in ACCESSORIES} <= both
 
 
-def test_men_never_see_or_get_womens_accessories(client, monkeypatch):
-    _put(user={"body_profile": BP}, products=CATALOG + ACCESSORIES, closet=[_closet("c_top", "top")])
-    calls = _ai(monkeypatch, [{"name": "Hoops", "reason": "r", "pieces": [
-        {"slot": "top", "id": "c_top"}, {"slot": "bottom", "id": "p_bot"}, {"slot": "shoes", "id": "p_shoe"},
-        {"slot": "accessory", "id": "a_hoops"}]}])
-    fits = client.post("/fits/create", json={"user_id": "u", "count": 1}).json()["fits"]
-    assert "Hoop" not in calls[0] and "Handbag" not in calls[0] and "a_womens" not in calls[0]
-    assert "a_hoops" not in _ids(fits[0]) and "accessory" not in _slots(fits[0])  # hallucinated-for-us id dropped

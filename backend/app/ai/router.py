@@ -604,9 +604,9 @@ def fit_score(req: FitScoreRequest):
 
 @router.post("/fits/create")
 def fits_create(req: FitCreateRequest, tryon: bool = False):
-    """Full outfits for the user's body (body scan): closet pieces + in-stock catalog pieces in their size.
-    `?tryon=true` also renders each fit on the user's body photo (slow); otherwise `try_on` is null and the app
-    lazy-loads it with POST /fits/{id}/try-on. Cached 1 h per (user, closet, occasion, must_include, budget)."""
+    """Outfits built ONLY from the user's closet (sprint 4): no catalog pieces, no try-on render. Each fit lists
+    `missing` slots the closet couldn't fill. `tryon`, `must_include` and `budget_usd` are accepted and ignored.
+    Cached 1 h per (user, closet, occasion)."""
     from .fit_creator import NoFits, create_fits
 
     try:

@@ -226,25 +226,47 @@ void main() {
     expect(chosen, isNull);
   });
   testWidgets(
-      'Fit Creator labels owned pieces, seeds catalog taps and adds only through fit route',
+      'Fit Creator is closet-only: lists the pieces, no try-on or cart, names what is missing',
       (t) async {
     final calls = <String>[];
-    String? opened;
     final api = Api(client: MockClient((r) async {
       calls.add('${r.method} ${r.url.path}');
       if (r.url.path == '/fits/create') {
         expect(jsonDecode(r.body)['occasion'], 'class');
         return response({
-          'fits': [fit()]
-        });
-      }
-      if (r.url.path == '/fits/f1/cart' || r.url.path == '/cart/u_demo') {
-        return response({
-          'user_id': 'u_demo',
-          'groups': [],
-          'unavailable': [],
-          'count': 0,
-          'total_usd': 0
+          'fits': [
+            {
+              'id': 'f1',
+              'name': 'Class fit',
+              'reason': 'Easy layers',
+              'missing': ['shoes'],
+              'pieces': [
+                {
+                  'slot': 'top',
+                  'source': 'closet',
+                  'closet_item': {
+                    'id': 'c1',
+                    'user_id': 'u_demo',
+                    'category': 'top',
+                    'label': 'My shirt'
+                  }
+                },
+                {
+                  'slot': 'bottom',
+                  'source': 'closet',
+                  'closet_item': {
+                    'id': 'c2',
+                    'user_id': 'u_demo',
+                    'category': 'bottom',
+                    'label': 'My jeans'
+                  }
+                },
+              ],
+              'new_total_usd': 0,
+              'closet_count': 2,
+              'try_on': null
+            }
+          ]
         });
       }
       throw StateError('Unexpected ${r.url.path}');
@@ -252,23 +274,17 @@ void main() {
     await t.pumpWidget(MaterialApp(
         home: FitsScreen(
             store: StoreController(api: api, demo: false),
-            onProduct: (p) => opened = p.id)));
+            onProduct: (_) {})));
     await t.tap(find.text('class'));
     await t.tap(find.text('Create 3 fits'));
     await t.pumpAndSettle();
-    expect(find.text('In your closet'), findsOneWidget);
-    expect(
-        find.text('1 from your closet · New pieces \$25.00'), findsOneWidget);
-    await t.tap(find.text('New jeans'));
-    expect(opened, 'p1');
-    await t.ensureVisible(find.text('Add fit to cart'));
-    await t.pumpAndSettle();
-    await t.tap(find.text('Add fit to cart'));
-    await t.pumpAndSettle();
-    expect(calls, contains('POST /fits/f1/cart'));
-    expect(calls.any((c) => c.contains('/cart/u_demo/items')), false);
-    expect(find.text('New pieces added. Review sizes in your cart.'),
+    expect(find.text('My shirt'), findsOneWidget);
+    expect(find.text('My jeans'), findsOneWidget);
+    expect(find.text('Add shoes to your closet to finish this one.'),
         findsOneWidget);
+    expect(find.text('Try on this fit'), findsNothing);
+    expect(find.text('Add fit to cart'), findsNothing);
+    expect(calls, ['POST /fits/create']);
   });
   testWidgets('Fit Creator exposes server failure and lets user retry',
       (t) async {

@@ -1409,6 +1409,7 @@ class OutfitFit {
     this.tryOnUrl,
     this.tryOnMode,
     this.tryOnSourcePhotoUrl,
+    this.missing = const [],
   });
   final String id;
   final String name;
@@ -1417,6 +1418,10 @@ class OutfitFit {
   final List<FitPiece> pieces;
   final double newTotalUsd;
   final int closetCount;
+
+  /// Slots the closet couldn't fill (e.g. `["shoes"]`), so the app can say "add shoes to your closet".
+  /// Fits are closet-only since sprint 4: no shop pieces are ever substituted.
+  final List<String> missing;
   final String? tryOnUrl;
   final String? tryOnMode; // "ai" | "collage"
   final String? tryOnSourcePhotoUrl; // the user's photo the try-on was edited from (see TryOnResponse.sourcePhotoUrl)
@@ -1436,6 +1441,7 @@ class OutfitFit {
       tryOnUrl: t == null ? null : _strN(t['image_url']),
       tryOnMode: t == null ? null : _strN(t['mode']),
       tryOnSourcePhotoUrl: t == null ? null : _strN(t['source_photo_url']),
+      missing: _strs(j['missing']),
     );
   }
 }

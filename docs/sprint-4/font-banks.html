@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Niche Font Banks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,100&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700&family=Young+Serif&family=Manrope:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400..600&family=Geist:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Sans:opsz,wght@9..40,400..700&display=swap" rel="stylesheet">
+<style>
+  /* Niche palette, taken from the app (main.dart) and the icon (assets/icon/make_icon.py) */
+  :root {
+    --cream: #FFFBF0;      /* scaffold */
+    --paper: #FBF3EE;      /* icon cream */
+    --merlot: #5B1F33;     /* icon */
+    --wine: #722F42;       /* app seed / buttons */
+    --hook: #E9B9A8;       /* icon dot */
+    --blush: #F0E5E5;      /* chips */
+    --stone: #EDEAE4;      /* photo bg */
+    --ink: #1E1517;
+    --muted: #7A6A6E;
+    --line: rgba(91, 31, 51, .14);
+    --bg: var(--cream);
+    --card: #FFFFFF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1A1214; --card: #241A1D; --ink: #F6ECE8; --muted: #B9A6AB; --line: rgba(233, 185, 168, .18);
+      --blush: #3A2328; --stone: #2E2427;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1A1214; --card: #241A1D; --ink: #F6ECE8; --muted: #B9A6AB; --line: rgba(233, 185, 168, .18);
+    --blush: #3A2328; --stone: #2E2427;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 "Plus Jakarta Sans", system-ui, sans-serif; }
+  header { max-width: 1180px; margin: 0 auto; padding: 40px 16px 8px; }
+  header h1 { font: 600 34px/1.1 Fraunces, serif; font-variation-settings: "SOFT" 100; margin: 0 0 8px; color: var(--merlot); }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .grid { max-width: 1180px; margin: 0 auto; padding: 24px 16px 64px;
+          display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+  .bank { background: var(--card); border: 1px solid var(--line); border-radius: 28px; overflow: hidden;
+          display: flex; flex-direction: column; }
+  .bank.rec { outline: 2px solid var(--wine); outline-offset: -2px; }
+  .meta { padding: 18px 20px 4px; }
+  .meta .tag { display: inline-block; font: 600 11px/1 "Plus Jakarta Sans", sans-serif; letter-spacing: .12em;
+               text-transform: uppercase; color: var(--wine); background: var(--blush); padding: 6px 10px; border-radius: 99px; }
+  .meta h2 { font: 600 18px/1.3 "Plus Jakarta Sans", sans-serif; margin: 10px 0 2px; }
+  .meta .pair { color: var(--muted); font-size: 13px; }
+  /* phone-ish mock */
+  .mock { margin: 14px 16px 16px; background: var(--bg); border-radius: 22px; border: 1px solid var(--line); overflow: hidden; }
+  .bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+  .word { font-size: 28px; line-height: 1; color: var(--merlot); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .word { color: var(--hook); } }
+  .dots { display: flex; gap: 10px; }
+  .dots i { width: 18px; height: 18px; border-radius: 50%; border: 1.6px solid var(--ink); opacity: .7; }
+  .photo { margin: 0 12px; aspect-ratio: 4 / 4.2; border-radius: 20px; position: relative; overflow: hidden;
+           background: linear-gradient(160deg, #cfc6bd 0%, #a9b7c9 45%, #e4d3b2 100%); }
+  .photo::after { content: ""; position: absolute; left: 50%; top: 18%; width: 38%; height: 76%; transform: translateX(-50%);
+                  border-radius: 40% 40% 12px 12px; background: linear-gradient(#5d6f8f, #47577a); opacity: .85; }
+  .pager { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; z-index: 1; }
+  .pager b { width: 18px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.55); }
+  .pager b:first-child { background: #fff; }
+  .info { padding: 14px 16px 16px; }
+  .brand { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--wine); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .brand { color: var(--hook); } }
+  .name { font-size: 24px; line-height: 1.15; margin: 4px 0 6px; }
+  .body { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .price { font-size: 17px; font-variant-numeric: tabular-nums; }
+  .cta { border: 0; border-radius: 99px; padding: 12px 20px; background: var(--wine); color: #fff; font-size: 14px; cursor: pointer;
+         transition: transform .12s ease; }
+  .cta:active { transform: scale(.96); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .chip { border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+          transition: background .18s ease, color .18s ease, transform .12s ease; }
+  .chip.on { background: var(--merlot); color: var(--paper); border-color: transparent; }
+  .chip:active { transform: scale(.95); }
+  .spec { padding: 0 20px 20px; font-size: 12.5px; color: var(--muted); }
+  .spec code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+  .spec ul { margin: 6px 0 0; padding-left: 18px; }
+  footer { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; color: var(--muted); font-size: 13px; }
+
+  /* Bank A — Soft Editorial */
+  .a .word, .a .name { font-family: Fraunces, serif; font-variation-settings: "SOFT" 100, "opsz" 72; font-weight: 600; }
+  .a .word { font-weight: 560; letter-spacing: -.01em; }
+  .a .brand, .a .body, .a .price, .a .cta, .a .chip { font-family: "Plus Jakarta Sans", sans-serif; }
+  .a .brand, .a .cta, .a .price { font-weight: 600; }
+  /* Bank B — Gallery */
+  .b .word, .b .name { font-family: "Instrument Serif", serif; font-weight: 400; }
+  .b .word { font-size: 32px; letter-spacing: -.01em; }
+  .b .name { font-size: 28px; }
+  .b .brand, .b .body, .b .price, .b .cta, .b .chip { font-family: "Inter Tight", sans-serif; }
+  .b .brand, .b .cta, .b .price { font-weight: 600; }
+  /* Bank C — Bubbly */
+  .c .word, .c .name { font-family: "Young Serif", serif; }
+  .c .name { font-size: 23px; }
+  .c .brand, .c .body, .c .price, .c .cta, .c .chip { font-family: Manrope, sans-serif; }
+  .c .brand, .c .cta, .c .price { font-weight: 700; }
+  /* Bank D — Quiet Luxury */
+  .d .word, .d .name { font-family: Newsreader, serif; font-variation-settings: "opsz" 48; font-weight: 500; }
+  .d .word { font-size: 30px; }
+  .d .brand, .d .body, .d .price, .d .cta, .d .chip { font-family: Geist, sans-serif; }
+  .d .brand, .d .cta, .d .price { font-weight: 500; }
+  /* Bank E — Street Gallery */
+  .e .word, .e .name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; letter-spacing: -.02em; }
+  .e .word { font-weight: 800; }
+  .e .brand, .e .body, .e .price, .e .cta, .e .chip { font-family: "DM Sans", sans-serif; }
+  .e .brand, .e .cta, .e .price { font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Niche font banks</h1>
+  <p>Sprint 4, typography (section 2 of <code>docs/sprint-4.md</code>). Each bank pairs a <b>display</b> face (the wordmark, product names and page titles) with a <b>UI</b> face (everything else). All are free Google Fonts under the OFL. The colors are the app's current palette and don't change. Tap the chips to feel the selected state. <b>The team picked Bank C (Bubbly).</b> It's outlined below.</p>
+</header>
+
+<main class="grid">
+  <!-- A -->
+  <section class="bank a">
+    <div class="meta"><span class="tag">Bank A</span><h2>Soft Editorial</h2>
+      <div class="pair">Fraunces (SOFT 100) + Plus Jakarta Sans</div></div>
+    <div class="mock">
+      <div class="bar"><span class="word">niche</span><span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="photo"><div class="pager"><b></b><b></b><b></b></div></div>
+      <div class="info">
+        <div class="brand">Brandy Melville</div>
+        <div class="name">Anastasia Sweatpants</div>
+        <p class="body">Cozy 100% cotton in faded blue, inside drawstring… <u>more</u></p>
+        <div class="row"><span class="price">$35.00</span><button class="cta">Add to cart</button></div>
+        <div class="chips"><span class="chip on">y2k</span><span class="chip">baggy</span><span class="chip">streetwear</span></div>
+      </div>
+    </div>
+    <div class="spec">Feels like the logo: a lowercase serif with soft, rounded terminals, warm without being formal. Plus Jakarta's open, slightly rounded shapes carry the "bubblier" feel in the UI.
+      <ul><li>Wordmark: <code>Fraunces 560, SOFT 100, opsz 72, -1% tracking</code></li>
+      <li>Product name / titles: <code>Fraunces 600</code></li>
+      <li>UI: <code>Plus Jakarta Sans 400/500/600</code>; prices use <code>tnum</code></li></ul></div>
+  </section>
+
+  <!-- B -->
+  <section class="bank b">
+    <div class="meta"><span class="tag">Bank B</span><h2>Gallery</h2>
+      <div class="pair">Instrument Serif + Inter Tight</div></div>
+    <div class="mock">
+      <div class="bar"><span class="word">niche</span><span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="photo"><div class="pager"><b></b><b></b><b></b></div></div>
+      <div class="info">
+        <div class="brand">Brandy Melville</div>
+        <div class="name">Anastasia Sweatpants</div>
+        <p class="body">Cozy 100% cotton in faded blue, inside drawstring… <u>more</u></p>
+        <div class="row"><span class="price">$35.00</span><button class="cta">Add to cart</button></div>
+        <div class="chips"><span class="chip on">y2k</span><span class="chip">baggy</span><span class="chip">streetwear</span></div>
+      </div>
+    </div>
+    <div class="spec">A fashion-magazine look: a high-contrast condensed serif (with italics for accents, e.g. "<i>on you</i>") over a tight, neutral grotesk. The most minimal of the five, so the photos lead.
+      <ul><li>Display only at 24px and up (it's a display face)</li>
+      <li>UI: <code>Inter Tight 400/500/600</code></li></ul></div>
+  </section>
+
+  <!-- C -->
+  <section class="bank c rec">
+    <div class="meta"><span class="tag">Bank C · Chosen</span><h2>Bubbly</h2>
+      <div class="pair">Young Serif + Manrope</div></div>
+    <div class="mock">
+      <div class="bar"><span class="word">niche</span><span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="photo"><div class="pager"><b></b><b></b><b></b></div></div>
+      <div class="info">
+        <div class="brand">Brandy Melville</div>
+        <div class="name">Anastasia Sweatpants</div>
+        <p class="body">Cozy 100% cotton in faded blue, inside drawstring… <u>more</u></p>
+        <div class="row"><span class="price">$35.00</span><button class="cta">Add to cart</button></div>
+        <div class="chips"><span class="chip on">y2k</span><span class="chip">baggy</span><span class="chip">streetwear</span></div>
+      </div>
+    </div>
+    <div class="spec">Chunky, friendly serif headlines with a geometric UI. The most playful bank, good if "bubblier" matters more than "sleek".
+      <ul><li>Young Serif has one weight (400); use size, not weight, for hierarchy</li>
+      <li>UI: <code>Manrope 400/600/700</code></li></ul></div>
+  </section>
+
+  <!-- D -->
+  <section class="bank d">
+    <div class="meta"><span class="tag">Bank D</span><h2>Quiet Luxury</h2>
+      <div class="pair">Newsreader + Geist</div></div>
+    <div class="mock">
+      <div class="bar"><span class="word">niche</span><span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="photo"><div class="pager"><b></b><b></b><b></b></div></div>
+      <div class="info">
+        <div class="brand">Brandy Melville</div>
+        <div class="name">Anastasia Sweatpants</div>
+        <p class="body">Cozy 100% cotton in faded blue, inside drawstring… <u>more</u></p>
+        <div class="row"><span class="price">$35.00</span><button class="cta">Add to cart</button></div>
+        <div class="chips"><span class="chip on">y2k</span><span class="chip">baggy</span><span class="chip">streetwear</span></div>
+      </div>
+    </div>
+    <div class="spec">A refined book serif with a sharp, technical sans. Calm and expensive-feeling, but the least "bubbly".
+      <ul><li>Display: <code>Newsreader 500, opsz 48</code></li>
+      <li>UI: <code>Geist 400/500</code></li></ul></div>
+  </section>
+
+  <!-- E -->
+  <section class="bank e">
+    <div class="meta"><span class="tag">Bank E</span><h2>Street Gallery</h2>
+      <div class="pair">Bricolage Grotesque + DM Sans</div></div>
+    <div class="mock">
+      <div class="bar"><span class="word">niche</span><span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="photo"><div class="pager"><b></b><b></b><b></b></div></div>
+      <div class="info">
+        <div class="brand">Brandy Melville</div>
+        <div class="name">Anastasia Sweatpants</div>
+        <p class="body">Cozy 100% cotton in faded blue, inside drawstring… <u>more</u></p>
+        <div class="row"><span class="price">$35.00</span><button class="cta">Add to cart</button></div>
+        <div class="chips"><span class="chip on">y2k</span><span class="chip">baggy</span><span class="chip">streetwear</span></div>
+      </div>
+    </div>
+    <div class="spec">No serif: a quirky, characterful grotesk for display, with a clean UI sans. The most "eccentric", but it drifts away from the serif logo, so the wordmark would stay an image.
+      <ul><li>Display: <code>Bricolage Grotesque 700–800, -2% tracking</code></li>
+      <li>UI: <code>DM Sans 400/500/600</code></li></ul></div>
+  </section>
+</main>
+
+<footer>Fonts load from Google Fonts here. In the app they're bundled as assets (see sprint-4 §2.3), so nothing is fetched at runtime.</footer>
+
+<script>
+  document.querySelectorAll('.chips').forEach(row => row.addEventListener('click', e => {
+    if (e.target.classList.contains('chip')) e.target.classList.toggle('on');
+  }));
+</script>
+</body>
+</html>

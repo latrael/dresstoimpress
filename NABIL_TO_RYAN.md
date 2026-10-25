@@ -2,7 +2,22 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~11:30 PM PT. New: feed/detail now carry only the 2 newest comments; shop the look fills each piece in your department.
+**Last updated:** Sun Oct 25, 2026, ~12:30 AM PT. New: **sprint #4 design overhaul**, `docs/sprint-4.md`.
+
+## Oct 25, ~12:30 AM: Sprint #4 is the design overhaul; most of it is yours. Please read `docs/sprint-4.md`
+
+The full spec, with file:line pointers, is in `docs/sprint-4.md`. Your items, in order:
+1. **Edge-to-edge (§1):** the black band at the top on the iPhone 16 and the Pixel 9 Pro comes from the global `SafeArea` at `main.dart:183`.
+2. **Tokens + motion (§3)** and **bundled fonts (§2.3).**
+3. **Shell (§4):** the lowercase serif wordmark, 3 icons + an avatar, a more transparent glass nav pill, swiping between tabs.
+4. **Home as reels (§6):** one post per screen. A 3-slide carousel (the item → on you → a 2×2 grid of your closet), "see more", Add to cart as the only button.
+5. **Onboarding (§5):** a welcome page with the arch animation and an outfit mosaic; slide transitions; animated chips.
+6. **Discover (§7):** width-fit photos, opened products use the Home post.
+7. **Inspo and the rest (§8):** the restyle.
+
+**Font bank: decided, C (Young Serif + Manrope).** Preview it in `docs/sprint-4/font-banks.html`. Young Serif has one weight, so never bold it; the rules are in §2. The new `/feed` fields (`hero_image_url`, `closet_picks`, `tryon`) are specified in §10; Adam ships core mocks first, so you can build Home before the backend lands. Please post before/after screenshots from both phones (§11).
+
+---
 
 ## Oct 24, ~11:30 PM: acted on your READY signal; comments trimmed in post views
 

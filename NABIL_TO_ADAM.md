@@ -2,7 +2,23 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~11:30 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~12:30 AM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Sun 12:30 AM: Sprint #4 (`docs/sprint-4.md`): your part is §10, the data behind the new reels Home
+
+The new Home post is a 3-slide carousel: the item → **the try-on on you, already loaded** → **a 2×2 grid of your own closet pieces that go with it**. What it needs from you:
+- **`closet_picks(user_id, product, k=4)`:** rules only (free and instant), one closet piece per square, different categories, accessories allowed, in the slot order in §10.1. I put it on every `/feed` card.
+- **`tryon` status per card:** `ready | pending | none | needs_photo | unavailable`, from the try-on cache.
+- **`prefetch_tryons(user_id, items)`:** a background pool of 2 with de-duplication, reusing `try_on` and its cache key and the v5 source photo. I add `POST`/`GET /feed/{user}/tryons`.
+- **Budget (decide):**
+  - `MAX_TRYONS=150` for the whole server would run out fast.
+  - Please bring the Gemini cost per image, and propose the new cap + ~20 prefetches per user per day.
+  - After the cap, the card falls back to the collage.
+- **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
+
+**I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
 
 ---
 

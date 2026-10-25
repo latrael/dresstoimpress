@@ -359,7 +359,8 @@ void main() {
             onSaved: () async {
               refreshed = true;
             }));
-    await tester.enterText(find.widgetWithText(TextField, 'Type your own (optional)'),
+    await tester.enterText(
+        find.widgetWithText(TextField, 'Type your own (optional)'),
         r'Y2K tops under $40');
     await tester.scrollUntilVisible(find.text('Save preferences'), 500,
         scrollable: find.byType(Scrollable).first);
@@ -396,12 +397,16 @@ void main() {
     await tester.tap(find.byIcon(Icons.favorite_border));
     await tester.pumpAndSettle();
     expect(find.text('1'), findsOneWidget);
+    await tester.ensureVisible(find.text('Add a comment…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add a comment…'));
+    await tester.pumpAndSettle();
     await tester.enterText(
-        find.widgetWithText(TextField, 'Add a comment'), 'Great fit');
+        find.widgetWithText(TextField, 'Add a comment…'), 'Great fit');
     await tester.ensureVisible(find.byTooltip('Send comment'));
     await tester.tap(find.byTooltip('Send comment'));
     await tester.pumpAndSettle();
-    expect(find.text('u_demo · Great fit'), findsOneWidget);
+    expect(find.text('Great fit'), findsOneWidget);
     expect(paths, ['/fitcheck/post/like', '/fitcheck/post/comments']);
   });
   testWidgets('editing outfit labels preserves tagged product identity',
@@ -432,7 +437,7 @@ void main() {
         'Blue shirt');
   });
   testWidgets(
-      'closet uploads real MIME, keeps duplicate and removes only after confirmation',
+      'closet uploads real MIME, merges an existing piece and removes only after confirmation',
       (tester) async {
     var uploaded = false, deleted = false;
     final api = mockApi((r) async {
@@ -443,15 +448,22 @@ void main() {
         expect(utf8.decode(r.bodyBytes, allowMalformed: true),
             contains('Content-Type: image/png'));
         uploaded = true;
-        return json(closetItem());
+        expect(
+            utf8.decode(r.bodyBytes, allowMalformed: true), contains('outfit'));
+        return json({
+          'added': [],
+          'merged': [closetItem()],
+          'skipped': 0
+        });
       }
       expect(r.url.path, '/closet/u_demo/ci_new');
       deleted = true;
       return json({'deleted': 'ci_new'});
     });
     await mount(tester, ClosetScreen(api: api, picker: () async => testPhoto));
-    await tap(tester, 'Add a piece');
-    expect(find.textContaining('Possible duplicates'), findsOneWidget);
+    await tap(tester, 'Add to closet');
+    await tap(tester, 'A piece');
+    expect(find.textContaining('already in your closet'), findsOneWidget);
     expect(find.text('White shirt'), findsOneWidget);
     await tester.tap(find.byTooltip('Remove closet piece'));
     await tester.pumpAndSettle();
@@ -556,18 +568,22 @@ void main() {
                     post: FitCheckPost.fromJson(postJson()),
                     api: api,
                     onShop: (_) {}))));
+    await tester.ensureVisible(find.text('Add a comment…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add a comment…'));
+    await tester.pumpAndSettle();
     await tester.enterText(
-        find.widgetWithText(TextField, 'Add a comment'), 'Keep this draft');
+        find.widgetWithText(TextField, 'Add a comment…'), 'Keep this draft');
     await tester.ensureVisible(find.byTooltip('Send comment'));
     await tester.tap(find.byTooltip('Send comment'));
     await tester.pumpAndSettle();
     expect(find.text('u_demo · Keep this draft'), findsNothing);
     expect(
         tester
-            .widget<TextField>(find.widgetWithText(TextField, 'Add a comment'))
+            .widget<TextField>(find.widgetWithText(TextField, 'Add a comment…'))
             .controller!
             .text,
         'Keep this draft');
-    expect(find.textContaining('Could not send comment'), findsOneWidget);
+    expect(find.text('unavailable'), findsOneWidget);
   });
 }

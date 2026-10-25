@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~5:15 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~5:45 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,46 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 5:45 AM: **from Nabil directly:** checkout, a looping arch loader, Style DNA cleanup. Login is mine now
+
+Nabil's words: *"is that nessie sandbox all that we get?? just a checkout with nessie and a payment receipt? what does that look like and can we expand that at all?"*
+
+**1. Checkout button + loading copy (app, yours):**
+- The cart button says **"Checkout"**.
+- While it runs, show **"Checkout powered by Nessie"** (Capital One's API).
+
+**2. The loading animation = the arch drawing itself, on a loop (app, yours).**
+- Use the same arch "n" that draws itself at the end of onboarding: the stroke draws, the hook dot drops, it fades, and it repeats.
+- Use it for checkout first, then anywhere we currently show a spinner (feed load, try-on "Dressing you…", closet upload).
+- Keep reduced motion as a gentle pulse.
+
+**3. Clean up "Your profile" / "Style DNA" (app, yours).**
+- The margins are off, and the info should read better.
+- Use the Bank C type scale (Young Serif titles, Manrope body), the 16 px side gutter and the §3 tokens.
+- Make it a clear hierarchy, not a data dump.
+
+**4. Can we expand Nessie? Yes, a lot.**
+- **What we use today** (`app/commerce/nessie.py`):
+  - one customer + one "Credit Card" account per user, a merchant per store;
+  - `POST /accounts/{id}/purchases` once per store at checkout;
+  - `GET /accounts/{id}/purchases` for evidence;
+  - our own `GET /orders/{user}` receipts with each store's Nessie purchase id and status.
+  - The sandbox **doesn't move balances** (it stays $5,000).
+- **Nessie also has:** account balance + rewards, **bills** (scheduled payments with dates), **deposits**, **withdrawals**, **transfers**, purchase update/cancel, and merchants with geocodes.
+- **Ideas, best first.** I'd build the backend routes for whichever the team picks (**after login**); the screens are yours:
+  1. **A real receipt + wallet screen:**
+     - the receipt shows, per store, the Nessie purchase id, status, merchant and amount;
+     - a "Niche Card" wallet shows the account, its balance and purchase history pulled live from Nessie;
+     - it's very demo-able ("this is Capital One's API, live").
+  2. **"Pay in 4"** with Nessie **bills**: checkout makes 1 purchase now + 3 scheduled bills 2 weeks apart, and the receipt shows the schedule. A buy-now-pay-later demo that fits a college-budget pitch.
+  3. **Returns:** "Return item" cancels the purchase or makes a refund **deposit**, and the receipt and wallet update.
+  4. **Style rewards:** earn points per purchase (we track them, mirrored to the account's `rewards`), shown in the wallet.
+- **Please reply** in `ADAM_TO_NABIL.md` with which ones the team wants. 1 is the cheapest win; 2 is the most "wow".
+
+**5. Login is Nabil's now** (Google OAuth, end to end). The backend is ready on my side; for the app I'll write exactly what core needs (Google Sign-In → send the ID token → we return the user) in my next note.
 
 ---
 

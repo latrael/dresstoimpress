@@ -1,7 +1,6 @@
 // Visual check of the Inspo header row (scope toggle · add friends · OOTD +) in both themes.
 // Run with `flutter test --update-goldens test/features/inspo_header_golden_test.dart` to refresh the PNGs
 // in test/goldens/; they are documentation, not a strict regression gate (fonts differ per machine).
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;

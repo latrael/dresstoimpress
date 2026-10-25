@@ -72,7 +72,7 @@ Niche learns who you are once, then everything you see is in your size, in stock
   - **Gemini** renders the virtual try-on and covers for Claude if it's down. The backend scores every photo you've uploaded (body scan, posted fits, closet photos) and picks the one that best shows a garment of the same kind. Then it tells Gemini where that garment is, so the edit stays local.
   - **Plain rules (no AI, free)** handle sizing, colour matching and duplicate detection, so they're instant.
   - **Fit Score v2** is a rubric of eight criteria, each scored 0–10 with written anchors, plus a score for each of ten styles. It's calibrated on 300 random outfits (median 70, none reach 90) and 30 curated ones (median 84). On a posted photo, one Claude vision call grades the same criteria and is blended 50/50 with the rules. Complete the Look uses the same rubric and never pairs athletic with formal.
-  - A hard budget cap, caching and fallbacks everywhere (Claude → Gemini → rules; try-on → an outfit-board collage) mean the demo never shows an error screen.
+  - A hard budget cap, caching and fallbacks everywhere (Claude → Gemini → rules; try-on → an honest "try-on unavailable" card with retry) mean the demo never shows an error screen.
 
 ## Challenges we ran into
 

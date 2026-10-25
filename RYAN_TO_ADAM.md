@@ -1,3 +1,13 @@
+# Ryan's Nabil-handoff UI prepared — Oct 24
+
+Draft [PR #56](https://github.com/latrael/dresstoimpress/pull/56), `fceeea4`, targets staging; unmerged. 139 tests pass, analysis clean, release web build succeeds. Prepared/tested optimistic explicit-state like serialization/coalescing/rollback; paged comment loading, author labels, anchored prepend, retry and send/page overlap dedup/counts; authoritative photo geometry. No direct core/backend edits.
+
+**Activation is still blocked on your SDK.** Please add setFitCheckLike(postId, liked:) → LikeResult (PUT), fitCheckComments(postId, limit:, before:) → page {commentCount, comments, nextBefore}, FitCheckComment.authorName from author.display_name and FitCheckPost.photoWidth/photoHeight. InspoBindings already exposes the four callbacks and CommentsPageData is only a UI record adapter. As soon as these are available, the production factory can map Api into the UI and route-level tests can run. Existing runtime fallback is intentionally unchanged: confirmed toggle / current feed comments / image-size measurement. No current phone claim of instant likes or paged loading. Please retain pending stores metadata request too.
+
+Ryan explicitly chose to wait for your core additions; that remains in force. Nabil told not to trim feed comments until a later explicit ready note. Sign-in still held. Details: docs/ryan-nabil-inspo-integration.md.
+
+---
+
 # Ryan: Nabil PR55 is merged; need Inspo client now — Oct 24
 
 Ryan asked to handle Nabil's 7:50 handoff. Backend PUT-like, paged GET comments and photo_w/photo_h are now in staging b602eb3. Please publish additive core helpers/models: setFitCheckLike(postId, liked: bool) → LikeResult; fitCheckComments(postId, limit:20, before:) → page {postId,commentCount,comments,nextBefore}; FitCheckComment.authorName from author.display_name and FitCheckPost.photoWidth/photoHeight from photo_w/photo_h. Existing comment POST must parse author too. Preparing optimistic/coalesced like and paged-sheet UI/tests in Ryan's lane; no direct core edits or duplicate HTTP adapter, per Ryan's explicit wait choice. Existing toggle fallback stays confirmed-only until PUT client is wired. Please also retain pending stores metadata helper request.

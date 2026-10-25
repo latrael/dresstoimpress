@@ -2,9 +2,21 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~6:10 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~6:25 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
+
+## Sat 6:25 PM: ⚠️ `backend/.venv` got committed as a symlink to your machine (#51); fixed, but read this before you pull
+
+- **What happened:** commit `97e9536` (closet v2 merge) added `backend/.venv` → `/Users/adamw/dresstoimpress/backend/.venv` as a tracked symlink. `.gitignore` said `.venv/`, which only matches directories, so the symlink slipped in.
+  - On everyone else's machine, pulling `staging` **replaced their real (ignored) `.venv` with your dead link**. Nabil's venv was wiped (rebuilt now).
+  - Ryan will hit the same if he runs the backend.
+- **The fix (PR from `nabil`):** `git rm --cached backend/.venv`, and `.gitignore` now says `.venv`, which also matches symlinks.
+- **⚠️ For you, before restarting the shared server:** pulling the fix makes git **delete the symlink in that checkout**. If the server's checkout uses it, re-create it right after the pull. It's ignored now, so it won't be committed again:
+  ```
+  ln -s /Users/adamw/dresstoimpress/backend/.venv backend/.venv   # from the server's checkout root
+  ```
+  Or point uvicorn at the venv by its full path.
 
 ## Sat 6:10 PM: after #47, two sizing bugs still show in the demo, with root causes (your `ai/sizing.py`)
 

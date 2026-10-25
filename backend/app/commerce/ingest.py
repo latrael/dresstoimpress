@@ -15,6 +15,7 @@ import html
 import logging
 import os
 import re
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from typing import get_args
@@ -151,25 +152,113 @@ def _valid(p: dict) -> dict | None:
 
 # ---- Apify ----
 
-def run_actor(actor: str, input: dict, token: str, timeout: float = 600) -> list[dict]:
-    """Run an actor synchronously and return its dataset items."""
-    r = httpx.post(f"https://api.apify.com/v2/acts/{actor.replace('/', '~')}/run-sync-get-dataset-items",
-                   params={"token": token}, json=input, timeout=timeout)
-    r.raise_for_status()
-    items = r.json()
-    return items if isinstance(items, list) else []
+APIFY_API = "https://api.apify.com/v2"
+MAX_CHARGE_USD = 2.0  # default hard cap per paid run (sprint rule: ask Nabil before any run over $2)
+RUN_DONE = {"SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED"}  # terminal run statuses
+DATASET_PAGE = 1000
 
 
-def fetch_hm(keywords: list[str], per_keyword: int, token: str) -> list[dict]:
+class ApifyRunError(RuntimeError):
+    """A run that FAILED, or was still going when we stopped waiting. Carries the ids, so whatever it
+    scraped (already paid for) can be fetched later with `scripts.ingest --from-dataset`."""
+
+    def __init__(self, msg: str, run_id: str | None = None, dataset_id: str | None = None):
+        super().__init__(msg)
+        self.run_id, self.dataset_id = run_id, dataset_id
+
+
+def _apify(method: str, path: str, token: str, retries: int = 0, **kw) -> httpx.Response:
+    """One Apify API call. The token goes in a header, so error messages and logs never carry it.
+    `retries`: extra tries on network errors / 429 / 5xx (safe for GETs only)."""
+    for attempt in range(retries + 1):
+        try:
+            r = httpx.request(method, f"{APIFY_API}{path}", headers={"Authorization": f"Bearer {token}"}, **kw)
+            r.raise_for_status()
+            return r
+        except httpx.HTTPError as e:
+            status = getattr(getattr(e, "response", None), "status_code", 0)
+            if attempt == retries or (status and status != 429 and status < 500):
+                raise
+            log.warning("apify %s %s: %s %s, retrying", method, path, type(e).__name__, status or "")
+            time.sleep(min(30, 2 ** attempt))
+    raise AssertionError("unreachable")
+
+
+def dataset_items(dataset_id: str, token: str, page: int | None = None) -> list[dict]:
+    """Every item of an Apify dataset (clean JSON), `page` (default DATASET_PAGE) at a time. Costs a
+    fraction of a cent, and works for any run's dataset while Apify keeps it (7 days for unnamed ones)."""
+    page = page or DATASET_PAGE
+    items: list[dict] = []
+    offset = 0
+    while True:
+        r = _apify("GET", f"/datasets/{dataset_id}/items", token, retries=3, timeout=120,
+                   params={"clean": "true", "format": "json", "limit": page, "offset": offset})
+        batch = r.json()
+        if not isinstance(batch, list):
+            raise ApifyRunError(f"dataset {dataset_id}: expected a JSON array, got {type(batch).__name__}",
+                                dataset_id=dataset_id)
+        items += batch
+        offset += page
+        # clean=true may return fewer than `limit` items mid-dataset, so page by the total, not the count
+        total = r.headers.get("x-apify-pagination-total")
+        if (offset >= int(total)) if total is not None else not batch:
+            return items
+
+
+def run_actor(actor: str, input: dict, token: str, timeout: float = 600,
+              max_charge_usd: float | None = MAX_CHARGE_USD, poll_s: float = 5) -> list[dict]:
+    """Start an actor run, wait for it (up to `timeout` s), return its dataset items.
+
+    Asynchronous on purpose: run-sync-get-dataset-items 502s or times out on long runs while the run
+    itself succeeds and is billed, which "lost" paid data. Here a 502 while waiting is just retried.
+    TIMED-OUT / ABORTED runs return their partial (paid-for) items; FAILED raises ApifyRunError, as does
+    a run still going after `timeout` (the error says how to fetch its data later). `max_charge_usd`
+    is Apify's maxTotalChargeUsd: the run stops once it would cost more. None or 0 = no cap."""
+    params = {"maxTotalChargeUsd": max_charge_usd} if max_charge_usd else {}
+    run = _apify("POST", f"/acts/{actor.replace('/', '~')}/runs", token, params=params, json=input,
+                 timeout=60).json()["data"]
+    run_id, dataset_id = run["id"], run.get("defaultDatasetId")
+    log.info("apify run %s started (dataset %s, cap $%s)", run_id, dataset_id, max_charge_usd or "none")
+    deadline = time.monotonic() + timeout
+    while run.get("status") not in RUN_DONE:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise ApifyRunError(
+                f"Apify run {run_id} is still {run.get('status')} after {timeout:.0f}s. It keeps running; fetch "
+                f"its items later with: python -m scripts.ingest --from-dataset {dataset_id} --retailer ...",
+                run_id, dataset_id)
+        time.sleep(poll_s)
+        try:  # waitForFinish: Apify holds the request until the run ends (max 60 s), so few polls
+            run = _apify("GET", f"/actor-runs/{run_id}", token, timeout=90,
+                         params={"waitForFinish": int(max(0, min(60, left)))}).json()["data"]
+        except httpx.HTTPError as e:  # 502 / network blip while waiting: the run is fine, keep waiting
+            status = getattr(getattr(e, "response", None), "status_code", 0)
+            if status and status != 429 and status < 500:
+                raise  # 401 / 404: waiting won't help
+            log.warning("polling apify run %s: %s %s, retrying", run_id, type(e).__name__, status or "")
+    dataset_id = run.get("defaultDatasetId") or dataset_id
+    if run["status"] == "FAILED":
+        raise ApifyRunError(
+            f"Apify run {run_id} FAILED ({run.get('statusMessage') or 'no message'}). Any items it scraped: "
+            f"python -m scripts.ingest --from-dataset {dataset_id} --retailer ...", run_id, dataset_id)
+    if run["status"] != "SUCCEEDED":
+        log.warning("apify run %s ended %s; keeping its partial items", run_id, run["status"])
+    return dataset_items(dataset_id, token)
+
+
+def fetch_hm(keywords: list[str], per_keyword: int, token: str,
+             max_charge_usd: float | None = MAX_CHARGE_USD, timeout: float = 600) -> list[dict]:
     return run_actor(HM_ACTOR, {"keywords": ", ".join(keywords), "Country": "en_us",
-                                "maxItems": per_keyword}, token)
+                                "maxItems": per_keyword}, token, timeout, max_charge_usd)
 
 
-def fetch_uniqlo(categories: list[str], per_category: int, token: str) -> list[dict]:
+def fetch_uniqlo(categories: list[str], per_category: int, token: str,
+                 max_charge_usd: float | None = MAX_CHARGE_USD, timeout: float = 600) -> list[dict]:
     # $0.08 per run, so every category goes into one run
     return run_actor(UNIQLO_ACTOR, {"mode": "search", "country": "us", "categories": categories,
                                     "maxItems": per_category * len(categories), "fetchDetails": True,
-                                    "fetchReviews": False, "proxy": {"useApifyProxy": False}}, token)
+                                    "fetchReviews": False, "proxy": {"useApifyProxy": False}},
+                     token, timeout, max_charge_usd)
 
 
 # ---- normalizers (raw actor items -> Product dicts; category may be None) ----
@@ -337,13 +426,33 @@ def tag(products: list[dict], drops: Counter | None = None) -> list[dict]:
     return out
 
 
-def save(products: list[dict], dry_run: bool = False) -> list[dict]:
-    """Dedupe by id (last wins), validate, store.put unless dry_run. Returns what was (or would be) saved."""
-    uniq = {p["id"]: p for p in products}
-    good = [q for q in (_valid(p) for p in uniq.values()) if q]
-    if not dry_run:
-        from ..store import store  # lazy: DATA_DIR is read at import (tests set it late)
+# Paid-for AI output (tag_catalog). `summary` is Adam's card blurb, read by key because the model may
+# not define it yet. A re-ingest refreshes everything else.
+AI_FIELDS = ("label", "pattern", "formality", "style_tags", "summary")
 
+
+def keep_ai_fields(new: dict, old: dict | None) -> dict:
+    """`new` (a fresh scrape) plus the AI fields of `old` (the stored copy) wherever `new` has no value
+    of its own. Price, sizes/stock, images, department, scraped_at... always come from `new`."""
+    if not old:
+        return new
+    return {**new, **{k: old[k] for k in AI_FIELDS if not new.get(k) and old.get(k)}}
+
+
+def save(products: list[dict], dry_run: bool = False) -> list[dict]:
+    """Dedupe by id (last wins), keep stored AI fields (`keep_ai_fields`), validate, store.put unless
+    dry_run. Returns what was (or would be) saved."""
+    from ..store import store  # lazy: DATA_DIR is read at import (tests set it late)
+
+    uniq = {p["id"]: p for p in products}
+    stored = {p.get("id"): p for p in store.list("products")} if uniq else {}  # one read, not one per product
+    good = []
+    for pid, p in uniq.items():
+        merged = keep_ai_fields(p, stored.get(pid))
+        q = _valid(merged)
+        if q:  # validation drops fields the model doesn't define yet (summary): carry them over as they are
+            good.append({**q, **{k: merged[k] for k in AI_FIELDS if k in merged and k not in q}})
+    if not dry_run:
         for p in good:
             store.put("products", p["id"], p)
     return good
@@ -381,14 +490,15 @@ def process(raw_by_retailer: dict[str, list[dict]], do_tag: bool = True,
 
 
 def ingest(hm_keywords: list[str], uniqlo_categories: list[str], per_keyword: int = 10,
-           token: str | None = None, do_tag: bool = True, dry_run: bool = False) -> dict:
-    """Pull from Apify, then `process`. Returns the summary dict."""
+           token: str | None = None, do_tag: bool = True, dry_run: bool = False,
+           max_charge_usd: float | None = MAX_CHARGE_USD) -> dict:
+    """Pull from Apify (each run capped at `max_charge_usd`), then `process`. Returns the summary dict."""
     token = token or os.getenv("APIFY_TOKEN")
     if not token:
         raise RuntimeError("APIFY_TOKEN is not set")
     raw: dict[str, list[dict]] = {}
     if hm_keywords:
-        raw["hm"] = fetch_hm(hm_keywords, per_keyword, token)
+        raw["hm"] = fetch_hm(hm_keywords, per_keyword, token, max_charge_usd)
     if uniqlo_categories:
-        raw["uniqlo"] = fetch_uniqlo(uniqlo_categories, per_keyword, token)
+        raw["uniqlo"] = fetch_uniqlo(uniqlo_categories, per_keyword, token, max_charge_usd)
     return process(raw, do_tag, dry_run)[1]

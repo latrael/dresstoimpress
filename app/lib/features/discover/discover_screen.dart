@@ -15,10 +15,14 @@ class ProductGrid extends StatelessWidget {
       {super.key,
       required this.products,
       required this.store,
-      required this.onOpen});
+      required this.onOpen,
+      this.onRemove});
   final List<RankedProduct> products;
   final StoreController store;
   final void Function(RankedProduct) onOpen;
+
+  /// When set, each tile gets an × top-right of the photo (the Liked list).
+  final Future<void> Function(RankedProduct)? onRemove;
   @override
   Widget build(BuildContext context) => Column(children: [
         for (final card in products)
@@ -32,14 +36,35 @@ class ProductGrid extends StatelessWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ClipRRect(
-                                borderRadius: BorderRadius.circular(28),
-                                child: NaturalPhotoFrame(
-                                    url: store.imageUrl(card.product.imageUrl),
-                                    child: NichePhoto(
-                                        url: store
-                                            .imageUrl(card.product.imageUrl),
-                                        label: card.product.name))),
+                            Stack(children: [
+                              ClipRRect(
+                                  borderRadius: BorderRadius.circular(28),
+                                  child: NaturalPhotoFrame(
+                                      url: store
+                                          .imageUrl(card.product.imageUrl),
+                                      child: NichePhoto(
+                                          url: store.imageUrl(
+                                              card.product.imageUrl),
+                                          label: card.product.name))),
+                              if (onRemove != null)
+                                Positioned(
+                                    top: 12,
+                                    right: 12,
+                                    child: NicheGlass(
+                                        radius: 999,
+                                        opacity: .85,
+                                        child: IconButton(
+                                            key: ValueKey(
+                                                'remove-liked-${card.id}'),
+                                            tooltip: 'Remove from Liked',
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            onPressed: () =>
+                                                onRemove!(card),
+                                            icon: const Icon(
+                                                NicheIcons.close,
+                                                size: 18))))
+                            ]),
                             const SizedBox(height: 12),
                             Text(
                                 retailerName(card.product.retailer)
@@ -106,7 +131,24 @@ class _LikedScreenState extends State<LikedScreen> {
               ProductGrid(
                   products: snapshot.data!,
                   store: widget.store,
-                  onOpen: widget.onOpen)
+                  onOpen: widget.onOpen,
+                  onRemove: (card) async {
+                    final kept = snapshot.data!
+                        .where((c) => c.id != card.id)
+                        .toList();
+                    setState(() {
+                      products = Future.value(kept);
+                    });
+                    try {
+                      await widget.store.save(card.id, false);
+                    } catch (_) {
+                      if (mounted) {
+                        setState(() {
+                          products = load();
+                        });
+                      }
+                    }
+                  })
             ]);
           }));
 }

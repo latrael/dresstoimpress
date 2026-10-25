@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dress_to_impress/features/feed/reels_browse.dart';
 import 'package:dress_to_impress/features/shared/niche_theme.dart';
+import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'package:dress_to_impress/features/shared/niche_shell.dart';
 import 'package:dress_to_impress/features/shared/niche_photo.dart';
 import 'package:dress_to_impress/features/profile/niche_welcome.dart';
@@ -132,6 +133,41 @@ void main() {
     expect(Niche.theme.textTheme.headlineSmall!.fontWeight, FontWeight.w400);
     expect(Niche.theme.textTheme.bodyMedium!.fontFamily, 'Manrope');
   });
+  testWidgets('heart button bottom-left likes, and un-likes once liked',
+      (t) async {
+    final calls = <String>[];
+    final saved = <String>{};
+    late StateSetter rebuild;
+    await mount(
+        t,
+        StatefulBuilder(builder: (context, setState) {
+          rebuild = setState;
+          return ReelsBrowse(
+              products: [item('a')],
+              savedIds: saved,
+              onSave: (id, value) async {
+                calls.add('$id:$value');
+                value ? saved.add(id) : saved.remove(id);
+              },
+              onAddToCart: (_, __) async {},
+              imageUrl: (s) => s);
+        }));
+    expect(find.byKey(const ValueKey('heart-a')), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('heart-a')));
+    await t.pumpAndSettle();
+    expect(calls, ['a:true']);
+    rebuild(() {});
+    await t.pumpAndSettle();
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('heart-a')),
+            matching: find.byIcon(NicheIcons.favorite)),
+        findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('heart-a')));
+    await t.pumpAndSettle();
+    expect(calls, ['a:true', 'a:false']);
+  });
+
   testWidgets(
       'reels snap vertically; details stay collapsed and actions stay minimal',
       (t) async {

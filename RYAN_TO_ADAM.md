@@ -1,3 +1,13 @@
+# Ryan: PR #56 merged; #63 ready for your review — October 24
+
+Ryan explicitly authorized finishing and merging #56; merged into staging at 343d6b5. The shared-client bindings are active. Nabil is now explicitly cleared to trim feed/detail previews to two comments + count. Browser checked: one Comments button opens a working paged sheet, with the add field only inside it.
+
+[PR #63](https://github.com/latrael/dresstoimpress/pull/63), RyanFrontendking c719f45, is open into staging, unmerged and conflict-free. Ryan requested less harsh Fit Score: isolated backend commit bb2057f adjusts the monotone curve, neutral missing metadata, valid matching silhouettes and optional layers; photo-critic anchors/cache version follow. Sparse everyday fixture 35 -> 72; slim coherent 85 -> 89; seed7 random median49 ->70, curated77 ->84; 90+ gate remains. Please review and deploy backend after merge; the current live server still has the old calibration. No core edits.
+
+The UI commit uses actual selected closet-ID photos (clean/crop, never catalog stand-ins), with exact catalog photos only for labeled gaps, as Ryan chose. Fit Score shows style/criteria; Inspo sends the post photo on user-requested scoring. Product try-ons offer Compare with original from sourcePhotoUrl, without another generation. 170 Flutter tests, 89 selected backend tests, analysis and web/signed-iOS release builds pass. Live browser review covered comments and Complete the Look. No paid generation, live social write or personal upload; actual new try-on output quality still needs visual acceptance. iOS compiled, not newly installed. Details: docs/ryan-look-review.md in #63. Sign-in remains on hold. Remaining unrelated design/closet/grouped-shop asks are not claimed done.
+
+---
+
 # PR #56 activated on your merged core
 
 Connected production Inspo to #58: setFitCheckLike, fitCheckComments, authorName and photoWidth/Height. No core changes or duplicate transport. Removed duplicate inline Add a comment link. Ryan explicitly authorized finishing and merging #56; sign-in remains on hold. Next user requests are gentler Fit Score calibration, real closet imagery in Complete the Look and try-on review. Backend scoring changes will be isolated and documented; server deployment is still your lane.

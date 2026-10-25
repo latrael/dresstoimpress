@@ -2,9 +2,29 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~5:55 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~6:05 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
+
+## Sat 6:05 PM: review of `adam/measure-sizing` (your ask): ✅ OK to merge my part
+
+**Your 3-line change to `_size_pick` (passing chest/hip/inseam + `usual_size` through) is approved.** I trial-merged `adam/measure-sizing` with today's `staging` (incl. #44's 3,188 products):
+- **Merge:** clean, no conflicts.
+- **Tests:** 530 pass.
+- **Speed:** sizing every product on the Home path takes ~0.03 s for 2,000 items, so `/feed` stays fast.
+- **Errors:** none on any store's size names.
+
+**Findings from sizing the whole new catalog** (test bodies: man 178 cm / 72 kg / 39-32-38 in, woman 165 cm / 58 kg / 34-27-37 in; for your sizing PR, none block it):
+1. **Princess Polly tops come out at `12` for the 165/58 woman** (31 of 40 tops, `in_your_size: true`). PP sizes **tops** in US numeric `0`–`12` (dress sizes), and it looks like the numeric path treats them as large. Expected ~`4`–`6` for a 34" bust. PP bottoms give `6` for a 27" waist, which is about right.
+2. **Combined sizes aren't matched:** `XS/S` (137 Brandy Melville items), `S/M`, `M/L`, `L/XL`. Only 14 of 178 Brandy items get a size. Suggest: a combined size covers both letters.
+3. **`One Size`** (now 14 Brandy items; my normalizer maps "Regular Fit" / "Oversized Fit" to it): no badge today. Suggest `your_size: "One Size"`, `in_your_size: true` when it's in stock.
+4. **`usual_sizes` letter → numeric:** a usual top size `M` gives nothing on numeric-only stores (Princess Polly, 0 of 345). A letter→US-numeric map would cover it.
+5. **Stüssy `XL` picks are fine:** they're `in_your_size: false` (their size sold out, nearest left), as designed.
+
+**Also on `nabil` now (PR to follow):**
+- Non-apparel is dropped by every normalizer (Uniqlo storage bags, keychains).
+- Brandy's "Regular Fit" → "One Size".
+- The snapshot is re-exported (still 3,188, tags kept). Re-running `load_products` (no `--replace`) picks it up; it's optional for the dry run.
 
 ## Sat 5:55 PM: sprint #2 catalog: 418 → 3,188 products, 8 stores (PR #44): **please load before the 18:30 dry run**
 

@@ -13,7 +13,7 @@ import re
 from collections import Counter
 from urllib.parse import urlparse
 
-from .ingest import HM_STEMS, MAX_COLORS, _now, _valid, gallery, guess_category, plain_text, slug
+from .ingest import HM_STEMS, MAX_COLORS, NOT_APPAREL, _now, _valid, gallery, guess_category, plain_text, slug
 
 SHOPIFY_ACTOR = "autofacts/shopify"
 
@@ -27,11 +27,9 @@ STORES = {
     "www.stussy.com": ("stussy", "Stüssy", "unisex"),
     "stussy.com": ("stussy", "Stüssy", "unisex"),
 }
-NOT_APPAREL = re.compile(r"gift ?card|e-?gift|beauty|fragrance|perfume|candle|skincare|makeup|lip ?gloss|"
-                         r"phone case|sticker|poster|home goods|homeware|mug|towel|insurance|shipping|keychain|key ?ring|"
-                         r"storage bag", re.I)
 IN_STOCK = {"instock", "limitedavailability", "preorder", "backorder"}
 _US = re.compile(r"^US\s+", re.I)
+_ONE_SIZE = re.compile(r"^(one ?size|os|o/s|regular fit|oversized fit|default title)$", re.I)  # Brandy lists fits as sizes
 # Store words guess_category doesn't know (singular, glued or store-specific: "SHORT", "FLEECE PANT",
 # "Short Sleeve Crew", "BOTTOMS"); matched as stems like H&M's codes, the extra stems first.
 STEMS = [("bottom", ("bottom", "bib")), ("top", ("crew", "henley", "tee", "polo", "fleece")), *HM_STEMS]
@@ -66,6 +64,8 @@ def _size_name(opts: list, size_i: int | None, length_i: int | None) -> str:
     if size_i is None or size_i >= len(opts):
         return "One Size"
     name = _US.sub("", str(opts[size_i]).strip())
+    if _ONE_SIZE.match(name):
+        return "One Size"
     if length_i is not None and length_i < len(opts):
         name = f"{name}x{str(opts[length_i]).strip()}"
     return name

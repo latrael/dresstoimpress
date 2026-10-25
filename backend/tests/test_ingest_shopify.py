@@ -96,3 +96,18 @@ def test_stores_route(client):
         {"id": "hm", "name": "H&M", "count": 2, "departments": {"men": 1}},  # sold-out item not counted
         {"id": "princesspolly", "name": "Princess Polly", "count": 1, "departments": {"women": 1}},
     ]
+
+
+def test_fit_names_and_one_size_become_one_size():
+    it = _item(options=[{"type": "Size"}],
+               variants=[{"id": "1", "options": ["Regular Fit"], "price": {"current": 3000, "stockStatus": "InStock"}}])
+    assert normalize_shopify([it])[0]["sizes"] == [{"name": "One Size", "in_stock": True}]
+
+
+def test_uniqlo_and_hm_drop_non_apparel():
+    from app.commerce.ingest import normalize_hm, normalize_uniqlo
+    drops = Counter()
+    assert normalize_uniqlo([{"productId": "E1", "name": "Storage Bag | PUFFTECH", "genderName": "UNISEX"}], drops) == []
+    assert normalize_hm([{"id": "1", "category": "ladies_accessories_keychains", "title": "Ballet Keychain",
+                          "price": 5, "model_image": "https://image.hm.com/x.jpg"}], drops) == []
+    assert drops == {"uniqlo_not_apparel": 1, "hm_not_apparel": 1}

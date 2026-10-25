@@ -304,6 +304,10 @@ def normalize_uniqlo(raw: list[dict], drops: Counter | None = None,
 
 NORMALIZERS = {"hm": normalize_hm, "uniqlo": normalize_uniqlo}
 
+from .ingest_shopify import normalize_shopify  # noqa: E402  (it imports the helpers above)
+
+NORMALIZERS["shopify"] = normalize_shopify
+
 
 # ---- tagging + saving ----
 

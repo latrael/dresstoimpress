@@ -9,7 +9,9 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 Category = Literal["top", "bottom", "outerwear", "shoes", "dress", "accessory"]
-Retailer = Literal["zara", "hm", "asos", "uniqlo", "mango"]
+Retailer = Literal["zara", "hm", "asos", "uniqlo", "mango",
+                   # Shopify stores (sprint #2, app/commerce/ingest_shopify.py)
+                   "princesspolly", "edikted", "brandymelville", "trueclassic", "kith", "stussy"]
 Pattern = Literal["solid", "striped", "plaid", "graphic", "floral", "other"]
 StyleTag = Literal[
     "y2k", "streetwear", "minimalist", "preppy", "athleisure",

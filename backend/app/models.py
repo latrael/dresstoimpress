@@ -75,9 +75,24 @@ class ClosetItem(BaseModel):
     product_id: Optional[str] = None       # catalog product this piece was matched to (confident match only)
     catalog_image_url: Optional[str] = None
     match_confidence: Optional[float] = None  # 0-1, set with product_id
-    display_image_url: Optional[str] = None   # what to show: catalog image > generated clean shot > crop; = image_url
+    display_image_url: Optional[str] = None   # what to show: generated clean shot > crop, never the catalog photo; = image_url
     crop_image_url: Optional[str] = None      # the garment cropped out of the photo it was found in
-    worn_in: list[dict] = []                  # [{photo_url, at, source: "closet"|"fitcheck"}] outfit photos it appeared in
+    worn_in: list[dict] = []                  # [{photo_url, at, source: "closet"|"fitcheck", box}] outfit photos it appeared in
+    # sprint-3 §1 (Oct 24, night)
+    outfit_id: Optional[str] = None           # the `outfits` record this piece was first digitized from (None: single piece)
+    clean_source_photo_url: Optional[str] = None  # the source photo the clean shot was generated from (best of worn_in)
+    clean_source_box: Optional[list[float]] = None  # that garment's box in it, 0-1 fractions [x0, y0, x1, y1]
+
+
+class ClosetOutfit(BaseModel):
+    """One whole-fit photo in the closet and the pieces digitized from it (sprint-3 §1.3)."""
+    id: str
+    user_id: str
+    photo_url: str
+    created_at: str
+    piece_ids: list[str] = []
+    source: Literal["closet", "fitcheck"] = "closet"
+    pieces: list[ClosetItem] = []             # embedded by GET /closet/{user}/outfits (pieces that still exist)
 
 
 class User(BaseModel):

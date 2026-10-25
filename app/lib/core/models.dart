@@ -847,6 +847,9 @@ class ClosetItem {
     this.displayImageUrl,
     this.cropImageUrl,
     this.wornIn = const [],
+    this.outfitId,
+    this.cleanSourcePhotoUrl,
+    this.cleanSourceBox,
   });
 
   final String id;
@@ -866,12 +869,20 @@ class ClosetItem {
   final String? productId; // catalog product this piece was matched to (confident match only)
   final String? catalogImageUrl;
   final double? matchConfidence; // 0-1, with productId
-  /// What the closet grid shows: catalog photo when matched, else a generated clean shot, else the crop.
+  /// What the closet grid shows: a generated clean shot of the user's own crop, else the crop. Never the
+  /// catalog photo (sprint-3 §1.2): [catalogImageUrl] is only for "shop similar".
   final String? displayImageUrl;
   /// The garment cropped out of the photo it was found in (the whole photo when there was no box).
   final String? cropImageUrl;
   /// Outfit photos this piece appeared in (closet uploads and Fit Check posts), oldest first.
   final List<WornIn> wornIn;
+  // ---- sprint-3 §1 (Oct 24, night)
+  /// The [ClosetOutfit] this piece was first digitized from; null for a single-piece upload or a piece
+  /// whose outfit was deleted.
+  final String? outfitId;
+  /// The source photo the clean shot was generated from (the best of [wornIn]) and the garment's box in it.
+  final String? cleanSourcePhotoUrl;
+  final List<double>? cleanSourceBox;
 
   /// [displayImageUrl] when present, else [imageUrl]: always something to render.
   String get shownImageUrl => displayImageUrl ?? imageUrl;
@@ -895,33 +906,71 @@ class ClosetItem {
         displayImageUrl: _strN(j['display_image_url']),
         cropImageUrl: _strN(j['crop_image_url']),
         wornIn: _list(j['worn_in'], WornIn.fromJson),
+        outfitId: _strN(j['outfit_id']),
+        cleanSourcePhotoUrl: _strN(j['clean_source_photo_url']),
+        cleanSourceBox: FitTag._box(j['clean_source_box']),
       );
 }
 
 /// One outfit photo a closet piece was worn in. `source` is `closet` (an outfit upload) or `fitcheck`
-/// (a Fit Check post). `at` is an ISO-8601 UTC string.
+/// (a Fit Check post). `at` is an ISO-8601 UTC string. [box] is where the piece sits in that photo
+/// ([xMin, yMin, xMax, yMax] as 0-1 fractions), null on old entries or when it wasn't boxed.
 class WornIn {
-  const WornIn({required this.photoUrl, this.at, this.source});
+  const WornIn({required this.photoUrl, this.at, this.source, this.box});
   final String photoUrl;
   final String? at;
   final String? source;
+  final List<double>? box;
   DateTime? get time => at == null ? null : DateTime.tryParse(at!);
   factory WornIn.fromJson(Json j) =>
-      WornIn(photoUrl: _str(j['photo_url']), at: _strN(j['at']), source: _strN(j['source']));
+      WornIn(photoUrl: _str(j['photo_url']), at: _strN(j['at']), source: _strN(j['source']), box: FitTag._box(j['box']));
+}
+
+/// `GET /closet/{user}/outfits` entry (sprint-3 §1.3): one whole-fit photo the user uploaded (`source`
+/// `closet`) or posted to Fit Check (`fitcheck`), with the pieces digitized from it. Deleting an outfit
+/// ([Api.deleteClosetOutfit]) keeps its pieces in the closet.
+class ClosetOutfit {
+  const ClosetOutfit({
+    required this.id,
+    required this.photoUrl,
+    this.createdAt,
+    this.source,
+    this.pieceIds = const [],
+    this.pieces = const [],
+  });
+  final String id;
+  final String photoUrl;
+  final String? createdAt; // ISO-8601 UTC
+  final String? source; // 'closet' | 'fitcheck'
+  final List<String> pieceIds;
+  /// The pieces that still exist, in detection order.
+  final List<ClosetItem> pieces;
+  DateTime? get time => createdAt == null ? null : DateTime.tryParse(createdAt!);
+  factory ClosetOutfit.fromJson(Json j) => ClosetOutfit(
+        id: _str(j['id']),
+        photoUrl: _str(j['photo_url']),
+        createdAt: _strN(j['created_at']),
+        source: _strN(j['source']),
+        pieceIds: _strs(j['piece_ids']),
+        pieces: _list(j['pieces'], ClosetItem.fromJson),
+      );
 }
 
 /// `POST /closet/upload` result: new pieces, existing pieces a photo matched (the photo was added to
 /// their [ClosetItem.wornIn] instead of making a twin), and photos that weren't clothing.
 class ClosetUploadResult {
-  const ClosetUploadResult({required this.added, required this.merged, required this.skipped});
+  const ClosetUploadResult({required this.added, required this.merged, required this.skipped, this.outfits = const []});
   final List<ClosetItem> added;
   final List<ClosetItem> merged;
   final int skipped;
+  /// One [ClosetOutfit] per outfit photo (kind `outfit`) that had at least one garment; empty for pieces.
+  final List<ClosetOutfit> outfits;
   List<ClosetItem> get all => [...added, ...merged];
   factory ClosetUploadResult.fromJson(Json j) => ClosetUploadResult(
         added: _list(j['added'], ClosetItem.fromJson),
         merged: _list(j['merged'], ClosetItem.fromJson),
         skipped: _int(j['skipped']),
+        outfits: _list(j['outfits'], ClosetOutfit.fromJson),
       );
 }
 

@@ -258,11 +258,23 @@ class Api {
 
   Future<List<ClosetItem>> closet() async => _listOf(await _send('GET', '/closet/${_seg(_user)}'), ClosetItem.fromJson);
 
+  /// Legacy single-photo call. The backend digitizes it like an outfit (every garment lands in the closet)
+  /// but answers with the FIRST piece only. New code uses [uploadClosetPhotos] with `kind: 'outfit'`.
   Future<ClosetItem> uploadClosetItem(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       ClosetItem.fromJson(await _upload('/closet/upload', {'user_id': _user}, bytes, mimeType));
 
   Future<ClosetDeleteResult> deleteClosetItem(String itemId) async =>
       ClosetDeleteResult.fromJson(await _send('DELETE', '/closet/${_seg(_user)}/${_seg(itemId)}'));
+
+  /// GET /closet/{user}/outfits (sprint-3 §1.3): the user's outfits, newest first, each with its
+  /// [ClosetOutfit.pieces] embedded. An outfit is made by every `kind: 'outfit'` upload photo and by every
+  /// Fit Check post. The Pieces view is still [closet].
+  Future<List<ClosetOutfit>> closetOutfits() async =>
+      _listOf(await _send('GET', '/closet/${_seg(_user)}/outfits'), ClosetOutfit.fromJson);
+
+  /// DELETE /closet/{user}/outfits/{id}: removes the outfit only; its pieces stay in the closet.
+  Future<ClosetDeleteResult> deleteClosetOutfit(String outfitId) async =>
+      ClosetDeleteResult.fromJson(await _send('DELETE', '/closet/${_seg(_user)}/outfits/${_seg(outfitId)}'));
 
   Future<String> uploadBodyPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       _str((await _upload('/users/${_seg(_user)}/body-photo', {}, bytes, mimeType))['body_photo_url']);

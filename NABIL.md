@@ -125,8 +125,8 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
   - `scripts/classify_images.py` labels every catalog photo (product/model/detail/other, ~$0.21 of Haiku, cached in `seed/image_kinds.json`, re-applied on ingest).
   - `hero_image_url` for 941/3,188 products.
   - `/feed` cards carry `hero_image_url`, `closet_picks` and `tryon` (`commerce/reels.py`).
-  - `POST`/`GET /feed/{user}/tryons` prefetch routes (501 until Adam's renderer lands).
-  - `/feed` 34 ms. 682 tests.
+  - `POST`/`GET /feed/{user}/tryons` prefetch routes, wired to Adam's `closet_picks` / `tryon_status` / `prefetch_tryons` (#66).
+  - `/feed` 41 ms. 691 tests.
 - **Oct 24, ~11:30 PM:** Sprint #3 follow-ups:
   - Post views carry only the 2 newest comments (with `author`) plus `comment_count`.
   - The `shop_for` filter now runs before matching in shop the look (flat + grouped) and `/search/photo`, e.g. 2/6 → 6/6 per piece.

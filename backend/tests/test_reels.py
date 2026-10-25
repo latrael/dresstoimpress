@@ -1,5 +1,5 @@
 """Home as reels (sprint-4 §10): photo labels -> hero_image_url, the extra /feed card fields (hero_image_url,
-closet_picks, tryon) and the try-on prefetch routes. Adam's ai.service functions are stubbed here."""
+closet_picks, tryon) and the try-on prefetch routes, over Adam's ai.service functions (stubbed or real)."""
 import json
 import os
 from pathlib import Path
@@ -96,41 +96,35 @@ PICKS = [{"id": f"ci{i}", "label": f"piece {i}", "category": c, "image_url": f"h
 
 
 def _adam(monkeypatch, render=None):
-    """Stand-ins for Adam's ai.service functions (sprint-4 §10.1-10.2)."""
+    """Stand-ins for Adam's ai.service functions (ai.feed_tryon), same signatures."""
     from app.ai import service
     calls = {"status": [], "render": []}
-    monkeypatch.setattr(service, "closet_picks", lambda uid, p, k=4: PICKS, raising=False)
+    monkeypatch.setattr(service, "closet_picks", lambda uid, p, k=4: PICKS)
 
-    def status(uid, pid, cids):
-        calls["status"].append((pid, cids))
+    def status(uid, p, picks=None):
+        pid = p["id"] if isinstance(p, dict) else p
+        calls["status"].append((pid, [c["id"] for c in picks or []]))
         return {"status": "ready", "image_url": f"https://x/tryon-{pid}.png", "mode": "ai"} if pid == "a" \
             else {"status": "pending"}
-    monkeypatch.setattr(service, "tryon_status", status, raising=False)
-    if render is not False:
-        def prefetch(uid, items):
-            calls["render"].append(items)
-            return render or {}
-        monkeypatch.setattr(service, "prefetch_tryons", prefetch, raising=False)
+    monkeypatch.setattr(service, "tryon_status", status)
+
+    def prefetch(uid, items):
+        calls["render"].append([p["id"] for p in items])
+        return render or {}
+    monkeypatch.setattr(service, "prefetch_tryons", prefetch)
     return calls
 
 
-def _remove_adam(monkeypatch):
-    from app.ai import service
-    for name in ("closet_picks", "tryon_status", "prefetch_tryons"):
-        monkeypatch.delattr(service, name, raising=False)
-
-
-def test_feed_cards_carry_reel_fields_before_adams_part_lands(client, monkeypatch):
-    _remove_adam(monkeypatch)
+def test_feed_cards_with_adams_real_functions(client):
+    """No stubs: an empty closet -> no picks; no photo of the user -> needs_photo."""
     cards = {c["id"]: c for c in client.get("/feed", params={"user_id": "u_r"}).json()}
     assert cards["a"]["hero_image_url"] == "https://cdn.shopify.com/b.jpg?v=2"
     assert cards["b"]["hero_image_url"] == cards["b"]["image_url"]  # no product-only shot: the primary photo
-    assert all(c["closet_picks"] == [] and c["tryon"] == {"status": "none"} for c in cards.values())
-    assert client.post("/feed/u_r/tryons", json={"product_ids": ["a"]}).status_code == 501
-    assert client.get("/feed/u_r/tryons", params={"ids": "a"}).status_code == 501
+    assert all(c["closet_picks"] == [] for c in cards.values())
+    assert all(c["tryon"]["status"] in ("needs_photo", "none", "unavailable") for c in cards.values())
 
 
-def test_feed_cards_use_adams_picks_and_tryon_status(client, monkeypatch):
+def test_feed_cards_use_picks_and_tryon_status(client, monkeypatch):
     calls = _adam(monkeypatch)
     cards = {c["id"]: c for c in client.get("/feed", params={"user_id": "u_r"}).json()}
     assert [c["id"] for c in cards["a"]["closet_picks"]] == ["ci0", "ci1", "ci2", "ci3"]  # capped at 4
@@ -145,8 +139,8 @@ def test_feed_survives_broken_helpers(client, monkeypatch):
 
     def boom(*a, **k):
         raise RuntimeError("down")
-    monkeypatch.setattr(service, "closet_picks", boom, raising=False)
-    monkeypatch.setattr(service, "tryon_status", boom, raising=False)
+    monkeypatch.setattr(service, "closet_picks", boom)
+    monkeypatch.setattr(service, "tryon_status", boom)
     cards = client.get("/feed", params={"user_id": "u_r"}).json()
     assert cards and all(c["closet_picks"] == [] and c["tryon"] == {"status": "none"} for c in cards)
 
@@ -157,9 +151,7 @@ def test_prefetch_starts_renders_and_answers_statuses(client, monkeypatch):
     assert r.status_code == 200, r.text
     assert r.json() == {"a": {"status": "ready", "image_url": "https://x/tryon-a.png", "mode": "ai"},
                         "b": {"status": "pending"}}
-    [items] = calls["render"]
-    assert [pid for pid, _ in items] == ["a", "b"]  # de-duped, in order
-    assert items[0][1] == ["ci0", "ci1", "ci2", "ci3"]
+    assert calls["render"] == [["a", "b"]]  # de-duped, in order, as products
     assert client.post("/feed/u_r/tryons", json={"product_ids": ["nope"]}).status_code == 404
     assert client.post("/feed/u_r/tryons", json={"product_ids": list("abcdef")}).status_code == 422
     assert client.post("/feed/u_r/tryons", json={"product_ids": []}).status_code == 422

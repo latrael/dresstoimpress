@@ -2,7 +2,7 @@
 
 What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Sun Oct 25, 2026, ~3:20 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
+**Last updated:** Sun Oct 25, 2026, ~4:30 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
 
 ---
 
@@ -121,6 +121,7 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 25, ~4:30 AM:** Catalog 3,188 → 3,476: shoes (Princess Polly 60, Kith 48) and accessories (Brandy, Stüssy, Edikted, PP) via 7 capped Shopify pulls (~$0.34). Ingest drops kids' sneakers + lifestyle goods, `SHOE US 7` → `7`, more shoe/jewellery words. Hero photos 1,167. 723 tests.
 - **Oct 25, ~3:20 AM:** Devpost + demo script updated for Ryan's #71 (reels Home, redesign). Shared server checked: still pre-#69/#70 (Claude failing, cap 150, no hero photos); u_nabil hit the 20/day prefetch cap. Handoff to Adam (who now takes all new Ryan tasks).
 - **Oct 25, ~2:45 AM:** Fixed: since #67 every Claude call 400'd on `temperature` (Haiku 5.5 takes default sampling only; SDK 2.x / API 2026-10-21 drop it) and silently fell over to Gemini. `/feed` cold 6.8 s (Claude reasons), warm ~40 ms. 713 tests.
 - **Oct 25, ~1:30 AM:** Sprint #4 (Home reels data):

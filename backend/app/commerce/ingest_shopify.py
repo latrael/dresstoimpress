@@ -28,7 +28,13 @@ STORES = {
     "stussy.com": ("stussy", "Stüssy", "unisex"),
 }
 IN_STOCK = {"instock", "limitedavailability", "preorder", "backorder"}
-_US = re.compile(r"^US\s+", re.I)
+_US = re.compile(r"^(SHOE\s+)?US\s+", re.I)  # "US 8", Princess Polly's "SHOE US 8"
+# kids' sizes of sneakers (Kith: "Jordan 5 Retro PS", "... TD"); adults-only catalog, like H&M/Uniqlo
+KIDS = re.compile(r"\b(PS|GS|TD|toddlers?|infants?|kids?|baby|little kids|big kids)\b", re.I)
+# Shopify stores sell lifestyle goods in "accessories" (Kith for BMW trays, teddy bears; Stussy camping tables)
+NOT_WEARABLE = re.compile(r"diecast|backgammon|teddy bear|watch (roll|box)|card deck|floor mats?|car plate|"
+                          r"license plate|tire caps?|pin set|umbrella|blanket|pillow|cigar|catchall|tray\b|"
+                          r"\btable\b|boxer|undershirt|underwear", re.I)
 _ONE_SIZE = re.compile(r"^(one ?size|os|o/s|regular fit|oversized fit|default title)$", re.I)  # Brandy lists fits as sizes
 # Store words guess_category doesn't know (singular, glued or store-specific: "SHORT", "FLEECE PANT",
 # "Short Sleeve Crew", "BOTTOMS"); matched as stems like H&M's codes, the extra stems first.
@@ -92,8 +98,11 @@ def normalize_shopify(raw: list[dict], drops: Counter | None = None, max_colors:
             continue
         title = it.get("title") or ""
         cats = [str(c) for c in it.get("categories") or []]
-        if NOT_APPAREL.search(" ".join([title, *cats])):
+        if NOT_APPAREL.search(" ".join([title, *cats])) or NOT_WEARABLE.search(title):
             drops["shopify_not_apparel"] += 1
+            continue
+        if KIDS.search(title):
+            drops["shopify_kids"] += 1
             continue
         cat = _category(title, cats)
         size_i = _option_index(it, "size", "waist")

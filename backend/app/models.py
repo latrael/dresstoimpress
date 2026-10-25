@@ -80,6 +80,12 @@ class ClosetItem(BaseModel):
     worn_in: list[dict] = []                  # [{photo_url, at, source: "closet"|"fitcheck"}] outfit photos it appeared in
 
 
+class AuthIdentity(BaseModel):
+    provider: Literal["google"]
+    sub: str             # Google's stable account id: the key we match on (never email alone)
+    email: str = ""
+
+
 class User(BaseModel):
     id: str
     display_name: str
@@ -92,6 +98,7 @@ class User(BaseModel):
     preferred_stores: list[str] = []     # retailer ids ("hm", "uniqlo"); /feed ranks them first (a boost, not a filter)
     onboarded: bool = False              # the app sets it at the last onboarding step
     shop_for: Literal["men", "women", "both"] = "both"  # onboarding "Shop:" question; /feed + Discover filter by it
+    auth: list[AuthIdentity] = []        # sign-in identities, set by POST /auth/google (app/auth.py)
 
 
 # ---- AI endpoint requests / responses ----

@@ -341,7 +341,7 @@ def test_prompts_ask_for_every_garment_and_brand():
     assert '"brand"' in prompts.DIGITIZE and "accessory" in prompts.DIGITIZE and prompts.DIGITIZE_VERSION == "v2"
     for word in ("mirror selfie", "shoes", "watch", "bag", "cap", "Never collapse"):
         assert word in prompts.DIGITIZE
-    assert prompts.PAIR_VERSION == "v3" and "brand" in prompts.PAIR
+    assert prompts.PAIR_VERSION == "v4" and "brand" in prompts.PAIR
 
 
 def test_pair_closet_json_includes_brand(client, monkeypatch):

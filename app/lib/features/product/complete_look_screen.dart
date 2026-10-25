@@ -1,3 +1,4 @@
+import '../shared/niche_theme.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -186,8 +187,7 @@ Widget fitScoreCard(FitScore score) {
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Fit Score · ${score.score}/100',
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+                style: Niche.theme.textTheme.titleLarge),
             if (score.primaryStyle != null) Text('As ${score.primaryStyle}'),
             Text(verdict),
             const SizedBox(height: 12),

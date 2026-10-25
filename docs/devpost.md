@@ -1,6 +1,6 @@
 # Devpost: DressToImpress | Niche
 
-Updated Sat Oct 24 ~4 PM for the council flow. Structured like the Devpost form: **About the project** (paste everything between the two `✂` lines into that one Markdown box), **Built with** (tags), and **"Try it out" links**. Numbers are measured on our backend. **[confirm]** = a screen in Ryan's sprint PR; check it in the app before submitting. Deadline: **Sunday 9:00 AM**, with all three of us added as teammates.
+Updated Sat Oct 24 ~11 PM for sprint 3 (Fit Score v2, try-on from your own photos, shop the look per piece, the Niche icon). Structured like the Devpost form: **About the project** (paste everything between the two `✂` lines into that one Markdown box), **Built with** (tags), and **"Try it out" links**. Numbers are measured on our backend. **[confirm]** = a screen in Ryan's sprint PR; check it in the app before submitting. Deadline: **Sunday 9:00 AM**, with all three of us added as teammates.
 
 **Tagline (≤ 60 chars):** Real clothes in your size that go with yours. *(50 chars)*
 
@@ -33,7 +33,16 @@ Niche learns who you are once, then everything you see is in your size, in stock
 - **Inspo:** everyone's outfit of the day.
   - Tap a photo and each piece gets a tag, like tagging people on Instagram: what it is, which store, the price.
   - Tap a tag and Home fills with that item and others like it, in your size. **[confirm]**
-- **Closet:** photograph a pile of clothes and it splits them into separate, tagged items. Recommendations are built around what you already own.
+  - **Shop the look:** each tagged piece gets its own row of up to 6 similar items, in your department.
+  - Likes are instant, and comments open in a sheet that loads older ones as you scroll.
+- **Closet:** photograph a pile of clothes, or just post your fits, and it splits them into separate, tagged pieces. It also keeps the outfits you wore them in.
+  - Your own pieces always show your own photo, never a store's catalog shot.
+  - Recommendations are built around what you already own.
+- **Try it on, on you.** Pick any item and see it on one of your own outfit photos.
+  - It chooses your best photo for that piece (a top replaces a top), then edits only that garment.
+  - Your face, pose, background and the rest of your outfit stay untouched.
+- **Fit Score:** every outfit gets a 0–100 score from eight stylist criteria (colour, silhouette, pattern, formality, style coherence, shoes, layering, occasion).
+  - It's said in terms of a style: "68 as streetwear: strong silhouette, palette too busy."
 - **One cart, every store, one checkout.**
   - Change sizes with the pencil on each item.
   - Checkout makes one real Capital One Nessie purchase per store.
@@ -41,7 +50,7 @@ Niche learns who you are once, then everything you see is in your size, in stock
 
 ## How we built it
 
-- **App:** Flutter, one codebase for iPhone, Android and web. A floating tab bar (Home · Discover · Inspo), with Liked, Cart, Closet and Profile always at the top. **[confirm]**
+- **App:** Flutter, one codebase for iPhone, Android and web, named **Niche** with its own arch icon. A floating tab bar (Home · Discover · Inspo), with Liked, Cart, Closet and Profile always at the top. **[confirm]**
 - **Backend:** one Python FastAPI service.
   - The app never talks to outside services directly; every API key stays on the server.
   - A shared request key protects the public tunnel.
@@ -54,8 +63,9 @@ Niche learns who you are once, then everything you see is in your size, in stock
   - Each store in the cart becomes its own purchase, with its own status (`paid` / `nessie_failed`) and a retry that never charges a paid store twice.
 - **AI:**
   - **Claude Haiku** tags every product and photo, ranks the feed against your closet and writes the reason on each card. It also turns vibe searches into filters, splits a closet photo into separate items, and estimates measurements from the body scan.
-  - **Gemini** renders the virtual try-on on your own photo, and covers for Claude if it's down.
-  - **Plain rules (no AI, free)** handle sizing, the Fit Score, colour matching and duplicate detection, so they're instant.
+  - **Gemini** renders the virtual try-on and covers for Claude if it's down. The backend scores every photo you've uploaded (body scan, posted fits, closet photos) and picks the one that best shows a garment of the same kind. Then it tells Gemini where that garment is, so the edit stays local.
+  - **Plain rules (no AI, free)** handle sizing, colour matching and duplicate detection, so they're instant.
+  - **Fit Score v2** is a rubric of eight criteria, each scored 0–10 with written anchors, plus a score for each of ten styles. It's calibrated on 300 random outfits (median 70, none reach 90) and 30 curated ones (median 84). On a posted photo, one Claude vision call grades the same criteria and is blended 50/50 with the rules. Complete the Look uses the same rubric and never pairs athletic with formal.
   - A hard budget cap, caching and fallbacks everywhere (Claude → Gemini → rules; try-on → an outfit-board collage) mean the demo never shows an error screen.
 
 ## Challenges we ran into
@@ -65,6 +75,8 @@ Niche learns who you are once, then everything you see is in your size, in stock
   - Then came the store quirks. Uniqlo's "low stock," for example, comes back as `inStock: false` even though you can still buy it.
 - **Model photos confuse taggers.** A retailer's photo of jeans usually shows a whole outfit. Without a hint, 37 of 418 tags described the wrong garment (the model's shirt instead of the jeans). Giving the tagger the product name brought that to **0**.
 - **Men's vs women's.** Our first sizing pass recommended a women's size 8 to a 178 cm guy. The stores' raw data already said which department each item belongs to, so we pulled that through and let you pick men's, women's or both.
+- **Scores that mean something.** Our first Fit Score just added points up, so nearly every outfit scored 80+. We rebuilt it as a rubric and calibrated it on random outfits until a 90 had to be earned.
+- **Try-on that looks like you.** Re-rendering the whole photo changed faces and backgrounds. Editing only the one garment, on the photo that best shows it, fixed that.
 - **Photos carry your location.** iPhone photos include GPS coordinates. We strip that metadata from every upload before it's saved.
 - **Honest multi-store checkout.**
   - Every store is a separate payment, so stock is re-checked before anything is charged.
@@ -77,7 +89,7 @@ Niche learns who you are once, then everything you see is in your size, in stock
 - A real multi-store checkout: one tap made separate Nessie purchases at H&M and Uniqlo (4 of 4 `paid` in our test run).
 - Every recommendation explains itself in terms of clothes you already own.
 - Snap-to-shop: a photo of something in real life becomes items you can buy, in your size.
-- It fails gracefully: we drilled AI outages, and checkout, cart and the feed keep working. 425 backend tests.
+- It fails gracefully: we drilled AI outages, and checkout, cart and the feed keep working. 672 backend tests.
 
 ## What we learned
 
@@ -132,7 +144,20 @@ General prizes (no tick needed): Most Creative, Best People-First, Hacker's Choi
 
 ### Nessie evidence for judges
 
-Run overnight Sat Oct 24 (~1:20 AM PT) on Nabil's backup server, which uses the same backend code and the real Nessie API, as the throwaway user `u_test_checkout`. Every purchase came back `paid` and appears in Nessie's purchase list for that account. The cart was emptied afterwards.
+**Latest run: Sat Oct 24, 11:29 PM PT, on the team's shared server** after the sprint-3 database rebuild, as the throwaway user `u_test_checkout`.
+- All 4 store purchases came back `paid` (Nessie status `completed`) and appear in Nessie's purchase list for the account. The cart was empty afterwards.
+- Failure paths: an empty-cart checkout → 400, a sold-out size → 422 when added. Nothing was charged.
+
+| Checkout | Store | Amount (ours → Nessie, whole dollars) | Nessie purchase id |
+| --- | --- | --- | --- |
+| H&M only | hm | $7.99 → 8 | `e52275e2-858f-44b6-ada1-3d21c06f9423` |
+| Uniqlo only | uniqlo | $3.90 → 4 | `ed6306be-263f-484c-a58f-60c2f485b995` |
+| Mixed | hm | $5.99 → 6 | `047fc7ae-6bc4-426b-a137-1971b4ff55f8` |
+| Mixed | uniqlo | $3.90 → 4 | `4d57baad-a5bd-4e8a-b927-ff630d6a54fc` |
+
+Nessie account: `357335da-4822-46a3-8208-83325eb8d390`. The rebuild reset the user → account mapping, so this is a new account; the earlier run's purchases below still exist under the old one.
+
+**Earlier run:** overnight Sat Oct 24 (~1:20 AM PT) on Nabil's backup server, which uses the same backend code and the real Nessie API, as the throwaway user `u_test_checkout`. Every purchase came back `paid` and appears in Nessie's purchase list for that account. The cart was emptied afterwards.
 
 | Checkout | Store | Amount (ours → Nessie, whole dollars) | Nessie purchase id |
 | --- | --- | --- | --- |

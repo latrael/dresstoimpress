@@ -27,7 +27,7 @@ from ..ai.router import _usual_size
 from ..ai.service import _in_budget, pair
 from ..ai.sizing import recommend_size
 from ..store import store
-from . import nessie
+from . import nessie, reels
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["commerce"])
@@ -239,7 +239,7 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
         return str(p.get("retailer", "")).lower() in preferred
 
     if seed_p:
-        return _seeded(user_id, seed_p, cands, bp, boosted, limit, seed_shown)
+        return reels.decorate(user_id, _seeded(user_id, seed_p, cands, bp, boosted, limit, seed_shown))
     if not cands:
         return []
 
@@ -263,7 +263,7 @@ def feed(user_id: str, limit: int = 20, category: Optional[str] = None, retailer
         cards += _two_to_one(*sides)
         if len(cards) >= limit:
             break
-    return cards[:limit]
+    return reels.decorate(user_id, cards[:limit])
 
 
 def _two_to_one(preferred: list[dict], other: list[dict]) -> list[dict]:

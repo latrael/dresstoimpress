@@ -22,7 +22,7 @@ from pathlib import Path
 from ..models import ClosetItem
 from ..store import DATA_DIR, store
 from . import digitize as dig
-from . import service
+from . import prompts, service
 from .colors import find_duplicate, same_color
 from .compat import get_product, list_products
 from .finder import TYPE_GROUPS, item_type, match_score
@@ -38,8 +38,7 @@ MAX_PHOTOS = 8
 # finder.match_score: type word 2.0 + color 1.0 + a descriptor 0.5 = a confident "this exact item".
 CONFIDENT_SCORE = 3.5
 SCORE_CEILING = 5.0
-CLEAN_SHOT = ("Product photo of only this garment as worn in the photo: same colour, fabric, print, logo and fit, "
-              "centered on a plain white background, flat-lay or ghost-mannequin, no person, no text.")
+CLEAN_SHOT = prompts.CLEAN_SHOT  # fixed studio spec, see prompts.py
 
 
 def _now() -> str:

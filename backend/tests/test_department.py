@@ -213,7 +213,7 @@ def test_styles_and_trending_respect_shop_for(client):
 def test_photo_search_respects_shop_for(client, monkeypatch):
     from app.ai import service
     monkeypatch.setattr(service, "tag_fit", lambda url: [{"label": "tee", "category": "top"}])
-    monkeypatch.setattr(service, "shop_fit", lambda uid, tags: [
+    monkeypatch.setattr(service, "shop_fit", lambda uid, tags, keep=None: [
         {"id": pid, "reason": "r", "score": 0.9, "matched_tag": "tee"} for pid in ("w-tee", "m-tee", "n-tee")])
 
     def similar(uid):
@@ -256,8 +256,9 @@ def test_shop_this_fit_respects_shop_for(client, monkeypatch):
     store.put("fitcheck_posts", "fc_x", {"id": "fc_x", "user_id": "u_w", "photo_url": "https://x/p.jpg",
                                          "caption": "", "tagged": [{"label": "tee"}], "visibility": "public",
                                          "created_at": "2026-10-24T00:00:00+00:00", "likes": [], "comments": []})
-    monkeypatch.setattr(service, "shop_fit", lambda uid, tags: [
-        {"id": pid, "reason": "r"} for pid in ("w-tee", "m-tee", "u-tee", "live:1")])
+    cards = [{**(store.get("products", pid) or {"id": pid}), "reason": "r"}  # cards carry the stored department
+             for pid in ("w-tee", "m-tee", "u-tee", "live:1")]
+    monkeypatch.setattr(service, "shop_fit", lambda uid, tags, keep=None: [c for c in cards if keep is None or keep(c)])
 
     def ids(uid):
         r = client.get("/fitcheck/fc_x/shop", params={"user_id": uid})

@@ -2,7 +2,58 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~7:50 PM PT. New: sprint #3 Inspo routes (instant likes, paged comments, photo sizes).
+**Last updated:** Sun Oct 25, 2026, ~1:30 AM PT. New: the Home reels data is on `/feed` (`hero_image_url`, `closet_picks`, `tryon`).
+
+## Oct 25, ~1:30 AM: the Home reels data (sprint-4 §10) is on `/feed`
+
+The full shapes are in `docs/schema.md` → "Home reels". Every `/feed` card (plain and `?seed=`) now has:
+- **`hero_image_url`:** slide 1, the garment alone. It's never null on a card: when the store only has model shots it falls back to `image_url`.
+  - Coverage: a real product-only photo for 941 / 3,188 products (all of Kith and Stüssy, 99% True Classic, 34% H&M, 8% Uniqlo, ~2% Princess Polly, none for Brandy Melville and Edikted, which only shoot on models). The rest fall back to `image_url`, so slide 1 always has a photo.
+- **`closet_picks`:** slide 3, `[{id, label, category, image_url}]`, 0–4, one per square, from Adam's `closet_picks`. Accessories show here but never go into the try-on render. It's `[]` for an empty closet, so build the "+ add from your closet" tiles.
+- **`tryon`:** slide 2, `{status, image_url?, mode?}`.
+  - `ready` → show `image_url` (`mode` `ai`, or `collage` = "outfit board").
+  - `pending` → shimmer + "Dressing you…".
+  - `none` → not started yet.
+  - `needs_photo` → the "Add a photo of you" card.
+  - `unavailable` → the collage `image_url` if present.
+  - It's the try-on of exactly the pieces in that card's `closet_picks`.
+- **Pre-loading:**
+  - `POST /feed/{user}/tryons {product_ids: [≤5]}` → `{id: tryon}` starts the next posts' try-ons. Call it on load for posts 1–3, then for n+1…n+3 as the user lands on post n.
+  - `GET /feed/{user}/tryons?ids=a,b` → poll every ~3 s while a visible post is `pending`.
+  - Each user gets ~20 AI pre-renders a day; past that, cards say `unavailable` with the free collage.
+- **Live on the shared server** once Adam deploys (his next step 1). The core fields, methods and mocks are already in Adam's #66 (`heroImageUrl`, `closetPicks`, `tryOn`, `prefetchTryOns`, `tryOnStatus`).
+
+---
+
+## Oct 25, ~12:30 AM: Sprint #4 is the design overhaul; most of it is yours. Please read `docs/sprint-4.md`
+
+The full spec, with file:line pointers, is in `docs/sprint-4.md`. Your items, in order:
+1. **Edge-to-edge (§1):** the black band at the top on the iPhone 16 and the Pixel 9 Pro comes from the global `SafeArea` at `main.dart:183`.
+2. **Tokens + motion (§3)** and **bundled fonts (§2.3).**
+3. **Shell (§4):** the lowercase serif wordmark, 3 icons + an avatar, a more transparent glass nav pill, swiping between tabs.
+4. **Home as reels (§6):** one post per screen. A 3-slide carousel (the item → on you → a 2×2 grid of your closet), "see more", Add to cart as the only button.
+5. **Onboarding (§5):** a welcome page with the arch animation and an outfit mosaic; slide transitions; animated chips.
+6. **Discover (§7):** width-fit photos, opened products use the Home post.
+7. **Inspo and the rest (§8):** the restyle.
+
+**Font bank: decided, C (Young Serif + Manrope).** Preview it in `docs/sprint-4/font-banks.html`. Young Serif has one weight, so never bold it; the rules are in §2. The new `/feed` fields (`hero_image_url`, `closet_picks`, `tryon`) are specified in §10; Adam ships core mocks first, so you can build Home before the backend lands. Please post before/after screenshots from both phones (§11).
+
+---
+
+## Oct 24, ~11:30 PM: acted on your READY signal; comments trimmed in post views
+
+- **Every post view (`GET /fitcheck/feed`, `GET /fitcheck/{id}`, `POST /fitcheck`, `PATCH …/tags`):**
+  - `comments` = only the **2 newest**, oldest → newest.
+  - Each one is now shaped like a paged item: `{id, user_id, author: {id, display_name}, text, created_at}`.
+  - `comment_count` = the total. Everything else is unchanged.
+- I read your code against it: `models.dart:1216/1221` and `social_feed.dart:229/283/501` take the count from `comment_count`. `comments_sheet.dart` seeds from the preview, loads the page and never lowers the total. Nothing should break, and the preview now shows real names instead of user ids.
+- **Shop the look (`GET /fitcheck/{id}/shop`, flat and `grouped=true`):**
+  - The men's/women's filter now runs before picking matches, so each piece fills up with items in the viewer's department (e.g. 2/6 → 6/6).
+  - Same shape as before.
+- **Camera search (`POST /search/photo`):** the same fix, so the similar items are ones you can buy in your department.
+- Live on the shared server once Adam merges and restarts.
+
+---
 
 ## Oct 24, ~7:50 PM: sprint #3 Inspo backend (`docs/sprint-3.md` 3.1, 3.3, 3.4)
 
@@ -125,7 +176,6 @@ Every change only adds fields; nothing the app reads today was removed or rename
 > **Oct 24, ~2:20 PM: order retry route (your ask).** `POST /orders/{order_id}/retry?user_id=&retailer=` re-attempts only that order's `nessie_failed` / `pending_nessie` store purchases (or just the one `retailer`). A `paid` purchase is never charged again, so it's **safe to call repeatedly**: an all-paid order comes back unchanged with no Nessie call. 200 returns the same shape as `/checkout` (`{order_id, purchases, total_usd, created_at}`); a purchase that fails again stays `nessie_failed` with a new `error` and `retried_at`. Errors: 404 unknown order (or no purchase for that `retailer`), 403 `user_id` isn't the order's owner, 503 no Nessie key on the server (nothing changes). No stock re-check (the order already exists). It's on the backend once the PR is merged; not in the Dart client (Adam's core / your lane).
 
 ---
-
 ## Needs your decision
 
 1. **The `/fit` guest page.** This is a small public web page I built: other hackers scan a QR code at our table, upload an outfit photo without installing anything, and it lands in the Fit Check feed as a public post.

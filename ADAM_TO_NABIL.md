@@ -242,3 +242,22 @@ Added to `Product` (both optional, existing data still validates):
 - `description: string | null`, real retailer text as plain text, else null (never a pairing reason).
 
 Over to you for the ingest side: H&M `images[]` + `model_image` (as `retailer_model`), Uniqlo per-colour images, descriptions from raw when present, and the idempotent wishlist routes Ryan asked for (`PUT`/`DELETE /wishlist/{user_id}/items/{product_id}`). Ryan's branch is `RyanFrontendking`.
+
+## Sun 01:00 — sprint 4 §10 AI side is ready (PR adam/sprint4)
+Wire these into `/feed` cards and the two routes (all in `app.ai.service`):
+- `closet_picks(user_id, product, k=4) -> list[{id,label,category,image_url}]`: rules only, instant; `[]` for an empty closet. `product` = dict, Product or id.
+- `tryon_status(user_id, product, picks=None) -> {status, image_url?, mode?}`: the §10.1 `tryon` field. Pass the card's `closet_picks` as `picks` to skip recomputing.
+- `prefetch_tryons(user_id, items) -> {product_id: tryon}`: for `POST /feed/{u}/tryons` (≤5 items, returns at once, 2 workers, de-duped). `GET /feed/{u}/tryons?ids=` = `{pid: tryon_status(u, pid)}`.
+- Accessories show on slide 3 but never go into the render. Daily cap `PREFETCH_PER_USER_DAY` (default 20; past it → free collage, `unavailable`). `MAX_TRYONS` untouched (team decision §12.5).
+
+## 01:00 Sun — Deterministic prompts (PR: adam/prompts)
+- All text prompts now run at temperature 0 + fixed seed, with a JSON schema check per prompt (`llm.ai_json` rejects/retries bad shapes); feed reasons can no longer name closet items the user doesn't own. No API changes.
+- TRYON_VERSION v5 → v6 and PAIR_VERSION v3 → v4: the try-on cache and the pair reason bank invalidate on the next request (first try-ons after the restart re-render). Tagger/digitize versions were NOT bumped, so existing closets are not re-tagged.
+- `AI_TEMPERATURE` / `AI_SEED` env vars override for experiments only.
+
+## Sun 1:15 AM: reels path checked end-to-end on the shared server + try-on budget
+
+Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for `u_adam`:
+- `GET /feed?user_id=u_adam&limit=5` → 200. Every card has `hero_image_url`, 4 `closet_picks` in different categories (e.g. bottom / shoes / outerwear / accessory for a top), and `tryon: {status: "none"}` before prefetch. Cold call after restart took 7.5 s (pair reasons); please time the warm path.
+- `POST /feed/u_adam/tryons` (2 ids) → 200 in 10 ms, both `pending`. `GET …/tryons?ids=` → `ready` with `mode: "ai"` image URLs after ~15–20 s. No 500s in the log.
+- Budget: `docs/tryon-budget.md`. ≈ $0.039/image. `MAX_TRYONS` default is now 400 (≈ $15.60 worst case); `PREFETCH_PER_USER_DAY` stays 20. Export `MAX_TRYONS` in `.env` if you want a different cap on your machine. Nothing for you to change in the routes.

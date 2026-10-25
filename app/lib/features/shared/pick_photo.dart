@@ -1,3 +1,4 @@
+import 'niche_icons.dart';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
@@ -19,11 +20,11 @@ Future<PickedPhoto?> choosePhoto(BuildContext context) async {
       useSafeArea: true,
       builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
             ListTile(
-                leading: const Icon(Icons.camera_alt_outlined),
+                leading: const Icon(NicheIcons.cameraAltOutlined),
                 title: const Text('Take a photo'),
                 onTap: () => Navigator.pop(context, ImageSource.camera)),
             ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
+                leading: const Icon(NicheIcons.photoLibraryOutlined),
                 title: const Text('Choose from camera roll'),
                 onTap: () => Navigator.pop(context, ImageSource.gallery)),
             TextButton(
@@ -79,11 +80,11 @@ Future<List<PickedPhoto>> choosePhotos(BuildContext context) async {
       useSafeArea: true,
       builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
             ListTile(
-                leading: const Icon(Icons.camera_alt_outlined),
+                leading: const Icon(NicheIcons.cameraAltOutlined),
                 title: const Text('Take a photo'),
                 onTap: () => Navigator.pop(context, ImageSource.camera)),
             ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
+                leading: const Icon(NicheIcons.photoLibraryOutlined),
                 title: const Text('Choose photos from camera roll'),
                 onTap: () => Navigator.pop(context, ImageSource.gallery)),
             TextButton(

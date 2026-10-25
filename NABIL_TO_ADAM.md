@@ -2,7 +2,105 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~7:50 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~1:45 AM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Sun 12:30 AM: Sprint #4 (`docs/sprint-4.md`): your part is §10, the data behind the new reels Home
+
+The new Home post is a 3-slide carousel: the item → **the try-on on you, already loaded** → **a 2×2 grid of your own closet pieces that go with it**. What it needs from you:
+- **`closet_picks(user_id, product, k=4)`:** rules only (free and instant), one closet piece per square, different categories, accessories allowed, in the slot order in §10.1. I put it on every `/feed` card.
+- **`tryon` status per card:** `ready | pending | none | needs_photo | unavailable`, from the try-on cache.
+- **`prefetch_tryons(user_id, items)`:** a background pool of 2 with de-duplication, reusing `try_on` and its cache key and the v5 source photo. I add `POST`/`GET /feed/{user}/tryons`.
+- **Budget (decide):**
+  - `MAX_TRYONS=150` for the whole server would run out fast.
+  - Please bring the Gemini cost per image, and propose the new cap + ~20 prefetches per user per day.
+  - After the cap, the card falls back to the collage.
+- **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
+
+**I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 1:45 AM: sprint-4 §10 is wired end to end (your #66 + mine). **What's next for you**, in order
+
+**Thanks for #66.** I wired `/feed` and the two routes to your real functions, with your signatures:
+- `closet_picks(u, card, k=4)`;
+- `tryon_status(u, card, picks)`, with the card's own picks, so slide 2 is the try-on of exactly the pieces on slide 3;
+- `prefetch_tryons(u, [products])`.
+
+**On `staging` from me (merged):**
+- **`app/commerce/reels.py`:**
+  - Every `/feed` card (plain and `?seed=`) has `hero_image_url`, `closet_picks` and `tryon`. A failing helper degrades to `[]` / `{"status": "none"}` and never fails the feed.
+  - `POST /feed/{u}/tryons` (≤ 5 ids, de-duped, 404 unknown, 422 for 0 or more than 5) and `GET /feed/{u}/tryons?ids=`.
+- **`/feed` timing:** 41 ms median for 20 cards, with your real functions, a 16-piece closet and a body photo.
+- **Catalog photos labelled:**
+  - `scripts/classify_images.py` used Haiku on a contact sheet per product to label 10,809 photos (product / model / detail / other), for ~$0.21.
+  - The labels are cached in `seed/image_kinds.json`; `ingest.save` re-applies them. `ProductImage.kind` gains `detail` / `other`; `Product.hero_image_url` is new.
+  - **Coverage: 941 / 3,188 products have a real product-only hero photo:** Kith 164/164, Stüssy 94/94, True Classic 179/180, H&M 430/1,255, Uniqlo 67/798, Princess Polly 7/345, Brandy Melville 0/178, Edikted 0/174 (those stores only shoot on models; cards fall back to `image_url`). Princess Polly's `…-modelinfo-…` filenames are forced to `model`: tight crops fooled the AI on 4 of 11.
+- **Tests:** `tests/test_reels.py` covers the routes and the card fields: stubbed, plus one test on your real functions. 691 pass with yours.
+
+**Your next steps:**
+1. **Deploy, now (Ryan needs it live for slides 1–3).** On the shared server, `git pull` staging, then `python -m scripts.load_products` (no `--replace`; this brings in `hero_image_url` + the photo labels), then restart.
+   - **Check:** `GET /feed?user_id=u_nabil` cards have `hero_image_url`, `closet_picks` and `tryon`, and `POST /feed/u_nabil/tryons {"product_ids": [<first card id>]}` returns `pending`.
+2. **A real end-to-end try-on check on the shared server** (a team account with a body photo and a few closet pieces):
+   - prefetch the first 3 posts;
+   - poll until `ready`;
+   - **post in `ADAM_TO_NABIL.md`:** seconds per render and dollars per render, plus whether the result really shows slide 3's pieces.
+   - **If the render takes over ~10 s:** prefetch on feed load for posts 1–5, not 1–3, and tell Ryan.
+3. **Budget sanity (§13.5):**
+   - `MAX_TRYONS` is still 150 **server-wide**, and `PREFETCH_PER_USER_DAY` is 20. Four of us testing Home can use ~80 a day, plus Fit Creator / manual try-ons.
+   - **Check `GET /ai/usage`** (`gemini_images`) after step 2 and tell the team how many are left before the demo. If it's tight, raise `MAX_TRYONS` on the server's `.env` (no code change), or drop prefetch to posts 1–2.
+4. **Warm the demo account before the demo.** Prefetch (or `scripts.warm_demo`) the first ~6 Home posts of the account we demo with, so slide 2 is instant on stage. Do it after its closet and body photo are final, because the picks are part of the cache key.
+5. **Closet quality for slide 3.** `closet_picks` is only as good as the closet's `category` / `colors` / style tags.
+   - Run `scripts/redo_closet.py` for any team account whose closet predates #59.
+   - Spot-check that a bottom gets top / shoes / outer / accessory and that **no catalog photo** shows (sprint-3 §1.2).
+6. **Support Ryan's Home (§6):** Ryan asked you for "exact feed core adapters" (`RYAN_TO_ADAM.md`, a4f96e5).
+   - The fields and methods are in your #66 core.
+   - Make sure `prefetchTryOns` / `tryOnStatus` are what his Home calls, and that the mocks cover `ready`, `pending` → `ready`, `needs_photo` and `unavailable` + collage, plus 4 and 2 picks.
+7. **Later / held:** login stays held until the team OKs it (sprint-3 §4); I'll ask before touching core for it.
+
+**What I need back:** one line when step 1 is live, and the step 2 + 3 numbers (render time, cost per render, images left).
+
+---
+
+## Sat 11:30 PM: your 10:45 asks: review done (one fix in `service.py`), Nessie re-tested on the fresh DB, Devpost updated
+
+**1. Review of grouped shop the look: the route shape is good, but I fixed one bug in `service.py`; please look.**
+- **The bug:** `_shop_fit_rows` took the top N matches per tag from the whole catalog, and the `shop_for` filter only ran afterwards. Inspo is one feed for everyone, so viewers often see the other department's fits and their groups came back half empty. Claude also wrote reasons for cards that were then thrown away.
+
+  Real catalog, top 6 per piece:
+
+  | Piece | Viewer | Before | After |
+  | --- | --- | --- | --- |
+  | white baby tee | women | 2/6 | 6/6 |
+  | baggy jeans | women | 3/6 | 6/6 |
+  | black hoodie | men | 2/6 | 6/6 |
+
+- **The fix:**
+  - `_shop_fit_rows(..., keep=None)` and `shop_fit(..., keep=None)` are new. `keep` is applied to `list_products()` *before* `find_products`, and again to each tag's hits (that covers a pinned `product_id` and live results). `shop_fit_grouped` passes it down.
+  - With no `keep`, behaviour is the same as before, so `/ai/shop-fit` is unchanged.
+  - The flat and grouped `/fitcheck/{id}/shop` routes and my `/search/photo` (`keep = buyable and dept`) now pass it.
+- **Tests:** `test_keep_filters_catalog_before_matching` in `test_shop_grouped.py`. Two stubs (`test_department`, `test_feed_size`) now accept `keep`.
+- **FYI:** `/ai/shop-fit` ignores the viewer's `shop_for` entirely. That's fine as long as the app uses `/fitcheck/{id}/shop`.
+
+**2. Nessie checkout re-tested on the shared server (11:29 PM, throwaway `u_test_checkout`): 4/4 store purchases `paid`.**
+- H&M only, Uniqlo only, and a mixed H&M + Uniqlo cart. All are confirmed in Nessie's purchase list.
+- Empty cart → 400 and a sold-out size → 422 when added; nothing was charged. The cart is empty again.
+- The ids are in `docs/devpost.md`.
+- **Notes:**
+  - The rebuild dropped the user → Nessie account mapping (expected), so `u_test_checkout` got a new account.
+  - Nessie only has H&M and Uniqlo merchants so far. A Shopify store creates its merchant on the first purchase (`ensure_merchant`).
+
+**3. Devpost updated:** Fit Score v2, try-on edits only the garment on your best own photo, shop the look per piece, closet outfits + own photos only, the Niche icon, 672 tests, and the new Nessie evidence.
+
+**4. Inspo feed/detail now send only the 2 newest comments** plus `comment_count`, shaped like the paged items (with `author`). Ryan gave the explicit ready signal after #56, and I checked the app's model and the comment sheet: counts come from `comment_count`. Nothing to change in core.
+
+**5. Login:** still waiting on the council's pick (sprint-3 §4). Nothing is shared yet.
+
+**Please, after merging:** restart the shared server so the comment trim and the shop fix go live.
+
+Not done: `scripts/redo_closet.py` (it's optional, and it rewrites a user's closet; say which users if you want me to run it).
 
 ---
 

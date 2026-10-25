@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -405,7 +406,7 @@ void main() {
                     post: FitCheckPost.fromJson(postJson()),
                     api: api,
                     onShop: (_) {}))));
-    await tester.tap(find.byIcon(Icons.favorite_border));
+    await tester.tap(find.byIcon(NicheIcons.favoriteBorder));
     await tester.pumpAndSettle();
     expect(find.text('1'), findsOneWidget);
     await tester.ensureVisible(find.textContaining('Comments ('));

@@ -1,3 +1,7 @@
+import '../shared/niche_theme.dart';
+import '../shared/niche_photo.dart';
+import '../shared/natural_photo_frame.dart';
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../fits/fits_screen.dart';
 import '../../core/models.dart';
@@ -17,37 +21,49 @@ class ProductGrid extends StatelessWidget {
   final StoreController store;
   final void Function(RankedProduct) onOpen;
   @override
-  Widget build(BuildContext context) => GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 14,
-          mainAxisSpacing: 20,
-          childAspectRatio: .65),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final card = products[index], p = card.product;
-        return InkWell(
-            key: ValueKey('suggested-${p.id}'),
-            onTap: () => onOpen(card),
-            borderRadius: BorderRadius.circular(16),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                  child: SizedBox(
-                      width: double.infinity,
-                      child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: PiecePhoto(
-                              url: store.imageUrl(p.imageUrl),
-                              label: p.name)))),
-              const SizedBox(height: 8),
-              Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-              Text(
-                  '${retailerName(p.retailer)} · ${dollars(p.effectivePrice)}'),
-            ]));
-      });
+  Widget build(BuildContext context) => Column(children: [
+        for (final card in products)
+          Padding(
+              padding: const EdgeInsets.only(bottom: 28),
+              child: NichePress(
+                  child: InkWell(
+                      key: ValueKey('suggested-${card.id}'),
+                      borderRadius: BorderRadius.circular(28),
+                      onTap: () => onOpen(card),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipRRect(
+                                borderRadius: BorderRadius.circular(28),
+                                child: NaturalPhotoFrame(
+                                    url: store.imageUrl(card.product.imageUrl),
+                                    child: NichePhoto(
+                                        url: store
+                                            .imageUrl(card.product.imageUrl),
+                                        label: card.product.name))),
+                            const SizedBox(height: 12),
+                            Text(
+                                retailerName(card.product.retailer)
+                                    .toUpperCase(),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall!
+                                    .copyWith(color: Niche.wine)),
+                            const SizedBox(height: 5),
+                            Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                      child: Text(card.product.name,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .headlineSmall)),
+                                  const SizedBox(width: 12),
+                                  Text(dollars(card.product.effectivePrice),
+                                      style: Niche.price)
+                                ])
+                          ]))))
+      ]);
 }
 
 class LikedScreen extends StatefulWidget {
@@ -292,26 +308,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) => ListView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, Niche.bottomSpace(context)),
           children: [
             Text('Discover', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 16),
-            TextField(
-                controller: text,
-                onTapOutside: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                textInputAction: TextInputAction.search,
-                onSubmitted: search,
-                decoration: InputDecoration(
-                    hintText: 'Search a look…',
-                    prefixIcon: IconButton(
-                        tooltip: 'Search with a photo',
-                        icon: const Icon(Icons.camera_alt_outlined),
-                        onPressed: loading ? null : photoSearch),
-                    suffixIcon: IconButton(
-                        tooltip: 'Search catalog',
-                        icon: const Icon(Icons.arrow_forward),
-                        onPressed: () => search(text.text)))),
+            NicheGlass(
+                radius: 999,
+                child: TextField(
+                    controller: text,
+                    onTapOutside: (_) =>
+                        FocusManager.instance.primaryFocus?.unfocus(),
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: search,
+                    decoration: InputDecoration(
+                        hintText: 'Search a look…',
+                        prefixIcon: IconButton(
+                            tooltip: 'Search with a photo',
+                            icon: const Icon(NicheIcons.cameraAltOutlined),
+                            onPressed: loading ? null : photoSearch),
+                        suffixIcon: IconButton(
+                            tooltip: 'Search catalog',
+                            icon: const Icon(NicheIcons.arrowForward),
+                            onPressed: () => search(text.text))))),
             if (photo != null)
               Padding(
                   padding: const EdgeInsets.only(top: 16),
@@ -331,11 +349,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             if (query.isEmpty)
               Card(
                   child: ListTile(
-                      leading: const Icon(Icons.auto_awesome),
+                      leading: const Icon(NicheIcons.autoAwesome),
                       title: const Text('Fits for you'),
                       subtitle: const Text(
                           'Create outfits from your closet and new pieces'),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: const Icon(NicheIcons.chevronRight),
                       onTap: () => Navigator.push<void>(
                           context,
                           MaterialPageRoute(
@@ -408,7 +426,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               const SizedBox(height: 12),
               for (final item in owned)
                 ListTile(
-                    leading: const Icon(Icons.checkroom_outlined),
+                    leading: const Icon(NicheIcons.checkroomOutlined),
                     title: Text(item.label ?? item.category),
                     subtitle: const Text('Already in your closet'),
                     onTap: () => Navigator.push<void>(

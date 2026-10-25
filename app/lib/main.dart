@@ -1,3 +1,8 @@
+import 'features/feed/reels_bindings.dart';
+import 'package:flutter/services.dart';
+import 'features/shared/niche_theme.dart';
+import 'features/shared/niche_shell.dart';
+import 'features/shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,20 +12,27 @@ import 'features/profile/body_photo_card.dart';
 import 'core/api.dart';
 import 'core/config.dart';
 import 'core/models.dart';
-import 'features/feed/quick_browse.dart';
+import 'features/feed/reels_browse.dart';
 import 'features/social/social_feed.dart';
 import 'features/discover/discover_screen.dart';
 import 'features/closet/closet_screen.dart';
 import 'features/shared/feature_ui.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/onboarding_screen.dart';
-import 'features/product/try_on.dart';
+import 'features/product/try_on.dart' show BodyPhotoButton;
 import 'features/product/complete_look_screen.dart';
 import 'features/store/cart_screen.dart';
 import 'features/store/store_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark));
   await Config.load();
   runApp(NicheApp(
       store: StoreController(
@@ -78,7 +90,7 @@ class _NicheAppState extends State<NicheApp> {
             ])
               ListTile(
                   title: Text(section.$1),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const Icon(NicheIcons.chevronRight),
                   onTap: () => open(OnboardingScreen(
                       api: store.api,
                       demo: store.demo,
@@ -92,7 +104,7 @@ class _NicheAppState extends State<NicheApp> {
             if (!store.demo)
               ListTile(
                   title: const Text('Style DNA'),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const Icon(NicheIcons.chevronRight),
                   onTap: () => open(ProfileScreen(
                       api: store.api,
                       onChanged: () async {
@@ -101,22 +113,22 @@ class _NicheAppState extends State<NicheApp> {
                       }))),
             ListTile(
                 title: const Text('Orders'),
-                leading: const Icon(Icons.receipt_long_outlined),
+                leading: const Icon(NicheIcons.receiptLongOutlined),
                 onTap: store.demo
                     ? null
                     : () => open(OrderHistory(api: store.api))),
             ListTile(
                 title: const Text('Connection settings'),
-                leading: const Icon(Icons.tune),
+                leading: const Icon(NicheIcons.tune),
                 onTap: settings),
             if (!store.demo)
               ListTile(
                   title: const Text('Private scan & try-on photo'),
-                  leading: const Icon(Icons.lock_outline),
+                  leading: const Icon(NicheIcons.lockOutline),
                   onTap: () => open(BodyPhotoCard(api: store.api))),
             ListTile(
                 title: const Text('Log out on this device'),
-                leading: const Icon(Icons.logout),
+                leading: const Icon(NicheIcons.logout),
                 onTap: () async {
                   final p = await SharedPreferences.getInstance();
                   await p.remove('niche.activeUser');
@@ -164,78 +176,50 @@ class _NicheAppState extends State<NicheApp> {
       }),
       title: 'Niche',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-          useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFFFFBF0),
-          colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF722F42),
-              surface: const Color(0xFFFFFBF0)),
-          appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFFFFFBF0), centerTitle: false),
-          inputDecorationTheme: InputDecorationTheme(
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(24))),
-          filledButtonTheme: FilledButtonThemeData(
-              style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF722F42),
-                  foregroundColor: Colors.white))),
-      builder: (context, child) => Overlay.wrap(
-          child: SafeArea(
-              bottom: false,
-              child: Stack(children: [
-                Positioned.fill(
-                    top: 56, child: child ?? const SizedBox.shrink()),
-                Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: Material(
-                        color: const Color(0xFFFFFBF0),
-                        child: SizedBox(
-                            height: 56,
-                            child: Row(children: [
-                              const Padding(
-                                  padding: EdgeInsets.only(left: 16),
-                                  child: Text('Niche',
-                                      style: TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w700))),
-                              const Spacer(),
-                              IconButton(
-                                  tooltip: 'Liked',
-                                  icon: const Icon(Icons.favorite_border),
-                                  onPressed: () => openTop('Liked',
-                                      LikedScreen(store: store, onOpen: seed))),
-                              AnimatedBuilder(
-                                  animation: store,
-                                  builder: (context, _) => Badge(
-                                      label: Text('${store.cart.count}'),
-                                      isLabelVisible: store.cart.count > 0,
-                                      child: IconButton(
-                                          tooltip: 'Your cart',
-                                          icon: const Icon(
-                                              Icons.shopping_bag_outlined),
-                                          onPressed: () => openTop('Cart',
-                                              CartScreen(store: store))))),
-                              IconButton(
-                                  tooltip: 'Closet',
-                                  icon: const Icon(Icons.checkroom_outlined),
-                                  onPressed: () => openTop(
-                                      'Closet',
-                                      store.demo
-                                          ? const FeaturePage(
-                                              title: 'Closet',
-                                              child: Center(
-                                                  child: Text(
-                                                      'Connect your account to digitize your closet.')))
-                                          : ClosetScreen(api: store.api))),
-                              IconButton(
-                                  tooltip: 'User',
-                                  icon: const Icon(Icons.person_outline),
-                                  onPressed: user),
-                              const SizedBox(width: 8),
-                            ])))),
-              ]))),
+      theme: Niche.theme,
+      builder: (context, child) => NicheInsets(
+          bottom: MediaQuery.viewPaddingOf(context).bottom,
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: const SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                  systemNavigationBarColor: Colors.transparent,
+                  systemNavigationBarIconBrightness: Brightness.dark),
+              child: ColoredBox(
+                  color: Niche.cream,
+                  child: Overlay.wrap(
+                      child: Stack(children: [
+                    Positioned.fill(
+                        top: MediaQuery.paddingOf(context).top + 56,
+                        child: MediaQuery.removePadding(
+                            context: context,
+                            removeTop: true,
+                            child: child ?? const SizedBox.shrink())),
+                    Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: AnimatedBuilder(
+                            animation: store,
+                            builder: (context, _) => NicheHeader(
+                                count: store.cart.count,
+                                initial: store.displayName,
+                                onLiked: () => openTop('Liked',
+                                    LikedScreen(store: store, onOpen: seed)),
+                                onCart: () =>
+                                    openTop('Cart', CartScreen(store: store)),
+                                onCloset: () => openTop(
+                                    'Closet',
+                                    store.demo
+                                        ? const FeaturePage(
+                                            title: 'Closet',
+                                            child: Center(
+                                                child: Text(
+                                                    'Connect your account to digitize your closet.')))
+                                        : ClosetScreen(api: store.api)),
+                                onUser: user)))
+                  ]))))),
       home: FirstVisit(key: entry, store: store, shellKey: shell));
 }
 
@@ -369,8 +353,8 @@ class _FirstVisitState extends State<FirstVisit> {
                     'Login reopens the profile saved on this device. Google sign-in is coming later.'),
                 const SizedBox(height: 24),
                 if (!widget.store.demo) ...[
-                  const Text('Who are you?',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  Text('Who are you?',
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     for (final (name, id) in teamAccounts)
@@ -392,7 +376,7 @@ class _FirstVisitState extends State<FirstVisit> {
                       await connectForSetup(context, widget.store);
                       if (mounted) reload();
                     },
-                    icon: const Icon(Icons.link),
+                    icon: const Icon(NicheIcons.link),
                     label: const Text('Connect to the live app')),
                 TextButton(
                     onPressed: busy ? null : () => enter(test: true),
@@ -427,6 +411,23 @@ class ShopShell extends StatefulWidget {
 
 class _ShopShellState extends State<ShopShell> {
   int tab = 0;
+  final tabs = PageController();
+  void changeTab(int value) {
+    if (!mounted) return;
+    setState(() => tab = value);
+    if (tabs.hasClients) {
+      tabs.animateToPage(value,
+          duration: Niche.reduced(context) ? Duration.zero : Niche.duration,
+          curve: Curves.easeInOutCubicEmphasized);
+    }
+  }
+
+  @override
+  void dispose() {
+    tabs.dispose();
+    super.dispose();
+  }
+
   RankedProduct? seed;
   String? discoverQuery;
   int feedRevision = 0;
@@ -488,6 +489,7 @@ class _ShopShellState extends State<ShopShell> {
       tab = 0;
       feedRevision++;
     });
+    changeTab(0);
     if (!store.demo) {
       store.api.feed(seed: products.first.id).then((cards) {
         if (mounted && request == seedGeneration) {
@@ -510,6 +512,7 @@ class _ShopShellState extends State<ShopShell> {
       discoverQuery = query;
       tab = 1;
     });
+    changeTab(1);
   }
 
   Future<void> editSizing() async {
@@ -526,6 +529,50 @@ class _ShopShellState extends State<ShopShell> {
                 })));
     await store.loadProfile(fromServer: !store.demo);
     if (mounted) setState(() {});
+  }
+
+  Future<void> openBodyPhoto() async {
+    await showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        builder: (_) => Padding(
+            padding: const EdgeInsets.all(24),
+            child: BodyPhotoButton(api: store.api)));
+    if (mounted) await refreshHome();
+  }
+
+  Future<void> openClosetPiece(String? id) async {
+    if (store.demo || id == null) {
+      await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => store.demo
+                  ? const FeaturePage(
+                      title: 'Closet',
+                      child: Center(
+                          child: Text(
+                              'Connect your account to digitize your closet.')))
+                  : ClosetScreen(api: store.api)));
+      if (mounted && !store.demo) await refreshHome();
+      return;
+    }
+    try {
+      final pieces = await store.api.closet();
+      if (!mounted) return;
+      final matches = pieces.where((p) => p.id == id);
+      await Navigator.push<void>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => matches.isEmpty
+                  ? ClosetScreen(api: store.api)
+                  : ClosetPieceScreen(api: store.api, initial: matches.first)));
+      if (mounted) await refreshHome();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not open your closet. Try again.')));
+      }
+    }
   }
 
   void completeLook(String id) => Navigator.push<void>(
@@ -568,103 +615,70 @@ class _ShopShellState extends State<ShopShell> {
                 child: Center(
                     child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 540),
-                        child: tab == 2
-                            ? SocialFeed(
-                                store: store,
-                                onShop: openProducts,
-                                onTagSearch: searchTag)
-                            : tab == 1
-                                ? DiscoverScreen(
-                                    initialQuery: discoverQuery,
-                                    store: store,
-                                    onOpen: (p) => openProducts([p]))
-                                : Column(children: [
-                                    if (seed != null)
-                                      Padding(
-                                          padding: const EdgeInsets.all(8),
-                                          child: InputChip(
-                                              label: Text(
-                                                  'Similar to: ${seed!.product.name}'),
-                                              onPressed: clearSeed,
-                                              deleteButtonTooltipMessage:
-                                                  'Show all products',
-                                              onDeleted: clearSeed)),
-                                    if (seedError != null && seed != null)
-                                      TextButton(
-                                          onPressed: () => refreshHome(),
-                                          child: Text(seedError!)),
-                                    Expanded(
-                                        child: store.loading
-                                            ? const Center(
-                                                child:
-                                                    CircularProgressIndicator())
-                                            : store.error != null
-                                                ? Center(
-                                                    child: TextButton(
-                                                        onPressed: store.load,
-                                                        child:
-                                                            Text(store.error!)))
-                                                : RefreshIndicator(
-                                                    onRefresh: refreshHome,
-                                                    child: QuickBrowse(
-                                                        key: ValueKey(
-                                                            'home-$feedRevision'),
-                                                        products: home
-                                                            .map(browseMap)
-                                                            .toList(),
-                                                        savedIds: store.saved,
-                                                        onSave: store.save,
-                                                        onAddToCart: store.add,
-                                                        imageUrl:
-                                                            store.imageUrl,
-                                                        automaticSizing: true,
-                                                        hasSizingProfile:
-                                                            store.hasSizingData,
-                                                        sizingRevision: store
-                                                            .sizingRevision,
-                                                        onSizeAdvice:
-                                                            store.automaticSize,
-                                                        onSizingSetup:
-                                                            editSizing,
-                                                        onTryOn: store.demo
-                                                            ? null
-                                                            : (id) =>
-                                                                requestTryOn(
-                                                                    context,
-                                                                    store.api,
-                                                                    id),
-                                                        onCompleteLook: store
-                                                                .demo
-                                                            ? null
-                                                            : completeLook))),
-                                  ])))),
+                        child: PageView(
+                            controller: tabs,
+                            physics: const ClampingScrollPhysics(),
+                            onPageChanged: (value) {
+                              Niche.select();
+                              setState(() => tab = value);
+                            },
+                            children: [
+                              Column(children: [
+                                if (seedError != null && seed != null)
+                                  TextButton(
+                                      onPressed: refreshHome,
+                                      child: Text(seedError!)),
+                                Expanded(
+                                    child: store.loading
+                                        ? const Center(
+                                            child: CircularProgressIndicator())
+                                        : store.error != null
+                                            ? Center(
+                                                child: TextButton(
+                                                    onPressed: store.load,
+                                                    child: Text(store.error!)))
+                                            : ReelsBrowse(
+                                                key: ValueKey(
+                                                    'home-$feedRevision'),
+                                                active: tab == 0,
+                                                products: home
+                                                    .map(browseMap)
+                                                    .toList(),
+                                                savedIds: store.saved,
+                                                prepareTryOns: store.demo
+                                                    ? null
+                                                    : ReelsBindings(store.api)
+                                                        .prepare,
+                                                loadTryOns: store.demo
+                                                    ? null
+                                                    : ReelsBindings(store.api)
+                                                        .load,
+                                                onSave: store.save,
+                                                onAddToCart: store.add,
+                                                imageUrl: store.imageUrl,
+                                                onSizeAdvice:
+                                                    store.automaticSize,
+                                                onRefresh: refreshHome,
+                                                seedLabel: seed?.product.name,
+                                                onClearSeed: clearSeed,
+                                                onCloset: openClosetPiece,
+                                                onBodyPhoto: store.demo
+                                                    ? null
+                                                    : openBodyPhoto)),
+                              ]),
+                              DiscoverScreen(
+                                  key: ValueKey('discover-$discoverQuery'),
+                                  initialQuery: discoverQuery,
+                                  store: store,
+                                  onOpen: (p) => openProducts([p])),
+                              SocialFeed(
+                                  store: store,
+                                  onShop: openProducts,
+                                  onTagSearch: searchTag),
+                            ])))),
           ]),
-          bottomNavigationBar: SafeArea(
-              minimum: const EdgeInsets.fromLTRB(28, 8, 28, 14),
-              child: Center(
-                  heightFactor: 1,
-                  child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 440),
-                      child: Material(
-                          elevation: 8,
-                          borderRadius: BorderRadius.circular(32),
-                          clipBehavior: Clip.antiAlias,
-                          child: NavigationBar(
-                              height: 68,
-                              selectedIndex: tab,
-                              onDestinationSelected: (value) =>
-                                  setState(() => tab = value),
-                              destinations: const [
-                                NavigationDestination(
-                                    icon: Icon(Icons.home_outlined),
-                                    label: 'Home'),
-                                NavigationDestination(
-                                    icon: Icon(Icons.explore_outlined),
-                                    label: 'Discover'),
-                                NavigationDestination(
-                                    icon: Icon(Icons.people_outline),
-                                    label: 'Inspo'),
-                              ]))))),
+          bottomNavigationBar:
+              NicheNavigation(controller: tabs, index: tab, onTap: changeTab),
         );
       });
 }
@@ -677,14 +691,14 @@ class ProductPhoto extends StatelessWidget {
   Widget build(BuildContext context) => ColoredBox(
       color: const Color(0xFFEDEAE4),
       child: url.isEmpty
-          ? const Center(child: Icon(Icons.image_outlined))
+          ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,
               fit: BoxFit.contain,
               webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
               semanticLabel: name,
               errorBuilder: (_, error, stack) => const Center(
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.image_outlined),
+                    Icon(NicheIcons.imageOutlined),
                     SizedBox(height: 8),
                     Text('Photo unavailable')
                   ]))));

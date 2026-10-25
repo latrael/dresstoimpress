@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -140,7 +141,7 @@ void main() {
         tester
             .widget<Opacity>(find
                 .ancestor(
-                    of: find.byIcon(Icons.favorite).first,
+                    of: find.byIcon(NicheIcons.favorite).first,
                     matching: find.byType(Opacity))
                 .first)
             .opacity,

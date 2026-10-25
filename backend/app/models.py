@@ -26,7 +26,8 @@ class Size(BaseModel):
 
 class ProductImage(BaseModel):
     url: str
-    kind: Literal["product", "retailer_model"] = "product"  # garment-only vs. a model wearing it
+    # garment-only vs. a model wearing it; "detail" = close-up, "other" = chart/graphic (scripts.classify_images)
+    kind: Literal["product", "retailer_model", "detail", "other"] = "product"
 
 
 class Product(BaseModel):
@@ -49,6 +50,7 @@ class Product(BaseModel):
     label: str = ""           # short plain name from the tagger, e.g. "white baby tee"
     scraped_at: Optional[str] = None      # ISO time of the scrape
     images: list[ProductImage] = []       # same product + colour only; image_url stays the primary image
+    hero_image_url: Optional[str] = None  # the garment alone (Home slide 1); None = the store only has model shots
     description: Optional[str] = None     # real retailer text (plain), or null; never a pairing reason
     source: Literal["ingest", "live_search", "seed"] = "ingest"
     department: Optional[Literal["men", "women", "unisex"]] = None  # retailer's section; None = unknown (shown to all)

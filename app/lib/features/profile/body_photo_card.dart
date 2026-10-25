@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -73,7 +74,7 @@ class _BodyPhotoCardState extends State<BodyPhotoCard> {
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                     onPressed: busy ? null : remove,
-                    icon: const Icon(Icons.delete_outline),
+                    icon: const Icon(NicheIcons.deleteOutline),
                     label: const Text('Delete photo')),
               ],
               if (error != null) Text(error!),

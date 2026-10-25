@@ -112,7 +112,8 @@ def test_comments(client):
     r = client.post(f"/fitcheck/{p['id']}/comments", json={"user_id": "u_b", "text": "  obsessed  "})
     assert r.status_code == 200 and r.json()["text"] == "obsessed" and r.json()["comment_count"] == 1
     got = client.get(f"/fitcheck/{p['id']}", params={"user_id": "u_a"}).json()
-    assert got["comment_count"] == 1 and got["comments"][0]["user_id"] == "u_b"
+    assert got["comment_count"] == 1 and [c["text"] for c in got["comments"]] == ["obsessed"]
+    assert got["comments"][0]["author"] == {"id": "u_b", "display_name": "Ben"}
     assert client.post(f"/fitcheck/{p['id']}/comments", json={"user_id": "u_b", "text": "x" * 281}).status_code == 422
     assert client.post(f"/fitcheck/{p['id']}/comments", json={"user_id": "u_b", "text": "   "}).status_code == 422
 
@@ -223,6 +224,33 @@ def test_comments_paged(client):
     assert len(client.get(url, params={"user_id": "u_a", "limit": 500}).json()["comments"]) == 5
     assert client.get(url, params={"user_id": "u_a", "before": "c_nope"}).status_code == 422
     assert client.get("/fitcheck/fc_missing/comments", params={"user_id": "u_a"}).status_code == 404
+
+
+def test_post_view_comment_preview(client):
+    from app.store import store
+
+    def views(pid):  # feed + detail views of one post
+        feed = client.get("/fitcheck/feed", params={"user_id": "u_a", "limit": 100}).json()
+        return [next(v for v in feed if v["id"] == pid), client.get(f"/fitcheck/{pid}", params={"user_id": "u_a"}).json()]
+
+    p = _post(client, "u_a")
+    assert p["comments"] == [] and p["comment_count"] == 0  # create
+    assert all(v["comments"] == [] and v["comment_count"] == 0 for v in views(p["id"]))
+    url = f"/fitcheck/{p['id']}/comments"
+    ids = [client.post(url, json={"user_id": "u_b" if i % 2 else "u_c", "text": f"c{i}"}).json()["id"] for i in range(5)]
+    for v in views(p["id"]):
+        assert v["comment_count"] == 5 and [c["id"] for c in v["comments"]] == ids[3:]  # 2 newest, oldest -> newest
+        assert v["comments"] == client.get(url, params={"user_id": "u_a", "limit": 2}).json()["comments"]  # same shape as the page
+        assert [c["author"]["display_name"] for c in v["comments"]] == ["Ben", "Cy"]
+    tags = client.patch(f"/fitcheck/{p['id']}/tags", json={"user_id": "u_a", "tagged": []}).json()
+    assert tags["comment_count"] == 5 and [c["id"] for c in tags["comments"]] == ids[3:]
+    assert len(store.get("fitcheck_posts", p["id"])["comments"]) == 5  # stored list untouched
+    assert len(client.get(url, params={"user_id": "u_a"}).json()["comments"]) == 5  # paged route still has all
+
+    one = _post(client, "u_a")
+    client.post(f"/fitcheck/{one['id']}/comments", json={"user_id": "u_b", "text": "solo"})
+    for v in views(one["id"]):
+        assert v["comment_count"] == 1 and [(c["text"], c["author"]["id"]) for c in v["comments"]] == [("solo", "u_b")]
 
 
 def test_comments_page_over_100(client):

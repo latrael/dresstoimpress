@@ -211,19 +211,40 @@ def _unknown_closet_ref(reason: str, closet: list[dict]) -> bool:
     from .colors import _COLOR_WORDS
     from .finder import item_type
 
-    labels = [(c.get("label") or f'{c.get("color", "")} {c.get("category", "")}').lower() for c in closet]
-    label_words = {w for lbl in labels for w in re.findall(r"[a-z0-9-]+", lbl)}
-    label_types = {item_type(lbl) for lbl in labels} - {None}
+    # One token set per closet item: every word of "your <phrase>" (colour, brand and noun alike) must sit in
+    # the SAME item, so "your black tee" is unknown when the closet has a white tee and black pants.
+    items: list[tuple[set[str], str | None]] = []
+    for c in closet:
+        lbl = (c.get("label") or f'{c.get("color", "")} {c.get("category", "")}').lower()
+        text = " ".join(filter(None, [lbl, str(c.get("brand") or ""), str(c.get("color") or ""),
+                                      str(c.get("category") or "")])).lower()
+        words = set(re.findall(r"[a-z0-9-]+", text))
+        words |= {w.rstrip("s") for w in words}
+        items.append((words, item_type(lbl)))
     for m in re.finditer(r"\byour\s+([a-z0-9 -]+)", reason.lower()):
-        nouns = []
+        words = []
         for w in re.findall(r"[a-z0-9-]+", m.group(1))[:5]:
             if w in _REASON_STOP:
                 break
-            if w not in _COLOR_WORDS and w not in _REASON_GENERIC and len(w) > 2:
-                nouns.append(w)
-        if nouns and not any(w in label_words or w.rstrip("s") in label_words
-                             or item_type(w) in label_types or item_type(w.rstrip("s")) in label_types
-                             for w in nouns):
+            if w not in _REASON_GENERIC and len(w) > 2:
+                words.append(w)
+        nouns = [w for w in words if w not in _COLOR_WORDS]
+        if not nouns:
+            continue  # "your look", "your closet": not an item reference
+        # Known only when ONE closet item carries a colour word AND at least one of the nouns (as a word
+        # or by type), so "your black tee" is unknown when the closet has a white tee and black pants.
+        colours = [w for w in words if w in _COLOR_WORDS]
+
+        def has(w: str, toks: set[str]) -> bool:
+            return w in toks or w.rstrip("s") in toks
+
+        def known(toks: set[str], typ: str | None) -> bool:
+            if colours and not any(has(c, toks) for c in colours):  # any(): "denim blue" is one colour
+                return False
+            return any(has(n, toks) or (typ is not None and (item_type(n) == typ or item_type(n.rstrip("s")) == typ))
+                       for n in nouns)
+
+        if not any(known(toks, typ) for toks, typ in items):
             return True
     return False
 
@@ -402,17 +423,23 @@ SHOP_PER_TAG = 3          # flat /shop: cards per tagged piece (unchanged)
 SHOP_GROUPED_PER_TAG = 6  # grouped /shop: similar items shown under each piece's chip
 
 
-def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int) -> list[tuple[int, dict]]:
-    """(tag index, card) pairs behind shop_fit / shop_fit_grouped: post order, closest match first."""
+def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int, keep=None) -> list[tuple[int, dict]]:
+    """(tag index, card) pairs behind shop_fit / shop_fit_grouped: post order, closest match first.
+    `keep(product) -> bool` filters the catalog before matching, so each tag fills up with products the
+    viewer can see, and the cards after (a tag's pinned product_id / live results skip the catalog)."""
     from .finder import find_products
 
     from concurrent.futures import ThreadPoolExecutor
 
     products = list_products()
+    if keep is not None:
+        products = [p for p in products if keep(p)]
     matched: dict[str, tuple[int, str]] = {}
     # items that need a live store search take ~5 s each: run them side by side, keep post order
     with ThreadPoolExecutor(max(1, min(4, len(tagged)))) as ex:
         found = list(ex.map(lambda t: find_products(t, products, per_tag), tagged))
+    if keep is not None:
+        found = [[p for p in hits if keep(p)] for hits in found]
     from .finder import match_score
 
     order: dict[str, tuple[int, float]] = {}
@@ -443,13 +470,14 @@ def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int) -> list[tup
     return out
 
 
-def shop_fit(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_PER_TAG) -> list[dict]:
+def shop_fit(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_PER_TAG, keep=None) -> list[dict]:
     """Shoppable cards for a friend's Fit Check post, ranked against the viewer's closet.
 
     Each result is a Product plus `reason`, `pairs_with`, and `matched_tag` (the post label it answers).
     Tags with no product match yet are skipped; Nabil can run Apify for that retailer and call again.
+    `keep(product) -> bool`: only products the viewer should see (their shop_for department).
     """
-    return [card for _, card in _shop_fit_rows(viewer_id, tagged, per_tag)]
+    return [card for _, card in _shop_fit_rows(viewer_id, tagged, per_tag, keep)]
 
 
 def shop_tag_summary(tag: dict) -> dict:
@@ -461,11 +489,10 @@ def shop_fit_grouped(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_GRO
                      keep=None) -> list[dict]:
     """shop_fit, one group per tagged piece, in post order: [{"tag": {label, category, color, box,
     product_id}, "products": [card, ...]}]. A piece with no match keeps its chip with `products: []`.
-    `keep(card) -> bool` drops cards the viewer should not see (their shop_for department)."""
+    `keep(product) -> bool`: only products the viewer should see (their shop_for department)."""
     groups = [{"tag": shop_tag_summary(t), "products": []} for t in tagged]
-    for i, card in _shop_fit_rows(viewer_id, tagged, per_tag):
-        if keep is None or keep(card):
-            groups[i]["products"].append(card)
+    for i, card in _shop_fit_rows(viewer_id, tagged, per_tag, keep):
+        groups[i]["products"].append(card)
     return groups
 
 
@@ -618,3 +645,7 @@ def summarize_product(p: dict, force: bool = False) -> str:
         text = rules_summary(p)
     store.put("summary_cache", key, {"summary": text})
     return text
+
+
+# ---------- sprint 4 §10: reels Home (closet picks, try-on status, prefetch) ----------
+from .feed_tryon import closet_picks, prefetch_tryons, tryon_status  # noqa: E402,F401

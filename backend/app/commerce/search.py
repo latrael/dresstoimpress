@@ -159,12 +159,14 @@ async def search_photo(user_id: str = Form(...), file: UploadFile = File(...)):
     """Camera search: save the photo (EXIF/GPS stripped), tag each piece, find catalog matches ranked
     against the user's closet, complete the look around the top match. Creates no post and no closet item."""
     photo_url = await _save_upload(file)
+    shop_for = _shop_for(user_id)
     try:
         tags = service.tag_fit(photo_url)
-        matches = service.shop_fit(user_id, tags) if tags else []
+        # filter the catalog before matching, so the top matches per piece are ones the user can buy
+        matches = service.shop_fit(user_id, tags, keep=lambda p: _buyable(p) and _dept_ok(p, shop_for)) if tags else []
     except BadModelOutput as e:
         raise _ai_down("photo search", e)
-    similar, shop_for = [], _shop_for(user_id)
+    similar = []
     for m in matches:  # shop_fit returns the AI's product view; send the stored card like /search does
         p = store.get("products", m["id"])
         if p and _buyable(p) and _dept_ok(p, shop_for):

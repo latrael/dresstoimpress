@@ -68,6 +68,10 @@ The app never calls outside services directly. Every key stays on the server, an
 
 **Plain rules (free, instant):** sizing, colour matching, warmth/season, duplicate detection.
 
+## Design
+
+The original app wireframe: [WireframeSketch (made with Notability).pdf](<WireframeSketch (made with Notability).pdf>).
+
 ## Tech stack
 
 | Layer | Tools |

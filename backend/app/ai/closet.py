@@ -218,9 +218,14 @@ def clean_shot(source_url: str, piece: dict | None = None) -> str | None:
     None when image AI is off, it fails, or both renders show the wrong item (the caller then keeps the crop)."""
     if not clean_shots_on():
         return None
-    for attempt in (0, 1):
+    # 1. from the photo, 2. from the photo with a sterner prompt, 3. from the label alone (no photo): a generic
+    # but correct item beats a picture of the wrong one. Only when all three fail does the caller keep the crop.
+    attempts = [(source_url, dict(retry=False)), (source_url, dict(retry=True))]
+    if piece and piece.get("label"):
+        attempts.append((None, dict(text_only=True)))
+    for src, kw in attempts:
         try:
-            img = gemini_image(prompts.clean_shot_prompt(piece, retry=bool(attempt)), [source_url])
+            img = gemini_image(prompts.clean_shot_prompt(piece, **kw), [src] if src else [])
         except BadModelOutput as e:
             log.warning("clean shot skipped: %s", e)
             return None

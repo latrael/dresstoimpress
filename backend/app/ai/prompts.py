@@ -136,12 +136,25 @@ CLEAN_SHOT_RETRY = (
 )
 CLEAN_SHOT_VERSION = "v3"  # the prompt names the piece; the result is checked (CLEAN_SHOT_CHECK)
 
+# No source photo: a generic-but-correct item from its label alone (used when both photo-based renders
+# failed the check; a plain "white wired earbuds" beats a picture of the wrong garment).
+CLEAN_SHOT_TEXT = (
+    "TASK: studio product photo of a {label} ({color} {category}) on pure white, nothing else.\n"
+    "SPEC: ghost-mannequin for clothes, flat-lay for accessories/shoes, front view, centred, filling ~80% of the "
+    "frame, pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond "
+    "a faint contact shadow, square 1:1 frame, sharp focus, plain and generic (no distinctive print or branding).\n"
+    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments or items, no text, no logos, no watermark, "
+    "no border, no props, no background objects, no colour grading."
+)
 
-def clean_shot_prompt(piece: dict | None, retry: bool = False) -> str:
-    """CLEAN_SHOT filled with the piece's label / colour / category (falls back to generic words)."""
+
+def clean_shot_prompt(piece: dict | None, retry: bool = False, text_only: bool = False) -> str:
+    """CLEAN_SHOT filled with the piece's label / colour / category (falls back to generic words).
+    text_only: the no-photo variant (CLEAN_SHOT_TEXT)."""
     piece = piece or {}
     label = " ".join(str(piece.get("label") or "garment").split()) or "garment"
-    return (CLEAN_SHOT_RETRY if retry else CLEAN_SHOT).format(
+    tmpl = CLEAN_SHOT_TEXT if text_only else (CLEAN_SHOT_RETRY if retry else CLEAN_SHOT)
+    return tmpl.format(
         label=label, color=str(piece.get("color") or "").strip() or "same-coloured",
         category=str(piece.get("category") or "item").strip() or "item")
 

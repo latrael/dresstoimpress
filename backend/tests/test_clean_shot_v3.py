@@ -26,8 +26,24 @@ def test_wrong_item_is_retried_then_dropped(monkeypatch, tmp_path):
     monkeypatch.setattr(closet, "gemini_image", lambda prompt, urls: calls.append(prompt) or b"png")
     monkeypatch.setattr(closet, "clean_shot_matches", lambda url, piece: False)
     assert closet.clean_shot("http://x/src.jpg", {"label": "white wired earbuds", "category": "accessory"}) is None
-    assert len(calls) == 2 and calls[1].startswith("You rendered the wrong item")
+    # photo -> photo with sterner prompt -> label alone (no photo) -> give up (caller keeps the crop)
+    assert len(calls) == 3 and calls[1].startswith("You rendered the wrong item")
+    assert calls[2].startswith("TASK: studio product photo of a white wired earbuds")
     assert not list((tmp_path / "uploads").glob("*-clean.png"))  # rejected renders are deleted
+
+
+def test_text_only_fallback_when_photo_renders_fail(monkeypatch, tmp_path):
+    from app.ai import closet
+
+    urls: list[list[str]] = []
+    verdicts = iter([False, False, True])
+    monkeypatch.setattr(closet, "clean_shots_on", lambda: True)
+    monkeypatch.setattr(closet, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(closet, "gemini_image", lambda prompt, u: urls.append(u) or b"png")
+    monkeypatch.setattr(closet, "clean_shot_matches", lambda url, piece: next(verdicts))
+    url = closet.clean_shot("http://x/src.jpg", {"label": "white wired earbuds", "category": "accessory"})
+    assert url and url.endswith("-clean.png")
+    assert urls == [["http://x/src.jpg"], ["http://x/src.jpg"], []]  # third render used no source photo
 
 
 def test_good_item_passes_first_time(monkeypatch, tmp_path):

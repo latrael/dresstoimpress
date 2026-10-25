@@ -303,6 +303,17 @@ class Api {
           {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, bytes, mimeType,
           query: {'commit': commit ? null : 'false'}));
 
+  /// POST /users/{id}/body-scan with several photos (1-6): every full-body photo is scanned and the estimates
+  /// averaged ("more photos = better estimate"); `BodyProfile.scanPhotos` / `confidence` (low 1, medium 2,
+  /// high 3+) say how many were used, `BodyScanResult.skipped` how many weren't full-body. The first full-body
+  /// photo becomes the try-on photo. [mimeTypes] lines up with [photos] (missing -> image/jpeg). Same [commit]
+  /// draft semantics as [bodyScan]. 422 (ApiError) for no photos, more than 6, or a bad height / weight.
+  Future<BodyScanResult> bodyScanMany(List<List<int>> photos,
+          {required double heightCm, double? weightKg, List<String>? mimeTypes, bool commit = true}) async =>
+      BodyScanResult.fromJson(await _uploadMany('/users/${_seg(_user)}/body-scan',
+          {'height_cm': '$heightCm', if (weightKg != null) 'weight_kg': '$weightKg'}, photos, mimeTypes ?? const [],
+          query: {'commit': commit ? null : 'false'}));
+
   /// POST /users/{id}/body-scan/confirm: saves a reviewed [draft] from `bodyScan(commit: false)`: the photo
   /// becomes the body / try-on photo and the profile is saved as the user's measurements.
   ///
@@ -325,6 +336,22 @@ class Api {
       'edited': edits.keys.toList(),
     }));
   }
+
+  /// POST /onboarding/photos ("photo onboarding"): 1-8 photos (outfits, flat lays, mirror selfies) + height
+  /// (weight optional) in one call. Every photo is digitized into closet items (duplicates skipped), the best
+  /// full-body photo is body-scanned and becomes the try-on photo, and the style is inferred from the
+  /// garments and saved as the user's style_text / style_tags (onboarded = true). [styleHint] is what the
+  /// user typed, if anything ("Y2K, tops under $40": budgets are parsed like [onboarding]). [mimeTypes]
+  /// lines up with [photos]; missing entries default to image/jpeg. 422 (ApiError) for no photos, more than
+  /// 8, or a height outside 120-230 cm; 415 if any file isn't an image; 502 only if tagging failed for all.
+  Future<PhotoOnboardingResult> onboardFromPhotos(List<List<int>> photos,
+          {required double heightCm, double? weightKg, String? styleHint, List<String>? mimeTypes}) async =>
+      PhotoOnboardingResult.fromJson(await _uploadMany('/onboarding/photos', {
+        'user_id': _user,
+        'height_cm': '$heightCm',
+        if (weightKg != null) 'weight_kg': '$weightKg',
+        if (styleHint != null && styleHint.trim().isNotEmpty) 'style_hint': styleHint.trim(),
+      }, photos, mimeTypes ?? const []));
 
   /// POST /ai/vibe (Discover): a sentence ("fit for a rooftop party") -> catalog filters: styles and
   /// categories from the catalog vocabularies, colors and item keywords. Never 502s (keyword rules
@@ -403,18 +430,34 @@ class Api {
   /// multipart/form-data: text [fields] plus one image in field `file`. Built by hand so the image part
   /// carries its real Content-Type (the server rejects anything that isn't jpeg/png/webp/heic).
   Future<dynamic> _upload(String path, Map<String, String> fields, List<int> bytes, String mimeType,
-      {Map<String, String?>? query}) async {
+          {Map<String, String?>? query}) =>
+      _multipart(path, fields, 'file', [bytes], [mimeType], query: query);
+
+  /// Same as [_upload] with several images, all in the repeated field `files` (FastAPI `list[UploadFile]`).
+  /// [mimeTypes] lines up with [photos]; anything missing is image/jpeg.
+  Future<dynamic> _uploadMany(String path, Map<String, String> fields, List<List<int>> photos, List<String> mimeTypes,
+          {Map<String, String?>? query}) =>
+      _multipart(path, fields, 'files', photos,
+          [for (var i = 0; i < photos.length; i++) i < mimeTypes.length ? mimeTypes[i] : 'image/jpeg'], query: query);
+
+  Future<dynamic> _multipart(String path, Map<String, String> fields, String fileField, List<List<int>> files,
+      List<String> mimeTypes, {Map<String, String?>? query}) async {
     final boundary = 'dti-${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 30)}';
-    final ext = mimeType.split('/').last;
     final out = BytesBuilder();
     void add(String s) => out.add(utf8.encode(s));
     for (final f in fields.entries) {
       add('--$boundary\r\nContent-Disposition: form-data; name="${f.key}"\r\n\r\n${f.value}\r\n');
     }
-    add('--$boundary\r\nContent-Disposition: form-data; name="file"; filename="photo.$ext"\r\n');
-    add('Content-Type: $mimeType\r\n\r\n');
-    out.add(bytes);
-    add('\r\n--$boundary--\r\n');
+    for (var i = 0; i < files.length; i++) {
+      final mimeType = mimeTypes[i];
+      final ext = mimeType.split('/').last;
+      final name = files.length == 1 && fileField == 'file' ? 'photo.$ext' : 'photo${i + 1}.$ext';
+      add('--$boundary\r\nContent-Disposition: form-data; name="$fileField"; filename="$name"\r\n');
+      add('Content-Type: $mimeType\r\n\r\n');
+      out.add(files[i]);
+      add('\r\n');
+    }
+    add('--$boundary--\r\n');
 
     final req = http.Request('POST', _uri(path, query))
       ..headers['X-DTI-Key'] = settings.apiKey

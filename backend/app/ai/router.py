@@ -1,5 +1,6 @@
 import os
 import uuid
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -143,31 +144,43 @@ async def closet_digitize(user_id: str = Form(...), file: UploadFile = File(...)
 
 
 @router.post("/users/{user_id}/body-scan")
-async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm: float = Form(...),
-                          weight_kg: Optional[float] = Form(None), commit: bool = True):
-    """Body scan: full-body photo + height (weight optional) -> estimated measurements saved as
-    body_profile (used by /size) and the photo saved as the try-on photo.
+async def body_scan_route(user_id: str, file: Optional[UploadFile] = File(None), files: list[UploadFile] = File([]),
+                          height_cm: float = Form(...), weight_kg: Optional[float] = Form(None), commit: bool = True):
+    """Body scan: 1-6 full-body photos (`files`, or the single `file` field) + height (weight optional) ->
+    estimated measurements saved as body_profile (used by /size); the first full-body photo becomes the
+    try-on photo. Every full-body photo is scanned and the estimates averaged (build by majority vote);
+    `body_profile.scan_photos` is how many were used and `confidence` low / medium / high for 1 / 2 / 3+.
+    Photos that aren't full-body are ignored and counted in `skipped`.
 
-    `?commit=false` (draft, for a review screen): runs the scan and saves the photo file, but changes
+    `?commit=false` (draft, for a review screen): runs the scan and saves the photo files, but changes
     nothing on the user (no body_photo_url, no body_profile). The response has the same shape with
     `committed: false`; the app then calls POST /users/{id}/body-scan/confirm with the (edited) profile
     and the returned body_photo_url to save it. Default `commit=true` saves right away (`committed: true`)."""
-    from .body_scan import HEIGHT_CM, WEIGHT_KG, merge_scan, scan
+    from .body_scan import HEIGHT_CM, WEIGHT_KG, merge_scan, scan_many
 
     if not HEIGHT_CM[0] <= height_cm <= HEIGHT_CM[1]:
         raise HTTPException(422, "height_cm must be between 120 and 230")
     if weight_kg is not None and not WEIGHT_KG[0] <= weight_kg <= WEIGHT_KG[1]:
         raise HTTPException(422, "weight_kg must be between 30 and 250")
-    url = await _save_upload(file)
-    profile = scan(url, height_cm, weight_kg)
+    uploads = [f for f in [file, *files] if f is not None and (f.filename or f.size)]
+    if not uploads:
+        raise HTTPException(422, "send a photo in `file` or 1-6 photos in `files`")
+    if len(uploads) > MAX_SCAN_PHOTOS:
+        raise HTTPException(422, f"at most {MAX_SCAN_PHOTOS} photos")
+    urls = [await _save_upload(f) for f in uploads]
+    profile, body_url, skipped = scan_many(urls, height_cm, weight_kg)
+    url = body_url or urls[0]
     user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
     merged = merge_scan(user.get("body_profile"), profile)
     if not commit:
-        return {"body_photo_url": url, "body_profile": merged, "committed": False}
+        return {"body_photo_url": url, "body_profile": merged, "skipped": skipped, "committed": False}
     user["body_photo_url"] = url
     user["body_profile"] = merged
     store.put("users", user_id, user)
-    return {"body_photo_url": url, "body_profile": user["body_profile"], "committed": True}
+    return {"body_photo_url": url, "body_profile": user["body_profile"], "skipped": skipped, "committed": True}
+
+
+MAX_SCAN_PHOTOS = 6
 
 
 class BodyScanConfirm(BaseModel):
@@ -182,7 +195,8 @@ class BodyScanConfirm(BaseModel):
     edited: list[str] = []
 
 
-_SCAN_PASS = {"source", "full_body", "note", "scanned_at", "build", "fit", "shoe_us", "usual_sizes"}
+_SCAN_PASS = {"source", "full_body", "note", "scanned_at", "build", "fit", "shoe_us", "usual_sizes", "scan_photos",
+              "confidence", "presenting"}
 _SCAN_NUMS = {"height_cm": (120.0, 230.0), "weight_kg": (30.0, 250.0), "shoe_us": (3.0, 18.0)}
 
 
@@ -228,6 +242,64 @@ def body_scan_confirm(user_id: str, req: BodyScanConfirm):
     user["body_profile"] = profile
     store.put("users", user_id, user)
     return {"body_photo_url": req.body_photo_url, "body_profile": profile, "committed": True}
+
+
+@router.post("/onboarding/photos")
+async def onboarding_photos(user_id: str = Form(...), height_cm: float = Form(...),
+                            weight_kg: Optional[float] = Form(None), style_hint: Optional[str] = Form(None),
+                            files: list[UploadFile] = File(...)):
+    """Photo onboarding: 1-8 photos (outfits, flat lays, mirror selfies) + height -> closet digitized
+    (duplicates skipped), body scanned from the best full-body photo (that photo becomes the try-on photo),
+    style inferred from the garments and saved as style_text / style_tags (onboarded=true), feed warmed in
+    the background. One photo that isn't clothing is skipped, not an error; 502 only if tagging failed
+    for every photo."""
+    from ..static_urls import local_static_path
+    from .body_scan import HEIGHT_CM, WEIGHT_KG, merge_scan
+    from .digitize import upright_jpeg
+    from .photo_onboarding import MAX_PHOTOS, digitize_batch, infer_style, save_style, scan_best, warm_feed
+
+    if not HEIGHT_CM[0] <= height_cm <= HEIGHT_CM[1]:
+        raise HTTPException(422, "height_cm must be between 120 and 230")
+    if weight_kg is not None and not WEIGHT_KG[0] <= weight_kg <= WEIGHT_KG[1]:
+        raise HTTPException(422, "weight_kg must be between 30 and 250")
+    files = [f for f in files if f.filename or f.size]
+    if not files:
+        raise HTTPException(422, "send at least one photo in `files`")
+    if len(files) > MAX_PHOTOS:
+        raise HTTPException(422, f"at most {MAX_PHOTOS} photos")
+    photos: list[tuple[str, Path | None]] = []
+    for f in files:  # 415 / 413 from _save_upload apply to the whole batch
+        url = await _save_upload(f)
+        path = local_static_path(url, DATA_DIR)
+        upright = upright_jpeg(path) if path else None
+        if upright:
+            url, path = url.rsplit("/", 1)[0] + "/" + upright.name, upright
+        photos.append((url, path))
+
+    added, skipped, failed = digitize_batch(user_id, photos)
+    if failed == len(photos):
+        raise _ai_down("wardrobe scan", RuntimeError(f"tagging failed for all {failed} photos"))
+
+    profile, body_url, _scan_skipped = scan_best(photos, height_cm, weight_kg)
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    user["body_profile"] = merge_scan(user.get("body_profile"), profile)
+    if body_url:
+        user["body_photo_url"] = body_url
+    # store department from how the person presents in the full-body photo, only if they never chose one
+    # ("both" is the default). Unisex items pass Nabil's filter either way.
+    presenting = user["body_profile"].get("presenting")
+    if presenting in ("men", "women") and user.get("shop_for", "both") == "both":
+        user["shop_for"] = presenting
+    store.put("users", user_id, user)
+
+    # style from what was just digitized; if every garment was already in the closet, from the closet
+    garments = [i.model_dump() for i in added] or store.list("closet_items", user_id=user_id)
+    style = infer_style(garments, style_hint)
+    user = save_style(user_id, style)
+    warm_feed(user_id)
+    return {"closet_added": added, "closet_skipped_duplicates": skipped, "body_profile": user["body_profile"],
+            "body_photo_url": user.get("body_photo_url"), "shop_for": user.get("shop_for", "both"),
+            "style": style, "user": user}
 
 
 @router.patch("/users/{user_id}/body-profile")

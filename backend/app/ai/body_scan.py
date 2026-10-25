@@ -8,6 +8,7 @@ advisor already uses, and `source` says which ("ai" or "estimate"). The same pho
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from datetime import datetime, timezone
 
 from . import prompts
@@ -17,6 +18,7 @@ from .sizing import _estimate_inseam_inches, _estimate_waist_inches
 log = logging.getLogger(__name__)
 
 BUILDS = {"slim", "average", "athletic", "curvy", "broad"}
+PRESENTING = {"men", "women"}  # store department the look points to; "unknown" when the model isn't sure
 RANGES = {"chest_in": (26.0, 60.0), "waist_in": (22.0, 56.0), "hip_in": (28.0, 62.0), "inseam_in": (24.0, 38.0)}
 HEIGHT_CM = (120.0, 230.0)
 WEIGHT_KG = (30.0, 250.0)
@@ -103,6 +105,8 @@ def scan(photo_url: str, height_cm: float, weight_kg: float | None = None) -> di
         profile[k] = ai.get(k) if ai.get(k) is not None else base.get(k)
     build = str(raw.get("build") or "").lower() if full else ""
     profile["build"] = build if build in BUILDS else None
+    presenting = str(raw.get("presenting") or "").lower() if full else ""
+    profile["presenting"] = presenting if presenting in PRESENTING else "unknown"
     profile["source"] = "ai" if any(v is not None for v in ai.values()) else "estimate"
     profile["full_body"] = None if not raw else full
     profile["note"] = _note(raw.get("note")) if full else ""
@@ -110,3 +114,37 @@ def scan(photo_url: str, height_cm: float, weight_kg: float | None = None) -> di
         profile["note"] = "Use a full-body photo, head to feet, for a better scan"
     profile["scanned_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     return profile
+
+
+def confidence(scan_photos: int) -> str:
+    """How much to trust the estimate: 1 full-body photo low, 2 medium, 3+ high; 0 (formula) low."""
+    return "high" if scan_photos >= 3 else "medium" if scan_photos == 2 else "low"
+
+
+def scan_many(photo_urls: list[str], height_cm: float, weight_kg: float | None = None) -> tuple[dict, str | None, int]:
+    """Body scan over several photos: every photo is scanned, the full-body ones are averaged (numbers to
+    the nearest 0.5 in; majority vote for build / presenting). Returns (profile, url of the first full-body
+    photo or None, photos skipped because they weren't full-body). profile.scan_photos = number of
+    full-body photos used, profile.confidence by that count. With no full-body photo the profile is the
+    formula estimate from the first photo's scan (scan_photos 0, confidence low)."""
+    results = [(url, scan(url, height_cm, weight_kg)) for url in photo_urls]
+    full = [(url, p) for url, p in results if p.get("full_body")]
+    skipped = len(results) - len(full)
+    if not full:
+        profile = dict(results[0][1]) if results else {
+            "height_cm": round(height_cm, 1), "weight_kg": round(weight_kg, 1) if weight_kg else None,
+            **formula(height_cm, weight_kg), "build": None, "presenting": "unknown", "source": "estimate",
+            "full_body": None, "note": "", "scanned_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        profile["scan_photos"] = 0
+        profile["confidence"] = confidence(0)
+        return profile, None, skipped
+    profile = dict(full[0][1])
+    for k in RANGES:
+        vals = [p[k] for _, p in full if p.get(k) is not None]
+        profile[k] = round(sum(vals) / len(vals) * 2) / 2 if vals else profile.get(k)
+    for key in ("build", "presenting"):
+        votes = Counter(p.get(key) for _, p in full if p.get(key) not in (None, "unknown"))
+        profile[key] = votes.most_common(1)[0][0] if votes else profile.get(key)
+    profile["scan_photos"] = len(full)
+    profile["confidence"] = confidence(len(full))
+    return profile, full[0][0], skipped

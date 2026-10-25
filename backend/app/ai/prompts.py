@@ -116,6 +116,14 @@ Return only a JSON array:
 Count a pair of shoes as one item. Ignore faces, skin, furniture, hangers and background.
 If there is no clothing, return []."""
 
+# ---- Photo onboarding: digitized garments -> one plain sentence describing the person's style ----
+STYLE_FROM_CLOSET = """These are the clothes someone just photographed for their digital closet (JSON):
+{items_json}
+Describe their style in one plain sentence of at most 25 words, like
+"streetwear and minimalist; light-wash denim, white tees, chunky sneakers; mostly casual":
+style words first, then 2-4 signature pieces, then how dressed-up they tend to be.
+Return only a JSON object: {{"style_text": "..."}}. No comments on body or attractiveness."""
+
 # ---- Body scan: full-body photo + height -> estimated measurements for size advice ----
 BODY_SCAN = """You estimate body measurements from one full-body photo, only to recommend clothing sizes.
 The person is {height_cm} cm tall{weight_part}. Use that height as the scale: compare shoulder width,
@@ -124,6 +132,8 @@ Return only a JSON object:
 {{"full_body_visible": true or false (one person standing, head to feet in frame),
   "build": "slim" | "average" | "athletic" | "curvy" | "broad",
   "chest_in": number, "waist_in": number, "hip_in": number, "inseam_in": number,
+  "presenting": "men" | "women" | "unknown" (which store department the person's clothing and look point to;
+                "unknown" whenever it is not obvious — never guess),
   "note": at most 10 words of fit advice, e.g. "long legs, pick longer inseams"}}
 Measurements in inches, rounded to the nearest 0.5. If it is not one standing person in full view,
 set full_body_visible to false and every number to null.

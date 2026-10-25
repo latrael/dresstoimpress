@@ -280,7 +280,15 @@ class _FirstVisitState extends State<FirstVisit> {
             (hasReturning && widget.store.profile.completed));
   }
 
-  Future<void> enter({bool create = false, bool test = false}) async {
+  /// Team accounts until real sign-in lands: one tap opens that person's server profile.
+  static const teamAccounts = [
+    ('Adam', 'u_adam'),
+    ('Nabil', 'u_nabil'),
+    ('Ryan', 'u_ryan'),
+  ];
+
+  Future<void> enter(
+      {bool create = false, bool test = false, String? asUser}) async {
     String? displayName;
     if (create) {
       displayName = await showDialog<String>(
@@ -293,7 +301,11 @@ class _FirstVisitState extends State<FirstVisit> {
     });
     try {
       var id = widget.store.api.settings.userId;
-      if (test) {
+      if (asUser != null) {
+        id = asUser;
+        test = true; // same completion handling as the test profile
+      }
+      if (test && asUser == null) {
         id = 'u_demo';
       }
       if (create) {
@@ -355,6 +367,19 @@ class _FirstVisitState extends State<FirstVisit> {
                 const Text(
                     'Login reopens the profile saved on this device. Google sign-in is coming later.'),
                 const SizedBox(height: 24),
+                if (!widget.store.demo) ...[
+                  const Text('Who are you?',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    for (final (name, id) in teamAccounts)
+                      FilledButton.tonal(
+                          key: ValueKey('team-$id'),
+                          onPressed: busy ? null : () => enter(asUser: id),
+                          child: Text(name)),
+                  ]),
+                  const SizedBox(height: 16),
+                ],
                 FilledButton(
                     onPressed: busy || !hasReturning ? null : () => enter(),
                     child: const Text('Login')),

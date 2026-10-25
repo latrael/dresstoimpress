@@ -227,6 +227,10 @@ class FitScoreRequest(BaseModel):
     items: list[dict] = []
     product_ids: list[str] = []
     closet_item_ids: list[str] = []
+    # Fit Score v2
+    occasion: Optional[str] = None      # "date night", "class": adds the occasion criterion
+    target_style: Optional[str] = None  # score AS this style instead of the best-fitting one (outfit_score.STYLES)
+    photo_url: Optional[str] = None     # Fit Check post photo: one Claude vision critique blended with the rules
 
 
 class TagFitRequest(BaseModel):

@@ -110,7 +110,7 @@ store.put("products", p["id"], p)
 
 - `ClosetItem.duplicate_of: string | null` (added Oct 23, 8:45 PM): set by `/closet/upload` and `/closet/tag` when the new item looks like one already in that closet (same category, color, pattern, garment type, similar label). Optional; old items read as null.
 - `TagFitRequest.hint: string | null`: `/products/tag` only, the product name, for photos of a model in a full outfit.
-- `FitScoreRequest {items: [FitTag-like dicts], product_ids: [], closet_item_ids: []}` → `POST /ai/fit-score` → `{score, verdict, notes, breakdown: {color, pattern, formality, completeness}}`.
+- `FitScoreRequest {items: [FitTag-like dicts], product_ids: [], closet_item_ids: [], occasion?, target_style?, photo_url?}` → `POST /ai/fit-score` → `{score, verdict "68 as streetwear: …", notes, breakdown: {color/40, pattern/20, formality/20, completeness/20}, criteria: [{name, score_10, note}], style_scores: {streetwear…grunge: 0–100}, primary_style, raw_score, source: "rules"|"rules+ai"}` (Fit Score v2, Oct 24: calibrated rubric, random outfits ~50, 90+ rare). `POST /complete-look` now also returns `fit_score` (same shape) and `primary_style`.
 - `FitTag.box` (optional): `[x_min, y_min, x_max, y_max]` as 0–1 fractions of the post photo, set by the AI tagger for Inspo pins; null on old posts and hand-added tags, and an invalid box is dropped (never an error).
 - `POST /ai/vibe {q}` (≤200 chars) → `{styles, categories, colors, keywords, source: "ai"|"rules"}` for Discover; in-process: `from app.ai.vibe import vibe`.
 - `DELETE /users/{id}/body-photo` → `{deleted: bool}`: clears `body_photo_url` and deletes our uploaded file; `body_profile` stays.

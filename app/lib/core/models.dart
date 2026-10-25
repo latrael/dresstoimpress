@@ -487,12 +487,24 @@ class LookItem {
 
 class CompleteLook {
   const CompleteLook(
-      {required this.items, required this.newItemsTotalUsd, required this.missing, this.anchorId, this.score});
+      {required this.items,
+      required this.newItemsTotalUsd,
+      required this.missing,
+      this.anchorId,
+      this.score,
+      this.fitScore,
+      this.primaryStyle});
   final String? anchorId;
   final List<LookItem> items;
   final double newItemsTotalUsd;
   final List<String> missing;
   final double? score;
+
+  /// Fit Score v2 of the completed outfit (anchor + picks), said as the anchor's style. Null on an old server.
+  final FitScore? fitScore;
+
+  /// The style the look was completed in (the anchor's best style), e.g. 'athleisure'.
+  final String? primaryStyle;
 
   factory CompleteLook.fromJson(Json j) => CompleteLook(
         anchorId: _strN(j['anchor_id']),
@@ -500,6 +512,8 @@ class CompleteLook {
         newItemsTotalUsd: _dbl(j['new_items_total_usd']),
         missing: _strs(j['missing']),
         score: _dblN(j['score']),
+        fitScore: j['fit_score'] is Map ? FitScore.fromJson(_obj(j['fit_score'])) : null,
+        primaryStyle: _strN(j['primary_style']),
       );
 }
 
@@ -518,18 +532,61 @@ class FitScoreBreakdown {
       completeness: _int(j['completeness']));
 }
 
+/// One Fit Score v2 criterion, 0-10 (5 = fine, 8+ earned): color, silhouette, pattern, formality, style,
+/// completeness, layering, occasion (only when an occasion was sent).
+class FitCriterion {
+  const FitCriterion({required this.name, required this.score10, this.note});
+  final String name;
+  final int score10;
+  final String? note;
+
+  factory FitCriterion.fromJson(Json j) =>
+      FitCriterion(name: _str(j['name']), score10: _int(j['score_10']), note: _strN(j['note']));
+}
+
 class FitScore {
-  const FitScore({required this.score, required this.verdict, required this.notes, required this.breakdown});
+  const FitScore({
+    required this.score,
+    required this.verdict,
+    required this.notes,
+    required this.breakdown,
+    this.criteria = const [],
+    this.styleScores = const {},
+    this.primaryStyle,
+    this.rawScore,
+    this.source,
+  });
   final int score;
+
+  /// v2: "68 as streetwear: strong silhouette, palette too busy".
   final String verdict;
   final List<String> notes;
   final FitScoreBreakdown breakdown;
+
+  /// v2 per-criterion scores (empty on an old server).
+  final List<FitCriterion> criteria;
+
+  /// v2: how well the outfit executes each style, 0-100 (streetwear, minimalist, classic, y2k, preppy,
+  /// athleisure, vintage, business, boho, grunge). Empty on an old server.
+  final Map<String, int> styleScores;
+
+  /// v2: the style the headline score is said in ("68 · as streetwear"); null on an old server.
+  final String? primaryStyle;
+  final int? rawScore;
+
+  /// 'rules' or 'rules+ai' (photo critic blended in).
+  final String? source;
 
   factory FitScore.fromJson(Json j) => FitScore(
       score: _int(j['score']),
       verdict: _str(j['verdict']),
       notes: _strs(j['notes']),
-      breakdown: FitScoreBreakdown.fromJson(_obj(j['breakdown'])));
+      breakdown: FitScoreBreakdown.fromJson(_obj(j['breakdown'])),
+      criteria: _list(j['criteria'], FitCriterion.fromJson),
+      styleScores: {for (final e in _obj(j['style_scores']).entries) e.key: _int(e.value)},
+      primaryStyle: _strN(j['primary_style']),
+      rawScore: _intN(j['raw_score']),
+      source: _strN(j['source']));
 }
 
 class StyleShare {

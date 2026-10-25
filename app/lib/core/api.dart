@@ -208,12 +208,23 @@ class Api {
   Future<Cart> addFitToCart(String fitId) async =>
       Cart.fromJson(await _send('POST', '/fits/${_seg(fitId)}/cart', query: {'user_id': _user}));
 
+  /// POST /ai/fit-score (v2). `targetStyle` scores the outfit as that style (streetwear, minimalist, classic,
+  /// y2k, preppy, athleisure, vintage, business, boho, grunge) instead of its best one; `photoUrl` (a Fit Check
+  /// post's photo) adds the AI photo critic when the server has AI on; `occasion` adds the occasion criterion.
   Future<FitScore> fitScore(
-          {List<FitTag> items = const [], List<String> productIds = const [], List<String> closetItemIds = const []}) async =>
+          {List<FitTag> items = const [],
+          List<String> productIds = const [],
+          List<String> closetItemIds = const [],
+          String? targetStyle,
+          String? photoUrl,
+          String? occasion}) async =>
       FitScore.fromJson(await _send('POST', '/ai/fit-score', body: {
         'items': items.map((t) => t.toJson()).toList(),
         'product_ids': productIds,
         'closet_item_ids': closetItemIds,
+        if (targetStyle != null) 'target_style': targetStyle,
+        if (photoUrl != null) 'photo_url': photoUrl,
+        if (occasion != null) 'occasion': occasion,
       }));
 
   Future<List<FitTag>> tagFit(String imageUrl) async =>

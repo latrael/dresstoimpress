@@ -47,6 +47,7 @@ class Api {
   /// Retailer image hosts the backend's `GET /img?url=` will re-serve (same list as backend/app/main.py).
   static const imageProxyHosts = {
     'image.hm.com', 'lp2.hm.com', 'image.uniqlo.com', 'picsum.photos', 'fastly.picsum.photos', 'images.unsplash.com',
+    'cdn.shopify.com', // Princess Polly, True Classic, Brandy Melville, Edikted, Kith, Stüssy (PR #44)
   };
 
   /// Image URL that loads in a web build: "/static/..." gets the base URL; retailer images go through

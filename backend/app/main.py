@@ -5,12 +5,13 @@ load_dotenv()
 import hmac  # noqa: E402
 import os  # noqa: E402
 
-from fastapi import FastAPI, Request  # noqa: E402
+from fastapi import Depends, FastAPI, Request  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
 from .ai.router import router as ai_router  # noqa: E402
+from .auth import make_auth_guard, router as auth_router  # noqa: E402
 from .commerce.fitcheck import router as fitcheck_router  # noqa: E402
 from .commerce.fitcheck_extras import router as fitcheck_extras_router  # noqa: E402
 from .commerce.fitcheck_web import router as fitcheck_web_router  # noqa: E402
@@ -19,14 +20,6 @@ from .commerce.router import router as commerce_router  # noqa: E402
 from .commerce.search import router as search_router  # noqa: E402
 from .commerce.users import router as users_router  # noqa: E402
 from .store import DATA_DIR  # noqa: E402
-
-app = FastAPI(title="dresstoimpress API")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-# Serve only image folders. Never mount DATA_DIR itself: it holds the JSON store (users, closets, usage).
-for _sub in ("uploads", "tryon"):
-    (DATA_DIR / _sub).mkdir(parents=True, exist_ok=True)
-    app.mount(f"/static/{_sub}", StaticFiles(directory=DATA_DIR / _sub), name=f"static-{_sub}")
 
 # Shared key for a public tunnel (the repo is public, so a leaked URL could spend AI credits).
 # Set API_SHARED_KEY in .env; clients send it as the X-DTI-Key header. Images and /health stay open
@@ -40,6 +33,17 @@ OPEN_SUBTREES = ("/fit/",)
 
 def _is_open(path: str) -> bool:
     return path.startswith(OPEN_PREFIXES) or path in OPEN_EXACT or path.startswith(OPEN_SUBTREES)
+
+
+# Optional sign-in (app/auth.py): a valid `Authorization: Bearer` session token pins the request to its
+# user (403 on a different user_id); no header = today's behaviour unless AUTH_REQUIRED=1.
+app = FastAPI(title="dresstoimpress API", dependencies=[Depends(make_auth_guard(_is_open))])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Serve only image folders. Never mount DATA_DIR itself: it holds the JSON store (users, closets, usage).
+for _sub in ("uploads", "tryon"):
+    (DATA_DIR / _sub).mkdir(parents=True, exist_ok=True)
+    app.mount(f"/static/{_sub}", StaticFiles(directory=DATA_DIR / _sub), name=f"static-{_sub}")
 
 
 @app.middleware("http")
@@ -97,6 +101,7 @@ def image_proxy(url: str):
     return Response(r.content, media_type=ctype, headers={"Cache-Control": "public, max-age=86400"})
 
 
+app.include_router(auth_router)  # /auth/google, /auth/logout, /auth/me
 app.include_router(ai_router)
 app.include_router(commerce_router)  # /feed /products /swipe /cart /wishlist /checkout
 app.include_router(reels_router)  # Home reels: /feed/{user}/tryons prefetch + poll (sprint-4)

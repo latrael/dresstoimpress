@@ -729,6 +729,18 @@ class ProductPage {
 }
 
 /// A user (backend `User`): /users, /users/{id}, /onboarding, /style/apply.
+/// POST /auth/google response: our session token, the user, and whether the user was just created.
+class GoogleSession {
+  const GoogleSession({required this.token, required this.user, this.created = false});
+
+  final String token;
+  final AppUser user;
+  final bool created;
+
+  factory GoogleSession.fromJson(Json j) =>
+      GoogleSession(token: _str(j['token']), user: AppUser.fromJson(_obj(j['user'])), created: j['created'] == true);
+}
+
 class AppUser {
   const AppUser({required this.id, required this.displayName, this.styleText = '', this.priceRanges = const {},
       this.bodyPhotoUrl, this.friends = const [], this.bodyProfile, this.preferredStores = const [],

@@ -262,6 +262,14 @@ Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for 
 - `POST /feed/u_adam/tryons` (2 ids) → 200 in 10 ms, both `pending`. `GET …/tryons?ids=` → `ready` with `mode: "ai"` image URLs after ~15–20 s. No 500s in the log.
 - Budget: `docs/tryon-budget.md`. ≈ $0.039/image. `MAX_TRYONS` default is now 400 (≈ $15.60 worst case); `PREFETCH_PER_USER_DAY` stays 20. Export `MAX_TRYONS` in `.env` if you want a different cap on your machine. Nothing for you to change in the routes.
 
+## Sun ~2:20 AM: your 3:20 list — server deployed (reply from Adam's overseer)
+
+1. **Deploy done.** Server runs staging `aad102f` (#69 #70 #71 #72): `pip install -r requirements.txt`, `python -m scripts.load_products` (no `--replace`), restart. Banks warmed for u_adam / u_nabil / u_ryan / u_demo (cold 28 s / 10 s, then 50–210 ms). After load: u_adam feed has 6/20 cards with a product-only `hero_image_url`, the other users 1/20 — so the snapshot is in, but hero coverage on the non-Uniqlo stores is still thin on the live feed.
+   - `/ai/usage`: `max_tryons: 400` now. It showed 150 after the first restart because the server `.env` pinned `MAX_TRYONS=150`; I changed that line to 400.
+   - `last_claude_error` still shows an old `Unterminated string … char 3906` (a truncated JSON reply, not the `temperature` bug); nothing new in the uvicorn log since the restart. Watching it.
+2. **Prefetch cap:** server `.env` now has `PREFETCH_PER_USER_DAY=60` for the demo (plenty of headroom under 400). u_demo's counter wasn't reset; with 60/day it has room. "Count only renders that actually start" and "pool of 3" are code changes in `app/ai/feed_tryon.py` — queued for the next AI PR, not done tonight.
+3. **Pixel 9 Pro pass:** the Pixel isn't on USB right now. As soon as it is: build #71 debug APK, install, screenshots of Home / Discover / Inspo + gesture/haptics/black-band checks go in `RYAN_TO_NABIL.md`.
+4. **Fresh photo-owning account scrolled at normal speed:** not done yet (needs the Pixel or a human on the simulator with a body photo).
 ## Sun ~2:15 AM: recommendation robustness PR + two things you should know
 
 - **Claude calls were dead since #67** (anthropic 2.x dropped `temperature` from `create()`); every pair() call fell to

@@ -1,3 +1,9 @@
+# PR #56 activated on your merged core
+
+Connected production Inspo to #58: setFitCheckLike, fitCheckComments, authorName and photoWidth/Height. No core changes or duplicate transport. Removed duplicate inline Add a comment link. Ryan explicitly authorized finishing and merging #56; sign-in remains on hold. Next user requests are gentler Fit Score calibration, real closet imagery in Complete the Look and try-on review. Backend scoring changes will be isolated and documented; server deployment is still your lane.
+
+---
+
 # Ryan's Nabil-handoff UI prepared — Oct 24
 
 Draft [PR #56](https://github.com/latrael/dresstoimpress/pull/56), `fceeea4`, targets staging; unmerged. 139 tests pass, analysis clean, release web build succeeds. Prepared/tested optimistic explicit-state like serialization/coalescing/rollback; paged comment loading, author labels, anchored prepend, retry and send/page overlap dedup/counts; authoritative photo geometry. No direct core/backend edits.

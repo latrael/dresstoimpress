@@ -375,6 +375,14 @@ void main() {
     final paths = <String>[];
     final api = mockApi((r) async {
       paths.add(r.url.path);
+      if (r.method == 'GET' && r.url.path.endsWith('/comments')) {
+        return json({
+          'post_id': 'post',
+          'comment_count': 0,
+          'comments': [],
+          'next_before': null
+        });
+      }
       if (r.url.path.endsWith('/like')) {
         return json({'post_id': 'post', 'liked': true, 'like_count': 1});
       }
@@ -397,9 +405,9 @@ void main() {
     await tester.tap(find.byIcon(Icons.favorite_border));
     await tester.pumpAndSettle();
     expect(find.text('1'), findsOneWidget);
-    await tester.ensureVisible(find.text('Add a comment…'));
+    await tester.ensureVisible(find.textContaining('Comments ('));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Add a comment…'));
+    await tester.tap(find.textContaining('Comments ('));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.widgetWithText(TextField, 'Add a comment…'), 'Great fit');
@@ -407,7 +415,11 @@ void main() {
     await tester.tap(find.byTooltip('Send comment'));
     await tester.pumpAndSettle();
     expect(find.text('Great fit'), findsOneWidget);
-    expect(paths, ['/fitcheck/post/like', '/fitcheck/post/comments']);
+    expect(paths, [
+      '/fitcheck/post/like',
+      '/fitcheck/post/comments',
+      '/fitcheck/post/comments'
+    ]);
   });
   testWidgets('editing outfit labels preserves tagged product identity',
       (tester) async {
@@ -568,9 +580,9 @@ void main() {
                     post: FitCheckPost.fromJson(postJson()),
                     api: api,
                     onShop: (_) {}))));
-    await tester.ensureVisible(find.text('Add a comment…'));
+    await tester.ensureVisible(find.textContaining('Comments ('));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Add a comment…'));
+    await tester.tap(find.textContaining('Comments ('));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.widgetWithText(TextField, 'Add a comment…'), 'Keep this draft');

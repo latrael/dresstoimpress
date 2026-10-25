@@ -25,6 +25,7 @@ from ..ai.router import _save_upload
 from ..models import FitTag
 from ..static_urls import local_static_path
 from ..store import DATA_DIR, store
+from .fitcheck_extras import reaction_view
 from .router import _dept_ok
 
 log = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ def _view(post: dict, viewer_id: str) -> dict:
     return {"photo_w": None, "photo_h": None, **post, "author": _author(post["user_id"]),
             "like_count": len(likes), "liked_by_me": viewer_id in likes,
             "comments": [_comment_view(c, authors) for c in comments[-PREVIEW_COMMENTS:]],
-            "comment_count": len(comments)}
+            "comment_count": len(comments), **reaction_view(post, viewer_id)}  # Adam: emoji reactions
 
 
 def _post(post_id: str, viewer_id: str) -> dict:

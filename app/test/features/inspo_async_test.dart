@@ -1,4 +1,3 @@
-import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -218,11 +217,10 @@ void main() {
     expect((state.liked, state.count), (false, 4));
     expect(state.error, isNull);
   });
-  testWidgets(
-      'post reflects explicit-state like before the response and rolls back on error',
+  testWidgets('post reaction shows before the response and rolls back on error',
       (t) async {
-    final pending = Completer<LikeResult>();
-    final calls = <bool>[];
+    final pending = Completer<ReactionResult>();
+    final calls = <String?>[];
     await mount(
         t,
         SingleChildScrollView(
@@ -235,29 +233,39 @@ void main() {
                     likedByMe: false),
                 api: noHttp(),
                 onShop: (_) {},
-                bindings: InspoBindings(setLike: (id, liked) {
+                bindings: InspoBindings(setReaction: (id, emoji) {
                   expect(id, 'p');
-                  calls.add(liked);
+                  calls.add(emoji);
                   return pending.future;
                 }))));
     expect(find.text('Add a comment…'), findsNothing);
-    expect(find.textContaining('Comments ('), findsOneWidget);
-    await t.ensureVisible(find.byKey(const ValueKey('like-p')));
+    expect(find.byKey(const ValueKey('comments-p')), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('react-p')));
     await t.pumpAndSettle();
-    await t.tap(find.byKey(const ValueKey('like-p')));
+    await t.tap(find.byKey(const ValueKey('react-p')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const ValueKey('react-p-💯')));
     await t.pump();
     expect(
         find.descendant(
-            of: find.byKey(const ValueKey('like-p')), matching: find.text('1')),
+            of: find.byKey(const ValueKey('react-p')),
+            matching: find.text('1')),
         findsOneWidget);
-    expect(find.descendant(of: find.byKey(const ValueKey('like-p')),
-        matching: find.byIcon(NicheIcons.favorite)), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('react-p')),
+            matching: find.text('💯')),
+        findsOneWidget);
     pending.completeError(StateError('offline'));
     await t.pumpAndSettle();
-    expect(find.byIcon(NicheIcons.favoriteBorder), findsOneWidget);
-    expect(calls, [true]);
     expect(
-        find.text('Could not update like. Please try again.'), findsOneWidget);
+        find.descendant(
+            of: find.byKey(const ValueKey('react-p')),
+            matching: find.text('1')),
+        findsNothing);
+    expect(calls, ['💯']);
+    expect(find.text('Could not update your reaction. Please try again.'),
+        findsOneWidget);
   });
   testWidgets(
       'comments load newest page then older cursor with names and no duplicates',

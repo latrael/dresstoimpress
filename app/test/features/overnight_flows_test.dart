@@ -1,4 +1,3 @@
-import 'package:dress_to_impress/features/shared/niche_icons.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -387,8 +386,18 @@ void main() {
           'next_before': null
         });
       }
-      if (r.url.path.endsWith('/like')) {
-        return json({'post_id': 'post', 'liked': true, 'like_count': 1});
+      if (r.url.path.endsWith('/reaction')) {
+        expect(jsonDecode(r.body)['emoji'], '🔥');
+        return http.Response.bytes(
+            utf8.encode(jsonEncode({
+              'post_id': 'post',
+              'reactions': {'🔥': 1},
+              'my_reaction': '🔥',
+              'like_count': 1,
+              'liked': true
+            })),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'});
       }
       expect(jsonDecode(r.body)['text'], 'Great fit');
       return json({
@@ -406,12 +415,20 @@ void main() {
                     post: FitCheckPost.fromJson(postJson()),
                     api: api,
                     onShop: (_) {}))));
-    await tester.tap(find.byIcon(NicheIcons.favoriteBorder));
+    await tester.tap(find.byKey(const ValueKey('react-post')));
     await tester.pumpAndSettle();
-    expect(find.text('1'), findsOneWidget);
-    await tester.ensureVisible(find.textContaining('Comments ('));
+    await tester.ensureVisible(find.byKey(const ValueKey('react-post-🔥')));
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Comments ('));
+    await tester.tap(find.byKey(const ValueKey('react-post-🔥')));
+    await tester.pumpAndSettle();
+    expect(
+        find.descendant(
+            of: find.byKey(const ValueKey('react-post')),
+            matching: find.text('1')),
+        findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('comments-post')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('comments-post')));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.widgetWithText(TextField, 'Add a comment…'), 'Great fit');
@@ -420,7 +437,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Great fit'), findsOneWidget);
     expect(paths, [
-      '/fitcheck/post/like',
+      '/fitcheck/post/reaction',
       '/fitcheck/post/comments',
       '/fitcheck/post/comments'
     ]);
@@ -443,6 +460,8 @@ void main() {
                     post: FitCheckPost.fromJson(postJson()),
                     api: api,
                     onShop: (_) {}))));
+    await tester.tap(find.byTooltip('Post options'));
+    await tester.pumpAndSettle();
     await tap(tester, 'Edit tags');
     await tester.enterText(
         find.widgetWithText(TextField, 'Piece 1'), 'Blue shirt');
@@ -584,9 +603,9 @@ void main() {
                     post: FitCheckPost.fromJson(postJson()),
                     api: api,
                     onShop: (_) {}))));
-    await tester.ensureVisible(find.textContaining('Comments ('));
+    await tester.ensureVisible(find.byKey(const ValueKey('comments-post')));
     await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Comments ('));
+    await tester.tap(find.byKey(const ValueKey('comments-post')));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.widgetWithText(TextField, 'Add a comment…'), 'Keep this draft');

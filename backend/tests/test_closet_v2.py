@@ -8,12 +8,21 @@ import pytest
 os.environ["MOCK_AI"] = "1"
 
 
+_SHOT = iter(range(10**6))
+
+
 def _jpeg(w=400, h=200) -> bytes:
-    """Left half black, right half white: two 'garments' for the mock detector's two boxes."""
+    """Left half dark, right half light: two 'garments' for the mock detector's two boxes. Every call is a
+    different photo (block texture), so closet de-duplication of the same photo doesn't merge them."""
+    import random
+
     from PIL import Image
 
-    im = Image.new("RGB", (w, h), "white")
-    im.paste((0, 0, 0), (0, 0, w // 2, h))
+    rnd = random.Random(next(_SHOT))
+    small = Image.new("RGB", (16, 8))
+    small.putdata([(rnd.randint(0, 70) if x < 8 else rnd.randint(185, 255),) * 3
+                   for y in range(8) for x in range(16)])
+    im = small.resize((w, h), Image.NEAREST)
     buf = io.BytesIO()
     im.save(buf, "JPEG")
     return buf.getvalue()

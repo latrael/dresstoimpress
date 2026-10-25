@@ -214,7 +214,10 @@ class _NicheAppState extends State<NicheApp> {
                                             child: Center(
                                                 child: Text(
                                                     'Connect your account to digitize your closet.')))
-                                        : ClosetScreen(api: store.api)),
+                                        : ClosetScreen(
+                                            api: store.api,
+                                            store: store,
+                                            onProduct: seed)),
                                 onUser: user)))
                   ]))))),
       home: FirstVisit(key: entry, store: store, shellKey: shell));
@@ -549,7 +552,10 @@ class _ShopShellState extends State<ShopShell> {
                       child: Center(
                           child: Text(
                               'Connect your account to digitize your closet.')))
-                  : ClosetScreen(api: store.api)));
+                  : ClosetScreen(
+                      api: store.api,
+                      store: store,
+                      onProduct: (p) => openProducts([p]))));
       if (mounted && !store.demo) await refreshHome();
       return;
     }
@@ -561,7 +567,10 @@ class _ShopShellState extends State<ShopShell> {
           context,
           MaterialPageRoute(
               builder: (_) => matches.isEmpty
-                  ? ClosetScreen(api: store.api)
+                  ? ClosetScreen(
+                      api: store.api,
+                      store: store,
+                      onProduct: (p) => openProducts([p]))
                   : ClosetPieceScreen(api: store.api, initial: matches.first)));
       if (mounted) await refreshHome();
     } catch (_) {

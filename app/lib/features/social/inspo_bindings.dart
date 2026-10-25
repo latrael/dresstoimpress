@@ -5,9 +5,14 @@ import 'comments_sheet.dart';
 /// UI callbacks supplied by the shared client; this layer sends no HTTP requests.
 class InspoBindings {
   const InspoBindings(
-      {this.setLike, this.commentsForPost, this.commentAuthor, this.photoSize});
+      {this.setLike,
+      this.setReaction,
+      this.commentsForPost,
+      this.commentAuthor,
+      this.photoSize});
   factory InspoBindings.fromApi(Api api) => InspoBindings(
         setLike: (id, liked) => api.setFitCheckLike(id, liked: liked),
+        setReaction: api.setFitCheckReaction,
         commentsForPost: (id) => (before) async {
           final page =
               await api.fitCheckComments(id, limit: 20, before: before);
@@ -26,6 +31,8 @@ class InspoBindings {
             : null,
       );
   final Future<LikeResult> Function(String postId, bool liked)? setLike;
+  final Future<ReactionResult> Function(String postId, String? emoji)?
+      setReaction;
   final CommentsLoader Function(String postId)? commentsForPost;
   final String Function(FitCheckComment comment)? commentAuthor;
   final ({double width, double height})? Function(FitCheckPost post)? photoSize;

@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
 import '../shared/niche_theme.dart';
 import '../shared/niche_photo.dart';
 import '../shared/niche_icons.dart';
@@ -9,11 +9,10 @@ import '../../core/models.dart';
 import '../store/store_controller.dart';
 import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
-import '../product/complete_look_screen.dart';
+import '../closet/closet_screen.dart';
 import '../store/cart_screen.dart';
 import '../shared/natural_photo_frame.dart';
 import 'comments_sheet.dart';
-import 'optimistic_like.dart';
 import 'inspo_bindings.dart';
 
 class SocialFeed extends StatefulWidget {
@@ -56,8 +55,15 @@ class _SocialFeedState extends State<SocialFeed> {
   Widget build(BuildContext context) => Column(children: [
         if (!widget.store.demo)
           Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              padding: const EdgeInsets.fromLTRB(20, 4, 12, 4),
+              child: Row(children: [
+                Expanded(
+                    child: Text(
+                        widget.authorId == null
+                            ? 'Fits from everyone'
+                            : 'Their fits',
+                        style: Niche.ui(
+                            14, 20, FontWeight.w600, Niche.of(context).muted))),
                 IconButton(
                     tooltip: 'Refresh fits',
                     onPressed: refresh,
@@ -86,32 +92,38 @@ class _SocialFeedState extends State<SocialFeed> {
                             ? 'Connect to explore Inspo.'
                             : 'No fits yet. Your next look could be the first.'));
                   }
-                  return ListView(
-                      padding: EdgeInsets.fromLTRB(
-                          16, 12, 16, Niche.bottomSpace(context)),
-                      children: [
-                        for (final post in snapshot.data!)
-                          FitPostCard(
-                              key: ValueKey(post.id),
-                              post: post,
-                              bindings: widget.bindings ??
-                                  InspoBindings.fromApi(widget.store.api),
-                              api: widget.store.api,
-                              onShop: widget.onShop,
-                              onTagSearch: widget.onTagSearch,
-                              onDeleted: refresh,
-                              onAuthor: (id, name) => Navigator.push<void>(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => FeaturePage(
-                                          title: name,
-                                          child: SocialFeed(
-                                              store: widget.store,
-                                              onShop: widget.onShop,
-                                              onTagSearch: widget.onTagSearch,
-                                              authorId: id,
-                                              bindings: widget.bindings)))))
-                      ]);
+                  return RefreshIndicator(
+                      onRefresh: () async {
+                        refresh();
+                        await posts.catchError((_) => <FitCheckPost>[]);
+                      },
+                      child: ListView(
+                          padding: EdgeInsets.fromLTRB(
+                              16, 12, 16, Niche.bottomSpace(context)),
+                          children: [
+                            for (final post in snapshot.data!)
+                              FitPostCard(
+                                  key: ValueKey(post.id),
+                                  post: post,
+                                  bindings: widget.bindings ??
+                                      InspoBindings.fromApi(widget.store.api),
+                                  api: widget.store.api,
+                                  onShop: widget.onShop,
+                                  onTagSearch: widget.onTagSearch,
+                                  onDeleted: refresh,
+                                  onAuthor: (id, name) => Navigator.push<void>(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => FeaturePage(
+                                              title: name,
+                                              child: SocialFeed(
+                                                  store: widget.store,
+                                                  onShop: widget.onShop,
+                                                  onTagSearch:
+                                                      widget.onTagSearch,
+                                                  authorId: id,
+                                                  bindings: widget.bindings)))))
+                          ]));
                 })),
       ]);
 }
@@ -221,43 +233,115 @@ class FitPostCard extends StatefulWidget {
   State<FitPostCard> createState() => _FitPostCardState();
 }
 
+/// One Inspo post: photo with "Similar" top-right, emoji reactions bottom-left, comments next to them.
+/// Fit Score lives on your own outfits in Closet, not on other people's posts.
 class _FitPostCardState extends State<FitPostCard>
     with SingleTickerProviderStateMixin {
-  late final heart = AnimationController(
+  late final burst = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 650));
   late FitCheckPost post = widget.post;
-  late bool liked = post.likedByMe ?? false;
-  late int count = post.likeCount ?? post.likes.length;
+  late Map<String, int> reactions = _initialReactions(post);
+  late String? mine = _initialMine(post);
+  String burstEmoji = fitCheckReactions.first;
   late List<FitCheckComment> comments = [...post.comments];
+  late int commentCount = post.commentCount ?? comments.length;
   String? busy;
   String? error;
   bool showTags = false;
-  bool liking = false;
+  bool picking = false;
+  int reactSeq = 0;
   InspoBindings get bindings =>
       widget.bindings ?? InspoBindings.fromApi(widget.api);
-  OptimisticLike? instantLike;
-  late int commentCount = post.commentCount ?? comments.length;
+
+  static Map<String, int> _initialReactions(FitCheckPost p) {
+    if (p.reactions.isNotEmpty) return {...p.reactions};
+    final likes = p.likeCount ?? p.likes.length;
+    return likes > 0 ? {'😍': likes} : {};
+  }
+
+  static String? _initialMine(FitCheckPost p) =>
+      p.myReaction ?? ((p.likedByMe ?? false) ? '😍' : null);
+
+  int get total => reactions.values.fold(0, (a, b) => a + b);
+
   @override
-  void initState() {
-    super.initState();
-    configureLike();
+  void didUpdateWidget(covariant FitPostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.post, widget.post)) {
+      post = widget.post;
+      reactions = _initialReactions(post);
+      mine = _initialMine(post);
+      comments = [...post.comments];
+      commentCount = post.commentCount ?? comments.length;
+    }
   }
 
-  void configureLike() {
-    if (bindings.setLike == null) return;
-    instantLike = OptimisticLike(
-        liked: liked,
-        count: count,
-        write: (value) => bindings.setLike!(post.id, value));
-    instantLike!.addListener(likeChanged);
+  @override
+  void dispose() {
+    burst.dispose();
+    super.dispose();
   }
 
-  void likeChanged() {
-    if (mounted) setState(() {});
+  Future<void> action(String name, Future<void> Function() task) async {
+    if (busy != null) return;
+    setState(() {
+      busy = name;
+      error = null;
+    });
+    try {
+      await task();
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not $name. Please try again.');
+    } finally {
+      if (mounted) setState(() => busy = null);
+    }
   }
 
-  bool get shownLiked => instantLike?.liked ?? liked;
-  int get shownCount => instantLike?.count ?? count;
+  /// Optimistic: the count changes on tap; a failure puts the old state back.
+  Future<void> react(String? emoji) async {
+    Niche.select();
+    final before = (Map<String, int>.from(reactions), mine);
+    setState(() {
+      picking = false;
+      error = null;
+      if (mine != null) {
+        final left = (reactions[mine!] ?? 1) - 1;
+        if (left <= 0) {
+          reactions.remove(mine);
+        } else {
+          reactions[mine!] = left;
+        }
+      }
+      if (emoji != null) reactions[emoji] = (reactions[emoji] ?? 0) + 1;
+      mine = emoji;
+      if (emoji != null) burstEmoji = emoji;
+    });
+    if (emoji != null && !Niche.reduced(context)) burst.forward(from: 0);
+    final seq = ++reactSeq;
+    try {
+      if (bindings.setReaction != null) {
+        final r = await bindings.setReaction!(post.id, emoji);
+        if (mounted && seq == reactSeq) {
+          setState(() {
+            reactions = {...r.reactions};
+            mine = r.myReaction;
+          });
+        }
+      } else if (bindings.setLike != null) {
+        await bindings.setLike!(post.id, emoji != null);
+      } else {
+        await widget.api.setFitCheckReaction(post.id, emoji);
+      }
+    } catch (_) {
+      if (mounted && seq == reactSeq) {
+        setState(() {
+          reactions = before.$1;
+          mine = before.$2;
+          error = 'Could not update your reaction. Please try again.';
+        });
+      }
+    }
+  }
 
   Future<void> deletePost() async {
     final yes = await showDialog<bool>(
@@ -279,80 +363,6 @@ class _FitPostCardState extends State<FitPostCard>
       await widget.api.deleteFitCheck(post.id);
       widget.onDeleted?.call();
     });
-  }
-
-  FitScore? score;
-  @override
-  void didUpdateWidget(covariant FitPostCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.post, widget.post)) {
-      post = widget.post;
-      liked = post.likedByMe ?? false;
-      count = post.likeCount ?? post.likes.length;
-      comments = [...post.comments];
-      commentCount = post.commentCount ?? comments.length;
-      instantLike?.acceptServer(liked, count);
-    }
-    if (instantLike != null && bindings.setLike == null) {
-      instantLike!.removeListener(likeChanged);
-      instantLike!.dispose();
-      instantLike = null;
-    }
-    if (instantLike == null && bindings.setLike != null) {
-      configureLike();
-    }
-  }
-
-  @override
-  void dispose() {
-    instantLike?.removeListener(likeChanged);
-    instantLike?.dispose();
-    heart.dispose();
-    super.dispose();
-  }
-
-  Future<void> action(String name, Future<void> Function() task) async {
-    if (busy != null) return;
-    setState(() {
-      busy = name;
-      error = null;
-    });
-    try {
-      await task();
-    } catch (_) {
-      if (mounted) setState(() => error = 'Could not $name. Please try again.');
-    } finally {
-      if (mounted) setState(() => busy = null);
-    }
-  }
-
-  Future<void> like() async {
-    HapticFeedback.selectionClick();
-    if (!shownLiked && !Niche.reduced(context)) heart.forward(from: 0);
-    if (instantLike != null) {
-      instantLike!.toggle();
-      return;
-    }
-    if (liking) return;
-    setState(() {
-      liking = true;
-      error = null;
-    });
-    try {
-      final result = await widget.api.likeFitCheck(post.id);
-      if (mounted) {
-        setState(() {
-          liked = result.liked;
-          count = result.likeCount;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => error = 'Could not update like. Please try again.');
-      }
-    } finally {
-      if (mounted) setState(() => liking = false);
-    }
   }
 
   Future<void> openComments() => showModalBottomSheet<void>(
@@ -384,154 +394,527 @@ class _FitPostCardState extends State<FitPostCard>
               });
             }
           }));
+
+  Future<void> openSimilar() => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          FindSimilarSheet(api: widget.api, post: post, onShop: widget.onShop));
+
   Future<void> editTags() async {
     final result = await showDialog<List<FitTag>>(
         context: context, builder: (_) => EditTagsDialog(tags: post.tagged));
     if (result == null || !mounted) return;
     await action('save tags', () async {
       final updated = await widget.api.updateFitCheckTags(post.id, result);
-      if (mounted) {
-        setState(() {
-          post = updated;
-          score = null;
-        });
-      }
+      if (mounted) setState(() => post = updated);
     });
   }
 
+  String get author => post.authorName ?? post.userId;
+  bool get isMine => post.userId == widget.api.settings.userId;
+
+  Widget avatar(BuildContext context) {
+    final t = Niche.of(context);
+    return CircleAvatar(
+        radius: 18,
+        backgroundColor: t.blush,
+        child: Text(author.isEmpty ? '?' : author[0].toUpperCase(),
+            style: Niche.display(16, 20, t.brand)));
+  }
+
+  Widget glassPill(BuildContext context,
+          {required Widget child,
+          required VoidCallback? onTap,
+          VoidCallback? onLongPress,
+          Key? key,
+          String? tooltip}) =>
+      NichePress(
+          child: NicheGlass(
+              radius: 999,
+              opacity: .78,
+              child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                      key: key,
+                      onTap: onTap,
+                      onLongPress: onLongPress,
+                      borderRadius: BorderRadius.circular(999),
+                      child: Tooltip(
+                          message: tooltip ?? '',
+                          child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
+                              child: child))))));
+
+  Widget reactionRow(BuildContext context) {
+    final t = Niche.of(context);
+    final top = (reactions.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)))
+        .take(3)
+        .map((e) => e.key)
+        .join();
+    return Row(children: [
+      Semantics(
+          button: true,
+          label: mine == null ? 'React to this fit' : 'Your reaction $mine',
+          child: glassPill(context,
+              key: ValueKey('react-${post.id}'),
+              tooltip: 'React',
+              onTap: () => setState(() => picking = !picking),
+              onLongPress: () =>
+                  react(mine == null ? fitCheckReactions.first : null),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Opacity(
+                    opacity: mine == null ? .45 : 1,
+                    child: Text(mine ?? fitCheckReactions.first,
+                        style: const TextStyle(fontSize: 18))),
+                if (total > 0) ...[
+                  const SizedBox(width: 8),
+                  Text('$total',
+                      style: Niche.ui(14, 18, FontWeight.w700, t.ink)),
+                ],
+              ]))),
+      if (top.isNotEmpty && total > 1) ...[
+        const SizedBox(width: 8),
+        Text(top, style: const TextStyle(fontSize: 14)),
+      ],
+      const SizedBox(width: 10),
+      glassPill(context,
+          key: ValueKey('comments-${post.id}'),
+          tooltip: 'Comments',
+          onTap: openComments,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(NicheIcons.chatBubbleOutline, size: 18, color: t.ink),
+            const SizedBox(width: 8),
+            Text('$commentCount',
+                style: Niche.ui(14, 18, FontWeight.w700, t.ink)),
+          ])),
+    ]);
+  }
+
+  Widget picker(BuildContext context) => AnimatedSize(
+      duration: Niche.duration,
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topLeft,
+      child: !picking
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: NicheGlass(
+                  radius: 999,
+                  opacity: .9,
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 4),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        for (final e in fitCheckReactions)
+                          Semantics(
+                              button: true,
+                              selected: mine == e,
+                              label: 'React $e',
+                              child: InkWell(
+                                  key: ValueKey('react-${post.id}-$e'),
+                                  borderRadius: BorderRadius.circular(999),
+                                  onTap: () => react(mine == e ? null : e),
+                                  child: AnimatedContainer(
+                                      duration: Niche.duration,
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: mine == e
+                                              ? Niche.of(context).blush
+                                              : Colors.transparent),
+                                      child: Text(e,
+                                          style: TextStyle(
+                                              fontSize:
+                                                  mine == e ? 26 : 24))))),
+                      ])))));
+
   @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: 40),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const CircleAvatar(child: Icon(NicheIcons.personOutline)),
-            title: Text(post.authorName ?? post.userId,
-                style: Theme.of(context).textTheme.titleMedium),
-            onTap: widget.onAuthor == null
-                ? null
-                : () => widget.onAuthor!(
-                    post.userId, post.authorName ?? post.userId),
-            trailing: post.userId == widget.api.settings.userId
-                ? IconButton(
-                    tooltip: 'Delete your post',
-                    onPressed: busy == null ? deletePost : null,
-                    icon: const Icon(NicheIcons.deleteOutline))
-                : null),
-        NaturalPhotoFrame(
-            url: widget.api.imageProxyUrl(post.photoUrl),
-            width: bindings.photoSize?.call(post)?.width,
-            height: bindings.photoSize?.call(post)?.height,
-            child: Semantics(
-                container: true,
-                explicitChildNodes: true,
-                button: true,
-                label: showTags ? 'Hide outfit tags' : 'Show outfit tags',
-                child: GestureDetector(
-                    onTap: () => setState(() => showTags = !showTags),
-                    child: Stack(fit: StackFit.expand, children: [
-                      ClipRRect(
-                          borderRadius: BorderRadius.circular(28),
-                          child: NichePhoto(
-                              url: widget.api.imageProxyUrl(post.photoUrl),
-                              label:
-                                  'Outfit by ${post.authorName ?? post.userId}')),
-                      IgnorePointer(
-                          child: AnimatedBuilder(
-                              animation: heart,
-                              builder: (context, _) => !heart.isAnimating
-                                  ? const SizedBox.shrink()
-                                  : Opacity(
-                                      opacity: heart.isAnimating
-                                          ? math.sin(heart.value * math.pi)
-                                          : 0,
-                                      child: Center(
-                                          child: Icon(NicheIcons.favorite,
-                                              size: 88, color: Niche.paper))))),
-                      Positioned(
-                          left: 12,
-                          bottom: 12,
-                          right: 12,
-                          child: showTags
-                              ? Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                      color: Niche.of(context)
-                                          .paper
-                                          .withValues(alpha: .85),
-                                      borderRadius: BorderRadius.circular(20)),
-                                  constraints:
-                                      const BoxConstraints(maxHeight: 180),
-                                  child: SingleChildScrollView(
-                                      child: Wrap(
-                                          spacing: 6,
-                                          runSpacing: 6,
-                                          children: [
-                                        for (final tag in post.tagged)
-                                          CatalogTag(
-                                              api: widget.api,
-                                              tag: tag,
-                                              onProduct: (p) => widget.onShop(
-                                                  [RankedProduct(product: p)]),
-                                              onSearch: widget.onTagSearch)
-                                      ])))
-                              : const Align(
-                                  alignment: Alignment.bottomLeft,
-                                  child: Icon(NicheIcons.localOfferOutlined,
-                                      color: Colors.white))),
-                    ])))),
-        if (post.caption?.isNotEmpty == true)
+  Widget build(BuildContext context) {
+    final t = Niche.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+        padding: const EdgeInsets.only(bottom: 36),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(post.caption!)),
-        Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              TextButton.icon(
-                  key: ValueKey('like-${post.id}'),
-                  onPressed: instantLike != null || !liking ? like : null,
-                  icon: Icon(shownLiked
-                      ? NicheIcons.favorite
-                      : NicheIcons.favoriteBorder),
-                  label: Text('$shownCount')),
-              FilledButton.tonal(
-                  onPressed: busy == null
-                      ? () => action('shop this fit', () async {
-                            final products =
-                                await widget.api.shopFitCheck(post.id);
-                            if (mounted) widget.onShop(products);
-                          })
-                      : null,
-                  child: const Text('Shop this fit')),
-              TextButton(
-                  onPressed: busy == null && post.tagged.isNotEmpty
-                      ? () => action('score this fit', () async {
-                            final result = await widget.api.fitScore(
-                                items: post.tagged,
-                                photoUrl: post.photoUrl.isEmpty
-                                    ? null
-                                    : post.photoUrl);
-                            if (mounted) setState(() => score = result);
-                          })
-                      : null,
-                  child: const Text('Fit Score')),
-              if (post.userId == widget.api.settings.userId)
-                TextButton(
-                    onPressed: busy == null ? editTags : null,
-                    child: const Text('Edit tags')),
-            ]),
-        if (score != null) fitScoreCard(score!),
-        const SizedBox(height: 12),
-        TextButton.icon(
-            onPressed: openComments,
-            icon: const Icon(NicheIcons.chatBubbleOutline),
-            label: Text('Comments ($commentCount)')),
-        const SizedBox(height: 16),
-        if (busy != null) const LinearProgressIndicator(),
-        if (instantLike?.error != null) Text(instantLike!.error!),
-        if (error != null) Text(error!),
-      ]));
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(children: [
+                InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: widget.onAuthor == null
+                        ? null
+                        : () => widget.onAuthor!(post.userId, author),
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(children: [
+                          avatar(context),
+                          const SizedBox(width: 10),
+                          Text(author, style: textTheme.titleMedium),
+                        ]))),
+                const Spacer(),
+                if (isMine)
+                  PopupMenuButton<String>(
+                      tooltip: 'Post options',
+                      enabled: busy == null,
+                      onSelected: (v) =>
+                          v == 'tags' ? editTags() : deletePost(),
+                      itemBuilder: (_) => const [
+                            PopupMenuItem(
+                                value: 'tags', child: Text('Edit tags')),
+                            PopupMenuItem(
+                                value: 'delete', child: Text('Delete post')),
+                          ],
+                      icon: Icon(NicheIcons.unfoldMore, color: t.muted)),
+              ])),
+          NaturalPhotoFrame(
+              url: widget.api.imageProxyUrl(post.photoUrl),
+              width: bindings.photoSize?.call(post)?.width,
+              height: bindings.photoSize?.call(post)?.height,
+              child: Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  button: true,
+                  label: showTags ? 'Hide outfit tags' : 'Show outfit tags',
+                  child: GestureDetector(
+                      onTap: () => setState(() => showTags = !showTags),
+                      child: Stack(fit: StackFit.expand, children: [
+                        ClipRRect(
+                            borderRadius: BorderRadius.circular(Niche.radius),
+                            child: NichePhoto(
+                                url: widget.api.imageProxyUrl(post.photoUrl),
+                                label: 'Outfit by $author')),
+                        IgnorePointer(
+                            child: AnimatedBuilder(
+                                animation: burst,
+                                builder: (context, _) => !burst.isAnimating
+                                    ? const SizedBox.shrink()
+                                    : Center(
+                                        child: Opacity(
+                                            opacity:
+                                                math.sin(burst.value * math.pi),
+                                            child: Transform.scale(
+                                                scale: .7 + burst.value * .6,
+                                                child: Text(burstEmoji,
+                                                    style: const TextStyle(
+                                                        fontSize: 84))))))),
+                        Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Semantics(
+                                button: true,
+                                label: 'Find similar look',
+                                child: glassPill(context,
+                                    key: ValueKey('similar-${post.id}'),
+                                    tooltip: 'Find similar look',
+                                    onTap: post.tagged.isEmpty
+                                        ? null
+                                        : openSimilar,
+                                    child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(NicheIcons.autoAwesome,
+                                              size: 16, color: t.brand),
+                                          const SizedBox(width: 6),
+                                          Text('Similar',
+                                              style: Niche.ui(13, 16,
+                                                  FontWeight.w700, t.ink)),
+                                        ])))),
+                        Positioned(
+                            left: 12,
+                            bottom: 12,
+                            right: 12,
+                            child: showTags
+                                ? NicheGlass(
+                                    radius: 22,
+                                    opacity: .85,
+                                    child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        constraints: const BoxConstraints(
+                                            maxHeight: 180),
+                                        child: SingleChildScrollView(
+                                            child: Wrap(
+                                                spacing: 6,
+                                                runSpacing: 6,
+                                                children: [
+                                              for (final tag in post.tagged)
+                                                CatalogTag(
+                                                    api: widget.api,
+                                                    tag: tag,
+                                                    onProduct: (p) => widget
+                                                            .onShop([
+                                                          RankedProduct(
+                                                              product: p)
+                                                        ]),
+                                                    onSearch:
+                                                        widget.onTagSearch)
+                                            ]))))
+                                : Align(
+                                    alignment: Alignment.bottomLeft,
+                                    child: post.tagged.isEmpty
+                                        ? const SizedBox.shrink()
+                                        : NicheGlass(
+                                            radius: 999,
+                                            opacity: .7,
+                                            child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8),
+                                                child: Icon(
+                                                    NicheIcons
+                                                        .localOfferOutlined,
+                                                    size: 16,
+                                                    color: t.ink))))),
+                      ])))),
+          const SizedBox(height: 12),
+          reactionRow(context),
+          picker(context),
+          if (post.caption?.isNotEmpty == true)
+            Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text.rich(TextSpan(children: [
+                  TextSpan(
+                      text: '$author  ',
+                      style: Niche.ui(14, 20, FontWeight.w700, t.ink)),
+                  TextSpan(
+                      text: post.caption!,
+                      style: Niche.ui(14, 20, FontWeight.w400, t.ink)),
+                ]))),
+          if (commentCount > 0)
+            Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: InkWell(
+                    onTap: openComments,
+                    child: Text(
+                        commentCount == 1
+                            ? 'View 1 comment'
+                            : 'View all $commentCount comments',
+                        style: Niche.ui(13, 18, FontWeight.w500, t.muted)))),
+          if (busy != null)
+            const Padding(
+                padding: EdgeInsets.only(top: 10),
+                child: LinearProgressIndicator()),
+          if (error != null)
+            Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
+        ]));
+  }
+}
+
+/// "Find similar look": one expandable section per tagged piece; what you already own first, then
+/// pieces to shop. Tapping a product opens it (size + add to cart).
+class FindSimilarSheet extends StatefulWidget {
+  const FindSimilarSheet(
+      {super.key, required this.api, required this.post, required this.onShop});
+  final Api api;
+  final FitCheckPost post;
+  final void Function(List<RankedProduct>) onShop;
+  @override
+  State<FindSimilarSheet> createState() => _FindSimilarSheetState();
+}
+
+class _FindSimilarSheetState extends State<FindSimilarSheet> {
+  late Future<List<SimilarLookGroup>> groups =
+      widget.api.similarLook(widget.post.id);
+
+  void shop(List<RankedProduct> products) {
+    if (products.isEmpty) return;
+    Navigator.pop(context);
+    widget.onShop(products);
+  }
+
+  static String _title(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  Widget label(BuildContext context, String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      child: Text(text.toUpperCase(),
+          style: Niche.ui(11, 14, FontWeight.w700, Niche.of(context).muted)
+              .copyWith(letterSpacing: 1.1)));
+
+  Widget tile(BuildContext context,
+      {required String url,
+      required String title,
+      String? subtitle,
+      required VoidCallback onTap,
+      Key? key}) {
+    final t = Niche.of(context);
+    return SizedBox(
+        width: 124,
+        child: NichePress(
+            child: InkWell(
+                key: key,
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AspectRatio(
+                          aspectRatio: 3 / 4,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: ColoredBox(
+                                  color: t.stone,
+                                  child: url.isEmpty
+                                      ? Icon(NicheIcons.checkroomOutlined,
+                                          color: t.muted)
+                                      : NichePhoto(url: url, label: title)))),
+                      const SizedBox(height: 6),
+                      Text(title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Niche.ui(12, 16, FontWeight.w600, t.ink)),
+                      if (subtitle != null)
+                        Text(subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Niche.ui(11, 14, FontWeight.w500, t.muted)),
+                    ]))));
+  }
+
+  Widget row(List<Widget> children) => SizedBox(
+      height: 214,
+      child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          itemCount: children.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (_, i) => children[i]));
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Niche.of(context);
+    return DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .78,
+        minChildSize: .4,
+        maxChildSize: .95,
+        builder: (context, scroll) => FutureBuilder<List<SimilarLookGroup>>(
+            future: groups,
+            builder: (context, snap) {
+              final header = Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Find similar look',
+                            style: Niche.display(26, 32, t.brand)),
+                        const SizedBox(height: 4),
+                        Text('What you already own first, then pieces to shop.',
+                            style: Niche.ui(14, 20, FontWeight.w500, t.muted)),
+                      ]));
+              if (snap.hasError) {
+                return ListView(controller: scroll, children: [
+                  header,
+                  Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: TextButton(
+                          onPressed: () => setState(() {
+                                groups = widget.api.similarLook(widget.post.id);
+                              }),
+                          child: const Text(
+                              'Could not load similar pieces. Retry'))),
+                ]);
+              }
+              if (!snap.hasData) {
+                return ListView(controller: scroll, children: [
+                  header,
+                  const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: CircularProgressIndicator())),
+                ]);
+              }
+              final data = snap.data!;
+              final all = [for (final g in data) ...g.products];
+              return ListView(
+                  controller: scroll,
+                  padding: EdgeInsets.only(
+                      bottom: 24 + MediaQuery.paddingOf(context).bottom),
+                  children: [
+                    header,
+                    if (data.isEmpty)
+                      const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text('No tagged pieces on this fit yet.')),
+                    for (var i = 0; i < data.length; i++)
+                      Theme(
+                          data: Theme.of(context)
+                              .copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                              key: ValueKey('similar-group-$i'),
+                              initiallyExpanded: i == 0,
+                              tilePadding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              childrenPadding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              expandedCrossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              title: Text(_title(data[i].tag.label),
+                                  style:
+                                      Niche.ui(16, 22, FontWeight.w700, t.ink)),
+                              subtitle: Text(
+                                  [
+                                    if (data[i].closet.isNotEmpty)
+                                      '${data[i].closet.length} in your closet',
+                                    '${data[i].products.length} to shop',
+                                  ].join(' · '),
+                                  style: Niche.ui(
+                                      13, 18, FontWeight.w500, t.muted)),
+                              children: [
+                                if (data[i].closet.isNotEmpty) ...[
+                                  label(context, 'You already own'),
+                                  row([
+                                    for (final c in data[i].closet)
+                                      tile(context,
+                                          key: ValueKey('similar-own-${c.id}'),
+                                          url: widget.api.imageProxyUrl(
+                                              ownedClosetPhoto(c)),
+                                          title: c.label ?? c.category,
+                                          subtitle: c.brand,
+                                          onTap: () => Navigator.push<void>(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ClosetPieceScreen(
+                                                          api: widget.api,
+                                                          initial: c))))
+                                  ]),
+                                ],
+                                if (data[i].products.isNotEmpty) ...[
+                                  label(context, 'Shop similar'),
+                                  row([
+                                    for (final p in data[i].products)
+                                      tile(context,
+                                          key: ValueKey(
+                                              'similar-shop-${p.product.id}'),
+                                          url: widget.api.imageProxyUrl(
+                                              p.heroImageUrl ??
+                                                  p.product.imageUrl),
+                                          title: p.product.name,
+                                          subtitle:
+                                              '${retailerName(p.product.retailer)} · ${dollars(p.product.effectivePrice)}',
+                                          onTap: () => shop([p]))
+                                  ]),
+                                ],
+                                if (data[i].closet.isEmpty &&
+                                    data[i].products.isEmpty)
+                                  const Padding(
+                                      padding: EdgeInsets.all(4),
+                                      child: Text('Nothing similar yet.')),
+                              ])),
+                    if (all.isNotEmpty)
+                      Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                          child: FilledButton(
+                              onPressed: () => shop(all),
+                              child: const Text('Shop the whole look'))),
+                  ]);
+            }));
+  }
 }
 
 class EditTagsDialog extends StatefulWidget {

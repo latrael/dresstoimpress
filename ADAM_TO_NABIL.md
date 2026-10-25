@@ -277,3 +277,12 @@ Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for 
 - Reels slide 2 was restyling the whole outfit: `feed_tryon` sent the closet picks into the render. Now **product only**, an in-place swap on the user's best real outfit photo. `TRYON_VERSION` v7, so old renders are dropped. The garment reference uses `hero_image_url` when set.
 - Closet: `DIGITIZE_VERSION` v3 detects occluded layers (shirt under a jacket) and accessories (earbuds, headphones), and fixes the category from the label noun. It drops props (keys, phone) and only keeps a brand with `brand_evidence`. Catalog matches **never** copy a brand any more.
 - `ClosetItem.occluded` (bool) is new; `scripts.redo_closet` now honours `DATA_DIR`.
+
+## Sun Oct 25, ~3 AM: please add more catalog items (shoes + accessories first); Closet/Inspo changes
+
+**Ask (top priority for you):** add more products, especially **shoes and accessories** (bags, hats, jewelry, belts, headphones/earbuds, sunglasses, watches) and **more stores**. Closet picks (reels slide 3), complete-the-look and the new "Find similar look" sheet all fall back to nothing when the catalog has no shoes/accessories for a department; today most shoes are H&M only.
+
+What landed in `adam/closet-social` (no change to your existing routes' shapes):
+- **One outfit per photo.** `closet.add_photo(kind="outfit")` and `add_from_fit` (your `/fitcheck` closet hook) now check `app/ai/outfit_dedupe.find_same` first (same URL or dHash ≤ 6 bits) and return the existing outfit (`duplicate: true`, no AI call). New outfits store `phash`; `ClosetOutfit.posted` = the same photo is also an Inspo post. One-off cleanup for old data: `python -m scripts.dedupe_closet <user> [--dry-run]`.
+- **Reactions** (new file `app/commerce/fitcheck_extras.py`, included in `main.py`): `PUT /fitcheck/{id}/reaction {user_id, emoji|null}`, emojis 🔥 😍 👀 💯, one per user. Stored as `reactions: {emoji: [user_id]}`; `likes` stays the list of who reacted, so `POST/PUT /like` keep working (a plain like shows as 😍; an unlike clears the reaction). **One-line change in your `fitcheck._view`:** it now adds `reactions` (counts) + `my_reaction`.
+- **Find similar look:** `GET /fitcheck/{id}/similar?user_id=` → `[{tag, closet: [ClosetItem], products: [card]}]` per tagged piece (closet = the viewer's own similar pieces, rules only; products = your `shop_fit_grouped` with the `_dept_ok` filter).

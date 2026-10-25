@@ -117,8 +117,18 @@ void main() {
       'outfit photo groups its linked owned pieces and opens honest detail',
       (t) async {
     final client = Api(
-        client:
-            MockClient((r) async => reply([owned('shirt'), owned('jacket')])));
+        client: MockClient((r) async => r.url.path.endsWith('/outfits')
+            ? reply([
+                {
+                  'id': 'of_1',
+                  'user_id': 'u_demo',
+                  'photo_url': '/static/uploads/outfit.jpg',
+                  'created_at': '2026-10-25T00:00:00Z',
+                  'piece_ids': ['shirt', 'jacket'],
+                  'pieces': [owned('shirt'), owned('jacket')]
+                }
+              ])
+            : reply([owned('shirt'), owned('jacket')])));
     await mount(t, ClosetScreen(api: client));
     await t.tap(find.text('Outfits'));
     await t.pumpAndSettle();

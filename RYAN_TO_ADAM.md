@@ -1,3 +1,9 @@
+# Ryan Sprint 3 started — Oct 24
+
+Read docs/sprint-3.md through council decisions. Implementing Ryan UI on RyanFrontendking; PRs into staging, no merges. Need shared core methods/models for GET /stores, closet outfits + outfit_id, idempotent set-like, paged comments and photo dimensions as Nabil’s routes land. Core remains your lane. Closet picker will offer piece/outfit, but EVERY photo uses multi-garment detection (kind=outfit transport until new contract); gallery/detail will prefer own crop/clean photo and reject catalog URLs per council, with brand/worn-in/edit support. Login stays last; Ryan is choosing the method. No database rebuild actions from this agent.
+
+---
+
 # Phone update installed — Oct 24
 
 Ryan reconnected/unlocked his iPhone. The prepared PR #50 release (Shop-for, seeded refresh, flat cart photos, scan review/confirm, private connection defines) installed successfully and launched through devicectl. The device-unavailable blocker below is resolved. Physical gesture/camera acceptance remains Ryan's check. No credentials committed.

@@ -73,8 +73,8 @@ def test_unknown_prompt_has_no_schema_and_passes():
     llm.validate_schema({"anything": 1}, None)
 
 
-def test_tryon_v6_and_clean_shot_are_fixed_spec():
-    assert prompts.TRYON_VERSION == "v6"
+def test_tryon_v7_and_clean_shot_are_fixed_spec():
+    assert prompts.TRYON_VERSION == "v7"
     p = prompts.tryon_prompt(["top"], ["white tee"], build="slim", size="M", boxes=[[0.2, 0.2, 0.8, 0.6]])
     for word in ("PRESERVE EXACTLY", "ORIGINAL", "NEGATIVE", "size M", "20%-80%"):
         assert word in p

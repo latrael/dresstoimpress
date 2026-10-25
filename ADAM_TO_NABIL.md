@@ -272,3 +272,8 @@ Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for 
   (bank/cache keys change; no API change). Numbers and the market-readiness notes: `docs/rec-eval.md`.
 - Catalog gap the eval surfaced: shoes = 168, all H&M; 7 of 8 stores have no shoes/accessories → complete-the-look
   keeps picking the same H&M shoes. Shoes + accessories from 2–3 more stores would help more than any ranking change.
+
+## Sun ~2:45 AM: on-you fix + closet tagging v3 (no API change)
+- Reels slide 2 was restyling the whole outfit: `feed_tryon` sent the closet picks into the render. Now **product only**, an in-place swap on the user's best real outfit photo. `TRYON_VERSION` v7, so old renders are dropped. The garment reference uses `hero_image_url` when set.
+- Closet: `DIGITIZE_VERSION` v3 detects occluded layers (shirt under a jacket) and accessories (earbuds, headphones), and fixes the category from the label noun. It drops props (keys, phone) and only keeps a brand with `brand_evidence`. Catalog matches **never** copy a brand any more.
+- `ClosetItem.occluded` (bool) is new; `scripts.redo_closet` now honours `DATA_DIR`.

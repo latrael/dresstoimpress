@@ -52,7 +52,7 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
-TRYON_VERSION = "v6"  # bump to invalidate cached try-ons when the prompt changes (v6: fixed spec + negative list)
+TRYON_VERSION = "v7"  # bump to invalidate cached try-ons when the prompt changes (v7: product-only in-place swap on a real outfit photo)
 
 _FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic": "an athletic build",
               "curvy": "a curvy figure", "broad": "a broad build"}
@@ -79,15 +79,20 @@ def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | 
         if b:
             where = (f", located at roughly {round(b[0] * 100)}%-{round(b[2] * 100)}% across and "
                      f"{round(b[1] * 100)}%-{round(b[3] * 100)}% down image 1")
-        lines.append(f"{i + 1}. Image {i + 2} = the new {what}: segment the person's current {cat} in image 1{where} "
-                     f"and replace ONLY that region with this garment.")  # noqa: E501
+        if b:
+            lines.append(f"{i + 1}. Image {i + 2} = the new {what}. Find the garment the person wears in that spot in "
+                         f"image 1{where} and replace ONLY that garment with this one.")
+        else:
+            lines.append(f"{i + 1}. Image {i + 2} = the new {what}. Replace the person's current {cat} in image 1 "
+                         f"with it (if they wear none, put it on where a {cat} is worn); change nothing else.")
     fit = "The new garment follows the body's existing pose, folds and shadows"
     if build in _FIT_WORDS:
         fit += f"; the person has {_FIT_WORDS[build]}"
         fit += f", so it drapes as a size {size} would" if size else ""
     fit += ", with natural wrinkles, weight and shadows."
     return (
-        "TASK: in-place EDIT of image 1 (not a new picture).\n"
+        "TASK: in-place EDIT of image 1, a real photo of this person (not a new picture). Swap ONLY the "
+        f"garment{'s' if len(slots) > 1 else ''} listed below; the result must look like the same photo.\n"
         "EDITS:\n" + "\n".join(lines) + "\n"
         "PRESERVE EXACTLY (pixel-identical outside the edited regions): the SAME person — face, hair, skin, "
         "hands, pose, body shape — every other garment, shoes and accessory, the lighting, the ORIGINAL "
@@ -163,18 +168,31 @@ VIBE_VERSION = "v2"
 # ---- Digitize wardrobe: one photo of several clothes -> separate closet items (with crop boxes) ----
 DIGITIZE = f"""ROLE: you digitize a wardrobe from ONE photo (flat-lay, rack/chair, or worn by a person: mirror selfie, full-body or street photo).
 HARD RULES:
-1. List EVERY separate garment and accessory clearly visible, biggest first, max 8.
-2. Never collapse a worn outfit into one item: top, bottoms and shoes are three items, plus one per piece of
-   outerwear and per visible accessory (watch, necklace, bag, cap, belt, sunglasses).
-3. A pair of shoes is one item. Ignore faces, skin, phones, mirrors, furniture, hangers and background.
-4. Use only the listed vocabulary values; lowercase.
-5. {_ONLY_JSON} If there is no clothing, output [].
+1. List EVERY separate garment and accessory visible, biggest first, max 10, INCLUDING partly hidden layers: a
+   sweater, hoodie, shirt or tee under a jacket (visible collar, neckline, hem or cuffs) is its own item with
+   "occluded": true. Describe it from the visible part only.
+2. Never collapse a worn outfit into one item: top, bottoms and shoes are separate items, plus one per piece of
+   outerwear and per visible accessory (headphones, earbuds, watch, necklace, bracelet, ring, bag, cap, hat,
+   beanie, belt, scarf, sunglasses, glasses).
+3. A pair of shoes is one item. Ignore faces, skin, phones, keys, lanyards, wallets, mirrors, furniture, hangers
+   and background.
+4. "label" = the colour + the item type you actually SEE (e.g. "grey crewneck sweater", "black over-ear
+   headphones"). "category" must match that type: tee/shirt/sweater/hoodie/tank/blouse/polo = top;
+   jacket/coat/blazer/vest/cardigan worn open = outerwear; pants/jeans/shorts/skirt = bottom; dress/jumpsuit =
+   dress; sneakers/boots/shoes/sandals = shoes; headphones/bag/hat/jewelry/belt/glasses/scarf = accessory.
+5. "brand": ONLY when a logo, wordmark or printed text naming the brand is readable in THIS photo, and then
+   "brand_evidence" says what you saw (e.g. "Nike swoosh on chest"). Otherwise both null. Never guess a brand
+   from style, cut, colour or shape.
+6. Use only the listed vocabulary values; lowercase.
+7. {_ONLY_JSON} If there is no clothing, output [].
 OUTPUT: array of
 [{{{_ITEM_FIELDS.format(n=3)},
+  "brand_evidence": string or null,
+  "occluded": boolean,
   "formality": integer 1-5 (1 loungewear, 5 black tie),
-  "box": [x_min, y_min, x_max, y_max] as fractions 0-1 of width/height, tight around that one item}}]
-EXAMPLE: [{{"label":"black cargo pants","category":"bottom","color":"black","pattern":"solid","style_tags":["streetwear"],"formality":2,"brand":null,"box":[0.1,0.5,0.6,0.95]}}]"""
-DIGITIZE_VERSION = "v2"  # bump when DIGITIZE changes so cached detections are redone (v2: every worn garment, brand)
+  "box": [x_min, y_min, x_max, y_max] as fractions 0-1 of width/height, tight around the visible part of that one item}}]
+EXAMPLE: [{{"label":"black puffer jacket","category":"outerwear","color":"black","pattern":"solid","style_tags":["streetwear"],"brand":"the north face","brand_evidence":"logo on left chest","occluded":false,"formality":2,"box":[0.2,0.15,0.8,0.55]}},{{"label":"grey crewneck sweater","category":"top","color":"grey","pattern":"solid","style_tags":["minimalist"],"brand":null,"brand_evidence":null,"occluded":true,"formality":2,"box":[0.4,0.15,0.6,0.3]}},{{"label":"black over-ear headphones","category":"accessory","color":"black","pattern":"solid","style_tags":["streetwear"],"brand":null,"brand_evidence":null,"occluded":false,"formality":2,"box":[0.35,0.0,0.65,0.12]}}]"""
+DIGITIZE_VERSION = "v3"  # bump when DIGITIZE changes so cached detections are redone (v3: occluded layers, accessories, brand evidence)
 
 # ---- Photo onboarding: digitized garments -> one plain sentence describing the person's style ----
 STYLE_FROM_CLOSET = f"""ROLE: you summarise a shopper's style from the clothes they just photographed.
@@ -308,7 +326,9 @@ SCHEMAS: dict[str, dict] = {
         "categories": {"type": "array", "items": {"type": "string", "enum": CATEGORIES}, "maxItems": 3},
         "colors": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
         "keywords": {"type": "array", "items": {"type": "string"}, "maxItems": 5}}},
-    "digitize": {"type": "array", "maxItems": 8, "items": _item_props(3, {"formality": _FORMALITY, "box": _BOX})},
+    "digitize": {"type": "array", "maxItems": 10, "items": _item_props(3, {"formality": _FORMALITY, "box": _BOX,
+                                                                      "brand_evidence": {"type": ["string", "null"]},
+                                                                      "occluded": {"type": "boolean"}})},
     "style_from_closet": {"type": "object", "required": ["style_text"], "properties": {"style_text": {"type": "string"}}},
     "body_scan": {"type": "object", "required": ["full_body_visible"], "properties": {
         "full_body_visible": {"type": "boolean"}, "build": {"type": ["string", "null"], "enum": BUILDS + [None]},

@@ -211,6 +211,8 @@ Commerce routes (cart, checkout, wishlist, Fit Check posts, onboarding, users, s
 
 **Sun 1:15 AM, live `tryon` states:** on the shared server the feed cards start as `none`; after `prefetchTryOns` they go `pending` → `ready` (`mode: "ai"`, `image_url` set) in ~15–20 s. `needs_photo` appears for a user with no photo of themselves; `unavailable` (with the collage URL) after 20 prefetches in a day. All four are in `mockReelsFeed()`.
 
+## Sun ~2:45 AM: on-you v7 + closet v3 (no API change)
+- Slide 2 "on you" = your real outfit photo with only that item swapped in, so first loads re-render (v7). Closet pieces may now include layers under jackets (`occluded: true`) and accessories like earbuds. A brand only shows when a logo was actually visible.
 ## Sun ~2:20 AM (Adam, now owning the app lane): #71 verified on the iPhone 17 Pro simulator + dark mode
 
 - **Your #71 checked against sprint-4 §1–§8/§11:** edge-to-edge cream + dark status icons ✓, Young Serif/Manrope bundled ✓, glass header + wordmark + avatar ✓, glass nav pill with sliding indicator ✓, reels Home (3 slides, see more, Add to cart only, prefetch + 3 s polling) ✓, arch welcome animation ✓, Discover natural-ratio frames ✓, `animations` shared-axis ✓, haptics ✓. `flutter analyze` clean, 185 tests. Screenshots: `docs/sprint-4/after-home-iphone17-sim.png` (+ dark variants). Still unverified on hardware: Pixel 9 Pro pass (edge-back vs tab swipes, nav pill above the gesture bar).

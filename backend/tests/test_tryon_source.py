@@ -97,7 +97,7 @@ def test_prompt_gets_the_box_and_cache_key_tracks_the_photo(env, monkeypatch):
 
     p = prompts.tryon_prompt(["top"], ["Boxy Tee"], boxes=[[0.3, 0.2, 0.7, 0.5]])
     assert "located at roughly 30%-70% across and 20%-50% down image 1" in p
-    assert "(" not in prompts.tryon_prompt(["top"]).split("Image 2")[1].split("replace")[0]  # no box, no location
+    assert "located at" not in prompts.tryon_prompt(["top"])  # no box, no location
 
     tee_only = service.try_on("u", ["tee"], [])
     assert tee_only.source_photo_url.endswith("body.png") and tee_only.cached is False

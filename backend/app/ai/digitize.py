@@ -10,8 +10,10 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import re
 import uuid
 from pathlib import Path
+from typing import Any
 
 from ..models import ClosetItem
 from ..store import DATA_DIR, store
@@ -19,7 +21,7 @@ from . import prompts
 from .colors import find_duplicate
 from .llm import CLAUDE_TAG_MODEL, BadModelOutput, ai_json, text_mock
 
-MAX_ITEMS = 8
+MAX_ITEMS = 10
 PAD = 0.04          # padding around each box, as a fraction of the image size
 MIN_SIDE = 0.06     # boxes thinner than this (fraction of the image) are ignored
 CROP_MAX_PX = 1024  # longest side of a saved crop
@@ -97,6 +99,48 @@ def _public_url(name: str) -> str:
     return f"{base}/static/uploads/{name}"
 
 
+# label noun -> the only category it can be (checked from the LAST matching word: "hoodie jacket" -> jacket)
+_NOUN_CATEGORY = {
+    **dict.fromkeys("tee t-shirt tshirt shirt sweater sweatshirt hoodie tank top blouse polo crewneck turtleneck "
+                    "henley jersey camisole cami tube".split(), "top"),
+    **dict.fromkeys("jacket coat blazer puffer parka windbreaker trench bomber vest gilet cardigan overcoat "
+                    "shacket anorak".split(), "outerwear"),
+    **dict.fromkeys("pants jeans trousers shorts skirt leggings joggers sweatpants chinos cargos slacks "
+                    "trackpants".split(), "bottom"),
+    **dict.fromkeys("dress jumpsuit romper gown".split(), "dress"),
+    **dict.fromkeys("sneakers shoes boots loafers sandals heels trainers slides clogs flats mules "
+                    "slippers".split(), "shoes"),
+    **dict.fromkeys("headphones earbuds airpods headset bag backpack tote purse handbag hat cap beanie bucket "
+                    "watch necklace chain bracelet ring earrings belt sunglasses glasses scarf bandana "
+                    "beret socks tie".split(), "accessory"),
+}
+_NOT_WORN = {"keys", "key", "keychain", "lanyard", "phone", "smartphone", "wallet", "mirror", "hanger", "cards"}
+_NOT_A_BRAND = {"null", "none", "unknown", "n/a", "unbranded", "generic", "no brand"}
+
+
+def validate_detection(d: Any) -> dict | None:
+    """Post-check one detected piece: the category must agree with the label's own noun (fixed to the noun when
+    they disagree, since the label is what the model saw); a brand needs readable evidence in the photo."""
+    if not isinstance(d, dict) or not str(d.get("label") or "").strip():
+        return None
+    d = dict(d)
+    words = re.findall(r"[a-z][a-z-]*", str(d["label"]).lower())
+    if _NOT_WORN & set(words):
+        return None  # props in the photo, not wardrobe pieces
+    noun_cat = next((_NOUN_CATEGORY[w] for w in reversed(words) if w in _NOUN_CATEGORY), None)
+    if noun_cat and d.get("category") != noun_cat:
+        # cardigans/vests are layers: as a top or outerwear both are fine
+        if not (noun_cat == "outerwear" and d.get("category") == "top" and {"cardigan", "vest"} & set(words)):
+            d["category"] = noun_cat
+    brand = d.get("brand")
+    ev = d.get("brand_evidence")
+    if not isinstance(brand, str) or brand.strip().lower() in _NOT_A_BRAND \
+            or not (isinstance(ev, str) and ev.strip() and ev.strip().lower() not in _NOT_A_BRAND):
+        d["brand"], d["brand_evidence"] = None, None
+    d["occluded"] = bool(d.get("occluded"))
+    return d
+
+
 def detect(image_url: str) -> list[dict]:
     """Garments in the photo, each with tags and a box. Cached per photo."""
     if text_mock():
@@ -105,8 +149,8 @@ def detect(image_url: str) -> list[dict]:
     hit = store.get("tag_cache", key)
     if hit:
         return hit["items"]
-    raw = ai_json(prompts.DIGITIZE, image_url=image_url, max_tokens=900, model=CLAUDE_TAG_MODEL)
-    items = [r for r in raw if isinstance(r, dict) and r.get("label")] if isinstance(raw, list) else []
+    raw = ai_json(prompts.DIGITIZE, image_url=image_url, max_tokens=1600, model=CLAUDE_TAG_MODEL)
+    items = [v for r in raw if (v := validate_detection(r))] if isinstance(raw, list) else []
     store.put("tag_cache", key, {"items": items})
     return items
 

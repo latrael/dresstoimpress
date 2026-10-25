@@ -51,6 +51,8 @@ def _public_url(name: str) -> str:
 
 
 def _brand(raw: dict) -> str | None:
+    if "brand_evidence" in raw and not str(raw.get("brand_evidence") or "").strip():
+        return None  # digitize v3: a brand with nothing readable in the photo is a guess
     b = raw.get("brand")
     if not isinstance(b, str):
         return None
@@ -121,8 +123,7 @@ def _apply_match(item: ClosetItem) -> None:
     item.product_id = product["id"]
     item.catalog_image_url = product.get("image_url")
     item.match_confidence = conf
-    if not item.brand and product.get("brand"):
-        item.brand = product["brand"]
+    # never copy the catalog's brand: a "similar" product is not proof of the brand (only a visible logo is)
 
 
 # ---------- clean shot ----------
@@ -282,6 +283,7 @@ def _tag_to_item(user_id: str, raw: dict, photo_url: str) -> ClosetItem:
         source="photo",
         label=" ".join(str(raw.get("label", "")).split()[:5]),
         brand=_brand(raw),
+        occluded=bool(raw.get("occluded")),
     )
 
 

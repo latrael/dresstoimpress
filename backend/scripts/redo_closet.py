@@ -7,16 +7,15 @@ For closets built before closet v3 (#59): catalog photos on owned pieces, no out
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from app.ai import closet  # noqa: E402
-from app.store import store  # noqa: E402
+from app.store import DATA_DIR, store  # noqa: E402
 
-UPLOADS = Path(__file__).resolve().parents[1] / "data" / "uploads"
+UPLOADS = DATA_DIR / "uploads"  # honours DATA_DIR like the server
 
 
 def main() -> None:

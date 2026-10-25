@@ -111,9 +111,10 @@ class _SocialFeedState extends State<SocialFeed> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (_) => Padding(
+        // the sheet's own context: it rebuilds when the keyboard opens, so the search box stays above it
+        builder: (sheet) => Padding(
             padding: EdgeInsets.fromLTRB(
-                16, 16, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+                16, 16, 16, 16 + MediaQuery.viewInsetsOf(sheet).bottom),
             child: SingleChildScrollView(
                 child: FriendsCard(api: widget.store.api))));
     refresh();

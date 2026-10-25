@@ -41,6 +41,10 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **`main.dart`:** passes `onShop: openProducts` to Discover.
 - **Tests:** `sprint2_integration_test` serves a board.
 
+**Data:** 900 pins pulled (~$1.80), 800 usable after ads/videos/duplicates, **793 kept** as real outfits after tagging (~$0.30 of Haiku). Board: ~30 ms for 24 tiles on the real catalog.
+
+**Also in this PR, a bug Nabil found in your #99/#103 friends sheet:** the keyboard covered the search box. `addFriends()` read `MediaQuery.viewInsetsOf(context)` from the Inspo screen's context, so the sheet never rebuilt when the keyboard opened. It now uses the sheet's own builder context. Also FYI: your new `inspo_header_golden_test` (dark) fails here too (0.70%, 363px), on clean staging as well, the same machine-font issue as the closet goldens.
+
 **Please, on the server, after this merges:**
 1. `git pull`, then `python -m scripts.ingest_pins --load` (loads `seed/pins.json` into the `pins` collection, **no AI**), then restart.
 2. `python -m scripts.backfill_post_visibility` (dry run), then `--yes`. **This fixes a regression from #103:**

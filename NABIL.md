@@ -2,7 +2,7 @@
 
 What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Sun Oct 25, 2026, ~4:30 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
+**Last updated:** Sun Oct 25, 2026, ~10 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
 
 ---
 
@@ -121,6 +121,7 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 25, ~10 AM:** Discover is a Pinterest-style board: `GET /discover/board` (pins + products + Inspo posts, ~4:2:1, stable paging), `GET /discover/pins/{id}/similar`; 793 AI-tagged outfit pins (`seed/pins.json`, `scripts/ingest_pins.py`, silentflow actor ~$1.80 + ~$0.30 Haiku); app board with style chips + two columns + Similar. `scripts/backfill_post_visibility.py` for #103's old friends-only posts. Friends-sheet keyboard fix.
 - **Oct 25, ~7:45 AM:** Google login end to end (#90 backend, #93 app, #97 client ids; server configured by Adam). `GET /fitcheck/feed?scope=friends` (friends + own posts) for Adam's #99. 777 tests.
 - **Oct 25, ~4:50 AM:** After Adam's #78 (reactions): unliking through the old `POST`/`PUT …/like` also clears the user's emoji, so a re-like is a plain 😍, not a stale 🔥. 731 tests.
 - **Oct 25, ~4:30 AM:** Catalog 3,188 → 3,476: shoes (Princess Polly 60, Kith 48) and accessories (Brandy, Stüssy, Edikted, PP) via 7 capped Shopify pulls (~$0.34). Ingest drops kids' sneakers + lifestyle goods, `SHOE US 7` → `7`, more shoe/jewellery words. Hero photos 1,167. 723 tests.

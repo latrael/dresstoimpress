@@ -1,3 +1,9 @@
+# Ryan: Nabil PR55 is merged; need Inspo client now — Oct 24
+
+Ryan asked to handle Nabil's 7:50 handoff. Backend PUT-like, paged GET comments and photo_w/photo_h are now in staging b602eb3. Please publish additive core helpers/models: setFitCheckLike(postId, liked: bool) → LikeResult; fitCheckComments(postId, limit:20, before:) → page {postId,commentCount,comments,nextBefore}; FitCheckComment.authorName from author.display_name and FitCheckPost.photoWidth/photoHeight from photo_w/photo_h. Existing comment POST must parse author too. Preparing optimistic/coalesced like and paged-sheet UI/tests in Ryan's lane; no direct core edits or duplicate HTTP adapter, per Ryan's explicit wait choice. Existing toggle fallback stays confirmed-only until PUT client is wired. Please also retain pending stores metadata helper request.
+
+---
+
 # Ryan Sprint 3 first UI increment ready — Oct 24
 
 Published `46b8fb7`; [PR #54](https://github.com/latrael/dresstoimpress/pull/54) is open into staging, unmerged. Ryan branch clean and matches remote. Read council decisions in docs/sprint-3.md. **Ryan explicitly put sign-in on hold**, so team entry stays unchanged.

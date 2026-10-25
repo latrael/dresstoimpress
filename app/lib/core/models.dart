@@ -625,11 +625,12 @@ class ProductPage {
 class AppUser {
   const AppUser({required this.id, required this.displayName, this.styleText = '', this.priceRanges = const {},
       this.bodyPhotoUrl, this.friends = const [], this.bodyProfile, this.preferredStores = const [],
-      this.onboarded = false, this.shopFor = 'both'});
+      this.onboarded = false, this.shopFor = 'both', this.styleTags = const []});
 
   final String id;
   final String displayName;
   final String styleText;
+  final List<String> styleTags; // inferred by POST /onboarding/photos; empty for users who typed their style
   final Map<String, List<double>> priceRanges; // category -> [min, max]
   final String? bodyPhotoUrl;
   final List<String> friends;
@@ -642,6 +643,7 @@ class AppUser {
         id: _str(j['id']),
         displayName: _str(j['display_name']),
         styleText: _str(j['style_text']),
+        styleTags: _strs(j['style_tags']),
         priceRanges: _ranges(j['price_ranges']),
         bodyPhotoUrl: _strN(j['body_photo_url']),
         friends: _strs(j['friends']),
@@ -658,7 +660,7 @@ class AppUser {
 class BodyProfile {
   const BodyProfile({required this.heightCm, this.weightKg, this.chestIn, this.waistIn, this.hipIn, this.inseamIn,
       this.build, required this.source, this.fullBody, this.note = '', this.scannedAt, this.shoeUs, this.fit,
-      this.usualSizes = const {}, this.manual = const []});
+      this.usualSizes = const {}, this.manual = const [], this.scanPhotos = 0, this.confidence});
 
   final double heightCm;
   final double? weightKg;
@@ -675,6 +677,8 @@ class BodyProfile {
   final String? fit; // slim | regular | oversized
   final Map<String, String> usualSizes; // category -> usual size
   final List<String> manual;
+  final int scanPhotos; // full-body photos averaged by the last scan (0: formula / typed only)
+  final String? confidence; // low | medium | high for 1 / 2 / 3+ full-body photos; null on older servers
 
   factory BodyProfile.fromJson(Json j) => BodyProfile(
         heightCm: _dbl(j['height_cm']),
@@ -692,6 +696,8 @@ class BodyProfile {
         fit: _strN(j['fit']),
         usualSizes: {for (final e in _obj(j['usual_sizes']).entries) e.key: _str(e.value)},
         manual: _strs(j['manual']),
+        scanPhotos: _int(j['scan_photos']),
+        confidence: _strN(j['confidence']),
       );
 
   /// The server's snake_case shape (what `fromJson` read), for sending a reviewed profile back
@@ -700,6 +706,7 @@ class BodyProfile {
         'height_cm': heightCm, 'weight_kg': weightKg, 'chest_in': chestIn, 'waist_in': waistIn, 'hip_in': hipIn,
         'inseam_in': inseamIn, 'build': build, 'source': source, 'full_body': fullBody, 'note': note,
         'scanned_at': scannedAt, 'shoe_us': shoeUs, 'fit': fit, 'usual_sizes': usualSizes, 'manual': manual,
+        'scan_photos': scanPhotos, if (confidence != null) 'confidence': confidence,
       };
 }
 
@@ -728,10 +735,11 @@ class VibeQuery {
 
 /// POST /users/{id}/body-scan (and /body-scan/confirm).
 class BodyScanResult {
-  const BodyScanResult({required this.bodyPhotoUrl, required this.profile, this.committed = true});
+  const BodyScanResult({required this.bodyPhotoUrl, required this.profile, this.committed = true, this.skipped = 0});
 
-  final String bodyPhotoUrl;
+  final String bodyPhotoUrl; // the first full-body photo (try-on photo), or the only photo if none was
   final BodyProfile profile;
+  final int skipped; // photos ignored because they weren't one standing person head to feet
   /// False for a draft (`bodyScan(commit: false)`): nothing is saved on the user until
   /// `Api.confirmBodyScan(draft, ...)`. True (also on older servers) when the scan was saved.
   final bool committed;
@@ -739,7 +747,8 @@ class BodyScanResult {
   factory BodyScanResult.fromJson(Json j) => BodyScanResult(
       bodyPhotoUrl: _str(j['body_photo_url']),
       profile: BodyProfile.fromJson(_obj(j['body_profile'])),
-      committed: j['committed'] != false);
+      committed: j['committed'] != false,
+      skipped: _int(j['skipped']));
 }
 
 /// POST /onboarding: the saved user plus what the rules parser understood.
@@ -758,6 +767,49 @@ class OnboardingResult {
       styles: _strs(parsed['styles']),
       budgets: _ranges(parsed['budgets']),
       unmatched: _str(parsed['unmatched']),
+    );
+  }
+}
+
+/// POST /onboarding/photos: a batch of photos -> closet digitized, body scanned, style inferred.
+class PhotoOnboardingResult {
+  const PhotoOnboardingResult({
+    required this.closetAdded,
+    required this.skippedDuplicates,
+    this.bodyProfile,
+    this.bodyPhotoUrl,
+    required this.styleText,
+    required this.styleTags,
+    required this.colors,
+    required this.formality,
+    required this.shopFor,
+    required this.user,
+  });
+
+  final List<ClosetItem> closetAdded; // new garments (duplicates of the closet or each other are skipped)
+  final int skippedDuplicates;
+  final BodyProfile? bodyProfile; // estimates from the best full-body photo, or the height/weight formula
+  final String? bodyPhotoUrl; // the full-body photo now used for try-on; null if none was full-body
+  final String styleText; // "streetwear and minimalist; grey hoodie, light wash jeans; mostly casual"
+  final List<String> styleTags; // top tags by frequency (style_hint tags first)
+  final List<String> colors; // dominant colors
+  final String formality; // loungewear | casual | smart casual | dressy | formal | unknown
+  final String shopFor; // men | women | both: set from the full-body photo when the user never chose
+  final AppUser user; // saved user: style_text set, onboarded = true
+
+  factory PhotoOnboardingResult.fromJson(Json j) {
+    final style = _obj(j['style']);
+    return PhotoOnboardingResult(
+      closetAdded: _list(j['closet_added'], ClosetItem.fromJson),
+      skippedDuplicates: _int(j['closet_skipped_duplicates']),
+      bodyProfile: j['body_profile'] is Map ? BodyProfile.fromJson(_obj(j['body_profile'])) : null,
+      bodyPhotoUrl: _strN(j['body_photo_url']),
+      styleText: _str(style['style_text']),
+      styleTags: _strs(style['style_tags']),
+      colors: _strs(style['colors']),
+      formality: _str(style['formality'], 'unknown'),
+      shopFor: _str(j['shop_for'], 'both'),
+      user: AppUser.fromJson(_obj(j['user'])),
     );
   }
 }

@@ -86,9 +86,9 @@ void main() {
     expect(_count(body, 'name="file"'), 0); // only the multi-file field
     expect(body, contains('name="user_id"\r\n\r\nu_demo\r\n'));
     expect(body, contains('name="kind"\r\n\r\noutfit\r\n'));
-    expect(body, contains('filename="photo0.jpeg"\r\nContent-Type: image/jpeg\r\n\r\n\u0001\u0002\u0003\r\n'));
-    expect(body, contains('filename="photo1.png"\r\nContent-Type: image/png\r\n\r\n\u0004\u0005\r\n'));
-    expect(body, contains('filename="photo2.heic"\r\nContent-Type: image/heic\r\n\r\n\u0006\r\n'));
+    expect(body, contains('filename="photo1.jpeg"\r\nContent-Type: image/jpeg\r\n\r\n\u0001\u0002\u0003\r\n'));
+    expect(body, contains('filename="photo2.png"\r\nContent-Type: image/png\r\n\r\n\u0004\u0005\r\n'));
+    expect(body, contains('filename="photo3.heic"\r\nContent-Type: image/heic\r\n\r\n\u0006\r\n'));
     expect(body, endsWith('--\r\n'));
 
     expect(res.added.map((i) => i.id), ['ci_cargo']);

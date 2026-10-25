@@ -84,6 +84,7 @@ class User(BaseModel):
     id: str
     display_name: str
     style_text: str = ""
+    style_tags: list[str] = []           # set by POST /onboarding/photos (inferred from the digitized closet)
     price_ranges: dict[str, list[float]] = {}
     body_photo_url: Optional[str] = None
     friends: list[str] = []

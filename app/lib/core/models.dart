@@ -1459,3 +1459,25 @@ class OutfitFit {
     );
   }
 }
+
+// ---------------------------------------------------------------- Friends (Inspo: Friends | Everyone)
+
+/// My handle (`adam`), friend code (`NCH-7K2P`) and friends count: GET /users/{id}/code.
+class FriendIdentity {
+  const FriendIdentity({required this.id, required this.handle, required this.friendCode, this.friendsCount = 0});
+  final String id, handle, friendCode;
+  final int friendsCount;
+  factory FriendIdentity.fromJson(Json j) => FriendIdentity(
+      id: _str(j['id']), handle: _str(j['handle']), friendCode: _str(j['friend_code']),
+      friendsCount: _int(j['friends_count']));
+}
+
+/// A friend row: GET /users/{id}/friends.
+class Friend {
+  const Friend({required this.id, required this.handle, required this.displayName, this.photoUrl});
+  final String id, handle, displayName;
+  final String? photoUrl;
+  factory Friend.fromJson(Json j) => Friend(
+      id: _str(j['id']), handle: _str(j['handle']), displayName: _str(j['display_name']),
+      photoUrl: _strN(j['body_photo_url']));
+}

@@ -54,7 +54,7 @@ def test_outfit_upload_makes_every_garment_with_its_own_crop(client):
     r = client.post("/closet/upload", data={"user_id": "u_c", "kind": "outfit"}, files=_files(1))
     assert r.status_code == 200, r.text
     body = r.json()
-    assert set(body) == {"added", "merged", "skipped"} and body["merged"] == [] and body["skipped"] == 0
+    assert set(body) == {"added", "merged", "skipped", "outfits"} and body["merged"] == [] and body["skipped"] == 0
     added = body["added"]
     assert [i["label"] for i in added] == ["black cargo pants", "white baby tee"]
     crops = [i["crop_image_url"] for i in added]
@@ -105,7 +105,9 @@ def test_legacy_single_file_call_still_returns_one_item(client):
     r = client.post("/closet/upload", data={"user_id": "u_c"}, files={"file": ("a.jpg", _jpeg(), "image/jpeg")})
     assert r.status_code == 200, r.text
     item = r.json()
-    assert item["id"].startswith("ci_") and item["label"] == "black tee" and item["image_url"]
+    # sprint-3 §1.1: the legacy call is digitized too (every garment lands in the closet); it answers with the first
+    assert item["id"].startswith("ci_") and item["label"] == "black cargo pants" and item["image_url"]
+    assert len(client.get("/closet/u_c").json()) == 2
 
 
 def test_upload_limits_and_bad_kind(client):
@@ -127,7 +129,7 @@ def test_brand_comes_from_the_tagger_never_guessed(client, monkeypatch):
     assert item["brand"] is None
 
 
-def test_catalog_match_sets_product_and_swaps_display_image(client, monkeypatch):
+def test_catalog_match_sets_product_but_never_the_display_image(client, monkeypatch):
     from app.store import store
 
     store.put("products", PRODUCT["id"], PRODUCT)
@@ -135,8 +137,8 @@ def test_catalog_match_sets_product_and_swaps_display_image(client, monkeypatch)
                           "formality": 2, "brand": None})
     item = client.post("/closet/upload", data={"user_id": "u_c", "kind": "piece"}, files=_files(1)).json()["added"][0]
     assert item["product_id"] == PRODUCT["id"] and item["brand"] == "H&M"
-    assert item["catalog_image_url"] == PRODUCT["image_url"]
-    assert item["display_image_url"] == PRODUCT["image_url"] == item["image_url"]
+    assert item["catalog_image_url"] == PRODUCT["image_url"]  # kept for "shop similar", never shown
+    assert item["display_image_url"] == item["crop_image_url"] == item["image_url"]  # sprint-3 §1.2
     assert 0.7 <= item["match_confidence"] <= 1.0
     assert "/static/uploads/" in item["crop_image_url"]  # the photo is kept
 
@@ -235,7 +237,8 @@ def test_posting_a_fit_check_adds_its_pieces_to_the_closet(client, monkeypatch):
     items = store.list("closet_items", user_id="u_c")
     assert {i["label"] for i in items} == {t["label"] for t in post["tagged"]}
     for i in items:
-        assert i["worn_in"] == [{"photo_url": post["photo_url"], "at": i["worn_in"][0]["at"], "source": "fitcheck"}]
+        assert i["worn_in"] == [{"photo_url": post["photo_url"], "at": i["worn_in"][0]["at"], "source": "fitcheck",
+                                 "box": i["worn_in"][0]["box"]}] and i["worn_in"][0]["box"] is not None
         assert "/static/uploads/" in i["crop_image_url"] and i["crop_image_url"] != post["photo_url"]  # cropped by box
     # posting the same fit again merges (worn twice), never duplicates
     out = closet.add_from_fit("u_c", "http://localhost:8000/static/uploads/again.jpg", None, post["tagged"])
@@ -280,11 +283,11 @@ def test_patch_edits_fields_and_product_link(client):
     got = r.json()
     assert (got["label"], got["brand"], got["color"]) == ("stussy tee", "Stüssy", "off white")
     assert got["display_image_url"] == item["display_image_url"]  # a label edit doesn't touch the picture
-    # link to a catalog product: display becomes the catalog photo
+    # link to a catalog product: the picture does not change (sprint-3 §1.2)
     got = client.patch(f"/closet/u_c/{item['id']}", json={"product_id": PRODUCT["id"]}).json()
-    assert got["product_id"] == PRODUCT["id"] and got["display_image_url"] == PRODUCT["image_url"] == got["image_url"]
-    assert got["match_confidence"] == 1.0
-    # clear it: back to the clean shot / crop
+    assert got["product_id"] == PRODUCT["id"] and got["display_image_url"] == item["crop_image_url"] == got["image_url"]
+    assert got["match_confidence"] == 1.0 and got["catalog_image_url"] == PRODUCT["image_url"]
+    # clear it: still the clean shot / crop
     got = client.patch(f"/closet/u_c/{item['id']}", json={"product_id": None}).json()
     assert got["product_id"] is None and got["catalog_image_url"] is None and got["match_confidence"] is None
     assert got["display_image_url"] == item["crop_image_url"] == got["image_url"]
@@ -316,15 +319,17 @@ def test_reshoot_regenerates_the_clean_shot(client, monkeypatch):
     assert got["crop_image_url"] == item["crop_image_url"]
 
 
-def test_reshoot_of_a_matched_item_keeps_the_catalog_photo(client, monkeypatch):
+def test_reshoot_of_a_matched_item_never_uses_the_catalog_photo(client, monkeypatch):
     from app.ai import closet
     from app.store import store
 
     store.put("products", PRODUCT["id"], PRODUCT)
     _tagger(monkeypatch, {"label": "black baby tee", "category": "top", "color": "black", "pattern": "solid", "formality": 2})
     item = client.post("/closet/upload", data={"user_id": "u_c", "kind": "piece"}, files=_files(1)).json()["added"][0]
-    monkeypatch.setattr(closet, "gemini_image", lambda p, u: (_ for _ in ()).throw(AssertionError("no shot needed")))
-    assert client.post(f"/closet/u_c/{item['id']}/reshoot").json()["display_image_url"] == PRODUCT["image_url"]
+    monkeypatch.setattr(closet, "mock_mode", lambda key: False)
+    monkeypatch.setattr(closet, "gemini_image", lambda p, u: b"shot")
+    got = client.post(f"/closet/u_c/{item['id']}/reshoot").json()
+    assert got["display_image_url"].endswith("-clean.png") and got["display_image_url"] != PRODUCT["image_url"]
 
 
 # ---------- prompts / pair ----------

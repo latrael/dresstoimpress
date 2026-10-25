@@ -128,7 +128,7 @@ Every closet item is one garment that stands on its own, plus the fits it was wo
 | `product_id` | string \| null | catalog product this piece **is** (confident match only: same type word + color + a descriptor) |
 | `catalog_image_url` | string \| null | that product's photo |
 | `match_confidence` | 0–1 \| null | with `product_id`; `1.0` when the user linked it by hand |
-| `display_image_url` | string | what to show: catalog photo when matched → generated clean product shot of the crop (Gemini, "only this garment, white background, no person") → the crop. **`image_url` always equals it** |
+| `display_image_url` | string | what to show (**sprint 3: never the catalog photo**; see "Closet, sprint 3"): generated clean product shot of the crop (Gemini, "only this garment, white background, no person") → the crop. **`image_url` always equals it** |
 | `crop_image_url` | string | the garment cropped out of the photo it was found in (the whole photo when there was no box) |
 | `worn_in` | `[{photo_url, at (ISO UTC), source: "closet" \| "fitcheck"}]` | outfit photos it appeared in, oldest first |
 
@@ -141,6 +141,38 @@ Routes:
 - `GET /closet/{user}` unchanged; carries the new fields.
 - **Fit Check → closet:** `POST /fitcheck` (Nabil's create) now calls `app.ai.closet.add_from_fit_later(user_id, photo_url, tagged)` after the post is saved: the post's tagged pieces go through the same per-garment pipeline (crop by `box`, dedupe-merge, `worn_in` source `"fitcheck"`) in a background thread. Best effort: never slows or fails the post.
 - Prompts: `TAGGER` v3 and `DIGITIZE` v2 return `brand`; `DIGITIZE` lists every worn garment and accessory separately; `PAIR` v3 gets `brand` in the closet JSON so reasons can say "your Stüssy tee".
+
+## Closet, sprint 3 (Oct 24, night): every garment, no catalog photos, outfits + pieces
+
+Sprint-3 §1 (`docs/sprint-3.md`). Backend `backend/app/ai/closet.py`; core `Api.closetOutfits`, `Api.deleteClosetOutfit`, `ClosetOutfit`, `ClosetItem.outfitId`.
+
+**1.1 Every garment.** Every `POST /closet/upload` photo with `kind=outfit` (the default) goes through digitize and every detected garment becomes a piece. The legacy single `file` call with no `kind` is digitized the same way (all garments land in the closet) but, for backward compatibility, answers with the **first** `ClosetItem` only; send `kind` to get `{added, merged, skipped, outfits}`. The app's closet button uses `api.uploadClosetPhotos(kind: 'outfit')`.
+
+**1.2 No catalog photos on owned pieces (council).** `display_image_url` = `image_url` = the generated clean shot of the user's own crop, else the crop. `catalog_image_url` is never used for display (kept on the item for "shop similar"). `PATCH product_id` and `POST .../reshoot` never change the picture to a catalog photo. The catalog match is **strict** (`closet.strict_match`): type word + category agree, every descriptor word of the label is in the product text, the colour is the same colour (not merely "both neutral"), and the pattern agrees (a solid piece never matches a product whose name says striped/plaid/floral/graphic, and vice versa). Otherwise `product_id` / `brand` / `match_confidence` stay null.
+
+**Clean shot from the best source photo.** For each piece the clean shot is generated from the source photo where the garment is clearest, among every `worn_in` entry with a `box`: not cut off (box not touching the photo edge) > largest box area > sharpness (Laplacian variance). That region is cropped with padding and sent with the prompt "Product photo of only this garment as worn in the photo: same colour, fabric, print, logo and fit, centered on a plain white background, flat-lay or ghost-mannequin, no person, no text." Recorded on the item as `clean_source_photo_url` + `clean_source_box`. When a merge adds a `worn_in` photo that shows the piece better, the clean shot is regenerated in the background (best effort).
+
+`ClosetItem` new fields (optional; old items read as null):
+
+| field | type | meaning |
+|---|---|---|
+| `outfit_id` | string \| null | the `outfits` record this piece was first digitized from; null for a single piece or after its outfit was deleted |
+| `clean_source_photo_url` | string \| null | the source photo the clean shot came from (best of `worn_in`) |
+| `clean_source_box` | `[x0, y0, x1, y1]` \| null | the garment's box in it, 0–1 fractions |
+| `worn_in[].box` | `[x0, y0, x1, y1]` \| null | where the piece sits in that worn-in photo (new entries; a merge stores the new photo's box) |
+
+**1.3 Outfits + pieces.** An outfit upload creates one `outfits` record per photo and each new piece gets `outfit_id` (a merged piece keeps its first outfit; it is listed in the new outfit's `piece_ids` too). A Fit Check post's auto-add creates an outfit with `source: "fitcheck"`. `kind=piece` uploads make no outfit.
+
+`ClosetOutfit {id: "of_…", user_id, photo_url, created_at (ISO UTC), piece_ids: [string], source: "closet" | "fitcheck", pieces: [ClosetItem]}` (`pieces` = the listed pieces that still exist, in detection order).
+
+Routes:
+
+- `GET /closet/{user}/outfits` → `[ClosetOutfit]` newest first, pieces embedded.
+- `DELETE /closet/{user}/outfits/{id}` → `{deleted: id}`; the pieces stay in the closet (their `outfit_id` is cleared). 404 if it isn't that user's.
+- `POST /closet/upload` response gains `outfits: [outfit record]` (one per outfit photo that had a garment; `[]` for `kind=piece`).
+- `GET /closet/{user}` unchanged; items carry `outfit_id`.
+
+Core: `Api.closetOutfits()` → `List<ClosetOutfit{id, photoUrl, createdAt, time, source, pieceIds, pieces}>`, `Api.deleteClosetOutfit(id)` → `ClosetDeleteResult`, `ClosetItem.outfitId / cleanSourcePhotoUrl / cleanSourceBox`, `WornIn.box`, `ClosetUploadResult.outfits`. Tests: `backend/tests/test_closet_s3.py`, `app/test/core/api_closet_s3_test.dart`.
 
 ## AI Fit Creator
 

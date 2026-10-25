@@ -10,7 +10,7 @@ OAuth clients (public ids; never commit the web client's *secret*, which we don'
 | Web ("Niche server") | `43902770892-itpsnesq1jfvskr8jn1l25hli51m92v6…` | `serverClientId` in the app = the ID token's audience the server checks |
 | iOS team | `43902770892-2u86506g9nhtdsliu673of6n6hosq51a…` | bundle `com.dresstoimpress.dressToImpress` (default in `GoogleAuth`) |
 | iOS Nabil | `43902770892-ppf9mblaraum6tgui4hpn8usf43pffkn…` | bundle `com.nabil.dressToImpress` (`--dart-define=GOOGLE_IOS_CLIENT_ID=…`) |
-| Android | pending: needs the signing SHA-1 | package `com.dresstoimpress.dress_to_impress` |
+| Android (Adam, debug) | `43902770892-u37ldkujvcnvkc8rjfe1mgfev90k2vqa…` | package `com.dresstoimpress.dress_to_impress`, SHA-1 `46:A8:5D:…:C1:85`. Not needed in the app or on the server: Android tokens are issued for the web client |
 
 Server: `GOOGLE_CLIENT_IDS` = the web + both iOS ids, comma-separated (full ids in `NABIL_TO_ADAM.md`, 7:15 AM).
 

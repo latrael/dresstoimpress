@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~2:45 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~3:20 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,49 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 3:20 AM: **Nabil: Adam now picks up all new tasks for Ryan.** Ryan's #71 is merged; here's what's open, in order
+
+**1. 🔴 The shared server is on old code (checked 3:05 AM through the tunnel).**
+- `/ai/usage` → `last_claude_error: "...unexpected keyword argument 'temperature'"` and `max_tryons: 150`. So it doesn't have #69 or #70: **Claude is still failing over to Gemini.** Feed reasons are the rule-based "Goes with your …".
+- `/feed?user_id=u_nabil`: **0 of 20 cards** have a product-only `hero_image_url`, so the #68 snapshot isn't loaded.
+- **Please, on the server:**
+  1. `git pull` (staging `47450e3`: #69 #70 #71).
+  2. `pip install -r requirements.txt`.
+  3. `python -m scripts.load_products` (no `--replace`).
+  4. Restart.
+  5. Warm the reason banks: one `GET /feed?user_id=` for u_adam / u_nabil / u_ryan / u_demo. The first is ~7 s, then ~40 ms.
+- **Check afterwards:** `/ai/usage` has no new `last_claude_error`, `max_tryons: 400`, and some cards have `hero_image_url != image_url`.
+
+**2. The per-user prefetch cap is already biting.**
+- At 3:08 AM I prefetched 2 of u_nabil's posts. Both came back at once as `unavailable` + collage (`gemini_images` stayed at 78), while u_adam's cards are `ready`/`ai`. **u_nabil has used his 20 pre-renders for today.**
+- Ryan's Home prefetches the next 3 on every post you land on, so **~20 posts of scrolling uses the whole day's budget**, even for posts the user never reaches.
+- **Before the demo:**
+  - Reset `prefetch_usage` for `u_demo` (or raise `PREFETCH_PER_USER_DAY` for the demo; there's plenty of headroom with `MAX_TRYONS=400`).
+  - Don't let anyone scroll `u_demo` the night before.
+  - Optional: count only renders that actually start, not cached hits.
+- **Speed:** with your measured 15–20 s per render and a pool of 2, the 3rd prefetched post is often still `pending` when reached. A pool of 3 (or prefetching posts 1–5 on load) would hide it. Your call on cost.
+- The collage itself looks right: the user's own photo + the product + their closet pieces, labelled as a board.
+
+**3. Ryan's open asks from #71 (now yours):**
+- **Pixel 9 Pro hardware pass:**
+  - Screenshots of Home / Discover / Inspo;
+  - edge-back gesture vs. tab swipes;
+  - haptics on likes, chips and Add to cart;
+  - no black band at the top;
+  - the nav pill above the gesture bar.
+  - Ryan's capture is **simulator only** (`docs/sprint-4/after-home-iphone16-simulator.png`).
+- **A real photo-owning account, ready / AI / collage + preloaded post 2 onward:**
+  - Partly done above: the collage path is verified on u_nabil; AI-ready is verified on u_adam by you.
+  - Still open: a fresh account with a body photo + closet, scrolled at normal speed after the deploy. Is slide 2 `ready` on posts 2–4?
+- **Physical iPhone 16:** I built Ryan's #71 for Nabil's iPhone. I'll install it as soon as the phone is connected, so Nabil can do the iPhone acceptance himself.
+
+**4. Done on my side tonight (for reference):**
+- #68: hero photos + `/feed` reel fields + prefetch routes.
+- #70: the Claude `temperature` fix + `/feed` timings.
+- Devpost + demo script updated for the reels Home: warming steps, the 20/day cap, the slide-by-slide script and fallbacks.
 
 ---
 

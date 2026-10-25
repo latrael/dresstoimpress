@@ -1,6 +1,6 @@
 # Devpost: DressToImpress | Niche
 
-Updated Sat Oct 24 ~11 PM for sprint 3 (Fit Score v2, try-on from your own photos, shop the look per piece, the Niche icon). Structured like the Devpost form: **About the project** (paste everything between the two `✂` lines into that one Markdown box), **Built with** (tags), and **"Try it out" links**. Numbers are measured on our backend. **[confirm]** = a screen in Ryan's sprint PR; check it in the app before submitting. Deadline: **Sunday 9:00 AM**, with all three of us added as teammates.
+Updated Sun Oct 25 ~3 AM for sprint 4 (the redesign and reels Home), after sprint 3 (Fit Score v2, try-on from your own photos, shop the look per piece, the Niche icon). Structured like the Devpost form: **About the project** (paste everything between the two `✂` lines into that one Markdown box), **Built with** (tags), and **"Try it out" links**. Numbers are measured on our backend. **[confirm]** = a screen in Ryan's sprint PR; check it in the app before submitting. Deadline: **Sunday 9:00 AM**, with all three of us added as teammates.
 
 **Tagline (≤ 60 chars):** Real clothes in your size that go with yours. *(50 chars)*
 
@@ -23,9 +23,13 @@ Niche learns who you are once, then everything you see is in your size, in stock
   - Pick the stores you like and whether you shop men's, women's or both.
   - Do a body scan: one full-body photo plus your height gives estimated measurements, which you confirm.
   - Every step after the first can be skipped.
-- **Home:** a scrolling feed of real products from 8 stores (H&M, Uniqlo, Princess Polly, Edikted, Brandy Melville, True Classic, Kith, Stüssy).
+- **Home, like reels:** one real product fills the screen at a time, from 8 stores (H&M, Uniqlo, Princess Polly, Edikted, Brandy Melville, True Classic, Kith, Stüssy). Swipe up for the next.
+  - **Three slides per product:**
+    1. the item on its own;
+    2. **the item on you**, styled with your own clothes, rendered before you scroll to it;
+    3. a 2×2 grid of **pieces you already own** that go with it.
   - Items in your size come first, with the size already picked. You only see sizes that are actually in stock.
-  - Every card says *why* it's there: "goes with your black cargos."
+  - Every card says *why* it's there: "goes with your black cargos." Add to cart is the only button. Double-tap to like, and swipe sideways to change tabs.
 - **Discover.**
   - Search a style ("y2k") or a vibe ("fit for a rooftop party").
   - Or tap the camera and snap something you like in real life.
@@ -50,7 +54,9 @@ Niche learns who you are once, then everything you see is in your size, in stock
 
 ## How we built it
 
-- **App:** Flutter, one codebase for iPhone, Android and web, named **Niche** with its own arch icon. A floating tab bar (Home · Discover · Inspo), with Liked, Cart, Closet and Profile always at the top. **[confirm]**
+- **App:** Flutter, one codebase for iPhone, Android and web, named **Niche** with its own arch icon.
+  - Its own design system: Young Serif + Manrope type, the merlot/cream palette, frosted-glass header and tab bar, and motion and haptics on every tap and page change.
+  - Swipe between Home · Discover · Inspo; Liked, Bag, Closet and your profile sit at the top.
 - **Backend:** one Python FastAPI service.
   - The app never talks to outside services directly; every API key stays on the server.
   - A shared request key protects the public tunnel.
@@ -73,6 +79,7 @@ Niche learns who you are once, then everything you see is in your size, in stock
 - **Sizes.**
   - Most fashion scrapers read category pages, which don't list sizes, so we had to find actors that open each product page.
   - Then came the store quirks. Uniqlo's "low stock," for example, comes back as `inStock: false` even though you can still buy it.
+- **Finding the photo of just the item.** Stores mix product shots with model shots and close-ups, and our data labelled them wrong both ways. Claude Haiku labelled all **10,809** catalog photos from one contact sheet per product, for **$0.21**, so slide 1 shows the item on its own for 941 products. Tight crops of legs in jeans still fooled it, so one store's model-photo filenames override the AI.
 - **Model photos confuse taggers.** A retailer's photo of jeans usually shows a whole outfit. Without a hint, 37 of 418 tags described the wrong garment (the model's shirt instead of the jeans). Giving the tagger the product name brought that to **0**.
 - **Men's vs women's.** Our first sizing pass recommended a women's size 8 to a 178 cm guy. The stores' raw data already said which department each item belongs to, so we pulled that through and let you pick men's, women's or both.
 - **Scores that mean something.** Our first Fit Score just added points up, so nearly every outfit scored 80+. We rebuilt it as a rubric and calibrated it on random outfits until a 90 had to be earned.
@@ -89,7 +96,7 @@ Niche learns who you are once, then everything you see is in your size, in stock
 - A real multi-store checkout: one tap made separate Nessie purchases at H&M and Uniqlo (4 of 4 `paid` in our test run).
 - Every recommendation explains itself in terms of clothes you already own.
 - Snap-to-shop: a photo of something in real life becomes items you can buy, in your size.
-- It fails gracefully: we drilled AI outages, and checkout, cart and the feed keep working. 672 backend tests.
+- It fails gracefully: we drilled AI outages, and checkout, cart and the feed keep working. 713 backend tests and 185 app tests.
 
 ## What we learned
 
@@ -110,9 +117,9 @@ Niche learns who you are once, then everything you see is in your size, in stock
 
 ## Built with
 
-Paste one at a time (25 max; these are 18):
+Paste one at a time (25 max; these are 19):
 
-`flutter` · `dart` · `python` · `fastapi` · `pydantic` · `uvicorn` · `apify` · `capital-one-nessie` · `anthropic` · `claude` · `google-gemini` · `pillow` · `httpx` · `pytest` · `cloudflare-tunnel` · `ios` · `android` · `github`
+`flutter` · `dart` · `python` · `fastapi` · `pydantic` · `uvicorn` · `apify` · `capital-one-nessie` · `anthropic` · `claude` · `google-gemini` · `pillow` · `httpx` · `pytest` · `cloudflare-tunnel` · `ios` · `android` · `github` · `google-fonts`
 
 Add `notability` / `figma` only if Ryan confirms we used them. Don't add `moss` (never switched on) or anything Visa.
 

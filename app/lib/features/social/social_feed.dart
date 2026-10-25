@@ -1,9 +1,9 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
 import '../shared/niche_theme.dart';
 import '../shared/niche_photo.dart';
 import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
 import '../store/store_controller.dart';
@@ -129,9 +129,10 @@ class _SocialFeedState extends State<SocialFeed> {
 
   @override
   Widget build(BuildContext context) => Column(children: [
+        // One row: scope toggle · add friends · OOTD +. Pull down to refresh; no reload button.
         if (!widget.store.demo)
           Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Row(children: [
                 Expanded(
                     child: widget.authorId == null
@@ -139,20 +140,15 @@ class _SocialFeedState extends State<SocialFeed> {
                         : Text('Their fits',
                             style: Niche.ui(
                                 14, 20, FontWeight.w600, Niche.of(context).muted))),
-                const SizedBox(width: 6),
-                if (widget.authorId == null)
-                  IconButton(
+                if (widget.authorId == null) ...[
+                  const SizedBox(width: 12),
+                  _HeaderIcon(
                       tooltip: 'Add friends',
-                      onPressed: addFriends,
-                      icon: const Icon(NicheIcons.personOutline)),
-                IconButton(
-                    tooltip: 'Refresh fits',
-                    onPressed: refresh,
-                    icon: const Icon(NicheIcons.refresh)),
-                FilledButton.tonalIcon(
-                    onPressed: create,
-                    icon: const Icon(NicheIcons.add),
-                    label: const Text('Post a fit')),
+                      icon: NicheIcons.personOutline,
+                      onTap: addFriends),
+                ],
+                const SizedBox(width: 12),
+                _OotdButton(onTap: create),
               ])),
         Expanded(
             child: FutureBuilder<List<FitCheckPost>>(
@@ -230,6 +226,77 @@ class _SocialFeedState extends State<SocialFeed> {
       ]);
 }
 
+/// Round glass icon button that matches the scope toggle's height (36).
+class _HeaderIcon extends StatelessWidget {
+  const _HeaderIcon(
+      {required this.tooltip, required this.icon, required this.onTap});
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Niche.of(context);
+    return Tooltip(
+        message: tooltip,
+        child: Semantics(
+            button: true,
+            label: tooltip,
+            child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onTap();
+                },
+                child: NicheGlass(
+                    radius: 18,
+                    opacity: .55,
+                    blur: 12,
+                    child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Icon(icon, size: 18, color: t.ink))))));
+  }
+}
+
+/// "OOTD +": post today's outfit. A merlot pill, same height as the toggle.
+class _OotdButton extends StatelessWidget {
+  const _OotdButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Niche.of(context);
+    return Tooltip(
+        message: 'Post your OOTD',
+        child: Semantics(
+            button: true,
+            label: 'Post your OOTD',
+            child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onTap();
+                },
+                child: Container(
+                    height: 36,
+                    padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+                    decoration: BoxDecoration(
+                        color: t.brand,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                              color: t.brand.withValues(alpha: .25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4))
+                        ]),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text('OOTD',
+                          style: Niche.ui(13, 18, FontWeight.w700, t.cream)),
+                      const SizedBox(width: 4),
+                      Icon(NicheIcons.add, size: 18, color: t.cream),
+                    ])))));
+  }
+}
+
 class CreateFitCheckScreen extends StatefulWidget {
   const CreateFitCheckScreen(
       {super.key, required this.api, this.picker = pickPhoto});
@@ -290,7 +357,7 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
 
   @override
   Widget build(BuildContext context) => FeaturePage(
-      title: 'Post a fit',
+      title: 'Your OOTD',
       child: ListView(padding: const EdgeInsets.all(24), children: [
         const Text(
             'Share an outfit in Inspo. Your photo and caption are uploaded to your connected server; the outfit is tagged automatically.'),

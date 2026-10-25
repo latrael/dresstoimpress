@@ -107,6 +107,17 @@ void main() {
     expect(outfits.first.pieces.map((p) => p.id), ['ci_pants']);
   });
 
+  test('outfit name is parsed (blank when the server omits it) and renameClosetOutfit PATCHes it', () async {
+    final seen = <http.Request>[];
+    final api = _api(seen, (_) => {..._outfit1, 'name': 'Date night'});
+    final o = await api.renameClosetOutfit('of_1', 'Date night');
+    expect(seen.single.method, 'PATCH');
+    expect(seen.single.url.toString(), 'https://dti.example/closet/u_demo/outfits/of_1');
+    expect(seen.single.body, '{"name":"Date night"}');
+    expect(o.name, 'Date night');
+    expect(ClosetOutfit.fromJson(_outfit1).name, '');
+  });
+
   test('deleteClosetOutfit DELETEs /closet/{user}/outfits/{id} and returns the id', () async {
     final seen = <http.Request>[];
     final api = _api(seen, (_) => {'deleted': 'of_1'});

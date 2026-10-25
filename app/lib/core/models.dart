@@ -1057,11 +1057,14 @@ class ClosetOutfit {
     this.pieceIds = const [],
     this.pieces = const [],
     this.posted = false,
+    this.name = '',
   });
   final String id;
   final String photoUrl;
   /// The same photo is also an Inspo post (one outfit either way).
   final bool posted;
+  /// Short nickname: the user's own, else one the server makes from the pieces ("Camel overcoat & shirt").
+  final String name;
   final String? createdAt; // ISO-8601 UTC
   final String? source; // 'closet' | 'fitcheck'
   final List<String> pieceIds;
@@ -1076,6 +1079,7 @@ class ClosetOutfit {
         pieceIds: _strs(j['piece_ids']),
         pieces: _list(j['pieces'], ClosetItem.fromJson),
         posted: j['posted'] == true || j['source'] == 'fitcheck',
+        name: _str(j['name']),
       );
 }
 

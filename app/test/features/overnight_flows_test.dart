@@ -197,8 +197,8 @@ void main() {
                 onTryOn: (id) async {
                   generated.add(id);
                   return (
-                    url: 'https://example.test/$id-board.jpg',
-                    label: 'Outfit board · collage, not a photo of you',
+                    url: 'https://example.test/$id-tryon.jpg',
+                    label: 'Your AI try-on',
                     sourcePhotoUrl: null
                   );
                 })));
@@ -214,7 +214,7 @@ void main() {
           find.descendant(
               of: product,
               matching:
-                  find.text('Outfit board · collage, not a photo of you')),
+                  find.text('Your AI try-on')),
           findsOneWidget);
       expect(
           tester
@@ -262,7 +262,7 @@ void main() {
     expect(writes, 0);
     expect(picked, false);
   });
-  testWidgets('try-on uses existing photo and labels collage response honestly',
+  testWidgets('try-on uses existing photo and labels the AI try-on',
       (tester) async {
     final paths = <String>[];
     ({String url, String label, String? sourcePhotoUrl})? result;
@@ -271,8 +271,8 @@ void main() {
       return r.method == 'GET'
           ? json(user())
           : json({
-              'image_url': '/static/tryon/board.png',
-              'mode': 'collage',
+              'image_url': '/static/tryon/x.png',
+              'mode': 'ai',
               'cached': true
             });
     });
@@ -286,7 +286,7 @@ void main() {
                     },
                     child: const Text('Try')))));
     await tap(tester, 'Try');
-    expect(result!.label, contains('not a photo of you'));
+    expect(result!.label, 'Your AI try-on');
     expect(paths, ['/users/u_demo', '/tryon']);
   });
   testWidgets(

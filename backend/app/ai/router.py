@@ -453,6 +453,8 @@ def tryon(req: TryOnRequest):
         raise HTTPException(400, str(e))
     except BadModelOutput as e:
         raise _ai_down("try-on", e)
+    except service.TryOnUnavailable as e:
+        raise HTTPException(503, {"error": "tryon_unavailable", "detail": str(e)})
     return TryOnResponse(image_url=r.image_url, cached=r.cached, mode=r.mode, source_photo_url=r.source_photo_url)
 
 
@@ -628,7 +630,7 @@ def fit_get(fit_id: str, user_id: str):
 
 @router.post("/fits/{fit_id}/try-on")
 def fit_try_on_route(fit_id: str, user_id: str):
-    """Try-on image for a fit: {image_url, mode "ai"|"collage"}. Same generator as POST /tryon."""
+    """Try-on image for a fit: {image_url, mode "ai"}. Same generator as POST /tryon; 503 when unavailable."""
     from .fit_creator import fit_try_on, get_fit
 
     if get_fit(fit_id, user_id) is None:

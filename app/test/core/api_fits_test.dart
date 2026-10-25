@@ -107,14 +107,13 @@ void main() {
 
   test('fitTryOn posts and returns a TryOnResponse-like {imageUrl, mode}', () async {
     final seen = <http.Request>[];
-    final api = _api(seen, (_) => {'image_url': 'https://dti.example/static/tryon/x-board.png', 'mode': 'collage'});
+    final api = _api(seen, (_) => {'image_url': 'https://dti.example/static/tryon/x.png', 'mode': 'ai'});
     final t = await api.fitTryOn('fit_abc123');
     expect(seen.single.method, 'POST');
     expect(seen.single.url.path, '/fits/fit_abc123/try-on');
     expect(seen.single.url.queryParameters, {'user_id': 'u_demo'});
-    expect(t.imageUrl, 'https://dti.example/static/tryon/x-board.png');
-    expect(t.mode, 'collage');
-    expect(t.isOutfitBoard, isTrue);
+    expect(t.imageUrl, 'https://dti.example/static/tryon/x.png');
+    expect(t.mode, 'ai');
     expect(t.cached, isFalse);
     expect(t.sourcePhotoUrl, isNull); // older server: no source photo
   });

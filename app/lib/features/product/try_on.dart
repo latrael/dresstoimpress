@@ -36,11 +36,7 @@ Future<({String url, String label, String? sourcePhotoUrl})?> requestTryOn(
   return (
     url: result.imageUrl,
     sourcePhotoUrl: result.mode == 'ai' ? result.sourcePhotoUrl : null,
-    label: result.isOutfitBoard
-        ? 'Outfit board · collage, not a photo of you'
-        : result.mode == 'ai'
-            ? 'Your AI try-on'
-            : 'Generated preview'
+    label: 'Your AI try-on'
   );
 }
 

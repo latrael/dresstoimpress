@@ -38,7 +38,7 @@ const List<Map<String, dynamic>> mockReelsJson = [
     'id': 'mock:coat', 'retailer': 'abercrombie', 'name': 'Wool-Blend Coat', 'category': 'outerwear',
     'price_usd': 180.0, 'image_url': '${_img}1539533018447-63fcce2678e3?w=900', 'in_stock': true,
     'reason': 'Warm layer over your knitwear',
-    'tryon': {'status': 'unavailable', 'image_url': '${_img}1539533018447-63fcce2678e3?w=900', 'mode': 'collage'},
+    'tryon': {'status': 'unavailable'},
   },
 ];
 

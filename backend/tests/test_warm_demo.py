@@ -6,7 +6,8 @@ def test_warm_demo_fills_feed_fitcheck_and_tryons(tmp_path, monkeypatch):
     from scripts import warm_demo
 
     monkeypatch.setattr(store, "root", tmp_path)
-    store.put("users", "u_w", {"id": "u_w", "display_name": "W", "price_ranges": {}, "friends": []})
+    store.put("users", "u_w", {"id": "u_w", "display_name": "W", "price_ranges": {}, "friends": [],
+                            "body_photo_url": "https://img/body.jpg"})
     store.put("closet_items", "ci1", {"id": "ci1", "user_id": "u_w", "image_url": "https://img/c.jpg",
                                       "category": "bottom", "color": "light blue", "pattern": "solid",
                                       "style_tags": ["streetwear"], "formality": 2, "label": "baggy jeans"})

@@ -168,8 +168,6 @@ def tryon_status(user_id: str, product: Any, picks: list[dict] | None = None) ->
     with _lock:
         if key in _inflight:
             return {"status": "pending"}
-    if hit:  # a collage: the AI was off / over budget when it rendered
-        return {"status": "unavailable", "image_url": hit["image_url"], "mode": "collage"}
     if not _ai_available() or _over_cap(user_id):
         return {"status": "unavailable"}
     return {"status": "none"}
@@ -195,7 +193,8 @@ def _run(key: str, user_id: str, pids: list[str], cids: list[str]) -> None:
 def prefetch_tryons(user_id: str, items: list[Any]) -> dict[str, dict]:
     """Start background renders for up to 5 items (products, dicts or ids) that aren't cached or in flight.
     Returns {product_id: tryon} right away. Each new AI render counts toward PREFETCH_PER_USER_DAY; past the
-    cap (or with the AI off / over budget) try_on still runs and stores the free collage."""
+    cap (or with the AI off / over budget) nothing is rendered: the card stays "unavailable" with no image and
+    the app can retry later."""
     s = _svc()
     out: dict[str, dict] = {}
     for item in list(items)[:5]:
@@ -205,52 +204,22 @@ def prefetch_tryons(user_id: str, items: list[Any]) -> dict[str, dict]:
         pid = str(p["id"])
         picks = closet_picks(user_id, p)
         st = tryon_status(user_id, p, picks)
-        if st["status"] not in ("none", "unavailable") or st.get("image_url"):
+        if st["status"] != "none":
             out[pid] = st
             continue
         pids, cids, body = _render_args(user_id, p, picks)
         key = s._tryon_key(user_id, pids, cids, body or "")
-        ai = st["status"] == "none"
         with _lock:
             if key in _inflight:
                 out[pid] = {"status": "pending"}
                 continue
             _inflight.add(key)
-        if ai:
-            doc = s.store.get("prefetch_usage", _day_key(user_id)) or {"n": 0}
-            s.store.put("prefetch_usage", _day_key(user_id), {"n": int(doc.get("n", 0)) + 1, "at": time.time()})
-            fn = _run
-        else:
-            fn = _run_collage
-        _futures.append(_get_pool().submit(fn, key, user_id, pids, cids))
+        doc = s.store.get("prefetch_usage", _day_key(user_id)) or {"n": 0}
+        s.store.put("prefetch_usage", _day_key(user_id), {"n": int(doc.get("n", 0)) + 1, "at": time.time()})
+        _futures.append(_get_pool().submit(_run, key, user_id, pids, cids))
         out[pid] = {"status": "pending"}
     return out
 
-
-def _run_collage(key: str, user_id: str, pids: list[str], cids: list[str]) -> None:
-    """Over the cap or AI off: the free outfit board, stored under the same cache key try_on uses."""
-    s = _svc()
-    try:
-        from .collage import outfit_board
-        from .tryon_source import pick_source_photo
-
-        pieces = [x for pid in pids if (x := s.get_product(pid))]
-        pieces += [c for cid in cids if (c := s.store.get("closet_items", cid))]
-        src = pick_source_photo(user_id, pieces, s.store.get("users", user_id) or {})
-        body = src["url"] if src else None
-        if os.getenv("MOCK_AI") == "1":
-            url = pieces[0]["image_url"]
-        else:
-            s.TRYON_DIR.mkdir(parents=True, exist_ok=True)
-            (s.TRYON_DIR / f"{key}-board.png").write_bytes(outfit_board(body, [g["image_url"] for g in pieces]))
-            url = f"{s.PUBLIC_BASE}/static/tryon/{key}-board.png"
-        s.store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": "collage",
-                                         "at": time.time(), "source_photo_url": body})
-    except Exception:
-        log.exception("prefetch collage failed")
-    finally:
-        with _lock:
-            _inflight.discard(key)
 
 
 def wait_prefetch(timeout: float = 10.0) -> None:

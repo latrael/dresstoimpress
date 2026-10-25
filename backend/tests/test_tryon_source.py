@@ -124,7 +124,7 @@ def test_route_and_fit_creator_return_source_photo_url(env, monkeypatch):
 
     monkeypatch.setattr(fit_creator, "store", env)
     out = fit_creator._try_on("u", {"pieces": [{"source": "catalog", "product": {"id": "tee"}}]})
-    assert out == {"image_url": "https://img/tee.jpg", "mode": "collage", "source_photo_url": fit}
+    assert out == {"image_url": "https://img/tee.jpg", "mode": "ai", "source_photo_url": fit}
 
 
 # ---------- season / layer compatibility (sprint-4: "it put shorts when I'm wearing a trench coat") ----------

@@ -129,7 +129,7 @@ class TryOnRequest(BaseModel):
 class TryOnResponse(BaseModel):
     image_url: str
     cached: bool
-    mode: Literal["ai", "collage"] = "ai"  # collage = outfit board when AI images are unavailable
+    mode: Literal["ai"] = "ai"  # always a real edit of the user's photo (no collage fallback)
     source_photo_url: Optional[str] = None  # the user's own photo that was edited (body photo or an outfit photo)
 
 

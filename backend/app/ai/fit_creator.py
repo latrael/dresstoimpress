@@ -434,13 +434,13 @@ def get_fit(fit_id: str, user_id: str) -> dict | None:
 
 
 def _try_on(user_id: str, fit: dict) -> dict | None:
-    from .service import try_on
+    from .service import TryOnUnavailable, try_on
 
     product_ids = [p["product"]["id"] for p in fit["pieces"] if p["source"] == "catalog"]
     closet_ids = [p["closet_item"]["id"] for p in fit["pieces"] if p["source"] == "closet"]
     try:
         r = try_on(user_id, product_ids, closet_ids)
-    except (BadModelOutput, ValueError) as e:
+    except (BadModelOutput, ValueError, TryOnUnavailable) as e:
         log.warning("fit try-on failed: %s", e)
         return None
     return {"image_url": r.image_url, "mode": r.mode, "source_photo_url": r.source_photo_url}

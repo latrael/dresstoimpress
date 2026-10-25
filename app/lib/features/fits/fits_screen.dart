@@ -137,7 +137,7 @@ String _slotName(String slot) => switch (slot) {
       _ => slot,
     };
 
-/// The closet pieces of one fit, laid out as a 2-column board (the "outfit board" visual).
+/// The closet pieces of one fit as clean-shot tiles with their labels (never a composite image).
 class _PieceBoard extends StatelessWidget {
   const _PieceBoard({required this.pieces, required this.imageUrl});
   final List<FitPiece> pieces;
@@ -152,19 +152,28 @@ class _PieceBoard extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
-        childAspectRatio: 1,
+        childAspectRatio: .82,
         children: [
           for (final piece in pieces)
-            ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                    color: scheme.surfaceContainerHighest,
-                    child: piece.imageUrl.isEmpty
-                        ? const Center(child: Icon(NicheIcons.checkroom))
-                        : Image.network(imageUrl(piece.imageUrl),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                const Center(child: Icon(NicheIcons.checkroom))))),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(
+                  child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                          width: double.infinity,
+                          color: scheme.surfaceContainerHighest,
+                          child: piece.imageUrl.isEmpty
+                              ? const Center(child: Icon(NicheIcons.checkroom))
+                              : Image.network(imageUrl(piece.imageUrl),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      const Center(child: Icon(NicheIcons.checkroom)))))),
+              const SizedBox(height: 6),
+              Text(piece.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium),
+            ]),
         ]);
   }
 }

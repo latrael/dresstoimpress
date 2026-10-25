@@ -120,19 +120,21 @@ def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str], body
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
-COLLAGE_RETRY_SECONDS = int(os.getenv("COLLAGE_RETRY_SECONDS", "600"))
+class TryOnUnavailable(Exception):
+    """No AI try-on could be made (no key, over budget/cap, model failure or a rejected render). Nothing is
+    cached, so the next call retries; the app shows a placeholder, never a collage."""
 
 
 class TryOnResult(NamedTuple):
     image_url: str
     cached: bool
-    mode: str                    # "ai" = Gemini try-on; "collage" = outfit board fallback
+    mode: str                    # always "ai" (a real Gemini edit of the user's photo)
     source_photo_url: str | None  # the user's photo that was edited (image 1), None without any photo
 
 
 def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> TryOnResult:
-    """Returns TryOnResult(image_url, cached, mode, source_photo_url). mode "ai" = Gemini try-on; "collage" =
-    outfit board fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS).
+    """Returns TryOnResult(image_url, cached, mode, source_photo_url) or raises TryOnUnavailable. There is no
+    collage/outfit-board fallback: a try-on is a real edit of the user's photo or nothing.
     Image 1 is the user's best photo for these garments (tryon_source.pick_source_photo: the body photo or one
     of their own outfit photos that shows a garment of the same category, full body, not cut off), so the v5
     in-place edit has a real region to replace; its url is part of the cache key."""
@@ -151,14 +153,17 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     boxes = src["boxes"] if src else [None] * len(pieces)
     key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
     hit = store.get("tryon_cache", key)
-    if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
-                or mock_mode("GEMINI_API_KEY")):
-        return TryOnResult(hit["image_url"], True, hit.get("mode", "ai"), hit.get("source_photo_url", body))
+    if hit and hit.get("mode", "ai") == "ai":  # old collage entries are a miss
+        return TryOnResult(hit["image_url"], True, "ai", hit.get("source_photo_url", body))
 
+    if not body:
+        raise TryOnUnavailable("no photo of the user")
     if os.getenv("MOCK_AI") == "1":  # UI development: instant placeholder, no downloads
-        store.put("tryon_cache", key, {"image_url": garments[0], "user_id": user_id, "mode": "collage",
+        store.put("tryon_cache", key, {"image_url": garments[0], "user_id": user_id, "mode": "ai",
                                        "at": time.time(), "source_photo_url": body})
-        return TryOnResult(garments[0], False, "collage", body)
+        return TryOnResult(garments[0], False, "ai", body)
+    if mock_mode("GEMINI_API_KEY"):
+        raise TryOnUnavailable("image model unavailable")
 
     TRYON_DIR.mkdir(parents=True, exist_ok=True)
     mode = "ai"
@@ -200,11 +205,8 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
         except BadModelOutput:
             img = None  # quota, billing, budget cap, no image returned
     if img is None:
-        from .collage import outfit_board
-
-        mode = "collage"
-        img = outfit_board(body, garments)
-    name = f"{key}.png" if mode == "ai" else f"{key}-board.png"
+        raise TryOnUnavailable("try-on could not be rendered")  # nothing cached: retried next time
+    name = f"{key}.png"
     (TRYON_DIR / name).write_bytes(img)
     url = f"{PUBLIC_BASE}/static/tryon/{name}"
     store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": mode, "at": time.time(),

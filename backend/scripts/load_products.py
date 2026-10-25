@@ -1,6 +1,6 @@
 """Load the committed real catalog (seed/products.json) into the store. Safe to re-run.
 
-    python -m scripts.load_products                  # upsert 418 H&M/Uniqlo products, drop seed_demo placeholders
+    python -m scripts.load_products                  # upsert the snapshot (H&M/Uniqlo...), drop seed_demo placeholders
     python -m scripts.load_products --replace        # also drop ingest products not in the snapshot
     python -m scripts.load_products --keep-seed-demo # keep the 5 picsum placeholders
 Works with the JSON store and Firestore (USE_FIRESTORE=1).

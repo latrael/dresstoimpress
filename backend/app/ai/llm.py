@@ -396,8 +396,11 @@ def gemini_image(prompt: str, image_urls: list[str]) -> bytes:
         raise BadModelOutput(str(e)) from e
     client = genai.Client()
     parts: list[Any] = []
-    for url in image_urls:
+    for i, url in enumerate(image_urls, start=1):
         data, mime = fetch_image(url)
+        # Label every image in-line so "image 1" in the prompt is unambiguous (without this the model
+        # sometimes answers with a reference photo instead of editing the first one).
+        parts.append(f"IMAGE {i}:" if i == 1 else f"IMAGE {i} (reference only, do not output it):")
         parts.append(types.Part.from_bytes(data=data, mime_type=mime))
     parts.append(prompt)
 

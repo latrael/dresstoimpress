@@ -22,7 +22,7 @@ def test_prompt_without_profile_has_no_body_line():
 def test_prompt_version_bumped_so_old_cache_misses():
     from app.ai import prompts
 
-    assert prompts.TRYON_VERSION == "v7"
+    assert prompts.TRYON_VERSION == "v8"
 
 
 def test_prompt_is_an_in_place_edit_that_keeps_the_background():

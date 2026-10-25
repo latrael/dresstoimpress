@@ -177,7 +177,26 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
                                           shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in")).get("size")
             except Exception:  # sizing is a nicety here, never a reason to skip the try-on
                 size = None
-            img = gemini_image(prompts.tryon_prompt(slots, names, bp.get("build"), size, boxes), [body, *garments])
+            prompt = prompts.tryon_prompt(slots, names, bp.get("build"), size, boxes)
+            img = gemini_image(prompt, [body, *garments])
+            # Gemini sometimes returns the retailer's model shot instead of editing image 1. Check, retry once
+            # with a sterner prompt, and never serve a stranger as "on you".
+            try:
+                from .llm import fetch_image
+                from .tryon_check import looks_like_edit
+
+                src_b = fetch_image(body)[0]
+                ref_b = [fetch_image(g)[0] for g in garments]
+                if not looks_like_edit(img, src_b, ref_b):
+                    log.warning("try_on: output looked like a reference photo, retrying (%s)", key)
+                    img = gemini_image(prompts.TRYON_RETRY_PREFIX + prompt, [body, *garments])
+                    if not looks_like_edit(img, src_b, ref_b):
+                        log.warning("try_on: retry still not an edit of image 1, falling back (%s)", key)
+                        img = None
+            except BadModelOutput:
+                img = None
+            except Exception:  # the check is a guard, never a reason to lose a good render
+                log.exception("try_on: edit check failed")
         except BadModelOutput:
             img = None  # quota, billing, budget cap, no image returned
     if img is None:

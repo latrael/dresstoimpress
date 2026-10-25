@@ -4,8 +4,9 @@ Collection fitcheck_posts: {id, user_id, photo_url, caption, tagged: [FitTag], c
 comments: [{id, user_id, text, created_at}], visibility: "friends" | "public", photo_w, photo_h}.
 photo_w/photo_h: pixel size of an uploaded photo (read from our saved file); for an external URL, the size the
 app sends with the JSON post (else null); null for posts made before the fields existed (the app lays photos out at their own aspect ratio, sprint-3 3.1).
-Inspo is one feed for everyone (council D4): every user sees every post, so friends lists don't filter
-anything here. `visibility` is still stored (the guest /fit wall only shows "public" posts).
+Inspo is one feed for everyone by default (council D4); `scope=friends` narrows it to the viewer's friends
+(`users.friends`, kept mutual by Adam's /users/{id}/friends) plus their own posts. `visibility` is still stored
+(the guest /fit wall only shows "public" posts).
 Post views (feed, detail, create, tag edit) carry `comment_count` (the total) and `comments` = only the
 PREVIEW_COMMENTS newest, oldest -> newest, shaped like GET .../comments items (with `author`); page the rest there.
 """
@@ -174,9 +175,14 @@ def _closet_hook(user_id: str, photo_url: str, tagged: list[dict]) -> None:
 
 
 @router.get("/fitcheck/feed")
-def feed(user_id: str, limit: int = 20, author: Optional[str] = None):
-    """Everyone's posts, newest first; `author` = only that user's posts (tap a name in Inspo)."""
+def feed(user_id: str, limit: int = 20, author: Optional[str] = None,
+         scope: Literal["everyone", "friends"] = "everyone"):
+    """Everyone's posts, newest first; `author` = only that user's posts (tap a name in Inspo);
+    `scope=friends` = only the viewer's friends' posts and their own (filtered before `limit`)."""
     posts = store.list(COL, user_id=author) if author else store.list(COL)
+    if scope == "friends":
+        circle = {user_id, *((store.get("users", user_id) or {}).get("friends") or [])}
+        posts = [p for p in posts if p.get("user_id") in circle]
     posts.sort(key=lambda p: p["created_at"], reverse=True)
     return [_view(p, user_id) for p in posts[:max(1, min(limit, 100))]]
 

@@ -121,6 +121,7 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 25, ~7:45 AM:** Google login end to end (#90 backend, #93 app, #97 client ids; server configured by Adam). `GET /fitcheck/feed?scope=friends` (friends + own posts) for Adam's #99. 777 tests.
 - **Oct 25, ~4:50 AM:** After Adam's #78 (reactions): unliking through the old `POST`/`PUT …/like` also clears the user's emoji, so a re-like is a plain 😍, not a stale 🔥. 731 tests.
 - **Oct 25, ~4:30 AM:** Catalog 3,188 → 3,476: shoes (Princess Polly 60, Kith 48) and accessories (Brandy, Stüssy, Edikted, PP) via 7 capped Shopify pulls (~$0.34). Ingest drops kids' sneakers + lifestyle goods, `SHOE US 7` → `7`, more shoe/jewellery words. Hero photos 1,167. 723 tests.
 - **Oct 25, ~3:20 AM:** Devpost + demo script updated for Ryan's #71 (reels Home, redesign). Shared server checked: still pre-#69/#70 (Claude failing, cap 150, no hero photos); u_nabil hit the 20/day prefetch cap. Handoff to Adam (who now takes all new Ryan tasks).

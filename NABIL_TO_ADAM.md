@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~7:15 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~7:45 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,15 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 7:45 AM: `scope=friends` is live on `GET /fitcheck/feed` (your #99 ask). Switch the app to it when you like
+
+- `GET /fitcheck/feed?user_id=&scope=friends` returns posts by `users[user_id].friends` + the viewer's own, newest first. It's filtered **before** `limit`, so a page fills up.
+- `scope=everyone` (the default) is unchanged. Any other value → 422. `author=` still works and combines with it.
+- Tested in `test_feed_scope_friends`; 777 backend tests pass.
+- Thanks for the server env + SHA-1. Nabil is creating the Android client and adding you as a test user.
 
 ---
 

@@ -301,3 +301,18 @@ def test_json_post_can_send_its_photo_size(client):
     half = client.post("/fitcheck", json={**body, "photo_w": 1080}).json()
     assert (half["photo_w"], half["photo_h"]) == (None, None)  # both or neither
     assert client.post("/fitcheck", json={**body, "photo_w": 0, "photo_h": 10}).status_code == 422
+
+
+def test_feed_scope_friends(client):
+    """scope=friends: the viewer's friends' posts + their own; everyone (default) is unchanged (Adam's #99 ask)."""
+    a, b, c = _post(client, "u_a"), _post(client, "u_b"), _post(client, "u_c")
+    ids = lambda r: {p["id"] for p in r.json()}  # noqa: E731
+    everyone = ids(client.get("/fitcheck/feed", params={"user_id": "u_a", "limit": 100}))
+    assert {a["id"], b["id"], c["id"]} <= everyone
+    friends = ids(client.get("/fitcheck/feed", params={"user_id": "u_a", "scope": "friends", "limit": 100}))
+    assert {a["id"], b["id"]} <= friends and c["id"] not in friends  # Ben is a friend, Cy isn't
+    assert all(p["user_id"] in ("u_a", "u_b") for p in
+               client.get("/fitcheck/feed", params={"user_id": "u_a", "scope": "friends", "limit": 100}).json())
+    lone = client.get("/fitcheck/feed", params={"user_id": "u_nobody", "scope": "friends", "limit": 100}).json()
+    assert lone == []  # no friends, no posts of your own
+    assert client.get("/fitcheck/feed", params={"user_id": "u_a", "scope": "mutuals"}).status_code == 422

@@ -1,9 +1,12 @@
 """Closet v2: a real wardrobe. Every photo (one piece or a whole outfit) becomes standalone pieces.
 
 Per garment: crop by its box -> dedupe against the closet (a hit MERGES: the outfit photo is added to that
-item's `worn_in` instead of making a twin) -> brand read off the photo -> catalog match (same matcher
-shop_fit uses; confident hits set product_id / catalog_image_url / match_confidence) -> display image:
-catalog photo when matched, else a generated clean product shot of the crop (Gemini), else the crop.
+item's `worn_in` instead of making a twin) -> brand read off the photo -> strict catalog match (label nouns +
+colour + pattern must agree; sets product_id / brand / match_confidence for "shop similar" only) -> display
+image: a generated clean product shot of the crop (Gemini), else the crop. Never a catalog photo (sprint-3 §1.2).
+
+Sprint-3 §1.3: an outfit photo (kind "outfit", or a Fit Check post) also makes one `outfits` record
+{id, user_id, photo_url, created_at, piece_ids, source: "closet"|"fitcheck"} and each piece gets `outfit_id`.
 
 Entry points: add_photos() for POST /closet/upload, add_from_fit() after a Fit Check post (best effort,
 off the request thread via add_from_fit_later), reshoot() and edit() for the item routes.
@@ -20,9 +23,10 @@ from ..models import ClosetItem
 from ..store import DATA_DIR, store
 from . import digitize as dig
 from . import service
-from .colors import find_duplicate
+from .colors import find_duplicate, same_color
 from .compat import get_product, list_products
-from .finder import match_score
+from .finder import TYPE_GROUPS, item_type, match_score
+from .finder import _words as finder_words
 from .llm import BadModelOutput, gemini_image, mock_mode
 
 log = logging.getLogger(__name__)
@@ -34,8 +38,8 @@ MAX_PHOTOS = 8
 # finder.match_score: type word 2.0 + color 1.0 + a descriptor 0.5 = a confident "this exact item".
 CONFIDENT_SCORE = 3.5
 SCORE_CEILING = 5.0
-CLEAN_SHOT = ("Product photo of only this garment, centered, plain white background, flat-lay or "
-              "ghost-mannequin style, no person, no text")
+CLEAN_SHOT = ("Product photo of only this garment as worn in the photo: same colour, fabric, print, logo and fit, "
+              "centered on a plain white background, flat-lay or ghost-mannequin, no person, no text.")
 
 
 def _now() -> str:
@@ -57,15 +61,55 @@ def _brand(raw: dict) -> str | None:
 
 # ---------- catalog match ----------
 
+def _product_words(product: dict) -> set[str]:
+    return finder_words(" ".join([product.get("name") or "", *(product.get("colors") or []),
+                                  *(product.get("style_tags") or []), product.get("description") or ""]))
+
+
+def strict_match(item: dict, product: dict) -> bool:
+    """Sprint-3 §1.2 bar: label nouns + colour + pattern must all agree. Type word and category agree
+    (match_score > 0), every descriptor word of the label is in the product text, the colour is the same
+    colour (not just "both neutral"), and the pattern word agrees (a solid piece never matches a
+    product whose name says striped/plaid/floral/graphic, and vice versa)."""
+    tag = {"label": item.get("label"), "category": item.get("category"), "color": item.get("color")}
+    if match_score(tag, product) < CONFIDENT_SCORE:
+        return False
+    have = _product_words(product)
+    want_type = item_type(item.get("label") or "")
+    if want_type is None:
+        return False
+    color_text = str(item.get("color") or "")
+    color_words = finder_words(color_text)
+    descriptors = finder_words(item.get("label") or "") - TYPE_GROUPS[want_type] - color_words
+    if descriptors - have:
+        return False
+    prod_colors = product.get("colors") or []
+    if not (color_words & have or any(same_color(color_text, c) for c in prod_colors)):
+        return False
+    pattern = str(item.get("pattern") or "solid").lower()
+    pattern_words = (PATTERNS - {"solid", "other"})
+    said = {w for w in have if w in pattern_words}
+    if pattern in pattern_words:
+        if pattern not in said:
+            return False
+    elif said:
+        return False
+    return True
+
+
 def catalog_match(item: dict) -> tuple[dict, float] | None:
-    """The catalog product this piece most likely IS, with a 0-1 confidence; None below the bar."""
+    """The catalog product this piece most likely IS, with a 0-1 confidence; None unless the strict bar
+    (label nouns + colour + pattern) is met. Used for `product_id`/`brand` ("shop similar") only: the
+    closet never shows a catalog photo for an owned piece (council decision, sprint-3 §1.2)."""
     tag = {"label": item.get("label"), "category": item.get("category"), "color": item.get("color")}
     best, best_score = None, 0.0
     for p in list_products():
+        if not strict_match(item, p):
+            continue
         s = match_score(tag, p)
         if s > best_score:
             best, best_score = p, s
-    if best is None or best_score < CONFIDENT_SCORE:
+    if best is None:
         return None
     return best, round(min(1.0, best_score / SCORE_CEILING), 3)
 
@@ -88,6 +132,66 @@ def clean_shots_on() -> bool:
     return os.getenv("CLOSET_CLEAN_SHOTS", "1") != "0" and not mock_mode("GEMINI_API_KEY")
 
 
+EDGE = 0.01  # a box coordinate this close to 0 or 1 means the garment runs off the photo (cut off)
+
+
+def _box4(box) -> tuple[float, float, float, float] | None:
+    nb = dig.normalize_box(box, 1, 1) if box is not None else None
+    return nb
+
+
+def sharpness(local_path: Path | None, box=None) -> float:
+    """Laplacian variance of the (boxed) region: higher = sharper. 0.0 when the file isn't ours / unreadable."""
+    if not local_path:
+        return 0.0
+    try:
+        from PIL import Image, ImageFilter
+
+        with Image.open(local_path) as im:
+            im = im.convert("L")
+            nb = _box4(box)
+            if nb:
+                w, h = im.size
+                im = im.crop((int(nb[0] * w), int(nb[1] * h), max(int(nb[0] * w) + 3, int(nb[2] * w)),
+                              max(int(nb[1] * h) + 3, int(nb[3] * h))))
+            im.thumbnail((256, 256))
+            lap = im.filter(ImageFilter.Kernel((3, 3), [0, 1, 0, 1, -4, 1, 0, 1, 0], scale=1, offset=128))
+            try:
+                import numpy as np
+
+                return float(np.var(np.asarray(lap, dtype="float32")))
+            except ImportError:
+                hist = lap.histogram()
+                n = sum(hist) or 1
+                mean = sum(i * c for i, c in enumerate(hist)) / n
+                return sum(c * (i - mean) ** 2 for i, c in enumerate(hist)) / n
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+def source_key(photo_url: str, box) -> tuple[int, float, float]:
+    """Sort key for "which photo shows this garment best": not cut off > box area > sharpness."""
+    from ..static_urls import local_static_path
+
+    nb = _box4(box)
+    if nb is None:
+        return (0, 0.0, 0.0)
+    x0, y0, x1, y1 = nb
+    whole = int(not (x0 <= EDGE or y0 <= EDGE or x1 >= 1 - EDGE or y1 >= 1 - EDGE))
+    area = (x1 - x0) * (y1 - y0)
+    return (whole, round(area, 4), sharpness(local_static_path(photo_url, DATA_DIR), nb))
+
+
+def best_source(item: dict) -> tuple[str, list | None] | None:
+    """(photo_url, box) of the source photo where this piece is clearest, among every `worn_in` entry
+    that has a box for it. None when no entry has a box."""
+    cands = [(w["photo_url"], w["box"]) for w in item.get("worn_in") or []
+             if isinstance(w, dict) and w.get("photo_url") and w.get("box") is not None]
+    if not cands:
+        return None
+    return max(cands, key=lambda c: source_key(*c))
+
+
 def clean_shot(source_url: str) -> str | None:
     """Generated product photo of just this garment (from its crop). None when image AI is off or fails."""
     if not clean_shots_on():
@@ -108,13 +212,56 @@ def clean_shot(source_url: str) -> str | None:
     return _public_url(name)
 
 
+def _source_crop(item: ClosetItem) -> str | None:
+    """Pick the best source photo of this piece (best_source), record it on the item and return a padded crop
+    of that region to feed the clean shot. Falls back to the piece's own crop."""
+    from ..static_urls import local_static_path
+
+    best = best_source(item.model_dump())
+    if best is None:
+        item.clean_source_photo_url, item.clean_source_box = item.crop_image_url, None
+        return item.crop_image_url
+    photo_url, box = best
+    item.clean_source_photo_url, item.clean_source_box = photo_url, list(box) if box is not None else None
+    first = next((w for w in item.worn_in if isinstance(w, dict) and w.get("box") is not None), None)
+    if first and first.get("photo_url") == photo_url and first.get("box") == box and item.crop_image_url:
+        return item.crop_image_url  # the crop we already saved is exactly this region
+    return dig.save_crop(local_static_path(photo_url, DATA_DIR), box) or item.crop_image_url
+
+
 def _set_display(item: ClosetItem) -> None:
-    """display_image_url: catalog photo > generated clean shot of the crop > the crop. image_url mirrors it."""
-    if item.catalog_image_url:
-        item.display_image_url = item.catalog_image_url
-    else:
-        item.display_image_url = clean_shot(item.crop_image_url) or item.crop_image_url
+    """display_image_url: generated clean shot from the best source photo of the piece > the crop.
+    image_url mirrors it. Never the catalog photo: an owned piece always shows the user's own picture
+    (sprint-3 §1.2)."""
+    source = _source_crop(item) if clean_shots_on() else item.crop_image_url
+    item.display_image_url = clean_shot(source) or item.crop_image_url
     item.image_url = item.display_image_url
+
+
+def _better_source_later(item_id: str, old: tuple | None) -> None:
+    """A new worn_in photo may show the piece better than the current clean-shot source: regenerate off
+    the request thread, best effort."""
+    if not clean_shots_on():
+        return
+    doc = store.get("closet_items", item_id)
+    if not doc:
+        return
+    best = best_source(doc)
+    if best is None or old is not None and source_key(*best) <= source_key(*old):
+        return
+
+    def run():
+        try:
+            fresh = store.get("closet_items", item_id)
+            if fresh:
+                reshoot(fresh)
+        except Exception as e:  # noqa: BLE001
+            log.warning("clean shot refresh failed: %s", e)
+
+    try:
+        service._spawn(run)
+    except Exception as e:  # noqa: BLE001
+        log.warning("clean shot refresh not started: %s", e)
 
 
 # ---------- one garment ----------
@@ -139,16 +286,24 @@ def _tag_to_item(user_id: str, raw: dict, photo_url: str) -> ClosetItem:
     )
 
 
-def _wear(item: dict, photo_url: str, source: str) -> dict:
+def _wear(item: dict, photo_url: str, source: str, box=None) -> dict:
     # items from before closet v2 have only image_url: that picture is both their crop and their display
     item.setdefault("crop_image_url", None)
     item["crop_image_url"] = item["crop_image_url"] or item.get("image_url")
     item["display_image_url"] = item.get("display_image_url") or item.get("image_url")
     worn = [w for w in item.get("worn_in") or [] if isinstance(w, dict)]
-    if not any(w.get("photo_url") == photo_url for w in worn):
-        worn.append({"photo_url": photo_url, "at": _now(), "source": source})
+    hit = next((w for w in worn if w.get("photo_url") == photo_url), None)
+    if hit is None:
+        worn.append({"photo_url": photo_url, "at": _now(), "source": source, "box": _box_list(box)})
+    elif hit.get("box") is None and box is not None:
+        hit["box"] = _box_list(box)
     item["worn_in"] = worn
     return item
+
+
+def _box_list(box) -> list[float] | None:
+    nb = _box4(box)
+    return [round(v, 4) for v in nb] if nb else None
 
 
 def add_garment(user_id: str, raw: dict, photo_url: str, local_path: Path | None, source: str,
@@ -161,14 +316,16 @@ def add_garment(user_id: str, raw: dict, photo_url: str, local_path: Path | None
         # the dict in `existing` (so an item added earlier in this same upload shows its new wear too)
         hit = next((e for e in existing if e.get("id") == dup), None) or store.get("closet_items", dup)
         if hit:
-            _wear(hit, photo_url, source)
+            old = (hit.get("clean_source_photo_url"), hit["clean_source_box"]) if hit.get("clean_source_box") else None
+            _wear(hit, photo_url, source, box=crop_box)
             if not hit.get("brand") and draft.brand:
                 hit["brand"] = draft.brand
             store.put("closet_items", hit["id"], hit)
+            _better_source_later(hit["id"], old)  # the new photo may show the piece better: new clean shot
             return hit, True
     # the crop is the piece's own picture; without a usable box the whole photo stands in for it
     draft.crop_image_url = (dig.save_crop(local_path, crop_box) if crop_box is not None else None) or photo_url
-    draft.worn_in = [{"photo_url": photo_url, "at": _now(), "source": source}]
+    draft.worn_in = [{"photo_url": photo_url, "at": _now(), "source": source, "box": _box_list(crop_box)}]
     _apply_match(draft)
     _set_display(draft)
     doc = draft.model_dump()
@@ -211,16 +368,70 @@ def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, 
         else:
             out["added"].append(item)
             existing.append(item)
+    if kind == "outfit" and (out["added"] or out["merged"]):
+        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], source)
     return out
+
+
+# ---------- outfits ----------
+
+OUTFITS = "outfits"
+
+
+def create_outfit(user_id: str, photo_url: str, pieces: list[dict], source: str) -> dict:
+    """One `outfits` record for a whole-fit photo and its pieces; each piece gets `outfit_id` (a piece
+    that already belongs to an older outfit keeps that one: it was merged, not re-made)."""
+    outfit = {"id": f"of_{uuid.uuid4().hex[:8]}", "user_id": user_id, "photo_url": photo_url, "created_at": _now(),
+              "piece_ids": [], "source": source}
+    for p in pieces:
+        if p["id"] in outfit["piece_ids"]:
+            continue
+        outfit["piece_ids"].append(p["id"])
+        if not p.get("outfit_id"):
+            p["outfit_id"] = outfit["id"]
+            saved = store.get("closet_items", p["id"]) or p
+            saved["outfit_id"] = outfit["id"]
+            store.put("closet_items", p["id"], saved)
+    store.put(OUTFITS, outfit["id"], outfit)
+    return outfit
+
+
+def outfit_view(outfit: dict) -> dict:
+    """The record with its pieces embedded (`pieces`: the ClosetItems that still exist, in order)."""
+    pieces = [store.get("closet_items", pid) for pid in outfit.get("piece_ids") or []]
+    return {**outfit, "pieces": [p for p in pieces if p]}
+
+
+def list_outfits(user_id: str) -> list[dict]:
+    """A user's outfits, newest first, pieces embedded."""
+    rows = store.list(OUTFITS, user_id=user_id)
+    rows.sort(key=lambda o: o.get("created_at") or "", reverse=True)
+    return [outfit_view(o) for o in rows]
+
+
+def delete_outfit(user_id: str, outfit_id: str) -> bool:
+    """Remove the outfit record; its pieces stay in the closet (their `outfit_id` is cleared)."""
+    outfit = store.get(OUTFITS, outfit_id)
+    if not outfit or outfit.get("user_id") != user_id:
+        return False
+    for pid in outfit.get("piece_ids") or []:
+        p = store.get("closet_items", pid)
+        if p and p.get("outfit_id") == outfit_id:
+            p["outfit_id"] = None
+            store.put("closet_items", pid, p)
+    store.delete(OUTFITS, outfit_id)
+    return True
 
 
 def add_photos(user_id: str, photos: list[tuple[str, Path | None]], kind: str) -> dict:
     """Several photos (url, local path) with one intent -> one combined {added, merged, skipped}."""
-    out = {"added": [], "merged": [], "skipped": 0}
+    out = {"added": [], "merged": [], "skipped": 0, "outfits": []}
     for url, path in photos[:MAX_PHOTOS]:
         r = add_photo(user_id, url, path, kind)
         out["added"] += r["added"]
         out["skipped"] += r["skipped"]
+        if r.get("outfit"):
+            out["outfits"].append(r["outfit"])
         for m in r["merged"]:
             if not any(x["id"] == m["id"] for x in out["merged"]) and not any(a["id"] == m["id"] for a in out["added"]):
                 out["merged"].append(m)
@@ -245,6 +456,8 @@ def add_from_fit(user_id: str, photo_url: str, local_path: Path | None, tags: li
         (out["merged"] if merged else out["added"]).append(item)
         if not merged:
             existing.append(item)
+    if out["added"] or out["merged"]:
+        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], "fitcheck")
     return out
 
 
@@ -270,7 +483,7 @@ EDITABLE = {"label", "brand", "category", "color", "product_id"}
 
 
 def reshoot(item: dict) -> dict:
-    """Regenerate the clean shot (or re-point at the catalog image when matched)."""
+    """Regenerate the clean shot from the best source photo of the piece. Never a catalog image."""
     ci = ClosetItem(**item)
     ci.crop_image_url = ci.crop_image_url or ci.image_url
     _set_display(ci)
@@ -287,7 +500,8 @@ def edit(item: dict, patch: dict) -> dict:
         if k not in EDITABLE:
             continue
         if k == "product_id":
-            redisplay = True
+            # the picture only changes for pre-sprint-3 items that still show a catalog photo
+            redisplay = bool(item.get("catalog_image_url")) and item.get("display_image_url") == item.get("catalog_image_url")
             if v is None:
                 item["product_id"] = item["catalog_image_url"] = item["match_confidence"] = None
                 continue

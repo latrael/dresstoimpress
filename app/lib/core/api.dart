@@ -96,6 +96,15 @@ class Api {
   Future<PhotoSearchResult> searchPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       PhotoSearchResult.fromJson(await _upload('/search/photo', {'user_id': _user}, bytes, mimeType));
 
+  /// GET /stores: the retailers we carry, biggest first (`StoreInfo{id, name, count, departments}`), for
+  /// onboarding chips and cart headings. Also fills the pure name cache behind [StoreInfo.nameFor], so
+  /// `retailerName(id)` can show server names after one call per app start (fallback: the id).
+  Future<List<StoreInfo>> stores() async {
+    final list = _listOf(await _send('GET', '/stores'), StoreInfo.fromJson);
+    StoreInfo.remember(list);
+    return list;
+  }
+
   Future<Product> product(String id) async => Product.fromJson(await _send('GET', '/products/${_seg(id)}'));
 
   /// GET /products: catalog search + paging (Nabil). Every word of [q] must match; `nextOffset` is null
@@ -199,12 +208,23 @@ class Api {
   Future<Cart> addFitToCart(String fitId) async =>
       Cart.fromJson(await _send('POST', '/fits/${_seg(fitId)}/cart', query: {'user_id': _user}));
 
+  /// POST /ai/fit-score (v2). `targetStyle` scores the outfit as that style (streetwear, minimalist, classic,
+  /// y2k, preppy, athleisure, vintage, business, boho, grunge) instead of its best one; `photoUrl` (a Fit Check
+  /// post's photo) adds the AI photo critic when the server has AI on; `occasion` adds the occasion criterion.
   Future<FitScore> fitScore(
-          {List<FitTag> items = const [], List<String> productIds = const [], List<String> closetItemIds = const []}) async =>
+          {List<FitTag> items = const [],
+          List<String> productIds = const [],
+          List<String> closetItemIds = const [],
+          String? targetStyle,
+          String? photoUrl,
+          String? occasion}) async =>
       FitScore.fromJson(await _send('POST', '/ai/fit-score', body: {
         'items': items.map((t) => t.toJson()).toList(),
         'product_ids': productIds,
         'closet_item_ids': closetItemIds,
+        if (targetStyle != null) 'target_style': targetStyle,
+        if (photoUrl != null) 'photo_url': photoUrl,
+        if (occasion != null) 'occasion': occasion,
       }));
 
   Future<List<FitTag>> tagFit(String imageUrl) async =>
@@ -258,11 +278,23 @@ class Api {
 
   Future<List<ClosetItem>> closet() async => _listOf(await _send('GET', '/closet/${_seg(_user)}'), ClosetItem.fromJson);
 
+  /// Legacy single-photo call. The backend digitizes it like an outfit (every garment lands in the closet)
+  /// but answers with the FIRST piece only. New code uses [uploadClosetPhotos] with `kind: 'outfit'`.
   Future<ClosetItem> uploadClosetItem(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       ClosetItem.fromJson(await _upload('/closet/upload', {'user_id': _user}, bytes, mimeType));
 
   Future<ClosetDeleteResult> deleteClosetItem(String itemId) async =>
       ClosetDeleteResult.fromJson(await _send('DELETE', '/closet/${_seg(_user)}/${_seg(itemId)}'));
+
+  /// GET /closet/{user}/outfits (sprint-3 §1.3): the user's outfits, newest first, each with its
+  /// [ClosetOutfit.pieces] embedded. An outfit is made by every `kind: 'outfit'` upload photo and by every
+  /// Fit Check post. The Pieces view is still [closet].
+  Future<List<ClosetOutfit>> closetOutfits() async =>
+      _listOf(await _send('GET', '/closet/${_seg(_user)}/outfits'), ClosetOutfit.fromJson);
+
+  /// DELETE /closet/{user}/outfits/{id}: removes the outfit only; its pieces stay in the closet.
+  Future<ClosetDeleteResult> deleteClosetOutfit(String outfitId) async =>
+      ClosetDeleteResult.fromJson(await _send('DELETE', '/closet/${_seg(_user)}/outfits/${_seg(outfitId)}'));
 
   Future<String> uploadBodyPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       _str((await _upload('/users/${_seg(_user)}/body-photo', {}, bytes, mimeType))['body_photo_url']);
@@ -424,9 +456,31 @@ class Api {
   Future<List<RankedProduct>> shopFitCheck(String postId) async => _listOf(
       await _send('GET', '/fitcheck/${_seg(postId)}/shop', query: {'user_id': _user}), RankedProduct.fromJson);
 
+  /// GET /fitcheck/{id}/shop?grouped=true: shop the look, one [ShopTagGroup] per tagged piece in post order,
+  /// each with up to 6 similar items (closest match first, the viewer's shop_for respected). A piece with no
+  /// match comes back with an empty `products` list so its chip / pin is still shown.
+  Future<List<ShopTagGroup>> shopFitCheckGrouped(String postId) async => _listOf(
+      await _send('GET', '/fitcheck/${_seg(postId)}/shop', query: {'user_id': _user, 'grouped': 'true'}),
+      ShopTagGroup.fromJson);
+
   Future<LikeResult> likeFitCheck(String postId) async =>
       LikeResult.fromJson(await _send('POST', '/fitcheck/${_seg(postId)}/like', body: {'user_id': _user}));
 
+  /// PUT /fitcheck/{id}/like: **idempotent** like. Sets the current user's like to [liked]; sending the same
+  /// state again changes nothing (safe to retry / coalesce from an optimistic toggle). Returns the resulting
+  /// state and count. Prefer this over [likeFitCheck] (POST toggle) for a tap target.
+  Future<LikeResult> setFitCheckLike(String postId, {required bool liked}) async => LikeResult.fromJson(
+      await _send('PUT', '/fitcheck/${_seg(postId)}/like', body: {'user_id': _user, 'liked': liked}));
+
+  /// GET /fitcheck/{id}/comments: one page of comments, oldest -> newest, each with [FitCheckComment.authorName].
+  /// No [before]: the newest [limit]. [before] = a comment id (the page's `nextBefore`): the [limit] comments
+  /// just older than it. ApiError 422 for an unknown [before].
+  Future<FitCheckCommentsPage> fitCheckComments(String postId, {int limit = 20, String? before}) async =>
+      FitCheckCommentsPage.fromJson(await _send('GET', '/fitcheck/${_seg(postId)}/comments',
+          query: {'user_id': _user, 'limit': '$limit', 'before': before}));
+
+  /// POST .../comments: the new comment (with `author` -> [FitCheckComment.authorName] and the post's new
+  /// [FitCheckComment.commentCount]).
   Future<FitCheckComment> commentFitCheck(String postId, String text) async => FitCheckComment.fromJson(
       await _send('POST', '/fitcheck/${_seg(postId)}/comments', body: {'user_id': _user, 'text': text}));
 

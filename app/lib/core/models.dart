@@ -450,15 +450,23 @@ class SizeAdvice {
 }
 
 class TryOnResponse {
-  const TryOnResponse({required this.imageUrl, required this.cached, this.mode});
+  const TryOnResponse({required this.imageUrl, required this.cached, this.mode, this.sourcePhotoUrl});
   final String imageUrl;
   final bool cached;
   final String? mode; // "ai" = real try-on, "collage" = outfit board
 
+  /// The user's own photo the try-on was edited from (their body photo or one of their outfit photos
+  /// that shows the garment being replaced); null on older servers or when the user has no photo.
+  /// Handy for a before/after toggle.
+  final String? sourcePhotoUrl;
+
   bool get isOutfitBoard => mode == 'collage';
 
-  factory TryOnResponse.fromJson(Json j) =>
-      TryOnResponse(imageUrl: _str(j['image_url']), cached: j['cached'] == true, mode: _strN(j['mode']));
+  factory TryOnResponse.fromJson(Json j) => TryOnResponse(
+      imageUrl: _str(j['image_url']),
+      cached: j['cached'] == true,
+      mode: _strN(j['mode']),
+      sourcePhotoUrl: _strN(j['source_photo_url']));
 }
 
 class LookItem {
@@ -479,12 +487,24 @@ class LookItem {
 
 class CompleteLook {
   const CompleteLook(
-      {required this.items, required this.newItemsTotalUsd, required this.missing, this.anchorId, this.score});
+      {required this.items,
+      required this.newItemsTotalUsd,
+      required this.missing,
+      this.anchorId,
+      this.score,
+      this.fitScore,
+      this.primaryStyle});
   final String? anchorId;
   final List<LookItem> items;
   final double newItemsTotalUsd;
   final List<String> missing;
   final double? score;
+
+  /// Fit Score v2 of the completed outfit (anchor + picks), said as the anchor's style. Null on an old server.
+  final FitScore? fitScore;
+
+  /// The style the look was completed in (the anchor's best style), e.g. 'athleisure'.
+  final String? primaryStyle;
 
   factory CompleteLook.fromJson(Json j) => CompleteLook(
         anchorId: _strN(j['anchor_id']),
@@ -492,6 +512,8 @@ class CompleteLook {
         newItemsTotalUsd: _dbl(j['new_items_total_usd']),
         missing: _strs(j['missing']),
         score: _dblN(j['score']),
+        fitScore: j['fit_score'] is Map ? FitScore.fromJson(_obj(j['fit_score'])) : null,
+        primaryStyle: _strN(j['primary_style']),
       );
 }
 
@@ -510,18 +532,61 @@ class FitScoreBreakdown {
       completeness: _int(j['completeness']));
 }
 
+/// One Fit Score v2 criterion, 0-10 (5 = fine, 8+ earned): color, silhouette, pattern, formality, style,
+/// completeness, layering, occasion (only when an occasion was sent).
+class FitCriterion {
+  const FitCriterion({required this.name, required this.score10, this.note});
+  final String name;
+  final int score10;
+  final String? note;
+
+  factory FitCriterion.fromJson(Json j) =>
+      FitCriterion(name: _str(j['name']), score10: _int(j['score_10']), note: _strN(j['note']));
+}
+
 class FitScore {
-  const FitScore({required this.score, required this.verdict, required this.notes, required this.breakdown});
+  const FitScore({
+    required this.score,
+    required this.verdict,
+    required this.notes,
+    required this.breakdown,
+    this.criteria = const [],
+    this.styleScores = const {},
+    this.primaryStyle,
+    this.rawScore,
+    this.source,
+  });
   final int score;
+
+  /// v2: "68 as streetwear: strong silhouette, palette too busy".
   final String verdict;
   final List<String> notes;
   final FitScoreBreakdown breakdown;
+
+  /// v2 per-criterion scores (empty on an old server).
+  final List<FitCriterion> criteria;
+
+  /// v2: how well the outfit executes each style, 0-100 (streetwear, minimalist, classic, y2k, preppy,
+  /// athleisure, vintage, business, boho, grunge). Empty on an old server.
+  final Map<String, int> styleScores;
+
+  /// v2: the style the headline score is said in ("68 · as streetwear"); null on an old server.
+  final String? primaryStyle;
+  final int? rawScore;
+
+  /// 'rules' or 'rules+ai' (photo critic blended in).
+  final String? source;
 
   factory FitScore.fromJson(Json j) => FitScore(
       score: _int(j['score']),
       verdict: _str(j['verdict']),
       notes: _strs(j['notes']),
-      breakdown: FitScoreBreakdown.fromJson(_obj(j['breakdown'])));
+      breakdown: FitScoreBreakdown.fromJson(_obj(j['breakdown'])),
+      criteria: _list(j['criteria'], FitCriterion.fromJson),
+      styleScores: {for (final e in _obj(j['style_scores']).entries) e.key: _int(e.value)},
+      primaryStyle: _strN(j['primary_style']),
+      rawScore: _intN(j['raw_score']),
+      source: _strN(j['source']));
 }
 
 class StyleShare {
@@ -847,6 +912,9 @@ class ClosetItem {
     this.displayImageUrl,
     this.cropImageUrl,
     this.wornIn = const [],
+    this.outfitId,
+    this.cleanSourcePhotoUrl,
+    this.cleanSourceBox,
   });
 
   final String id;
@@ -866,12 +934,20 @@ class ClosetItem {
   final String? productId; // catalog product this piece was matched to (confident match only)
   final String? catalogImageUrl;
   final double? matchConfidence; // 0-1, with productId
-  /// What the closet grid shows: catalog photo when matched, else a generated clean shot, else the crop.
+  /// What the closet grid shows: a generated clean shot of the user's own crop, else the crop. Never the
+  /// catalog photo (sprint-3 §1.2): [catalogImageUrl] is only for "shop similar".
   final String? displayImageUrl;
   /// The garment cropped out of the photo it was found in (the whole photo when there was no box).
   final String? cropImageUrl;
   /// Outfit photos this piece appeared in (closet uploads and Fit Check posts), oldest first.
   final List<WornIn> wornIn;
+  // ---- sprint-3 §1 (Oct 24, night)
+  /// The [ClosetOutfit] this piece was first digitized from; null for a single-piece upload or a piece
+  /// whose outfit was deleted.
+  final String? outfitId;
+  /// The source photo the clean shot was generated from (the best of [wornIn]) and the garment's box in it.
+  final String? cleanSourcePhotoUrl;
+  final List<double>? cleanSourceBox;
 
   /// [displayImageUrl] when present, else [imageUrl]: always something to render.
   String get shownImageUrl => displayImageUrl ?? imageUrl;
@@ -895,33 +971,71 @@ class ClosetItem {
         displayImageUrl: _strN(j['display_image_url']),
         cropImageUrl: _strN(j['crop_image_url']),
         wornIn: _list(j['worn_in'], WornIn.fromJson),
+        outfitId: _strN(j['outfit_id']),
+        cleanSourcePhotoUrl: _strN(j['clean_source_photo_url']),
+        cleanSourceBox: FitTag._box(j['clean_source_box']),
       );
 }
 
 /// One outfit photo a closet piece was worn in. `source` is `closet` (an outfit upload) or `fitcheck`
-/// (a Fit Check post). `at` is an ISO-8601 UTC string.
+/// (a Fit Check post). `at` is an ISO-8601 UTC string. [box] is where the piece sits in that photo
+/// ([xMin, yMin, xMax, yMax] as 0-1 fractions), null on old entries or when it wasn't boxed.
 class WornIn {
-  const WornIn({required this.photoUrl, this.at, this.source});
+  const WornIn({required this.photoUrl, this.at, this.source, this.box});
   final String photoUrl;
   final String? at;
   final String? source;
+  final List<double>? box;
   DateTime? get time => at == null ? null : DateTime.tryParse(at!);
   factory WornIn.fromJson(Json j) =>
-      WornIn(photoUrl: _str(j['photo_url']), at: _strN(j['at']), source: _strN(j['source']));
+      WornIn(photoUrl: _str(j['photo_url']), at: _strN(j['at']), source: _strN(j['source']), box: FitTag._box(j['box']));
+}
+
+/// `GET /closet/{user}/outfits` entry (sprint-3 §1.3): one whole-fit photo the user uploaded (`source`
+/// `closet`) or posted to Fit Check (`fitcheck`), with the pieces digitized from it. Deleting an outfit
+/// ([Api.deleteClosetOutfit]) keeps its pieces in the closet.
+class ClosetOutfit {
+  const ClosetOutfit({
+    required this.id,
+    required this.photoUrl,
+    this.createdAt,
+    this.source,
+    this.pieceIds = const [],
+    this.pieces = const [],
+  });
+  final String id;
+  final String photoUrl;
+  final String? createdAt; // ISO-8601 UTC
+  final String? source; // 'closet' | 'fitcheck'
+  final List<String> pieceIds;
+  /// The pieces that still exist, in detection order.
+  final List<ClosetItem> pieces;
+  DateTime? get time => createdAt == null ? null : DateTime.tryParse(createdAt!);
+  factory ClosetOutfit.fromJson(Json j) => ClosetOutfit(
+        id: _str(j['id']),
+        photoUrl: _str(j['photo_url']),
+        createdAt: _strN(j['created_at']),
+        source: _strN(j['source']),
+        pieceIds: _strs(j['piece_ids']),
+        pieces: _list(j['pieces'], ClosetItem.fromJson),
+      );
 }
 
 /// `POST /closet/upload` result: new pieces, existing pieces a photo matched (the photo was added to
 /// their [ClosetItem.wornIn] instead of making a twin), and photos that weren't clothing.
 class ClosetUploadResult {
-  const ClosetUploadResult({required this.added, required this.merged, required this.skipped});
+  const ClosetUploadResult({required this.added, required this.merged, required this.skipped, this.outfits = const []});
   final List<ClosetItem> added;
   final List<ClosetItem> merged;
   final int skipped;
+  /// One [ClosetOutfit] per outfit photo (kind `outfit`) that had at least one garment; empty for pieces.
+  final List<ClosetOutfit> outfits;
   List<ClosetItem> get all => [...added, ...merged];
   factory ClosetUploadResult.fromJson(Json j) => ClosetUploadResult(
         added: _list(j['added'], ClosetItem.fromJson),
         merged: _list(j['merged'], ClosetItem.fromJson),
         skipped: _int(j['skipped']),
+        outfits: _list(j['outfits'], ClosetOutfit.fromJson),
       );
 }
 
@@ -989,20 +1103,63 @@ class FitTag {
       };
 }
 
+/// One tagged piece of a Fit Check post with its own similar items (`GET /fitcheck/{id}/shop?grouped=true`).
+/// Groups come back in post (tag) order; a piece with no match yet has an empty [products] so its chip /
+/// pin can still be shown. [tag] carries only label, category, color, box and productId.
+class ShopTagGroup {
+  const ShopTagGroup({required this.tag, this.products = const []});
+  final FitTag tag;
+  final List<RankedProduct> products; // up to 6, closest match first
+
+  bool get isEmpty => products.isEmpty;
+
+  factory ShopTagGroup.fromJson(Json j) =>
+      ShopTagGroup(tag: FitTag.fromJson(_obj(j['tag'])), products: _list(j['products'], RankedProduct.fromJson));
+}
+
 class FitCheckComment {
-  const FitCheckComment({required this.id, required this.userId, required this.text, this.createdAt, this.commentCount});
+  const FitCheckComment(
+      {required this.id, required this.userId, required this.text, this.createdAt, this.commentCount, String? authorName})
+      : _authorName = authorName;
   final String id;
   final String userId;
   final String text;
   final String? createdAt;
   final int? commentCount; // only on the POST .../comments response
+  final String? _authorName;
 
-  factory FitCheckComment.fromJson(Json j) => FitCheckComment(
-      id: _str(j['id']),
-      userId: _str(j['user_id']),
-      text: _str(j['text']),
-      createdAt: _strN(j['created_at']),
-      commentCount: _intN(j['comment_count']));
+  /// The commenter's display name (`author.display_name`); the user id when the server sent no author
+  /// (comments embedded in a post from an older server).
+  String get authorName => _authorName ?? userId;
+
+  factory FitCheckComment.fromJson(Json j) {
+    final author = _obj(j['author']);
+    return FitCheckComment(
+        id: _str(j['id']),
+        userId: _str(j['user_id']),
+        text: _str(j['text']),
+        createdAt: _strN(j['created_at']),
+        commentCount: _intN(j['comment_count']),
+        authorName: _strN(author['display_name'] ?? author['id']));
+  }
+}
+
+/// One page of a post's comments (`GET /fitcheck/{id}/comments`), oldest -> newest. [nextBefore] is the
+/// cursor (a comment id) for the next, older page; null when there is nothing older.
+class FitCheckCommentsPage {
+  const FitCheckCommentsPage({required this.postId, this.commentCount, this.comments = const [], this.nextBefore});
+  final String postId;
+  final int? commentCount; // total on the post
+  final List<FitCheckComment> comments;
+  final String? nextBefore;
+
+  bool get hasMore => nextBefore != null;
+
+  factory FitCheckCommentsPage.fromJson(Json j) => FitCheckCommentsPage(
+      postId: _str(j['post_id']),
+      commentCount: _intN(j['comment_count']),
+      comments: _list(j['comments'], FitCheckComment.fromJson),
+      nextBefore: _strN(j['next_before']));
 }
 
 class FitCheckPost {
@@ -1020,6 +1177,8 @@ class FitCheckPost {
     this.likeCount,
     this.likedByMe,
     this.commentCount,
+    this.photoWidth,
+    this.photoHeight,
   });
 
   final String id;
@@ -1035,6 +1194,14 @@ class FitCheckPost {
   final int? likeCount;
   final bool? likedByMe;
   final int? commentCount;
+
+  /// Pixel size of the photo (`photo_w` / `photo_h`): measured by the server for uploads, the size the app
+  /// sent for external URLs. Both null on posts from before the fields existed (lay the photo out at its
+  /// own ratio, sprint-3 3.1). [photoAspectRatio] = width / height, null when unknown or invalid.
+  final int? photoWidth;
+  final int? photoHeight;
+  double? get photoAspectRatio =>
+      photoWidth != null && photoHeight != null && photoWidth! > 0 && photoHeight! > 0 ? photoWidth! / photoHeight! : null;
 
   factory FitCheckPost.fromJson(Json j) {
     final author = _obj(j['author']);
@@ -1052,7 +1219,44 @@ class FitCheckPost {
       likeCount: _intN(j['like_count']),
       likedByMe: _boolN(j['liked_by_me']),
       commentCount: _intN(j['comment_count']),
+      photoWidth: _intN(j['photo_w']),
+      photoHeight: _intN(j['photo_h']),
     );
+  }
+}
+
+/// One retailer we carry (`GET /stores`): [count] in-stock products, [departments] in-stock products per
+/// `men` / `women` / `unisex`. [Api.stores] fills the name cache behind [StoreInfo.nameFor].
+class StoreInfo {
+  const StoreInfo({required this.id, required this.name, this.count = 0, this.departments = const {}});
+  final String id;
+  final String name;
+  final int count;
+  final Map<String, int> departments;
+
+  factory StoreInfo.fromJson(Json j) {
+    final id = _str(j['id']);
+    return StoreInfo(
+        id: id,
+        name: _str(j['name'], id),
+        count: _int(j['count']),
+        departments: {for (final e in _obj(j['departments']).entries) e.key: _int(e.value)});
+  }
+
+  static final Map<String, String> _names = {};
+
+  /// Server names learned from the last [Api.stores] call (`[StoreInfo.remember]`); the id itself before
+  /// that or for a retailer the server never listed. Pure: no network, safe to call from `build`.
+  static String nameFor(String id) => _names[id] ?? id;
+
+  /// Whether [nameFor] knows a server name for [id].
+  static bool knows(String id) => _names.containsKey(id);
+
+  /// Replaces the name cache with [stores] (called by [Api.stores]).
+  static void remember(Iterable<StoreInfo> stores) {
+    _names
+      ..clear()
+      ..addEntries(stores.where((s) => s.id.isNotEmpty).map((s) => MapEntry(s.id, s.name)));
   }
 }
 
@@ -1112,6 +1316,7 @@ class OutfitFit {
     this.occasion,
     this.tryOnUrl,
     this.tryOnMode,
+    this.tryOnSourcePhotoUrl,
   });
   final String id;
   final String name;
@@ -1122,6 +1327,7 @@ class OutfitFit {
   final int closetCount;
   final String? tryOnUrl;
   final String? tryOnMode; // "ai" | "collage"
+  final String? tryOnSourcePhotoUrl; // the user's photo the try-on was edited from (see TryOnResponse.sourcePhotoUrl)
 
   List<FitPiece> get newPieces => pieces.where((p) => !p.fromCloset).toList();
 
@@ -1137,6 +1343,7 @@ class OutfitFit {
       closetCount: _int(j['closet_count']),
       tryOnUrl: t == null ? null : _strN(t['image_url']),
       tryOnMode: t == null ? null : _strN(t['mode']),
+      tryOnSourcePhotoUrl: t == null ? null : _strN(t['source_photo_url']),
     );
   }
 }

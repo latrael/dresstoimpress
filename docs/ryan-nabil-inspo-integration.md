@@ -1,3 +1,9 @@
+# Production activation — October 24
+
+Adam’s #58 is merged and InspoBindings.fromApi now supplies production callbacks by default. Explicit-state PUT likes and cursor GET comments run through the shared Api; comments use authorName and post layout uses photoWidth/Height. A single Comments control opens the sheet; the composer lives inside it. Tested actual client request methods/cursors, author parsing and photo metadata alongside existing concurrency/draft/dedup cases. The earlier preparation/blocker notes below are historical.
+
+---
+
 # Nabil's Inspo handoff: application integration status
 
 Source: NABIL_TO_RYAN.md (~7:50 PM), backend PR #55 merged at b602eb3.

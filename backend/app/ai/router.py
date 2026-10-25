@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitCreateRequest, FitScoreRequest, PairRequest,
+from ..models import (BodyProfileUpdate, ClosetItem, ClosetOutfit, CompleteLookRequest, FitCreateRequest, FitScoreRequest, PairRequest,
                       PairResult, ShopFitRequest,
                       SizeRequest, TagFitRequest, TagRequest, TryOnRequest, TryOnResponse, VibeRequest)
 from ..store import DATA_DIR, store
@@ -93,9 +93,11 @@ async def closet_upload(user_id: str = Form(...), file: Optional[UploadFile] = F
     """Closet v2 upload. 1-8 `files` parts + `kind` = "piece" (each photo is one garment) or "outfit"
     (each photo is a whole fit: every garment is detected and cropped; default) ->
     {"added": [ClosetItem], "merged": [ClosetItem] (existing items a photo matched; the photo was added to
-    their `worn_in`), "skipped": n}. Each item stands alone: `display_image_url` (catalog photo when matched,
-    else a generated clean shot, else the crop), `crop_image_url`, `brand`, `product_id`, `worn_in`.
-    Backward compat: a single `file` part with no `kind` (the old app call) returns that one ClosetItem."""
+    their `worn_in`), "skipped": n, "outfits": [outfit record per outfit photo]}. Each item stands alone:
+    `display_image_url` (a generated clean shot of the user's own crop, else the crop; never a catalog photo),
+    `crop_image_url`, `brand`, `product_id`, `worn_in`, `outfit_id`.
+    Backward compat: a single `file` part with no `kind` (the old app call) is digitized like an outfit (every
+    garment becomes an item) but the response is the first ClosetItem only. Send `kind` to get them all."""
     from . import closet
 
     legacy = file is not None and not files and kind is None
@@ -107,7 +109,6 @@ async def closet_upload(user_id: str = Form(...), file: Optional[UploadFile] = F
         raise HTTPException(422, "send 1-8 image parts named files (or one named file)")
     if len(uploads) > closet.MAX_PHOTOS:
         raise HTTPException(413, f"at most {closet.MAX_PHOTOS} photos per upload")
-    kind = "piece" if legacy else kind
     photos = [await _save_photo(u, upright=kind == "outfit") for u in uploads]
     try:
         out = closet.add_photos(user_id, photos, kind)
@@ -125,7 +126,7 @@ async def closet_upload(user_id: str = Form(...), file: Optional[UploadFile] = F
 @router.patch("/closet/{user_id}/{item_id}")
 def closet_edit(user_id: str, item_id: str, patch: dict):
     """Edit one piece: {label?, brand?, category?, color?, product_id?}. `product_id: null` clears the catalog
-    match and the display image goes back to the clean shot / crop; a product id links it (display = catalog photo)."""
+    match (the picture never changes: owned pieces always show the user's own photo); a product id links it for "shop similar"."""
     from . import closet
 
     item = _own_item(user_id, item_id)
@@ -150,6 +151,26 @@ def _own_item(user_id: str, item_id: str) -> dict:
     if item.get("user_id") != user_id:
         raise HTTPException(403, "not your closet item")
     return item
+
+
+@router.get("/closet/{user_id}/outfits", response_model=list[ClosetOutfit])
+def closet_outfits(user_id: str):
+    """The user's outfits (whole-fit photos: closet uploads with kind=outfit and Fit Check posts), newest
+    first, each with its `pieces` (ClosetItems) embedded. Sprint-3 §1.3."""
+    from . import closet
+
+    return closet.list_outfits(user_id)
+
+
+@router.delete("/closet/{user_id}/outfits/{outfit_id}")
+def closet_outfit_delete(user_id: str, outfit_id: str):
+    """Remove an outfit record. Its pieces stay in the closet (their `outfit_id` is cleared). 404 if it
+    isn't that user's."""
+    from . import closet
+
+    if not closet.delete_outfit(user_id, outfit_id):
+        raise HTTPException(404, "unknown outfit")
+    return {"deleted": outfit_id}
 
 
 @router.get("/closet/{user_id}", response_model=list[ClosetItem])
@@ -427,12 +448,12 @@ def closet_tag(req: TagRequest):
 @router.post("/tryon", response_model=TryOnResponse)
 def tryon(req: TryOnRequest):
     try:
-        url, cached, mode = service.try_on(req.user_id, req.product_ids, req.closet_item_ids)
+        r = service.try_on(req.user_id, req.product_ids, req.closet_item_ids)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except BadModelOutput as e:
         raise _ai_down("try-on", e)
-    return TryOnResponse(image_url=url, cached=cached, mode=mode)
+    return TryOnResponse(image_url=r.image_url, cached=r.cached, mode=r.mode, source_photo_url=r.source_photo_url)
 
 
 @router.post("/pair", response_model=list[PairResult])
@@ -452,6 +473,8 @@ def shop_fit(req: ShopFitRequest):
             tagged = service.tag_fit(req.photo_url)
         except BadModelOutput as e:
             raise _ai_down("outfit tagging", e)
+    if req.grouped:
+        return service.shop_fit_grouped(req.viewer_id, tagged)
     return service.shop_fit(req.viewer_id, tagged)
 
 
@@ -552,8 +575,11 @@ def complete_look_route(req: CompleteLookRequest):
 
 @router.post("/ai/fit-score")
 def fit_score(req: FitScoreRequest):
-    """Fit Score badge: {score 0-100, verdict, notes, breakdown}. Rules only: free and instant.
-    Send a Fit Check post's `tagged` as `items`, or ids for a complete-the-look / closet outfit."""
+    """Fit Score v2 badge: {score 0-100, verdict "68 as streetwear: ...", notes, breakdown (v1 keys), criteria
+    [{name, score_10, note}], style_scores {style: 0-100}, primary_style, raw_score, source}. Calibrated rubric,
+    rules only unless `photo_url` is given with AI on (one cached Claude vision critique, blended 50/50).
+    Send a Fit Check post's `tagged` as `items` (+ its `photo_url`), or ids for a complete-the-look / closet outfit.
+    `target_style` scores the outfit as that style; `occasion` adds the occasion criterion."""
     from .compat import get_product
     from .outfit_score import score_outfit
 
@@ -570,7 +596,7 @@ def fit_score(req: FitScoreRequest):
         if not c:
             raise HTTPException(404, f"unknown closet item {cid}")
         items.append(c)
-    return score_outfit(items)
+    return score_outfit(items, occasion=req.occasion, target_style=req.target_style, photo_url=req.photo_url)
 
 
 

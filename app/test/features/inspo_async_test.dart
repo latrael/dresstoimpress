@@ -33,6 +33,49 @@ Future<void> mount(WidgetTester t, Widget child) async {
 }
 
 void main() {
+  test('production bindings use explicit likes and paged comments with authors',
+      () async {
+    final requests = <http.Request>[];
+    final api = Api(client: MockClient((r) async {
+      requests.add(r);
+      return http.Response(
+          jsonEncode(r.method == 'PUT'
+              ? {'post_id': 'p', 'liked': true, 'like_count': 3}
+              : {
+                  'post_id': 'p',
+                  'comment_count': 8,
+                  'next_before': 'c1',
+                  'comments': [
+                    {
+                      'id': 'c2',
+                      'user_id': 'u2',
+                      'text': 'Nice',
+                      'author': {'id': 'u2', 'display_name': 'Ryan'}
+                    }
+                  ]
+                }),
+          200);
+    }));
+    final bindings = InspoBindings.fromApi(api);
+    expect((await bindings.setLike!('p', true)).liked, true);
+    expect(requests.first.method, 'PUT');
+    expect(jsonDecode(requests.first.body)['liked'], true);
+    final page = await bindings.commentsForPost!('p')('c3');
+    expect(requests.last.url.queryParameters['before'], 'c3');
+    expect(requests.last.url.queryParameters['limit'], '20');
+    expect(page.total, 8);
+    expect(page.nextBefore, 'c1');
+    expect(bindings.commentAuthor!(page.comments.single), 'Ryan');
+    final post = FitCheckPost.fromJson({
+      'id': 'p',
+      'user_id': 'u2',
+      'photo_url': '',
+      'photo_w': 900,
+      'photo_h': 1200
+    });
+    expect(bindings.photoSize!(post), (width: 900.0, height: 1200.0));
+  });
+
   testWidgets(
       'overlapping newest-page load and send deduplicate and keep total accurate',
       (t) async {
@@ -196,6 +239,8 @@ void main() {
                   calls.add(liked);
                   return pending.future;
                 }))));
+    expect(find.text('Add a comment…'), findsNothing);
+    expect(find.textContaining('Comments ('), findsOneWidget);
     await t.ensureVisible(find.byKey(const ValueKey('like-p')));
     await t.pumpAndSettle();
     await t.tap(find.byKey(const ValueKey('like-p')));

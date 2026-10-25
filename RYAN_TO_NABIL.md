@@ -1,3 +1,17 @@
+# Inspo paging activated — ready for two-comment previews
+
+PR #56 now uses Adam’s merged shared-client helpers in production: explicit PUT likes, GET comments pages (20 with before cursor), author display names and authoritative photo sizes. Route-level mock transport plus UI/concurrency checks pass. Once #56 is merged, the app is ready for feed/detail to return only the two newest comments plus comment_count. This supersedes the older NOT ready notes below. One Comments entry opens the sheet; Add a comment appears only inside it. No live social writes.
+
+---
+
+# Nabil Inspo handoff: UI ready to integrate, NOT ready for payload trim — Oct 24
+
+Draft [PR #56](https://github.com/latrael/dresstoimpress/pull/56), `fceeea4`, contains tested instant-like queue/rollback, paged comment UI with names/dedup/retry/scroll anchoring, accurate totals and metadata sizing. 139 tests/analysis/web release pass. But Adam's current Api/model still lacks PUT-like, GET-page, author and photo-dimension accessors, so production callbacks remain unwired and the old safe runtime path remains.
+
+**Keep full comments in feed/detail for now.** This is not the ready-to-trim signal. I requested the exact client additions from Adam in RYAN_TO_ADAM.md; once wired and route-tested, I will post the explicit ready signal here. No live writes or duplicate HTTP adapter; shared-client ownership respected. Dynamic stores client also remains pending.
+
+---
+
 # Ryan acting on your 7:50 Inspo handoff — Oct 24
 
 Read and synced PR #55. Preparing optimistic explicit-state likes, paged comment sheet and authoritative photo dimensions. Adam's core currently lacks all three client additions, requested in RYAN_TO_ADAM.md; preserving shared-client ownership. **Do not trim feed/detail comments to two yet.** I'll write an explicit ready note here when the app actually loads GET comments pages and has been validated. Existing comment sheet remains usable from the current full payload meanwhile. No automatic retries on toggle POST.

@@ -75,9 +75,24 @@ class ClosetItem(BaseModel):
     product_id: Optional[str] = None       # catalog product this piece was matched to (confident match only)
     catalog_image_url: Optional[str] = None
     match_confidence: Optional[float] = None  # 0-1, set with product_id
-    display_image_url: Optional[str] = None   # what to show: catalog image > generated clean shot > crop; = image_url
+    display_image_url: Optional[str] = None   # what to show: generated clean shot > crop, never the catalog photo; = image_url
     crop_image_url: Optional[str] = None      # the garment cropped out of the photo it was found in
-    worn_in: list[dict] = []                  # [{photo_url, at, source: "closet"|"fitcheck"}] outfit photos it appeared in
+    worn_in: list[dict] = []                  # [{photo_url, at, source: "closet"|"fitcheck", box}] outfit photos it appeared in
+    # sprint-3 §1 (Oct 24, night)
+    outfit_id: Optional[str] = None           # the `outfits` record this piece was first digitized from (None: single piece)
+    clean_source_photo_url: Optional[str] = None  # the source photo the clean shot was generated from (best of worn_in)
+    clean_source_box: Optional[list[float]] = None  # that garment's box in it, 0-1 fractions [x0, y0, x1, y1]
+
+
+class ClosetOutfit(BaseModel):
+    """One whole-fit photo in the closet and the pieces digitized from it (sprint-3 §1.3)."""
+    id: str
+    user_id: str
+    photo_url: str
+    created_at: str
+    piece_ids: list[str] = []
+    source: Literal["closet", "fitcheck"] = "closet"
+    pieces: list[ClosetItem] = []             # embedded by GET /closet/{user}/outfits (pieces that still exist)
 
 
 class User(BaseModel):
@@ -111,6 +126,7 @@ class TryOnResponse(BaseModel):
     image_url: str
     cached: bool
     mode: Literal["ai", "collage"] = "ai"  # collage = outfit board when AI images are unavailable
+    source_photo_url: Optional[str] = None  # the user's own photo that was edited (body photo or an outfit photo)
 
 
 class PairRequest(BaseModel):
@@ -161,6 +177,7 @@ class ShopFitRequest(BaseModel):
     viewer_id: str
     tagged: list[FitTag] = []
     photo_url: Optional[str] = None  # if set and tagged is empty, items are auto-tagged from the photo
+    grouped: bool = False  # true: one {tag, products} group per tagged piece (up to 6 each) instead of a flat list
 
 
 class SizeRequest(BaseModel):
@@ -210,6 +227,10 @@ class FitScoreRequest(BaseModel):
     items: list[dict] = []
     product_ids: list[str] = []
     closet_item_ids: list[str] = []
+    # Fit Score v2
+    occasion: Optional[str] = None      # "date night", "class": adds the occasion criterion
+    target_style: Optional[str] = None  # score AS this style instead of the best-fitting one (outfit_score.STYLES)
+    photo_url: Optional[str] = None     # Fit Check post photo: one Claude vision critique blended with the rules
 
 
 class TagFitRequest(BaseModel):

@@ -87,7 +87,8 @@ class _SocialFeedState extends State<SocialFeed> {
                       FitPostCard(
                           key: ValueKey(post.id),
                           post: post,
-                          bindings: widget.bindings,
+                          bindings: widget.bindings ??
+                              InspoBindings.fromApi(widget.store.api),
                           api: widget.store.api,
                           onShop: widget.onShop,
                           onTagSearch: widget.onTagSearch,
@@ -222,6 +223,8 @@ class _FitPostCardState extends State<FitPostCard> {
   String? error;
   bool showTags = false;
   bool liking = false;
+  InspoBindings get bindings =>
+      widget.bindings ?? InspoBindings.fromApi(widget.api);
   OptimisticLike? instantLike;
   late int commentCount = post.commentCount ?? comments.length;
   @override
@@ -231,11 +234,11 @@ class _FitPostCardState extends State<FitPostCard> {
   }
 
   void configureLike() {
-    if (widget.bindings?.setLike == null) return;
+    if (bindings.setLike == null) return;
     instantLike = OptimisticLike(
         liked: liked,
         count: count,
-        write: (value) => widget.bindings!.setLike!(post.id, value));
+        write: (value) => bindings.setLike!(post.id, value));
     instantLike!.addListener(likeChanged);
   }
 
@@ -280,12 +283,12 @@ class _FitPostCardState extends State<FitPostCard> {
       commentCount = post.commentCount ?? comments.length;
       instantLike?.acceptServer(liked, count);
     }
-    if (instantLike != null && widget.bindings?.setLike == null) {
+    if (instantLike != null && bindings.setLike == null) {
       instantLike!.removeListener(likeChanged);
       instantLike!.dispose();
       instantLike = null;
     }
-    if (instantLike == null && widget.bindings?.setLike != null) {
+    if (instantLike == null && bindings.setLike != null) {
       configureLike();
     }
   }
@@ -347,8 +350,8 @@ class _FitPostCardState extends State<FitPostCard> {
           api: widget.api,
           postId: post.id,
           initial: comments,
-          loadPage: widget.bindings?.commentsForPost?.call(post.id),
-          authorLabel: widget.bindings?.commentAuthor,
+          loadPage: bindings.commentsForPost?.call(post.id),
+          authorLabel: bindings.commentAuthor,
           onTotal: (total) {
             if (mounted) setState(() => commentCount = total);
           },
@@ -398,8 +401,8 @@ class _FitPostCardState extends State<FitPostCard> {
                 : null),
         NaturalPhotoFrame(
             url: widget.api.imageProxyUrl(post.photoUrl),
-            width: widget.bindings?.photoSize?.call(post)?.width,
-            height: widget.bindings?.photoSize?.call(post)?.height,
+            width: bindings.photoSize?.call(post)?.width,
+            height: bindings.photoSize?.call(post)?.height,
             child: Semantics(
                 container: true,
                 explicitChildNodes: true,
@@ -493,10 +496,6 @@ class _FitPostCardState extends State<FitPostCard> {
             onPressed: openComments,
             icon: const Icon(Icons.chat_bubble_outline),
             label: Text('Comments ($commentCount)')),
-        Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
-                onPressed: openComments, child: const Text('Add a comment…'))),
         const SizedBox(height: 16),
         if (busy != null) const LinearProgressIndicator(),
         if (instantLike?.error != null) Text(instantLike!.error!),

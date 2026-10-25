@@ -90,7 +90,7 @@ Owners: Nabil (auth routes + token check), Adam (core `Api` sends the token), Ry
 - **Nabil** writes `scripts/rebuild_db.py`: `--dry-run` prints what would be deleted with counts; the real run **first copies the data dir to `data.bak-<timestamp>`**, then resets the collections above, then runs `load_products --replace`. It works on the JSON store and Firestore.
 - **Adam** runs it on the shared server **after the council says go**, then `tag_catalog --summaries-only` (free with the kept cache) and restarts. Nabil does the same on the backup.
 - **Then:** re-create the team accounts and the demo setup (body scan + closet) for whoever demos, so size badges and pairing work. `warm_demo` after.
-- **[decide] When:** tonight before login lands (everyone re-onboards twice), or right after login lands (once). **Recommendation: after login.**
+- **Decided: now** (before the dry run). `scripts/rebuild_db.py` is done and tested on Nabil's backup (7:16 PM). Adam runs it on the shared server: commands in `NABIL_TO_ADAM.md` 7:20 PM.
 
 ---
 

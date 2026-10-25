@@ -208,3 +208,5 @@ Commerce routes (cart, checkout, wishlist, Fit Check posts, onboarding, users, s
 - `FeedCard` now has `heroImageUrl` (null → use `product.imageUrl`), `closetPicks` (`ClosetPick{id,label,category,imageUrl}`, 0–4) and `tryOn` (`TryOnState{status,imageUrl,mode}` + `isReady/isPending/needsPhoto/isUnavailable`; null → treat as none).
 - `Api.prefetchTryOns(productIds)` (posts 1–3 on load, then n+1..n+3) and `Api.tryOnStatus(productIds)` (poll ~3 s while a visible post is pending).
 - Mocks: `app/lib/core/mocks.dart` → `mockReelsFeed()` (4 cards: ready / pending / needs_photo / unavailable). Mock photos are Unsplash URLs; add `images.unsplash.com` to the image allowlist if you render them through it.
+
+**Sun 1:15 AM, live `tryon` states:** on the shared server the feed cards start as `none`; after `prefetchTryOns` they go `pending` → `ready` (`mode: "ai"`, `image_url` set) in ~15–20 s. `needs_photo` appears for a user with no photo of themselves; `unavailable` (with the collage URL) after 20 prefetches in a day. All four are in `mockReelsFeed()`.

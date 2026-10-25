@@ -39,7 +39,7 @@ class PostCreate(BaseModel):
     photo_url: str
     caption: str = Field("", max_length=500)
     tagged: list[FitTag] = []
-    visibility: Literal["friends", "public"] = "friends"
+    visibility: Literal["friends", "public"] = "public"  # the post sheet picks Friends | Everyone
     photo_w: Optional[int] = Field(None, ge=1, le=20000)  # JSON posts only: the size the app knows; uploads are measured
     photo_h: Optional[int] = Field(None, ge=1, le=20000)
 
@@ -180,9 +180,11 @@ def feed(user_id: str, limit: int = 20, author: Optional[str] = None,
     """Everyone's posts, newest first; `author` = only that user's posts (tap a name in Inspo);
     `scope=friends` = only the viewer's friends' posts and their own (filtered before `limit`)."""
     posts = store.list(COL, user_id=author) if author else store.list(COL)
+    circle = {user_id, *((store.get("users", user_id) or {}).get("friends") or [])}
     if scope == "friends":
-        circle = {user_id, *((store.get("users", user_id) or {}).get("friends") or [])}
         posts = [p for p in posts if p.get("user_id") in circle]
+    else:  # everyone: friends-only posts stay inside the author's circle (own posts always show)
+        posts = [p for p in posts if p.get("visibility", "public") != "friends" or p.get("user_id") in circle]
     posts.sort(key=lambda p: p["created_at"], reverse=True)
     return [_view(p, user_id) for p in posts[:max(1, min(limit, 100))]]
 

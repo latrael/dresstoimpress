@@ -48,3 +48,35 @@ def test_remove_is_mutual(client):
 def test_bad_code_404_and_self_422(client):
     assert client.post("/users/u_adam/friends", json={"handle_or_code": "NCH-ZZZZ"}).status_code == 404
     assert client.post("/users/u_adam/friends", json={"handle_or_code": "adam"}).status_code == 422
+
+
+def _post(client, uid, visibility):
+    r = client.post("/fitcheck", json={"user_id": uid, "photo_url": "https://example.com/p.jpg",
+                                       "caption": visibility, "visibility": visibility})
+    assert r.status_code == 200, r.text
+    return r.json()["id"]
+
+
+def test_post_visibility_defaults_to_public(client):
+    r = client.post("/fitcheck", json={"user_id": "u_adam", "photo_url": "https://example.com/p.jpg"})
+    assert r.json()["visibility"] == "public"
+
+
+def test_everyone_scope_hides_friends_only_posts_from_non_friends(client):
+    _post(client, "u_nabil", "friends")
+    _post(client, "u_nabil", "public")
+    ids = [p["caption"] for p in client.get("/fitcheck/feed", params={"user_id": "u_ryan"}).json()]
+    assert ids == ["public"]  # ryan is not nabil's friend
+    assert client.get("/fitcheck/feed", params={"user_id": "u_ryan", "scope": "friends"}).json() == []
+
+
+def test_friends_see_friends_only_posts_and_own_posts_always_show(client):
+    client.post("/users/u_adam/friends", json={"handle_or_code": "nabil"})
+    _post(client, "u_nabil", "friends")
+    _post(client, "u_adam", "friends")
+    caps = {p["user_id"] for p in client.get("/fitcheck/feed", params={"user_id": "u_adam"}).json()}
+    assert caps == {"u_nabil", "u_adam"}
+    caps = {p["user_id"] for p in client.get("/fitcheck/feed", params={"user_id": "u_adam", "scope": "friends"}).json()}
+    assert caps == {"u_nabil", "u_adam"}
+    own = {p["user_id"] for p in client.get("/fitcheck/feed", params={"user_id": "u_ryan"}).json()}
+    assert own == set()  # ryan: not a friend, sees neither friends-only post

@@ -480,24 +480,33 @@ class Api {
   // ------------------------------------------------------------ Fit Check (Nabil)
 
   /// GET /fitcheck/feed: one Inspo feed for everyone (D4). [author] (a user id) = only that person's posts.
-  Future<List<FitCheckPost>> fitCheckFeed({int limit = 20, String? author}) async => _listOf(
-      await _send('GET', '/fitcheck/feed', query: {'user_id': _user, 'limit': '$limit', 'author': author}),
+  /// [scope] 'friends' = friends' + own posts; null = everyone (friends-only posts stay in their circle).
+  Future<List<FitCheckPost>> fitCheckFeed({int limit = 20, String? author, String? scope}) async => _listOf(
+      await _send('GET', '/fitcheck/feed',
+          query: {'user_id': _user, 'limit': '$limit', 'author': author, 'scope': scope}),
       FitCheckPost.fromJson);
 
   Future<FitCheckPost> fitCheckPost(String postId) async =>
       FitCheckPost.fromJson(await _send('GET', '/fitcheck/${_seg(postId)}', query: {'user_id': _user}));
 
-  Future<FitCheckPost> createFitCheck({required String photoUrl, String? caption, List<FitTag>? tagged}) async =>
+  /// [visibility] 'public' (Everyone, the default) or 'friends'.
+  Future<FitCheckPost> createFitCheck(
+          {required String photoUrl, String? caption, List<FitTag>? tagged, String visibility = 'public'}) async =>
       FitCheckPost.fromJson(await _send('POST', '/fitcheck', body: {
         'user_id': _user,
         'photo_url': photoUrl,
         'caption': caption,
         'tagged': tagged?.map((t) => t.toJson()).toList(),
+        'visibility': visibility,
       }));
 
-  Future<FitCheckPost> createFitCheckUpload(List<int> bytes, {String? caption, String mimeType = 'image/jpeg'}) async =>
-      FitCheckPost.fromJson(
-          await _upload('/fitcheck', {'user_id': _user, if (caption != null) 'caption': caption}, bytes, mimeType));
+  Future<FitCheckPost> createFitCheckUpload(List<int> bytes,
+          {String? caption, String mimeType = 'image/jpeg', String visibility = 'public'}) async =>
+      FitCheckPost.fromJson(await _upload(
+          '/fitcheck',
+          {'user_id': _user, if (caption != null) 'caption': caption, 'visibility': visibility},
+          bytes,
+          mimeType));
 
   Future<FitCheckPost> updateFitCheckTags(String postId, List<FitTag> tagged) async => FitCheckPost.fromJson(await _send(
       'PATCH', '/fitcheck/${_seg(postId)}/tags',

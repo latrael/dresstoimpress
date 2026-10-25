@@ -1,4 +1,4 @@
-"""Deterministic prompts: temperature 0 + seed passed to both providers, every structured prompt has a
+"""Deterministic prompts: temperature 0 + seed for Gemini (Claude: default sampling only), every structured prompt has a
 schema that its own EXAMPLE satisfies, bad replies are rejected, and feed reasons never name closet items
 the user doesn't own. No network: the SDK clients are faked."""
 import json
@@ -90,7 +90,7 @@ class _Msg:
         self.usage = types.SimpleNamespace(input_tokens=1, output_tokens=1)
 
 
-def test_claude_json_passes_temperature_zero_and_validates(monkeypatch):
+def test_claude_json_sends_no_sampling_params_and_validates(monkeypatch):
     from app.ai import llm, service  # noqa: F401
     from app.models import PairResult  # noqa: F401
     calls = []
@@ -109,7 +109,8 @@ def test_claude_json_passes_temperature_zero_and_validates(monkeypatch):
     monkeypatch.setattr(llm, "_record_claude", lambda *a: None)
     out = llm.claude_json(_formatted("summary"))
     assert out == {"summary": "A tee."}
-    assert len(calls) == 2 and all(c["temperature"] == 0.0 for c in calls)
+    assert len(calls) == 2  # Haiku 5.5 400s on a non-default temperature; the 2026-10-21 API drops all three
+    assert not any(k in c for c in calls for k in ("temperature", "top_p", "top_k"))
     assert all(c["thinking"] == {"type": "disabled"} for c in calls)
 
 

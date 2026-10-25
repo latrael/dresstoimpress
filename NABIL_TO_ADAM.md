@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~1:45 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~2:45 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,39 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 2:45 AM: 🔴 since #67, **every Claude call fails** (silently, over to Gemini). Fixed in my PR; plus the warm `/feed` timing you asked for
+
+**The bug.**
+- #67 sends `temperature=0` on every Claude call (`llm.claude_json`). Claude Haiku 5.5 only accepts its **default** sampling, so a non-default `temperature` is a **400**, on any API version.
+  - On top of that, API version `2026-10-21` (four days ago) rejects `temperature` / `top_p` / `top_k` on every model, even at default values.
+  - SDK 2.x (what a fresh `pip install` gets, `anthropic>=0.40` is unpinned) doesn't even accept the argument: `TypeError: Messages.create() got an unexpected keyword argument 'temperature'`.
+- **Effect:** `ai_json` catches it and falls over to Gemini. So on the shared server, **tagging, feed reasons, vibe search, closet digitize and body scan have been running on Gemini, not Claude**, since #67. No error shows anywhere.
+- **Repro:** `ai_json('Reply with JSON only: {"ok": true}')` with `AI_TEXT_PROVIDER=claude` → `BadModelOutput: claude: ... unexpected keyword argument 'temperature'`.
+
+**The fix** (`app/ai/llm.py`, my PR):
+- The Claude call no longer sends `temperature`. Gemini keeps `temperature=0` + `seed`.
+- Claude's determinism is your per-prompt schema check, which stays.
+- `tests/test_prompts_deterministic.py` now asserts the Claude call sends **no** `temperature` / `top_p` / `top_k` (a regression guard). The comments in `llm.py` / `prompts.py` say why.
+- **Verified live:** a direct call returns `{"ok": true}` in 1.4 s, and `/feed` gets real Claude reasons ("White graphic tee pairs cleanly with your black bottom"). 713 tests pass.
+
+**Warm vs cold `/feed`** (local, real Claude, real 3,188-product snapshot, 12-piece closet, 20 cards):
+
+| Path | Time |
+| --- | --- |
+| Cold (no cache, no bank: a new user, or the first load after a closet / style change or a `PAIR_VERSION` bump) | **6.8 s** (Claude writes ~24 reasons) |
+| Warm (10-min exact cache) | **34–42 ms** |
+| Cache expired but the reason bank is fresh (< 1 h) | instant from the bank; Claude re-ranks in the background |
+
+Your 7.5 s after the restart was the cold path: #67 bumped `PAIR_VERSION` v3 → v4, which emptied every bank. (It was probably also slower because it was Gemini answering after Claude failed.)
+
+**Asks:**
+1. **Merge my PR, then restart the shared server.** Run `pip install -r requirements.txt` there; it's fine on either SDK major now.
+2. **After every restart or deploy that bumps `PAIR_VERSION`, warm the reason banks** for u_adam / u_nabil / u_ryan / u_demo: one `GET /feed?user_id=<u>` each (or `scripts.warm_demo --tryons 0`). The first Home load of the demo shouldn't be the 7 s one.
+3. **Optional, your call:** for stricter Claude JSON, structured outputs (`output_config.format` with a JSON schema) would replace the retry-on-bad-shape loop. Not needed for the demo.
+4. **Everything from my 1:45 AM list still stands** (deploy + `load_products`, live try-on numbers ✓ thanks, budget ✓ 400, warm the demo account, closet quality, Ryan's adapters).
 
 ---
 

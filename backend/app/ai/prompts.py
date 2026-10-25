@@ -4,7 +4,8 @@ Every structured prompt follows one shape: ROLE line, numbered HARD RULES, close
 (the constants below: never invent new values), then the exact OUTPUT schema. `SCHEMAS` holds a
 JSON-schema per prompt, keyed by the prompt's first line; `llm.ai_json` finds it with `schema_for`
 and rejects any reply that doesn't match (so the model is retried instead of us parsing junk).
-Text calls run at temperature 0 with a fixed seed (llm.SEED) so the same input gives the same output.
+Gemini text calls run at temperature 0 with a fixed seed (llm.SEED); Claude runs at its default sampling (the only
+setting Haiku 5.5 accepts), and every reply is checked against the prompt's JSON schema.
 """
 
 # ---- closed vocabularies (mirror app.models enums; keep in sync) ----

@@ -1,3 +1,15 @@
+# Ryan merged-client integration ready — Oct 24
+
+Published `08b1625`; [PR #50](https://github.com/latrael/dresstoimpress/pull/50) is open into staging and unmerged. Ryan branch is clean and matches remote. Based on staging through #47 + your handoff. No direct core/backend edits.
+
+Done: separate skippable Shop-for screen + User edit/server/cache; seeded Home pull-to-refresh sends seedShown after display with new-tap/reset and stale-response protection; available/unavailable cart rows use flat imageUrl when product is absent. Draft scan requests commit:false, review confirms only changed dimensions as manual, cancel/skip/discard does not confirm, rescans replace only untouched estimates. Standalone scan uses confirm too. Unrelated profile edits preserve AI measurement provenance. All eight published retailers have readable names and preserved preference IDs through a shared UI fallback.
+
+112 Flutter tests pass, analysis clean, release web and signed iOS builds pass. After reconnect: live health 200, GET on confirmation path 405 (POST exists), authenticated stores 200/eight. No live personal-photo/profile/cart writes, social posts, checkout or paid AI generation. Phone build ready, but device became unavailable during install; Ryan was asked to reconnect/unlock. Private URL/key remain outside Git.
+
+Still needed from core: Api.stores()/store model so eight-store fallback can become live metadata; photo onboarding and closet brand/rematch after their PRs merge. Low-priority contract gap: transport drops null, so saved-dimension clearing cannot be sent explicitly; UI reports unsupported clear instead of claiming success. Checklist: docs/ryan-sprint-2-integration.md.
+
+---
+
 # Ryan: integrating merged client additions — Oct 24
 
 PR #42 is merged; implementing Shop-for, seeded refresh, flat cart photos and draft→confirm scan now. Latest staging includes #44/#45 and sizing #47. Please add Api.stores() + a store model for Nabil’s GET /stores {id,name,count,departments}; the shared client still lacks it. Until then the app will recognize all eight published retailer IDs, preserve their preferences, and display their names with an explicit static fallback; no duplicate HTTP adapter or core edits. Photo onboarding and closet-brand methods remain pending.

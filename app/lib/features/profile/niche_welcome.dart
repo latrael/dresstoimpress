@@ -36,12 +36,13 @@ class _NicheArchState extends State<NicheArch>
   Widget build(BuildContext context) => AnimatedBuilder(
       animation: draw,
       builder: (context, _) => CustomPaint(
-          size: Size.square(widget.size), painter: _ArchPainter(draw.value)));
+          size: Size.square(widget.size), painter: _ArchPainter(draw.value, Niche.of(context).brand)));
 }
 
 class _ArchPainter extends CustomPainter {
-  const _ArchPainter(this.progress);
+  const _ArchPainter(this.progress, [this.color = Niche.merlot]);
   final double progress;
+  final Color color;
   @override
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / 96);
@@ -54,7 +55,7 @@ class _ArchPainter extends CustomPainter {
     canvas.drawPath(
         metric.extractPath(0, metric.length * (progress / .7).clamp(0, 1)),
         Paint()
-          ..color = Niche.merlot
+          ..color = color
           ..strokeWidth = 9
           ..strokeCap = StrokeCap.round
           ..style = PaintingStyle.stroke);
@@ -107,7 +108,8 @@ class _NicheWelcomeState extends State<NicheWelcome>
             const _WelcomeDots(),
             const SizedBox(height: 12),
             const NicheArch(size: 94),
-            const Text('niche', style: Niche.wordmark),
+            Text('niche',
+                style: Niche.wordmark.copyWith(color: Niche.of(context).brand)),
             const SizedBox(height: 22),
             Text("Let's make\nniche yours.",
                 style: Theme.of(context).textTheme.displaySmall,
@@ -118,7 +120,7 @@ class _NicheWelcomeState extends State<NicheWelcome>
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium!
-                    .copyWith(color: Niche.muted)),
+                    .copyWith(color: Niche.of(context).muted)),
             const SizedBox(height: 12),
             Expanded(
                 child: FutureBuilder<List<String>>(
@@ -208,6 +210,6 @@ class _WelcomeDots extends StatelessWidget {
               width: i == 0 ? 22 : 5,
               height: 5,
               decoration: BoxDecoration(
-                  color: i == 0 ? Niche.merlot : Niche.blush,
+                  color: i == 0 ? Niche.merlot : Niche.of(context).blush,
                   borderRadius: BorderRadius.circular(8)))));
 }

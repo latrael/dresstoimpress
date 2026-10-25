@@ -12,7 +12,7 @@ class NichePhoto extends StatelessWidget {
   final BoxFit fit;
   @override
   Widget build(BuildContext context) => ColoredBox(
-      color: Niche.stone,
+      color: Niche.of(context).stone,
       child: url.isEmpty
           ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,
@@ -63,7 +63,11 @@ class _NicheShimmerState extends State<NicheShimmer>
               gradient: LinearGradient(
                   begin: Alignment(-2 + motion.value * 4, 0),
                   end: Alignment(motion.value * 4, 0),
-                  colors: const [Niche.stone, Niche.paper, Niche.stone])),
+                  colors: [
+                    Niche.of(context).stone,
+                    Niche.of(context).paper,
+                    Niche.of(context).stone
+                  ])),
           child: Center(
               child: widget.label == null
                   ? null
@@ -71,5 +75,5 @@ class _NicheShimmerState extends State<NicheShimmer>
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium!
-                          .copyWith(color: Niche.muted)))));
+                          .copyWith(color: Niche.of(context).muted)))));
 }

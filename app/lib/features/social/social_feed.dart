@@ -456,7 +456,9 @@ class _FitPostCardState extends State<FitPostCard>
                               ? Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                      color: Niche.paper.withValues(alpha: .85),
+                                      color: Niche.of(context)
+                                          .paper
+                                          .withValues(alpha: .85),
                                       borderRadius: BorderRadius.circular(20)),
                                   constraints:
                                       const BoxConstraints(maxHeight: 180),

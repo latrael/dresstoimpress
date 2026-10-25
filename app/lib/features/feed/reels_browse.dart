@@ -403,7 +403,7 @@ class _ReelPostState extends State<_ReelPost>
       return const NicheShimmer(label: 'Dressing you…');
     }
     return ColoredBox(
-        color: Niche.paper,
+        color: Niche.of(context).paper,
         child: Center(
             child: Padding(
                 padding: const EdgeInsets.all(32),
@@ -438,7 +438,7 @@ class _ReelPostState extends State<_ReelPost>
         .take(4)
         .toList();
     return ColoredBox(
-        color: Niche.paper,
+        color: Niche.of(context).paper,
         child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(children: [
@@ -494,7 +494,9 @@ class _ReelPostState extends State<_ReelPost>
                                                 child: pick == null
                                                     ? DecoratedBox(
                                                         decoration: BoxDecoration(
-                                                            color: Niche.blush,
+                                                            color: Niche.of(
+                                                                    context)
+                                                                .blush,
                                                             borderRadius:
                                                                 BorderRadius
                                                                     .circular(
@@ -667,16 +669,16 @@ class _ReelPostState extends State<_ReelPost>
                   right: 0,
                   bottom: bottom,
                   child: DecoratedBox(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                           gradient: LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                            Color(0x00FFFBF0),
-                            Niche.cream,
-                            Niche.cream
+                            Niche.of(context).cream.withValues(alpha: 0),
+                            Niche.of(context).cream,
+                            Niche.of(context).cream
                           ],
-                              stops: [
+                              stops: const [
                             0,
                             .15,
                             1

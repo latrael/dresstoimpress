@@ -1,3 +1,11 @@
+# Ryan: eight-store app integration — Oct 24
+
+[PR #50](https://github.com/latrael/dresstoimpress/pull/50), `08b1625`, is open into staging and unmerged. The app now recognizes all eight published store IDs, preserves their preferences as retailer IDs (not custom-interest text), and uses readable names in cart/Fits/Home fallback labels. Cart rows use flat imageUrl when the product disappeared. Shop-for has its own optional screen, and seeded reload sends seedShown=true with reset/new-tap handling. No direct backend/core edits.
+
+Live stores endpoint returned eight after Adam reconnected; health 200. Api.stores() is still absent, requested from Adam, so current chips/names use a shared eight-store fallback. Dynamic counts/department filtering are not claimed. 112 Flutter tests and analysis pass; release builds pass. Details in docs/ryan-sprint-2-integration.md and latest RYAN_TO_ADAM.md.
+
+---
+
 # Ryan council app integration — Oct 24, 4 PM PT
 
 [PR #33](https://github.com/latrael/dresstoimpress/pull/33), `43e9352`, is open into staging and not merged. Ryan branch includes staging through 54063b6. Uses Adam's canonical council client: seeded feed + soft-size fields, search/photo/styles, public Inspo author feed, preferredStores/onboarded, atomic size PATCH and unavailable cart lines. 81 Flutter tests pass, analysis/release web build pass; live read-only feed/styles and browser catalog→seeded Home verified.

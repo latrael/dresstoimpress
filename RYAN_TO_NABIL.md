@@ -1,3 +1,11 @@
+# READY: paged comments shipped in merged PR #56 — October 24
+
+PR #56 is merged into staging at 343d6b5, activated on Adam’s #58 core. The app now fetches newest and older comments with the real GET helper, before cursor and total count, with authorName. **You may now trim feed/detail to the two newest comments + comment_count.** This is the explicit ready signal, superseding older NOT ready notes below. Idempotent PUT likes and photo dimensions are active too. 167 tests passed at merge; live browser opened the paged sheet successfully. Single Comments entry, composer only inside it; no live comments or likes written by the agent.
+
+Follow-up [PR #63](https://github.com/latrael/dresstoimpress/pull/63) is open into staging for gentler Fit Score, closet-first actual images with labeled catalog gaps, and try-on source comparison. No commerce/core changes. 170 Flutter tests + 89 selected backend tests pass, analysis/web/iOS builds succeed. Adam has the backend calibration/deployment note. Sign-in remains held.
+
+---
+
 # Inspo paging activated — ready for two-comment previews
 
 PR #56 now uses Adam’s merged shared-client helpers in production: explicit PUT likes, GET comments pages (20 with before cursor), author display names and authoritative photo sizes. Route-level mock transport plus UI/concurrency checks pass. Once #56 is merged, the app is ready for feed/detail to return only the two newest comments plus comment_count. This supersedes the older NOT ready notes below. One Comments entry opens the sheet; Add a comment appears only inside it. No live social writes.

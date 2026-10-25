@@ -1,3 +1,13 @@
+# Sprint 4 UI underway — October 25
+
+Read docs/sprint-4.md and visual references on staging 1af2e24. Ryan chose double-tap-only Home likes; cream glass nav (deep merlot is an alternate to revisit); single full-width Discover results. Young Serif + static Manrope weights are bundled with OFLs; building tokens/icons/motion, edge-to-edge shell, reels and onboarding. Sign-in remains held. No core edits or direct feature HTTP.
+
+Please land the §10 core/models/mocks early: RankedProduct/FeedCard.heroImageUrl, closetPicks [{id,label,category,imageUrl}] and tryOn {status,imageUrl,mode}; Api.prefetchTryOns / tryOnStatus with current user as appropriate. My feature contract is ReelsBrowse.prepareTryOns/loadTryOns: Future<Map<String, ({String status,String? url,String? mode})>> Function(List<String> ids), plus feed maps hero_image_url/closet_picks/tryon. I will adapt your canonical names once merged; no need to duplicate my UI records in core. Mock fixtures in tests only, no invented wardrobe/photos in real accounts. Existing feed still renders item slide with honest preview-unavailable state until the client arrives. Automatic paid generation remains unconnected until your budget policy is decided; please own per-user caps/AI fallback. New source-photo v5 remains untouched.
+
+QA will distinguish simulated viewport screenshots from real device captures; I cannot claim Pixel/iPhone16 hardware acceptance without both devices. Deep-merlot nav remains an explicit alternate in the design handoff. Work will be published on RyanFrontendking in a PR to staging; no merge unless Ryan asks.
+
+---
+
 # Ryan: PR #56 merged; #63 ready for your review — October 24
 
 Ryan explicitly authorized finishing and merging #56; merged into staging at 343d6b5. The shared-client bindings are active. Nabil is now explicitly cleared to trim feed/detail previews to two comments + count. Browser checked: one Comments button opens a working paged sheet, with the add field only inside it.

@@ -72,11 +72,84 @@ async def _save_upload(file: UploadFile) -> str:
     return f"{base}/static/uploads/{name}"
 
 
-@router.post("/closet/upload", response_model=ClosetItem)
-async def closet_upload(user_id: str = Form(...), file: UploadFile = File(...)):
-    """Photo straight from the app: save, then tag. Same output as /closet/tag."""
+async def _save_photo(file: UploadFile, upright: bool = True) -> tuple[str, Path | None]:
+    """Save an upload and return (public url, local path); `upright` re-saves it as a JPEG with the EXIF
+    rotation applied, so the model and the crops see the same upright picture."""
+    from ..static_urls import local_static_path
+    from .digitize import upright_jpeg
+
     url = await _save_upload(file)
-    return closet_tag(TagRequest(user_id=user_id, image_url=url))
+    path = local_static_path(url, DATA_DIR)
+    upright = upright_jpeg(path) if (path and upright) else None
+    if upright:
+        url = url.rsplit("/", 1)[0] + "/" + upright.name
+        path = upright
+    return url, path
+
+
+@router.post("/closet/upload")
+async def closet_upload(user_id: str = Form(...), file: Optional[UploadFile] = File(None),
+                        files: list[UploadFile] = File([]), kind: Optional[str] = Form(None)):
+    """Closet v2 upload. 1-8 `files` parts + `kind` = "piece" (each photo is one garment) or "outfit"
+    (each photo is a whole fit: every garment is detected and cropped; default) ->
+    {"added": [ClosetItem], "merged": [ClosetItem] (existing items a photo matched; the photo was added to
+    their `worn_in`), "skipped": n}. Each item stands alone: `display_image_url` (catalog photo when matched,
+    else a generated clean shot, else the crop), `crop_image_url`, `brand`, `product_id`, `worn_in`.
+    Backward compat: a single `file` part with no `kind` (the old app call) returns that one ClosetItem."""
+    from . import closet
+
+    legacy = file is not None and not files and kind is None
+    kind = kind or "outfit"
+    if kind not in closet.KINDS:
+        raise HTTPException(422, "kind must be piece or outfit")
+    uploads = [u for u in [file, *files] if u is not None]
+    if not uploads:
+        raise HTTPException(422, "send 1-8 image parts named files (or one named file)")
+    if len(uploads) > closet.MAX_PHOTOS:
+        raise HTTPException(413, f"at most {closet.MAX_PHOTOS} photos per upload")
+    kind = "piece" if legacy else kind
+    photos = [await _save_photo(u, upright=kind == "outfit") for u in uploads]
+    try:
+        out = closet.add_photos(user_id, photos, kind)
+    except BadModelOutput as e:
+        raise _ai_down("photo tagging", e)
+    if legacy:
+        if out["added"]:
+            return out["added"][0]
+        if out["merged"]:
+            return out["merged"][0]
+        raise HTTPException(422, "not_clothing")
+    return out
+
+
+@router.patch("/closet/{user_id}/{item_id}")
+def closet_edit(user_id: str, item_id: str, patch: dict):
+    """Edit one piece: {label?, brand?, category?, color?, product_id?}. `product_id: null` clears the catalog
+    match and the display image goes back to the clean shot / crop; a product id links it (display = catalog photo)."""
+    from . import closet
+
+    item = _own_item(user_id, item_id)
+    try:
+        return closet.edit(item, patch)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@router.post("/closet/{user_id}/{item_id}/reshoot")
+def closet_reshoot(user_id: str, item_id: str):
+    """Regenerate the piece's clean product shot (falls back to the crop when image AI is off)."""
+    from . import closet
+
+    return closet.reshoot(_own_item(user_id, item_id))
+
+
+def _own_item(user_id: str, item_id: str) -> dict:
+    item = store.get("closet_items", item_id)
+    if not item:
+        raise HTTPException(404, "unknown closet item")
+    if item.get("user_id") != user_id:
+        raise HTTPException(403, "not your closet item")
+    return item
 
 
 @router.get("/closet/{user_id}", response_model=list[ClosetItem])

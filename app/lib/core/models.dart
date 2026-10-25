@@ -840,10 +840,18 @@ class ClosetItem {
     this.source,
     this.label,
     this.duplicateOf,
+    this.brand,
+    this.productId,
+    this.catalogImageUrl,
+    this.matchConfidence,
+    this.displayImageUrl,
+    this.cropImageUrl,
+    this.wornIn = const [],
   });
 
   final String id;
   final String userId;
+  /// Same as [displayImageUrl] on closet v2 items (kept for older screens).
   final String imageUrl;
   final String category;
   final String color;
@@ -853,6 +861,20 @@ class ClosetItem {
   final String? source;
   final String? label;
   final String? duplicateOf; // set on upload when it looks like something already in the closet
+  // ---- closet v2 (Oct 24): the piece on its own, plus the fits it was worn in
+  final String? brand; // read off a visible logo/label, or from the catalog match; null = unknown
+  final String? productId; // catalog product this piece was matched to (confident match only)
+  final String? catalogImageUrl;
+  final double? matchConfidence; // 0-1, with productId
+  /// What the closet grid shows: catalog photo when matched, else a generated clean shot, else the crop.
+  final String? displayImageUrl;
+  /// The garment cropped out of the photo it was found in (the whole photo when there was no box).
+  final String? cropImageUrl;
+  /// Outfit photos this piece appeared in (closet uploads and Fit Check posts), oldest first.
+  final List<WornIn> wornIn;
+
+  /// [displayImageUrl] when present, else [imageUrl]: always something to render.
+  String get shownImageUrl => displayImageUrl ?? imageUrl;
 
   factory ClosetItem.fromJson(Json j) => ClosetItem(
         id: _str(j['id']),
@@ -866,6 +888,40 @@ class ClosetItem {
         source: _strN(j['source']),
         label: _strN(j['label']),
         duplicateOf: _strN(j['duplicate_of']),
+        brand: _strN(j['brand']),
+        productId: _strN(j['product_id']),
+        catalogImageUrl: _strN(j['catalog_image_url']),
+        matchConfidence: _dblN(j['match_confidence']),
+        displayImageUrl: _strN(j['display_image_url']),
+        cropImageUrl: _strN(j['crop_image_url']),
+        wornIn: _list(j['worn_in'], WornIn.fromJson),
+      );
+}
+
+/// One outfit photo a closet piece was worn in. `source` is `closet` (an outfit upload) or `fitcheck`
+/// (a Fit Check post). `at` is an ISO-8601 UTC string.
+class WornIn {
+  const WornIn({required this.photoUrl, this.at, this.source});
+  final String photoUrl;
+  final String? at;
+  final String? source;
+  DateTime? get time => at == null ? null : DateTime.tryParse(at!);
+  factory WornIn.fromJson(Json j) =>
+      WornIn(photoUrl: _str(j['photo_url']), at: _strN(j['at']), source: _strN(j['source']));
+}
+
+/// `POST /closet/upload` result: new pieces, existing pieces a photo matched (the photo was added to
+/// their [ClosetItem.wornIn] instead of making a twin), and photos that weren't clothing.
+class ClosetUploadResult {
+  const ClosetUploadResult({required this.added, required this.merged, required this.skipped});
+  final List<ClosetItem> added;
+  final List<ClosetItem> merged;
+  final int skipped;
+  List<ClosetItem> get all => [...added, ...merged];
+  factory ClosetUploadResult.fromJson(Json j) => ClosetUploadResult(
+        added: _list(j['added'], ClosetItem.fromJson),
+        merged: _list(j['merged'], ClosetItem.fromJson),
+        skipped: _int(j['skipped']),
       );
 }
 

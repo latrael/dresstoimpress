@@ -113,7 +113,18 @@ async def create_post(request: Request):
             "caption": req.caption, "tagged": tagged, "created_at": _now(), "likes": [], "comments": [],
             "visibility": req.visibility}
     store.put(COL, post["id"], post)
+    _closet_hook(req.user_id, photo_url, tagged)  # Adam: the fit's pieces join the poster's closet (best effort)
     return _view(post, req.user_id)
+
+
+def _closet_hook(user_id: str, photo_url: str, tagged: list[dict]) -> None:
+    """Closet v2: add the posted outfit's pieces to the closet in the background; never fails the post."""
+    try:
+        from ..ai.closet import add_from_fit_later
+
+        add_from_fit_later(user_id, photo_url, tagged)
+    except Exception as e:  # noqa: BLE001
+        log.warning("closet hook skipped: %s", e)
 
 
 @router.get("/fitcheck/feed")

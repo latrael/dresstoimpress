@@ -314,6 +314,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
 
     slim_closet = [{"id": c["id"], "label": c.get("label") or f'{c["color"]} {c["category"]}',
+                    "brand": c.get("brand"),  # so a reason can say "your Stüssy tee"
                     "category": c["category"], "color": c["color"], "pattern": c["pattern"],
                     "style_tags": c["style_tags"]} for c in closet]
     slim_cands = [{"id": p["id"], "name": p["name"], "brand": p["brand"],

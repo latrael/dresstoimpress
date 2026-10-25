@@ -62,8 +62,11 @@ def test_upload_tags_and_serves(client):
     r = client.post("/closet/upload", data={"user_id": "u_demo"},
                     files={"file": ("shirt.png", PNG_1PX, "image/png")})
     assert r.status_code == 200, r.text
-    url = r.json()["image_url"]
-    assert "/static/uploads/" in url
+    item = r.json()
+    # closet v2: the mock tagger says "black tee" again, so this merges into the /closet/tag item above and the
+    # photo lands in worn_in; image_url/display_image_url may be a catalog match. The upload is still served.
+    url = item["worn_in"][-1]["photo_url"]
+    assert "/static/uploads/" in url and item["image_url"] == item["display_image_url"]
     assert client.get(url.split("8000", 1)[1]).content == PNG_1PX
 
 

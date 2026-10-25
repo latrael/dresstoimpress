@@ -23,21 +23,27 @@ Api _api(List<http.Request> seen, Object Function(http.Request) reply) {
 }
 
 void main() {
-  test('digitizeCloset uploads one photo and returns every garment', () async {
+  test('digitizeCloset uploads one outfit photo (closet v2) and returns every garment, merged ones last', () async {
     final seen = <http.Request>[];
-    final api = _api(seen, (_) => [
-          {'id': 'ci_1', 'user_id': 'u_demo', 'image_url': '/static/uploads/a.jpg', 'category': 'bottom',
-           'color': 'black', 'label': 'black cargo pants'},
-          {'id': 'ci_2', 'user_id': 'u_demo', 'image_url': '/static/uploads/b.jpg', 'category': 'top',
-           'color': 'white', 'label': 'white baby tee', 'duplicate_of': 'ci_0'},
-        ]);
+    final api = _api(seen, (_) => {
+          'added': [
+            {'id': 'ci_1', 'user_id': 'u_demo', 'image_url': '/static/uploads/a.jpg', 'category': 'bottom',
+             'color': 'black', 'label': 'black cargo pants'},
+          ],
+          'merged': [
+            {'id': 'ci_0', 'user_id': 'u_demo', 'image_url': '/static/uploads/b.jpg', 'category': 'top',
+             'color': 'white', 'label': 'white baby tee'},
+          ],
+          'skipped': 0,
+        });
     final items = await api.digitizeCloset([1, 2, 3]);
     final r = seen.single;
-    expect((r.method, r.url.path), ('POST', '/closet/digitize'));
+    expect((r.method, r.url.path), ('POST', '/closet/upload'));
     expect(r.body, contains('name="user_id"\r\n\r\nu_demo'));
+    expect(r.body, contains('name="kind"\r\n\r\noutfit'));
+    expect(r.body, contains('name="files"; filename="photo1.jpeg"'));
     expect(r.body, contains('Content-Type: image/jpeg'));
     expect(items.map((i) => i.label), ['black cargo pants', 'white baby tee']);
-    expect(items.last.duplicateOf, 'ci_0');
   });
 
   test('bodyScan sends height and weight and parses the profile', () async {

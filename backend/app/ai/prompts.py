@@ -8,9 +8,10 @@ Return only JSON, no prose:
  "pattern": "solid" | "striped" | "plaid" | "graphic" | "floral" | "other",
  "style_tags": up to 5 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
  "formality": integer 1-5,
+ "brand": visible brand name or null (only if a logo, label or printed text is clearly readable; never guess),
  "department": "men" | "women" | "unisex" | null (which section of the store sells it; null when the item or photo doesn't say)}
 If the image is not clothing, return {"error": "not_clothing"}."""
-TAGGER_VERSION = "v2"  # bump when TAGGER changes so cached tags are redone (v2: department)
+TAGGER_VERSION = "v3"  # bump when TAGGER changes so cached tags are redone (v3: brand)
 
 # Appended to TAGGER for retailer photos, where a model often wears a whole outfit.
 TAGGER_HINT = """
@@ -69,13 +70,14 @@ and fit the style and price ranges.
 Return only a JSON array of objects:
 {{"product_id": str, "score": number 0-1, "reason": at most 8 words, casual second person, naming the closet item by its label, "pairs_with": [closet item ids]}}
 Use only product ids from the candidates. Only mention closet items that are in the closet list, by their label; never invent closet items.
+When a closet item has a brand, you may name it with the brand ("your Stüssy tee"); never invent a brand.
 Make every reason sound different, like a friend reacting to each piece:
 - spread the picks across different closet items instead of naming the same one every time;
 - vary the angle: color contrast, silhouette or fit, the style it pushes, layering, the occasion, or the price;
 - never start two reasons with the same words.
 Shapes to vary between (fill in real labels): "<color> on <color> with your <item>", "layer it over your <item>",
 "gives your <item> a <style> edge", "only $<price> and it works with your <item>"."""
-PAIR_VERSION = "v2"  # bump when PAIR changes so cached rankings and the reason bank start fresh
+PAIR_VERSION = "v3"  # bump when PAIR changes so cached rankings and the reason bank start fresh (v3: closet brand)
 
 FIT_TAGGER = """You are a fashion cataloguer. The image is an outfit photo (mirror selfie, street photo, or flat-lay).
 List every clothing item and accessory you can clearly see that someone could buy.
@@ -103,8 +105,10 @@ VIBE_VERSION = "v1"
 
 # ---- Digitize wardrobe: one photo of several clothes -> separate closet items (with crop boxes) ----
 DIGITIZE = """You are digitizing someone's wardrobe from one photo: clothes laid flat on a bed or floor,
-hanging on a rack or chair, or worn in a mirror selfie.
-List every separate clothing item or pair of shoes you can clearly see, at most 8, biggest first.
+hanging on a rack or chair, or worn by a person (mirror selfie, full-body or street photo).
+List EVERY separate garment and accessory you can clearly see, at most 8, biggest first. Never collapse a
+worn outfit into one item: a person wearing a top, bottoms and shoes is three items, plus one more for each
+piece of outerwear and each visible accessory (watch, necklace, bag, cap, belt, sunglasses).
 Return only a JSON array:
 [{"label": 2-4 word plain name, e.g. "black cargo pants",
   "category": "top" | "bottom" | "outerwear" | "shoes" | "dress" | "accessory",
@@ -112,9 +116,11 @@ Return only a JSON array:
   "pattern": "solid" | "striped" | "plaid" | "graphic" | "floral" | "other",
   "style_tags": up to 3 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
   "formality": 1-5 (1 loungewear, 5 black tie),
+  "brand": visible brand name or null (only if a logo, label or printed text is clearly readable; never guess),
   "box": [x_min, y_min, x_max, y_max] as fractions 0-1 of the image width and height, tight around that one item}]
-Count a pair of shoes as one item. Ignore faces, skin, furniture, hangers and background.
+Count a pair of shoes as one item. Ignore faces, skin, phones, mirrors, furniture, hangers and background.
 If there is no clothing, return []."""
+DIGITIZE_VERSION = "v2"  # bump when DIGITIZE changes so cached detections are redone (v2: every worn garment, brand)
 
 # ---- Photo onboarding: digitized garments -> one plain sentence describing the person's style ----
 STYLE_FROM_CLOSET = """These are the clothes someone just photographed for their digital closet (JSON):

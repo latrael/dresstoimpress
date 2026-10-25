@@ -33,6 +33,10 @@ HM_ADULT = ("ladies_", "men_", "divided_", "sportswear_")
 UNIQLO_ADULT = {"WOMEN", "MEN", "UNISEX"}
 MATERNITY = re.compile(r"\bmama\b|maternity|nursing", re.I)  # not for a college-student feed
 MAX_COLORS = 3  # per Uniqlo product, so one tee doesn't fill the feed
+# Not clothing: dropped by every normalizer (Uniqlo "bags" includes storage bags; Shopify stores sell gift cards)
+NOT_APPAREL = re.compile(r"gift ?card|e-?gift|beauty|fragrance|perfume|candle|skincare|makeup|lip ?gloss|"
+                         r"phone case|sticker|poster|home goods|homeware|mug|towel|insurance|shipping|keychain|key ?ring|"
+                         r"storage bag", re.I)
 
 # Garment words -> Category. In a name the last garment word wins ("Shirt Dress" -> dress,
 # "Scarf-Detail Sweater" -> top, "Hooded Jacket" -> outerwear).
@@ -275,6 +279,9 @@ def normalize_hm(raw: list[dict], drops: Counter | None = None) -> list[dict]:
         if MATERNITY.search(f"{cat_raw.replace('_', ' ')} {it.get('title', '')}"):
             drops["hm_maternity"] += 1
             continue
+        if NOT_APPAREL.search(str(it.get("title") or "")):
+            drops["hm_not_apparel"] += 1
+            continue
         img = it.get("model_image") or (it.get("images") or [None])[0]
         if not (it.get("id") and img and it.get("price")):
             drops["hm_missing_fields"] += 1
@@ -326,6 +333,9 @@ def normalize_uniqlo(raw: list[dict], drops: Counter | None = None,
         pid = it.get("productId")
         if not pid:
             drops["uniqlo_missing_fields"] += 1
+            continue
+        if NOT_APPAREL.search(str(it.get("name") or "")):
+            drops["uniqlo_not_apparel"] += 1
             continue
         path = [s.strip() for s in str(it.get("categoryPath") or "").split(">")]
         cat = guess_category(it.get("name", ""), *reversed(path))

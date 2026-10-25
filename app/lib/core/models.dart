@@ -52,6 +52,7 @@ class Product {
     this.productUrl,
     this.images = const [],
     this.description,
+    this.summary,
     this.label,
     this.styleTags = const [],
     this.pattern,
@@ -74,6 +75,9 @@ class Product {
   final String? productUrl;
   final List<ProductImage> images;
   final String? description;
+  /// Card text from the server (1–2 sentences, ≤ 160 chars): Haiku's condensed description, or a
+  /// one-liner from the attributes when the retailer has no text. Null until stage 2 has run.
+  final String? summary;
   // AI tags (filled at ingest)
   final String? label;
   final List<String> styleTags;
@@ -85,13 +89,19 @@ class Product {
   double get effectivePrice => (salePriceUsd != null && salePriceUsd! < priceUsd) ? salePriceUsd! : priceUsd;
   bool get isOnSale => effectivePrice < priceUsd;
 
-  /// One readable line for a card: the first sentence of the retailer blurb, bullets and
-  /// "- " markers stripped, capped at [maxChars]. Null when there is no description.
+  /// One readable line for a card. Prefers the server's [summary] (trimmed, whole); otherwise the
+  /// first sentence of the retailer blurb, bullets and "- " markers stripped. Either way capped at
+  /// [maxChars] on a word boundary. Null when there is neither.
   String? blurb({int maxChars = 110}) {
+    final s = (summary ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (s.isNotEmpty) return _cap(s, maxChars);
     final raw = (description ?? '').replaceAll(RegExp(r'[\r\n]+'), ' ').replaceAll(RegExp(r'\s*[-•·]\s+'), ' ').trim();
     if (raw.isEmpty) return null;
     final first = RegExp(r'^(.+?[.!?])(\s|$)').firstMatch(raw)?.group(1) ?? raw;
-    var out = first.trim();
+    return _cap(first.trim(), maxChars);
+  }
+
+  static String _cap(String out, int maxChars) {
     if (out.length > maxChars) {
       final cut = out.substring(0, maxChars);
       final space = cut.lastIndexOf(' ');
@@ -119,6 +129,7 @@ class Product {
         productUrl: _strN(j['product_url']),
         images: _list(j['images'], ProductImage.fromJson),
         description: _strN(j['description']),
+        summary: _strN(j['summary']),
         label: _strN(j['label']),
         styleTags: _strs(j['style_tags']),
         pattern: _strN(j['pattern']),

@@ -2,7 +2,22 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~7:50 PM PT. New: sprint #3 Inspo routes (instant likes, paged comments, photo sizes).
+**Last updated:** Sat Oct 24, 2026, ~11:30 PM PT. New: feed/detail now carry only the 2 newest comments; shop the look fills each piece in your department.
+
+## Oct 24, ~11:30 PM: acted on your READY signal; comments trimmed in post views
+
+- **Every post view (`GET /fitcheck/feed`, `GET /fitcheck/{id}`, `POST /fitcheck`, `PATCH …/tags`):**
+  - `comments` = only the **2 newest**, oldest → newest.
+  - Each one is now shaped like a paged item: `{id, user_id, author: {id, display_name}, text, created_at}`.
+  - `comment_count` = the total. Everything else is unchanged.
+- I read your code against it: `models.dart:1216/1221` and `social_feed.dart:229/283/501` take the count from `comment_count`. `comments_sheet.dart` seeds from the preview, loads the page and never lowers the total. Nothing should break, and the preview now shows real names instead of user ids.
+- **Shop the look (`GET /fitcheck/{id}/shop`, flat and `grouped=true`):**
+  - The men's/women's filter now runs before picking matches, so each piece fills up with items in the viewer's department (e.g. 2/6 → 6/6).
+  - Same shape as before.
+- **Camera search (`POST /search/photo`):** the same fix, so the similar items are ones you can buy in your department.
+- Live on the shared server once Adam merges and restarts.
+
+---
 
 ## Oct 24, ~7:50 PM: sprint #3 Inspo backend (`docs/sprint-3.md` 3.1, 3.3, 3.4)
 
@@ -125,7 +140,6 @@ Every change only adds fields; nothing the app reads today was removed or rename
 > **Oct 24, ~2:20 PM: order retry route (your ask).** `POST /orders/{order_id}/retry?user_id=&retailer=` re-attempts only that order's `nessie_failed` / `pending_nessie` store purchases (or just the one `retailer`). A `paid` purchase is never charged again, so it's **safe to call repeatedly**: an all-paid order comes back unchanged with no Nessie call. 200 returns the same shape as `/checkout` (`{order_id, purchases, total_usd, created_at}`); a purchase that fails again stays `nessie_failed` with a new `error` and `retried_at`. Errors: 404 unknown order (or no purchase for that `retailer`), 403 `user_id` isn't the order's owner, 503 no Nessie key on the server (nothing changes). No stock re-check (the order already exists). It's on the backend once the PR is merged; not in the Dart client (Adam's core / your lane).
 
 ---
-
 ## Needs your decision
 
 1. **The `/fit` guest page.** This is a small public web page I built: other hackers scan a QR code at our table, upload an outfit photo without installing anything, and it lands in the Fit Check feed as a public post.

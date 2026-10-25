@@ -2,7 +2,7 @@
 
 What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Sat Oct 24, 2026, ~12:50 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
+**Last updated:** Sat Oct 24, 2026, ~11:30 PM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
 
 ---
 
@@ -121,6 +121,12 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 24, ~11:30 PM:** Sprint #3 follow-ups:
+  - Post views carry only the 2 newest comments (with `author`) plus `comment_count`.
+  - The `shop_for` filter now runs before matching in shop the look (flat + grouped) and `/search/photo`, e.g. 2/6 → 6/6 per piece.
+  - Nessie re-tested on the rebuilt shared DB: 4/4 `paid`.
+  - Devpost refreshed. 672 tests.
+- **Oct 24, ~7:50 PM:** Store cache (`/feed` 70 s → 0.17 s); `PUT …/like`, paged `GET …/comments`, `photo_w/photo_h`; `scripts/rebuild_db.py`.
 - **Oct 24, ~5:45 PM:** Sprint #2 catalog: 418 → ~3,200 products from H&M, Uniqlo + 6 Shopify stores (Princess Polly, Edikted, Brandy Melville, True Classic, Kith, Stüssy), ~$2.97 Apify. `normalize_shopify`, `GET /stores`, re-ingest keeps AI tags, `run_actor` 502-safe with a $2 cap per run.
 
 - **Oct 24, ~5:15 PM:** `Product.department` (backfilled from raw: 212 women / 159 men / 47 unisex) + `User.shop_for` filter Home, Discover and shop-this-fit; `seed_shown`; 2:1 store mix; Discover size-first; cart lines keep `image_url`. 411 tests.

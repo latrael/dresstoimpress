@@ -402,17 +402,23 @@ SHOP_PER_TAG = 3          # flat /shop: cards per tagged piece (unchanged)
 SHOP_GROUPED_PER_TAG = 6  # grouped /shop: similar items shown under each piece's chip
 
 
-def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int) -> list[tuple[int, dict]]:
-    """(tag index, card) pairs behind shop_fit / shop_fit_grouped: post order, closest match first."""
+def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int, keep=None) -> list[tuple[int, dict]]:
+    """(tag index, card) pairs behind shop_fit / shop_fit_grouped: post order, closest match first.
+    `keep(product) -> bool` filters the catalog before matching, so each tag fills up with products the
+    viewer can see, and the cards after (a tag's pinned product_id / live results skip the catalog)."""
     from .finder import find_products
 
     from concurrent.futures import ThreadPoolExecutor
 
     products = list_products()
+    if keep is not None:
+        products = [p for p in products if keep(p)]
     matched: dict[str, tuple[int, str]] = {}
     # items that need a live store search take ~5 s each: run them side by side, keep post order
     with ThreadPoolExecutor(max(1, min(4, len(tagged)))) as ex:
         found = list(ex.map(lambda t: find_products(t, products, per_tag), tagged))
+    if keep is not None:
+        found = [[p for p in hits if keep(p)] for hits in found]
     from .finder import match_score
 
     order: dict[str, tuple[int, float]] = {}
@@ -443,13 +449,14 @@ def _shop_fit_rows(viewer_id: str, tagged: list[dict], per_tag: int) -> list[tup
     return out
 
 
-def shop_fit(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_PER_TAG) -> list[dict]:
+def shop_fit(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_PER_TAG, keep=None) -> list[dict]:
     """Shoppable cards for a friend's Fit Check post, ranked against the viewer's closet.
 
     Each result is a Product plus `reason`, `pairs_with`, and `matched_tag` (the post label it answers).
     Tags with no product match yet are skipped; Nabil can run Apify for that retailer and call again.
+    `keep(product) -> bool`: only products the viewer should see (their shop_for department).
     """
-    return [card for _, card in _shop_fit_rows(viewer_id, tagged, per_tag)]
+    return [card for _, card in _shop_fit_rows(viewer_id, tagged, per_tag, keep)]
 
 
 def shop_tag_summary(tag: dict) -> dict:
@@ -461,11 +468,10 @@ def shop_fit_grouped(viewer_id: str, tagged: list[dict], per_tag: int = SHOP_GRO
                      keep=None) -> list[dict]:
     """shop_fit, one group per tagged piece, in post order: [{"tag": {label, category, color, box,
     product_id}, "products": [card, ...]}]. A piece with no match keeps its chip with `products: []`.
-    `keep(card) -> bool` drops cards the viewer should not see (their shop_for department)."""
+    `keep(product) -> bool`: only products the viewer should see (their shop_for department)."""
     groups = [{"tag": shop_tag_summary(t), "products": []} for t in tagged]
-    for i, card in _shop_fit_rows(viewer_id, tagged, per_tag):
-        if keep is None or keep(card):
-            groups[i]["products"].append(card)
+    for i, card in _shop_fit_rows(viewer_id, tagged, per_tag, keep):
+        groups[i]["products"].append(card)
     return groups
 
 

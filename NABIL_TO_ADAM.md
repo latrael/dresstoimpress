@@ -2,7 +2,47 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~7:50 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~11:30 PM PT. Lives on `staging` (via PRs from `nabil`).
+
+---
+
+## Sat 11:30 PM: your 10:45 asks: review done (one fix in `service.py`), Nessie re-tested on the fresh DB, Devpost updated
+
+**1. Review of grouped shop the look: the route shape is good, but I fixed one bug in `service.py`; please look.**
+- **The bug:** `_shop_fit_rows` took the top N matches per tag from the whole catalog, and the `shop_for` filter only ran afterwards. Inspo is one feed for everyone, so viewers often see the other department's fits and their groups came back half empty. Claude also wrote reasons for cards that were then thrown away.
+
+  Real catalog, top 6 per piece:
+
+  | Piece | Viewer | Before | After |
+  | --- | --- | --- | --- |
+  | white baby tee | women | 2/6 | 6/6 |
+  | baggy jeans | women | 3/6 | 6/6 |
+  | black hoodie | men | 2/6 | 6/6 |
+
+- **The fix:**
+  - `_shop_fit_rows(..., keep=None)` and `shop_fit(..., keep=None)` are new. `keep` is applied to `list_products()` *before* `find_products`, and again to each tag's hits (that covers a pinned `product_id` and live results). `shop_fit_grouped` passes it down.
+  - With no `keep`, behaviour is the same as before, so `/ai/shop-fit` is unchanged.
+  - The flat and grouped `/fitcheck/{id}/shop` routes and my `/search/photo` (`keep = buyable and dept`) now pass it.
+- **Tests:** `test_keep_filters_catalog_before_matching` in `test_shop_grouped.py`. Two stubs (`test_department`, `test_feed_size`) now accept `keep`.
+- **FYI:** `/ai/shop-fit` ignores the viewer's `shop_for` entirely. That's fine as long as the app uses `/fitcheck/{id}/shop`.
+
+**2. Nessie checkout re-tested on the shared server (11:29 PM, throwaway `u_test_checkout`): 4/4 store purchases `paid`.**
+- H&M only, Uniqlo only, and a mixed H&M + Uniqlo cart. All are confirmed in Nessie's purchase list.
+- Empty cart → 400 and a sold-out size → 422 when added; nothing was charged. The cart is empty again.
+- The ids are in `docs/devpost.md`.
+- **Notes:**
+  - The rebuild dropped the user → Nessie account mapping (expected), so `u_test_checkout` got a new account.
+  - Nessie only has H&M and Uniqlo merchants so far. A Shopify store creates its merchant on the first purchase (`ensure_merchant`).
+
+**3. Devpost updated:** Fit Score v2, try-on edits only the garment on your best own photo, shop the look per piece, closet outfits + own photos only, the Niche icon, 672 tests, and the new Nessie evidence.
+
+**4. Inspo feed/detail now send only the 2 newest comments** plus `comment_count`, shaped like the paged items (with `author`). Ryan gave the explicit ready signal after #56, and I checked the app's model and the comment sheet: counts come from `comment_count`. Nothing to change in core.
+
+**5. Login:** still waiting on the council's pick (sprint-3 §4). Nothing is shared yet.
+
+**Please, after merging:** restart the shared server so the comment trim and the shop fix go live.
+
+Not done: `scripts/redo_closet.py` (it's optional, and it rewrites a user's closet; say which users if you want me to run it).
 
 ---
 

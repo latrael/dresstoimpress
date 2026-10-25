@@ -6,6 +6,8 @@ photo_w/photo_h: pixel size of an uploaded photo (read from our saved file); for
 app sends with the JSON post (else null); null for posts made before the fields existed (the app lays photos out at their own aspect ratio, sprint-3 3.1).
 Inspo is one feed for everyone (council D4): every user sees every post, so friends lists don't filter
 anything here. `visibility` is still stored (the guest /fit wall only shows "public" posts).
+Post views (feed, detail, create, tag edit) carry `comment_count` (the total) and `comments` = only the
+PREVIEW_COMMENTS newest, oldest -> newest, shaped like GET .../comments items (with `author`); page the rest there.
 """
 from __future__ import annotations
 
@@ -72,11 +74,17 @@ def _author(uid: str) -> dict:
     return {"id": u.get("id", uid), "display_name": u.get("display_name") or uid}
 
 
+PREVIEW_COMMENTS = 2  # newest comments embedded in a post view; the rest come from GET .../comments
+
+
 def _view(post: dict, viewer_id: str) -> dict:
     likes = post.get("likes") or []
+    comments = post.get("comments") or []
+    authors: dict = {}
     return {"photo_w": None, "photo_h": None, **post, "author": _author(post["user_id"]),
             "like_count": len(likes), "liked_by_me": viewer_id in likes,
-            "comment_count": len(post.get("comments") or [])}
+            "comments": [_comment_view(c, authors) for c in comments[-PREVIEW_COMMENTS:]],
+            "comment_count": len(comments)}
 
 
 def _post(post_id: str, viewer_id: str) -> dict:
@@ -207,12 +215,12 @@ def shop(post_id: str, user_id: str, grouped: bool = False):
     tagged = _post(post_id, user_id).get("tagged") or []
     shop_for = (store.get("users", user_id) or {}).get("shop_for")
 
-    def keep(p: dict) -> bool:
-        return _dept_ok(store.get("products", p.get("id")) or p, shop_for)
+    def keep(p: dict) -> bool:  # runs on the whole catalog: products already carry their stored department
+        return _dept_ok(p, shop_for)
 
     if grouped:
         return service.shop_fit_grouped(user_id, tagged, keep=keep)
-    return [p for p in service.shop_fit(user_id, tagged) if keep(p)]
+    return service.shop_fit(user_id, tagged, keep=keep)
 
 
 @router.post("/fitcheck/{post_id}/like")

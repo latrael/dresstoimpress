@@ -47,7 +47,7 @@ void main() {
         find.widgetWithText(TextField, 'Your display name'), 'Test shopper');
     await tester.tap(find.text('Create profile'));
     await tester.pumpAndSettle();
-    expect(find.text("Let's make\nniche yours."), findsOneWidget);
+    expect(find.text('Your clothes.\nYour fit.\nYour niche.'), findsOneWidget);
     await tester.tap(find.text("Let's go"));
     await tester.pumpAndSettle();
     for (var i = 0; i < 6; i++) {

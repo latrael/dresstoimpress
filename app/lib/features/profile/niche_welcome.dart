@@ -111,7 +111,7 @@ class _NicheWelcomeState extends State<NicheWelcome>
             Text('niche',
                 style: Niche.wordmark.copyWith(color: Niche.of(context).brand)),
             const SizedBox(height: 22),
-            Text("Let's make\nniche yours.",
+            Text('Your clothes.\nYour fit.\nYour niche.',
                 style: Theme.of(context).textTheme.displaySmall,
                 textAlign: TextAlign.center),
             const SizedBox(height: 12),

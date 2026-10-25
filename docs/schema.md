@@ -123,3 +123,22 @@ Complete outfits built for the user's body (body scan) that mix closet pieces wi
 - `POST /fits/create?tryon=false` body `{user_id, count: 3, occasion?: "rooftop party", must_include?: [product_id], budget_usd?}` → `{fits: [OutfitFit], source: "ai"|"rules"}`. Pool = closet + buyable catalog products in the user's department / price ranges / budget that have a `your_size` (no size filter without a body profile). Claude picks; ids are validated against the pool, incomplete fits (need top+bottom or dress, plus shoes) are filled by the outfit rules; rules build one fit per top closet piece when AI is off. Cached 1 h per (user, closet, occasion, must_include, budget). `?tryon=true` also renders each fit (slow) when the user has a body photo.
 - `OutfitFit {id: "fit_<hash>", name, occasion, reason (names build/measurement + the closet piece), pieces: [{slot: top|bottom|shoes|outerwear|dress|accessory, source: closet|catalog, closet_item: ClosetItem|null, product: Product card (+your_size/in_your_size)|null, your_size, in_your_size}], new_total_usd (catalog pieces), closet_count, try_on: {image_url, mode: "ai"|"collage"}|null}`.
 - `GET /fits/{fit_id}?user_id=` → the cached fit (404 after 1 h). `POST /fits/{fit_id}/try-on?user_id=` → `{image_url, mode}` (same generator as `/tryon`). `POST /fits/{fit_id}/cart?user_id=` adds every catalog piece at `your_size` and returns the cart like `POST /cart/{user}/items`.
+
+## Photo onboarding
+
+`POST /onboarding/photos` (multipart, Oct 24): form `user_id`, `height_cm` (120–230, required), `weight_kg?` (30–250), `style_hint?` (free text, same parser as `POST /onboarding`, so "tops under $40" sets a budget), and 1–8 image parts all named `files`. One call does the whole onboarding from photos:
+
+- every photo is digitized (`/closet/digitize` logic) → closet items; items whose `duplicate_of` points at an earlier item in the batch or at the existing closet are **not** saved;
+- every photo is body-scanned (smallest first) and the full-body ones are averaged (`body_scan.scan_many`); the first full-body photo becomes `body_photo_url` (try-on photo) and the scan is merged into `body_profile` (typed values win). No full-body photo → formula estimate with `full_body: false`, `scan_photos: 0`, `confidence: "low"` and a note, `body_photo_url` unchanged;
+- style is inferred from the digitized garments (top 3 `style_tags` by frequency, dominant colors, formality label, one sentence) and saved as `User.style_text` / `User.style_tags` with `onboarded = true`. `preferred_stores` untouched;
+- the BODY_SCAN prompt also returns `presenting: men|women|unknown` (stored as `body_profile.presenting`); when the user's `shop_for` is unset / `"both"` and presenting is `men` or `women`, `shop_for` is set to it. A department the user chose is never overridden;
+- the feed's reason bank is warmed in a background thread.
+
+Response: `{closet_added: [ClosetItem], closet_skipped_duplicates: int, body_profile, body_photo_url: string|null, style: {style_text, style_tags, colors, formality}, shop_for, user: User}`. Everything is written immediately (no draft). Errors: 422 (no files, >8, bad height/weight), 415 (a non-image), 502 only if tagging failed for every photo; a photo with no clothing is skipped.
+
+- `User.style_tags: [string]` (new, default `[]`): style vocabulary tags inferred by photo onboarding (hint tags first).
+
+### Multi-photo body scan
+
+`POST /users/{id}/body-scan` now takes 1–6 image parts named `files` (the single `file` part still works). Every photo is scanned; the full-body ones are averaged (chest/waist/hip/inseam to the nearest 0.5 in, `build` and `presenting` by majority vote). New `body_profile` fields: `scan_photos` (full-body photos used; 0 = formula only) and `confidence: "low"|"medium"|"high"` (1 / 2 / 3+ full-body photos). Response adds `skipped` (photos ignored because not full-body). `body_photo_url` is the first full-body photo. `?commit=false` and `/body-scan/confirm` carry the new fields through. App: `Api.bodyScanMany(photos, heightCm:, weightKg:, mimeTypes:, commit:)`, `BodyProfile.scanPhotos` / `.confidence`, `BodyScanResult.skipped`.
+- App: `Api.onboardFromPhotos(photos, heightCm:, weightKg:, styleHint:, mimeTypes:)` → `PhotoOnboardingResult{closetAdded, skippedDuplicates, bodyProfile?, bodyPhotoUrl, styleText, styleTags, colors, formality, shopFor, user}`.

@@ -2,11 +2,20 @@
 
 Notes from Adam (AI lane) to Ryan (app). Newest at the top. **Ryan owns the app and its design.** Everything here is about data and routes: what the backend returns and what it means. How it looks is Ryan's call.
 
-**Last updated:** Sat Oct 24, 2026, ~2:05 AM PT
+**Last updated:** Sat Oct 24, 2026, ~6:10 PM PT
 
 ---
 
 ## Overnight log (Adam's session, every 20 min; newest first)
+
+- **6:10 PM: photo onboarding + multi-photo body scan (PR `adam/photo-onboarding`, all additive):**
+  - `Api.onboardFromPhotos(photos, heightCm:, weightKg:, styleHint:, mimeTypes:)` → `PhotoOnboardingResult{closetAdded, skippedDuplicates, bodyProfile?, bodyPhotoUrl, styleText, styleTags, colors, formality, shopFor, user}` = `POST /onboarding/photos` (1–8 photos + height). One call: closet digitized, body scanned, style inferred, `shop_for` detected, feed warmed.
+  - **What persists and when:** everything is written **immediately, no draft**. Closet items, `body_profile`, `body_photo_url` and `style_text`/`style_tags` (+ `onboarded = true`) are all saved on the user before the response returns. If the user wants to undo, they edit afterwards (below).
+  - **Partial failures:** a photo with no clothing (or one whose tagging crashed) is skipped, not an error; garments already in the closet or repeated in the batch are dropped and counted in `skippedDuplicates`. If no photo is full-body, `bodyProfile` is the height/weight formula estimate (`fullBody: false`, `scanPhotos: 0`, `confidence: 'low'`, note says "add a full-body photo") and `bodyPhotoUrl` is null (previous try-on photo untouched). 422 for no files / >8 / height outside 120–230; 502 only if tagging was down for every photo.
+  - **Photo retention:** every upload stays under `/static/uploads` (GPS stripped). The first full-body photo becomes the try-on photo (`user.bodyPhotoUrl`); the others remain as the closet items' source photos (`ClosetItem.imageUrl` / `worn_in`). `Api.deleteBodyPhoto()` still only removes the try-on photo.
+  - **shop_for:** the body scan now also returns `presenting: men|women|unknown`. If the user never picked a department (`shop_for` unset / `"both"`) it is set from that; a department the user chose is never overridden. Shown back as `shopFor`.
+  - **Review UI expectation:** after the call show `closetAdded` (count + thumbnails; items are already in the closet, so "remove" = the normal closet delete), `bodyProfile` for editing via `updateBodyProfile(...)` (typed values win over the scan), and `styleText` as an editable sentence saved via the normal `onboarding(styleText)` call. Nothing to "confirm": there is no draft.
+  - **Body scan, several photos:** `Api.bodyScanMany(photos, heightCm:, weightKg:, mimeTypes:, commit:)` → `BodyScanResult` (same route `POST /users/{id}/body-scan`, 1–6 `files`; the old single-photo `bodyScan` keeps working). Every full-body photo is scanned and the estimates averaged (build by majority vote). New fields: `BodyProfile.scanPhotos` (full-body photos used) and `BodyProfile.confidence` (`low` 1 / `medium` 2 / `high` 3+), `BodyScanResult.skipped` (photos ignored because not full-body). The scan screen should let the user pick several photos ("more photos = better estimate"); `commit: false` drafting works the same way, and `confirmBodyScan` passes `scanPhotos`/`confidence` through. The same photos feed the wardrobe when sent through `/onboarding/photos` (`closetAdded`), so one picker can serve both.
 
 - **5:45 PM: core for your 5:30 asks (PR `adam/core-sprint2`, all additive):**
   - `api.feed(seed:, seedShown: true)` sends `seed_shown=true` (only then; only meaningful with `seed`): the server leaves the seed card out of that reload.

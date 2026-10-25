@@ -20,6 +20,7 @@ from .commerce.reels import router as reels_router  # noqa: E402
 from .commerce.router import router as commerce_router  # noqa: E402
 from .commerce.search import router as search_router  # noqa: E402
 from .commerce.users import router as users_router  # noqa: E402
+from .commerce.wallet import router as wallet_router  # noqa: E402
 from .store import DATA_DIR  # noqa: E402
 
 # Shared key for a public tunnel (the repo is public, so a leaked URL could spend AI credits).
@@ -111,5 +112,6 @@ app.include_router(search_router)  # Discover: /search, /search/styles, /search/
 app.include_router(discover_router)  # Discover board: /discover/board, /discover/pins/{id}/similar
 app.include_router(fitcheck_extras_router)
 app.include_router(fitcheck_router)  # /fitcheck posts, feed, tags, likes, comments, shop
+app.include_router(wallet_router)  # Niche Card: GET /wallet/{user} (live from Nessie)
 app.include_router(users_router)  # /users CRUD, /onboarding
 app.include_router(fitcheck_web_router)  # public /fit page for guests (event code, no X-DTI-Key)

@@ -121,6 +121,7 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 25, ~10:45 AM:** Niche Card: `GET /wallet/{user}` (Nessie account + purchases read live, joined to our orders; saved-receipt fallback) + app screen; receipts show the Nessie purchase number; button says "Checkout". 789 tests.
 - **Oct 25, ~10 AM:** Discover is a Pinterest-style board: `GET /discover/board` (pins + products + Inspo posts, ~4:2:1, stable paging), `GET /discover/pins/{id}/similar`; 793 AI-tagged outfit pins (`seed/pins.json`, `scripts/ingest_pins.py`, silentflow actor ~$1.80 + ~$0.30 Haiku); app board with style chips + two columns + Similar. `scripts/backfill_post_visibility.py` for #103's old friends-only posts. Friends-sheet keyboard fix.
 - **Oct 25, ~7:45 AM:** Google login end to end (#90 backend, #93 app, #97 client ids; server configured by Adam). `GET /fitcheck/feed?scope=friends` (friends + own posts) for Adam's #99. 777 tests.
 - **Oct 25, ~4:50 AM:** After Adam's #78 (reactions): unliking through the old `POST`/`PUT …/like` also clears the user's emoji, so a re-like is a plain 😍, not a stale 🔥. 731 tests.

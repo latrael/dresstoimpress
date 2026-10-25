@@ -92,7 +92,7 @@ void main() {
         ['GET /cart/u_demo']); // opening the cart re-reads the server copy
     expect(find.text('Total \$25.00'), findsOneWidget);
     await tester
-        .tap(find.widgetWithText(FilledButton, 'Checkout in Nessie sandbox'));
+        .tap(find.widgetWithText(FilledButton, 'Checkout'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Place order'));
     await tester.pumpAndSettle();

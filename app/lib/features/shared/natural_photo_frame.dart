@@ -6,9 +6,15 @@ double postPhotoAspect(double width, double height) =>
     width > 0 && height > 0 ? math.max(9 / 16, width / height) : 1;
 
 class NaturalPhotoFrame extends StatefulWidget {
-  const NaturalPhotoFrame({super.key, required this.url, required this.child});
+  const NaturalPhotoFrame(
+      {super.key,
+      required this.url,
+      required this.child,
+      this.width,
+      this.height});
   final String url;
   final Widget child;
+  final double? width, height;
   @override
   State<NaturalPhotoFrame> createState() => _NaturalPhotoFrameState();
 }
@@ -26,7 +32,9 @@ class _NaturalPhotoFrameState extends State<NaturalPhotoFrame> {
   @override
   void didUpdateWidget(covariant NaturalPhotoFrame oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url) {
+    if (oldWidget.url != widget.url ||
+        oldWidget.width != widget.width ||
+        oldWidget.height != widget.height) {
       ratio = 1;
       resolve();
     }
@@ -34,6 +42,13 @@ class _NaturalPhotoFrameState extends State<NaturalPhotoFrame> {
 
   void resolve() {
     if (listener != null) stream?.removeListener(listener!);
+    if (widget.width != null &&
+        widget.height != null &&
+        widget.width! > 0 &&
+        widget.height! > 0) {
+      ratio = postPhotoAspect(widget.width!, widget.height!);
+      return;
+    }
     if (widget.url.isEmpty) return;
     stream = NetworkImage(widget.url)
         .resolve(createLocalImageConfiguration(context));

@@ -9,6 +9,8 @@ import '../product/complete_look_screen.dart';
 import '../store/cart_screen.dart';
 import '../shared/natural_photo_frame.dart';
 import 'comments_sheet.dart';
+import 'optimistic_like.dart';
+import 'inspo_bindings.dart';
 
 class SocialFeed extends StatefulWidget {
   const SocialFeed(
@@ -17,12 +19,14 @@ class SocialFeed extends StatefulWidget {
       required this.onShop,
       this.picker = pickPhoto,
       this.onTagSearch,
-      this.authorId});
+      this.authorId,
+      this.bindings});
   final StoreController store;
   final void Function(List<RankedProduct>) onShop;
   final PhotoPicker picker;
   final void Function(String)? onTagSearch;
   final String? authorId;
+  final InspoBindings? bindings;
   @override
   State<SocialFeed> createState() => _SocialFeedState();
 }
@@ -83,6 +87,7 @@ class _SocialFeedState extends State<SocialFeed> {
                       FitPostCard(
                           key: ValueKey(post.id),
                           post: post,
+                          bindings: widget.bindings,
                           api: widget.store.api,
                           onShop: widget.onShop,
                           onTagSearch: widget.onTagSearch,
@@ -96,7 +101,8 @@ class _SocialFeedState extends State<SocialFeed> {
                                           store: widget.store,
                                           onShop: widget.onShop,
                                           onTagSearch: widget.onTagSearch,
-                                          authorId: id)))))
+                                          authorId: id,
+                                          bindings: widget.bindings)))))
                   ]);
                 })),
       ]);
@@ -194,13 +200,15 @@ class FitPostCard extends StatefulWidget {
       required this.onShop,
       this.onTagSearch,
       this.onAuthor,
-      this.onDeleted});
+      this.onDeleted,
+      this.bindings});
   final FitCheckPost post;
   final Api api;
   final void Function(List<RankedProduct>) onShop;
   final void Function(String)? onTagSearch;
   final void Function(String id, String name)? onAuthor;
   final VoidCallback? onDeleted;
+  final InspoBindings? bindings;
   @override
   State<FitPostCard> createState() => _FitPostCardState();
 }
@@ -214,6 +222,30 @@ class _FitPostCardState extends State<FitPostCard> {
   String? error;
   bool showTags = false;
   bool liking = false;
+  OptimisticLike? instantLike;
+  late int commentCount = post.commentCount ?? comments.length;
+  @override
+  void initState() {
+    super.initState();
+    configureLike();
+  }
+
+  void configureLike() {
+    if (widget.bindings?.setLike == null) return;
+    instantLike = OptimisticLike(
+        liked: liked,
+        count: count,
+        write: (value) => widget.bindings!.setLike!(post.id, value));
+    instantLike!.addListener(likeChanged);
+  }
+
+  void likeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get shownLiked => instantLike?.liked ?? liked;
+  int get shownCount => instantLike?.count ?? count;
+
   Future<void> deletePost() async {
     final yes = await showDialog<bool>(
         context: context,
@@ -245,11 +277,23 @@ class _FitPostCardState extends State<FitPostCard> {
       liked = post.likedByMe ?? false;
       count = post.likeCount ?? post.likes.length;
       comments = [...post.comments];
+      commentCount = post.commentCount ?? comments.length;
+      instantLike?.acceptServer(liked, count);
+    }
+    if (instantLike != null && widget.bindings?.setLike == null) {
+      instantLike!.removeListener(likeChanged);
+      instantLike!.dispose();
+      instantLike = null;
+    }
+    if (instantLike == null && widget.bindings?.setLike != null) {
+      configureLike();
     }
   }
 
   @override
   void dispose() {
+    instantLike?.removeListener(likeChanged);
+    instantLike?.dispose();
     super.dispose();
   }
 
@@ -269,6 +313,10 @@ class _FitPostCardState extends State<FitPostCard> {
   }
 
   Future<void> like() async {
+    if (instantLike != null) {
+      instantLike!.toggle();
+      return;
+    }
     if (liking) return;
     setState(() {
       liking = true;
@@ -299,8 +347,21 @@ class _FitPostCardState extends State<FitPostCard> {
           api: widget.api,
           postId: post.id,
           initial: comments,
+          loadPage: widget.bindings?.commentsForPost?.call(post.id),
+          authorLabel: widget.bindings?.commentAuthor,
+          onTotal: (total) {
+            if (mounted) setState(() => commentCount = total);
+          },
           onAdded: (added) {
-            if (mounted) setState(() => comments.add(added));
+            if (mounted) {
+              setState(() {
+                final isNew = !comments.any((c) => c.id == added.id);
+                if (isNew) comments.add(added);
+                final total =
+                    added.commentCount ?? commentCount + (isNew ? 1 : 0);
+                if (total > commentCount) commentCount = total;
+              });
+            }
           }));
   Future<void> editTags() async {
     final result = await showDialog<List<FitTag>>(
@@ -337,6 +398,8 @@ class _FitPostCardState extends State<FitPostCard> {
                 : null),
         NaturalPhotoFrame(
             url: widget.api.imageProxyUrl(post.photoUrl),
+            width: widget.bindings?.photoSize?.call(post)?.width,
+            height: widget.bindings?.photoSize?.call(post)?.height,
             child: Semantics(
                 container: true,
                 explicitChildNodes: true,
@@ -396,9 +459,11 @@ class _FitPostCardState extends State<FitPostCard> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TextButton.icon(
-                  onPressed: liking ? null : like,
-                  icon: Icon(liked ? Icons.favorite : Icons.favorite_border),
-                  label: Text('$count')),
+                  key: ValueKey('like-${post.id}'),
+                  onPressed: instantLike != null || !liking ? like : null,
+                  icon:
+                      Icon(shownLiked ? Icons.favorite : Icons.favorite_border),
+                  label: Text('$shownCount')),
               FilledButton.tonal(
                   onPressed: busy == null
                       ? () => action('shop this fit', () async {
@@ -427,13 +492,14 @@ class _FitPostCardState extends State<FitPostCard> {
         TextButton.icon(
             onPressed: openComments,
             icon: const Icon(Icons.chat_bubble_outline),
-            label: Text('Comments (${comments.length})')),
+            label: Text('Comments ($commentCount)')),
         Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
                 onPressed: openComments, child: const Text('Add a comment…'))),
         const SizedBox(height: 16),
         if (busy != null) const LinearProgressIndicator(),
+        if (instantLike?.error != null) Text(instantLike!.error!),
         if (error != null) Text(error!),
       ]));
 }

@@ -1,3 +1,9 @@
+# Ryan acting on your 7:50 Inspo handoff — Oct 24
+
+Read and synced PR #55. Preparing optimistic explicit-state likes, paged comment sheet and authoritative photo dimensions. Adam's core currently lacks all three client additions, requested in RYAN_TO_ADAM.md; preserving shared-client ownership. **Do not trim feed/detail comments to two yet.** I'll write an explicit ready note here when the app actually loads GET comments pages and has been validated. Existing comment sheet remains usable from the current full payload meanwhile. No automatic retries on toggle POST.
+
+---
+
 # Ryan Sprint 3 UI ready — Oct 24
 
 [PR #54](https://github.com/latrael/dresstoimpress/pull/54), `46b8fb7`, into staging, unmerged. Closet garment-detection uploads, own-photo-only Pieces and derived worn-photo Outfits views, natural-ratio Inspo with 9:16 portrait cap, roomier actions and keyboard-safe comments sheet are implemented. Sign-in on hold per Ryan. 130 tests/analysis/release builds pass; updated iPhone build installed/launched.

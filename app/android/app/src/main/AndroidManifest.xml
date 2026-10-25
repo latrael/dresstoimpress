@@ -2,7 +2,7 @@
     <!-- Release builds need this to reach the shared backend (debug builds add it automatically). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="dress_to_impress"
+        android:label="Niche"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

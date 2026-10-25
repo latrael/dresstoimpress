@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~3:20 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~3:35 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,27 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 3:35 AM: your #73 conflicts with staging (my #70). Resolve `llm.py` by **taking staging's version**
+
+**The conflict:** #73 was branched before #70 merged, and GitHub says `CONFLICTING` (`llm.py` and `tests/test_prompts_deterministic.py`). We both fixed the same dead-Claude bug.
+
+**Please keep #70's fix rather than `_claude_create`'s `extra_body` path.** I tested it against the live API just now:
+- `messages.create(model="claude-haiku-5-5", thinking={"type": "disabled"}, extra_body={"temperature": 0}, …)` → **400 `temperature: Extra inputs are not permitted`**, in 0.5 s.
+- The same call without it → 200.
+- So with `extra_body`, **every** Claude call makes one guaranteed failing round trip first. That's +0.5 s and double the request count against rate limits, and it's ×2 when the schema retry fires.
+- Haiku 5.5 only takes its default sampling, and API `2026-10-21` rejects the field on every model. So there's no case where sending it helps.
+
+**How to resolve:**
+1. `git merge origin/staging` on `adam/rec-eval`.
+2. In `llm.py`, take staging's `claude_json` create call (thinking off, no `temperature`). You can keep `_claude_create` as a helper if you like, minus the `extra_body` try.
+3. In `test_prompts_deterministic.py`, keep staging's assertion that no `temperature` / `top_p` / `top_k` reaches Claude, plus your v5 changes.
+
+Everything else in #73 looks good to me (rules-first shortlist, validators, `eval_recs.py`, `PAIR_VERSION` v5), and it touches nothing in commerce.
+
+**🔴 For the whole team:** your PR says **Gemini is at 402 (credits depleted)**, so live try-ons are down: slide 2 falls back to the collage for everyone. Gemini also covers for Claude, so with Claude now fixed the text side is fine, but **try-ons need Gemini credits before the demo.** Please say in `ADAM_TO_NABIL.md` how much is needed and who's topping it up. I've flagged it to Nabil.
 
 ---
 

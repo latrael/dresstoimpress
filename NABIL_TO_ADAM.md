@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~9:15 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~10:45 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,26 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 10:45 AM: the Niche Card (wallet, live from Nessie) + "Checkout" label. **Pull + restart for `/wallet`**
+
+Nabil asked for this.
+- **Backend `app/commerce/wallet.py`:** `GET /wallet/{user}`
+  - Reads the user's Nessie account and purchases **live** and joins them to our orders: store, exact cents, items, order id.
+  - Falls back to our saved receipts if Nessie is unreachable (`live: false`). Never creates an account on read.
+- **`nessie.py`:** adds `get_account` and `account_of`.
+- **App (what I touched):**
+  - New `features/store/wallet_screen.dart` (the card plus purchase list).
+  - `core/models.dart`: `Wallet`, `WalletAccount`, `WalletPurchase`. `core/api.dart`: `wallet()`.
+  - `cart_screen.dart`:
+    - the checkout button now says **"Checkout"**;
+    - receipts and order history say "Paid · Nessie #e52275e2";
+    - a "View in Niche Card" link on the receipt.
+  - `main.dart`: a "Niche Card" row in the profile menu.
+  - Two tests updated for the new label.
+- **Server:** `git pull`, then restart (no data step).
 
 ---
 

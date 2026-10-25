@@ -465,6 +465,68 @@ class CheckoutResult {
       createdAt: _strN(j['created_at']));
 }
 
+/// GET /wallet/{user}: the Niche Card, the user's Nessie account and purchases read live from Capital One Nessie.
+/// [live] false = Nessie couldn't be reached, so [purchases] are our saved receipts.
+class Wallet {
+  const Wallet({this.live = false, this.account, this.spentUsd = 0, this.spentMonthUsd = 0, this.purchases = const []});
+
+  final bool live;
+  final WalletAccount? account; // null before the first checkout
+  final double spentUsd;
+  final double spentMonthUsd;
+  final List<WalletPurchase> purchases; // newest first
+
+  factory Wallet.fromJson(Json j) => Wallet(
+      live: j['live'] == true,
+      account: j['account'] is Map ? WalletAccount.fromJson(_obj(j['account'])) : null,
+      spentUsd: _dbl(j['spent_usd']),
+      spentMonthUsd: _dbl(j['spent_month_usd']),
+      purchases: _list(j['purchases'], WalletPurchase.fromJson));
+}
+
+class WalletAccount {
+  const WalletAccount({required this.last4, this.nickname, this.type, this.balance, this.rewards});
+
+  final String last4;
+  final String? nickname;
+  final String? type; // "Credit Card"
+  final double? balance; // the sandbox never lowers it: show spending from purchases, not this
+  final double? rewards;
+
+  factory WalletAccount.fromJson(Json j) => WalletAccount(
+      last4: _str(j['last4']), nickname: _strN(j['nickname']), type: _strN(j['type']),
+      balance: _dblN(j['balance']), rewards: _dblN(j['rewards']));
+}
+
+class WalletPurchase {
+  const WalletPurchase({this.nessieId, this.retailer, required this.storeName, this.amountUsd = 0, this.nessieAmount,
+      this.date = '', this.status, this.orderId, this.items = const []});
+
+  final String? nessieId;
+  final String? retailer;
+  final String storeName;
+  final double amountUsd; // our exact amount (Nessie keeps whole dollars: [nessieAmount])
+  final double? nessieAmount;
+  final String date; // YYYY-MM-DD
+  final String? status; // completed / pending / paid
+  final String? orderId;
+  final List<String> items; // "Baggy Jeans · M"
+
+  factory WalletPurchase.fromJson(Json j) => WalletPurchase(
+      nessieId: _strN(j['nessie_id']),
+      retailer: _strN(j['retailer']),
+      storeName: _str(j['store_name'], 'Store'),
+      amountUsd: _dbl(j['amount_usd']),
+      nessieAmount: _dblN(j['nessie_amount']),
+      date: _str(j['date']),
+      status: _strN(j['status']),
+      orderId: _strN(j['order_id']),
+      items: [
+        for (final i in j['items'] is List ? j['items'] as List : const [])
+          if (i is Map) [i['name'], if (i['size'] != null) i['size']].join(' · ')
+      ]);
+}
+
 class Order {
   const Order({required this.id, required this.purchases, required this.totalUsd, this.userId, this.createdAt});
   final String id;

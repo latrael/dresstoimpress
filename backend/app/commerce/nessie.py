@@ -71,6 +71,17 @@ def list_purchases(account_id: str) -> list[dict]:
     return _call("GET", f"/accounts/{account_id}/purchases")
 
 
+def get_account(account_id: str) -> dict:
+    return _call("GET", f"/accounts/{account_id}")
+
+
+def account_of(user_id: str) -> str | None:
+    """The user's Nessie account id if they have one (never creates it: reads stay side-effect free)."""
+    if user_id == DEMO_USER and os.getenv("NESSIE_ACCOUNT_ID"):
+        return os.environ["NESSIE_ACCOUNT_ID"]
+    return ((store.get("nessie", "accounts") or {}).get(user_id) or {}).get("account_id")
+
+
 def ensure_merchant(retailer: str) -> str:
     ids = store.get("nessie", "merchants") or {}
     if retailer not in ids:

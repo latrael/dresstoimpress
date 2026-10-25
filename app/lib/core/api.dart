@@ -182,6 +182,9 @@ class Api {
 
   Future<List<Order>> orders() async => _listOf(await _send('GET', '/orders/${_seg(_user)}'), Order.fromJson);
 
+  /// GET /wallet/{user}: the Niche Card (Nessie account + purchases, read live; saved receipts if Nessie is down).
+  Future<Wallet> wallet() async => Wallet.fromJson(await _send('GET', '/wallet/${_seg(_user)}'));
+
   /// POST /orders/{id}/retry: re-attempts only this order's unpaid store purchases (`nessie_failed` /
   /// `pending_nessie`), or just [retailer]'s. Paid purchases are never charged again, so it is safe to
   /// repeat. Returns the updated receipt. ApiError 503 when payments aren't configured on the server.

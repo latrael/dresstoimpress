@@ -393,7 +393,7 @@ void main() {
     expect(
         t
             .widget<FilledButton>(
-                find.widgetWithText(FilledButton, 'Checkout in Nessie sandbox'))
+                find.widgetWithText(FilledButton, 'Checkout'))
             .onPressed,
         isNull);
     await t.tap(find.byTooltip('Remove unavailable Gone tee'));

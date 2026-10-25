@@ -24,6 +24,7 @@ import 'features/profile/onboarding_screen.dart';
 import 'features/product/try_on.dart' show BodyPhotoButton;
 import 'features/product/complete_look_screen.dart';
 import 'features/store/cart_screen.dart';
+import 'features/store/wallet_screen.dart';
 import 'features/store/store_controller.dart';
 
 Future<void> main() async {
@@ -137,6 +138,13 @@ class _NicheAppState extends State<NicheApp> {
                         await store.loadProfile(fromServer: !store.demo);
                         await store.load();
                       }))),
+            if (!store.demo)
+              ListTile(
+                  key: const ValueKey('niche-card'),
+                  title: const Text('Niche Card'),
+                  subtitle: const Text('Your purchases, live from Capital One Nessie'),
+                  leading: const Icon(NicheIcons.receiptLong),
+                  onTap: () => open(WalletScreen(api: store.api))),
             ListTile(
                 title: const Text('Orders'),
                 leading: const Icon(NicheIcons.receiptLongOutlined),

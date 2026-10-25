@@ -6,9 +6,16 @@ import '../../core/api.dart';
 import '../../core/models.dart';
 import 'store_controller.dart';
 import '../shared/store_names.dart';
+import 'wallet_screen.dart';
 
 String retailerName(String retailer) => storeName(retailer);
 String dollars(num value) => '\$${value.toStringAsFixed(2)}';
+
+/// "Paid · Nessie #e52275e2": the store's Capital One Nessie purchase, so a receipt can be found in the Niche Card.
+String paidLine(Purchase p) {
+  final id = p.nessieId;
+  return id == null || id.isEmpty ? 'Paid' : 'Paid · Nessie #${id.length > 8 ? id.substring(0, 8) : id}';
+}
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key, required this.store});
@@ -239,7 +246,7 @@ class _CartScreenState extends State<CartScreen> {
                                               : 'Retry payment')),
                                   ]),
                               subtitle: Text(p.status == 'paid'
-                                  ? 'Paid in Nessie sandbox'
+                                  ? paidLine(p)
                                   : p.status == 'demo'
                                       ? 'Demo only'
                                       : p.status == 'pending_nessie'
@@ -258,6 +265,17 @@ class _CartScreenState extends State<CartScreen> {
                                   : 'Paid ${dollars(paid)} of ${dollars(receipt!.totalUsd)}',
                               style: Theme.of(context).textTheme.titleLarge);
                         }),
+                        if (!widget.store.demo)
+                          Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton(
+                                  key: const ValueKey('receipt-niche-card'),
+                                  onPressed: () => Navigator.push<void>(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => WalletScreen(
+                                              api: widget.store.api))),
+                                  child: const Text('View in Niche Card'))),
                         if (error != null)
                           Padding(
                               padding: const EdgeInsets.only(top: 12),
@@ -374,7 +392,7 @@ class _CartScreenState extends State<CartScreen> {
                                 ? 'Please wait…'
                                 : widget.store.demo
                                     ? 'Complete demo order'
-                                    : 'Checkout in Nessie sandbox')),
+                                    : 'Checkout')),
                       ],
                     ]))));
       });
@@ -454,7 +472,11 @@ class _OrderHistoryState extends State<OrderHistory> {
                       for (final p in order.purchases)
                         ListTile(
                             title: Text(retailerName(p.retailer)),
-                            subtitle: Text(p.status),
+                            subtitle: Text(p.status == 'paid'
+                                ? paidLine(p)
+                                : p.status == 'pending_nessie'
+                                    ? 'Payment pending, not paid'
+                                    : 'Payment failed, not charged'),
                             trailing:
                                 Row(mainAxisSize: MainAxisSize.min, children: [
                               Text(dollars(p.amountUsd), style: Niche.price),

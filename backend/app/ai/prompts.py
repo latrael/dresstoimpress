@@ -52,7 +52,13 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
-TRYON_VERSION = "v7"  # bump to invalidate cached try-ons when the prompt changes (v7: product-only in-place swap on a real outfit photo)
+TRYON_VERSION = "v8"  # bump to invalidate cached try-ons when the prompt changes (v8: true-to-size fit, reference-photo guard)
+
+TRYON_RETRY_PREFIX = (
+    "IMPORTANT: your previous answer was the reference photo itself (the store's model), which is WRONG. "
+    "The person in image 1 must remain the person in the output, in image 1's own scene and background. "
+    "Images 2+ are garment swatches only; never output them or their model.\n\n"
+)
 
 _FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic": "an athletic build",
               "curvy": "a curvy figure", "broad": "a broad build"}
@@ -97,9 +103,12 @@ def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | 
         "PRESERVE EXACTLY (pixel-identical outside the edited regions): the SAME person — face, hair, skin, "
         "hands, pose, body shape — every other garment, shoes and accessory, the lighting, the ORIGINAL "
         "background, the framing and the image size.\n"
-        f"GARMENT FIDELITY: {fit} Copy the garment's real colour, fabric, print, cut, length and silhouette "
-        "(cropped stays cropped, baggy stays baggy, oversized stays oversized). The garment images are references "
-        "only: ignore any model, logo, size label, text or watermark in them.\n"
+        f"GARMENT FIDELITY: {fit} Copy the garment's real colour, fabric, print, cut, length and silhouette. "
+        "FIT: true to size on THIS person's body, the way their current garment fits them, using the garment's "
+        "named fit (e.g. 'Regular Fit' = regular, 'Slim' = slim). Do not inflate the garment: it is only "
+        "oversized or baggy if its name says so. Shoulder seams sit on the shoulders, hems at the garment's real "
+        "length. The garment images are references only: ignore the model, their body, pose and background, "
+        "and any logo, size label, text or watermark in them; never output a reference image.\n"
         "OUTPUT: one photorealistic photo, sharp, at image 1's exact framing and resolution.\n"
         f"NEGATIVE: {TRYON_NEGATIVE}."
     )

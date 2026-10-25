@@ -49,6 +49,27 @@ Map<String, dynamic> fit() => {
       'closet_count': 1
     };
 void main() {
+  testWidgets(
+      'fresh connected install requires explicit profile choice even for onboarded u_demo',
+      (t) async {
+    SharedPreferences.setMockInitialValues({});
+    final api = Api(client: MockClient((r) async {
+      expect(r.url.path, '/users/u_demo');
+      return response(
+          {'id': 'u_demo', 'display_name': 'Team demo', 'onboarded': true});
+    }));
+    await t.pumpWidget(NicheApp(store: StoreController(api: api, demo: false)));
+    await t.pumpAndSettle();
+    expect(find.text('New account'), findsOneWidget);
+    expect(find.text('Use team test profile'), findsOneWidget);
+    expect(find.byKey(const ValueKey('product-stream')), findsNothing);
+    expect(
+        t
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Login'))
+            .onPressed,
+        isNull);
+  });
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('style chips and own words persist together', (t) async {
     await t.pumpWidget(MaterialApp(

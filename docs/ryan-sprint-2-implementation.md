@@ -22,7 +22,8 @@ have no extra label. Wait for Adam's shared-client additions; do not edit core.
   Product.blurb method so Adam's summary preference can land independently.
 - A8: catalog styles and clean girl/old money/gorpcore chips plus optional own words;
   chips and text persist together through the existing onboarding contract.
-- A9: Connection available from entry and inline during scan setup; connect/retry
+- A9: Fresh connected installs require an explicit New account or team-test choice;
+  server onboarding status alone never opens the demo profile. Connection available from entry and inline during scan setup; connect/retry
   retains the draft measurements. Local-only profiles can become their own server
   profile on connection; arbitrary missing remote IDs are not silently recreated.
 - A10: repeated top-icon taps do not stack routes; switching top pages returns to
@@ -38,15 +39,16 @@ have no extra label. Wait for Adam's shared-client additions; do not edit core.
 
 No changes to app/lib/core. Requests posted on staging in RYAN_TO_ADAM.md:
 shopFor profile get/update, seedShown feed option, cart/unavailable flat imageUrl,
-Product.summary/blurb preference, photo onboarding method/model. The Shop-for
+photo onboarding method/model. The Shop-for
 screen, seed_shown reload behavior, flat removed-item photos and photo fast setup
 are not shipped with a guessed or duplicate HTTP adapter. Adam's summary-dept
-branch has been seen; it remains unmerged at this checkpoint. Closet brand/rematch
+PR #40 is now merged and integrated through staging 46b7628; Product.blurb prefers
+his server summary without a label. Closet brand/rematch
 UI likewise needs his announced closet-real-pieces fields.
 
 ## Verification
 
-99 Flutter tests pass; analysis reports no issues. Tests cover wheel conversion and
+102 Flutter tests pass; analysis reports no issues. Tests cover wheel conversion and
 optional clear, combined chip/text persistence, inline connection retry without
 losing height, non-stacking routes, More/Less, outfit creation/cart routing/error
 recovery, heart animation and existing browsing/cart/scan flows. Browser US-unit

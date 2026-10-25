@@ -277,7 +277,7 @@ class _FirstVisitState extends State<FirstVisit> {
             p.getString('niche.activeUser') != null;
     active = p.getBool('niche.signedOut') != true &&
         (p.getString('niche.activeUser') == widget.store.api.settings.userId ||
-            widget.store.profile.completed);
+            (hasReturning && widget.store.profile.completed));
   }
 
   Future<void> enter({bool create = false, bool test = false}) async {

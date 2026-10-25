@@ -1,6 +1,6 @@
 > Sprint 2: Home uses thin spaced separators, photo dots/preloading and heart feedback.
 > US wheel inputs and Fits for you are documented in docs/ryan-sprint-2-implementation.md.
-> Current validation: 99 tests pass, Flutter analysis clean. Older checkpoints below
+> Current validation: 102 tests pass, Flutter analysis clean. Older checkpoints below
 > describe earlier versions. Shared core/backend remain Adam/Nabil’s lanes.
 
 # Ryan's Flutter Feed

@@ -82,7 +82,7 @@ void main() {
     await t.pumpAndSettle();
     expect(store.attempts, 2);
     expect(t.takeException(), isNull);
-    expect(find.byKey(const ValueKey('product-stream')), findsOneWidget);
+    expect(find.text('New account'), findsOneWidget);
   });
   testWidgets(
       'Discover separates catalog from owned pieces and opens the selected product',

@@ -7,8 +7,10 @@ Return only JSON, no prose:
  "color": main color in plain words,
  "pattern": "solid" | "striped" | "plaid" | "graphic" | "floral" | "other",
  "style_tags": up to 5 from ["y2k","streetwear","minimalist","preppy","athleisure","vintage","business","boho","grunge","classic"],
- "formality": integer 1-5}
+ "formality": integer 1-5,
+ "department": "men" | "women" | "unisex" | null (which section of the store sells it; null when the item or photo doesn't say)}
 If the image is not clothing, return {"error": "not_clothing"}."""
+TAGGER_VERSION = "v2"  # bump when TAGGER changes so cached tags are redone (v2: department)
 
 # Appended to TAGGER for retailer photos, where a model often wears a whole outfit.
 TAGGER_HINT = """
@@ -146,3 +148,18 @@ measurement (e.g. "slim build, 30.5 in waist") and the closet piece the look is 
 "pieces": [{{"slot": "top"|"bottom"|"shoes"|"outerwear"|"dress"|"accessory", "id": closet or catalog id}}]}}
 Use only ids from the closet or the candidates, one piece per slot. Never comment on weight or attractiveness."""
 FIT_CREATOR_VERSION = "v2"  # bump when FIT_CREATOR changes so cached fits are rebuilt
+
+
+# ---- Catalog summaries (sprint-2 A7 / B4): Product.summary, 1-2 plain sentences for the card ----
+SUMMARY = """You write the one-line card text for a clothing store app.
+Product: {name}
+Category: {category}; color: {color}; style: {style}{label_part}
+Retailer description: {description}
+
+Return only JSON: {{"summary": string}}
+Rules: at most 2 short sentences and 160 characters total, plain text, present tense, no brand
+name, no price, no emoji, no quotes. Say what the item is and how it wears.
+Never invent facts: mention fabric, fit, length or details ONLY if the retailer description says so.
+If the description is "none", write one sentence from the product name, color, category and style alone,
+e.g. "A light-wash baggy jean with a relaxed, streetwear fit." """
+SUMMARY_VERSION = "v1"  # bump when SUMMARY changes so cached summaries are regenerated

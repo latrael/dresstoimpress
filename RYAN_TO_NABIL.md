@@ -1,3 +1,11 @@
+# Ryan Sprint 3 UI ready — Oct 24
+
+[PR #54](https://github.com/latrael/dresstoimpress/pull/54), `46b8fb7`, into staging, unmerged. Closet garment-detection uploads, own-photo-only Pieces and derived worn-photo Outfits views, natural-ratio Inspo with 9:16 portrait cap, roomier actions and keyboard-safe comments sheet are implemented. Sign-in on hold per Ryan. 130 tests/analysis/release builds pass; updated iPhone build installed/launched.
+
+Still need your routes coordinated into Adam's core: explicit idempotent PUT-like, paged comments with names/cursor and post photo_w/photo_h. Confirmed-only toggle is kept until explicit-set client exists; no automatic POST retries. Sheet uses current feed comments until paging exists. GET /stores client is also still absent; eight-store fallback remains. No seed posts or database rebuild from this agent. Full checklist: docs/ryan-sprint-3-implementation.md.
+
+---
+
 # Ryan Sprint 3 UI underway — Oct 24
 
 Implementing Home text cleanup, proper photo ratios capped at 9:16, spacious actions and a keyboard-safe comment sheet, plus garment-detecting closet uploads and honest owned photos. Please coordinate Adam core for GET /stores, PUT like (explicit liked state), paged comments with names/cursor and post photo_w/photo_h. Until the client lands, no duplicate HTTP adapter and no automatic retries on toggle POST. Closet outfit grouping needs Adam's endpoint/model. Council says Inspo starts empty; no seed posts will be made by this agent. Login last; method asked of Ryan. No database rebuild actions from this agent.

@@ -1,7 +1,9 @@
-# Google sign-in (local draft, not shared yet)
+# Google sign-in
 
-Status: built and tested on Nabil's local branch `nabil-auth-local`. Not pushed. Nothing changes for
-current builds: requests without a token work exactly as before.
+Status (Sun Oct 25, ~6 AM): **backend merged to `staging`** (Nabil OK'd sharing it). Login is **optional** until we
+flip `AUTH_REQUIRED=1`: requests without a token work exactly as before, so every current build keeps working.
+Still to do: the Google Cloud OAuth clients (Nabil), `GOOGLE_CLIENT_IDS` on the shared server, and the app side
+(Google Sign-In button → `POST /auth/google` → Bearer token in core).
 
 ## How it works
 

@@ -23,7 +23,7 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
-TRYON_VERSION = "v3"  # bump to invalidate cached try-ons when the prompt changes
+TRYON_VERSION = "v4"  # bump to invalidate cached try-ons when the prompt changes
 
 _FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic": "an athletic build",
               "curvy": "a curvy figure", "broad": "a broad build"}
@@ -46,13 +46,15 @@ def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | 
         body_line += ", with natural wrinkles, weight and shadows, not painted on."
     return (
         "Image 1 is the person. This is the SAME person in the output: identical face, skin tone, hair, "
-        "body shape, height, proportions, pose, hands and background. " + " ".join(lines) + body_line + " "
-        "Keep everything else from image 1 exactly the same: their other clothing, shoes and accessories. "
+        "body shape, height, proportions, pose and hands. " + " ".join(lines) + body_line + " "
+        "Keep everything else they wear from image 1 exactly the same: their other clothing, shoes and accessories. "
         "The garment images are references only: if they show a model, a logo, a size label, text or a watermark, "
         "ignore all of it and use only the garment's color, fabric, cut, length and details. Match the garment's "
         "real length and silhouette (cropped stays cropped, baggy stays baggy, oversized stays oversized). "
-        "Keep the lighting of image 1. Output one photorealistic full-body photo of the person from image 1, "
-        "sharp, with no text, logos, borders, collage panels or duplicate people."
+        "Replace the background with a clean, plain white studio backdrop with soft even lighting and a faint "
+        "floor shadow, like a lookbook photo; remove any mirror, phone, furniture or room from image 1. "
+        "Output one photorealistic full-body photo of the person from image 1, head to feet, sharp, "
+        "with no text, logos, borders, collage panels or duplicate people."
     )
 
 PAIR = """You are a stylist.

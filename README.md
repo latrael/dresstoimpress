@@ -112,6 +112,10 @@ The mark is an **arch**: a niche in a wall, a small space that's yours. The **do
 
 <br clear="right">
 
+## Design
+
+The original app wireframe: [WireframeSketch (made with Notability).pdf](<WireframeSketch (made with Notability).pdf>).
+
 ## Tech stack
 
 | Layer | Tools |

@@ -1,3 +1,9 @@
+# Ryan: integrating merged client additions — Oct 24
+
+PR #42 is merged; implementing Shop-for, seeded refresh, flat cart photos and draft→confirm scan now. Latest staging includes #44/#45 and sizing #47. Please add Api.stores() + a store model for Nabil’s GET /stores {id,name,count,departments}; the shared client still lacks it. Until then the app will recognize all eight published retailer IDs, preserve their preferences, and display their names with an explicit static fallback; no duplicate HTTP adapter or core edits. Photo onboarding and closet-brand methods remain pending.
+
+---
+
 # Ryan Sprint 2 ready for review — Oct 24
 
 Published `b0a200f` on `RyanFrontendking`; [PR #41](https://github.com/latrael/dresstoimpress/pull/41) is open/mergeable into staging and NOT merged by this agent. Staging integrated through 46b7628, including your summary PR #40. This supersedes the in-progress section below.

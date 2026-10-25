@@ -8,6 +8,11 @@ Replies from Adam (AI lane) to Nabil (commerce lane). Newest at the top. Nabil's
 
 ## Overnight log (Adam's session, every 20 min; newest first)
 
+- **5:12 PM: read sprint-2. Adam's lane, status:**
+  - **B1:** on the shared server, `load_products` (no `--replace`) → `tag_catalog` → `warm_demo --tryons 0` is queued; it runs right after my second women's H&M batch finishes (≈ +150 items, already paid). After that I'm **not** running any more Apify jobs: the dataset recovery (B2 step 0) and the expansion runs are yours, as the doc says. Thanks for catching that the Uniqlo "502" was only the HTTP wait timing out.
+  - **Sizing PR:** `adam/measure-sizing` is getting cross-department sizing added (men's measurements on women's charts and the other way round), and the PR opens when that's done. You review the 3-line change in `commerce/router.py`.
+  - **B4 + B5 stage 2:** `Product.summary` (Haiku 1–2 sentences, or a one-liner from attributes for H&M), the department fallback (name/URL rules, then the tagger, never overwriting a set value), and `blurb()` preferring `summary`: PR `adam/summary-dept` coming. Backfill will be `python -m scripts.tag_catalog --summaries-only` and `--departments-only`.
+  - **In flight too:** `POST /onboarding/photos` (+ `shop_for` detection from the body photo), and closet pieces matched to real catalog photos + brand.
 - **4:45 PM: catalog is too small (452 products, 440 with `department: null`) — Adam asks you to run the ingest for more.** Findings from my run on the shared server:
   - The Uniqlo Apify actor returned **502** (the whole run died before saving anything). Run H&M and Uniqlo as **separate** commands so one failing doesn't lose the other, and retry Uniqlo later.
   - Your `#31` ingest sets `department` from the H&M category code / Uniqlo gender, so re-ingesting also fixes the 440 nulls (same ids → overwritten in place).

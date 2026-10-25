@@ -236,79 +236,34 @@ class _ClosetScreenState extends State<ClosetScreen> {
                         outfits: outfits ??= widget.api.closetOutfits(),
                         onChanged: refresh);
                   }
-                  return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: .66),
-                      itemCount: pieces.length,
+                  return _ClosetGrid(
+                      count: pieces.length,
+                      imageAspect: 1,
                       itemBuilder: (context, i) {
                         final item = pieces[i];
                         final t = Niche.of(context);
-                        return Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                                onTap: () => openPiece(item),
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                          child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                            PiecePhoto(
-                                                url: widget.api.imageProxyUrl(
-                                                    ownedClosetPhoto(item)),
-                                                label: item.label ??
-                                                    item.category),
-                                            Positioned(
-                                                top: 6,
-                                                right: 6,
-                                                child: NicheGlass(
-                                                    radius: 999,
-                                                    opacity: .75,
-                                                    child: IconButton(
-                                                        visualDensity:
-                                                            VisualDensity
-                                                                .compact,
-                                                        iconSize: 18,
-                                                        tooltip:
-                                                            'Remove closet piece',
-                                                        onPressed: busy
-                                                            ? null
-                                                            : () =>
-                                                                remove(item),
-                                                        icon: Icon(
-                                                            NicheIcons
-                                                                .deleteOutline,
-                                                            color: t.ink)))),
-                                          ])),
-                                      Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 10, 12, 2),
-                                          child: Text(
-                                              item.label ?? item.category,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: Niche.ui(13, 18,
-                                                  FontWeight.w600, t.ink))),
-                                      Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              12, 0, 12, 12),
-                                          child: Text(
-                                              item.brand?.trim().isNotEmpty ==
-                                                      true
-                                                  ? item.brand!
-                                                  : item.category,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: Niche.ui(11, 14,
-                                                  FontWeight.w600, t.muted))),
-                                    ])));
+                        return _ClosetTile(
+                            onTap: () => openPiece(item),
+                            imageAspect: 1,
+                            image: PiecePhoto(
+                                url: widget.api
+                                    .imageProxyUrl(ownedClosetPhoto(item)),
+                                label: item.label ?? item.category),
+                            corner: NicheGlass(
+                                radius: 999,
+                                opacity: .75,
+                                child: IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    iconSize: 18,
+                                    tooltip: 'Remove closet piece',
+                                    onPressed:
+                                        busy ? null : () => remove(item),
+                                    icon: Icon(NicheIcons.deleteOutline,
+                                        color: t.ink))),
+                            title: item.label ?? item.category,
+                            subtitle: item.brand?.trim().isNotEmpty == true
+                                ? item.brand!
+                                : item.category);
                       });
                 })),
       ]));
@@ -425,58 +380,124 @@ class _OutfitGrid extends StatelessWidget {
                   Text('Add an outfit photo to see what you wore together.'));
         }
         final t = Niche.of(context);
-        return GridView.builder(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, Niche.bottomSpace(context)),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: .66),
-            itemCount: list.length,
+        return _ClosetGrid(
+            count: list.length,
+            imageAspect: 3 / 4,
             itemBuilder: (context, i) {
               final o = list[i];
               final n = o.pieces.length;
-              return Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                      onTap: () async {
-                        final changed = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    _ClosetOutfitScreen(api: api, outfit: o)));
-                        if (changed == true) onChanged();
-                      },
+              return _ClosetTile(
+                  onTap: () async {
+                    final changed = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                _ClosetOutfitScreen(api: api, outfit: o)));
+                    if (changed == true) onChanged();
+                  },
+                  imageAspect: 3 / 4,
+                  image: NichePhoto(
+                      url: api.imageProxyUrl(o.photoUrl), label: o.name),
+                  badge: o.posted
+                      ? NicheGlass(
+                          radius: 999,
+                          opacity: .8,
+                          child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              child: Text('In Inspo',
+                                  style: Niche.ui(
+                                      11, 14, FontWeight.w700, t.ink))))
+                      : null,
+                  title: o.name.isEmpty ? 'Outfit' : o.name,
+                  subtitle: '$n piece${n == 1 ? '' : 's'}');
+            });
+      });
+}
+
+/// The one grid both Closet views use: 2 columns, equal gutters, every tile the same height
+/// (image at a fixed aspect + a fixed-height label row), so rows line up and nothing hangs off the side.
+class _ClosetGrid extends StatelessWidget {
+  const _ClosetGrid(
+      {required this.count, required this.imageAspect, required this.itemBuilder});
+  final int count;
+  final double imageAspect;
+  final IndexedWidgetBuilder itemBuilder;
+  static const columns = 2, gap = 12.0, side = 20.0;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        final w = (c.maxWidth - side * 2 - gap * (columns - 1)) / columns;
+        final h = w / imageAspect + _ClosetTile.labelHeight;
+        return GridView.builder(
+            padding:
+                EdgeInsets.fromLTRB(side, 0, side, Niche.bottomSpace(context)),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: gap,
+                mainAxisSpacing: gap,
+                childAspectRatio: w / h),
+            itemCount: count,
+            itemBuilder: itemBuilder);
+      });
+}
+
+/// A closet tile: image (fixed aspect, cover fit) + a two-line label row of fixed height.
+class _ClosetTile extends StatelessWidget {
+  const _ClosetTile(
+      {required this.onTap,
+      required this.image,
+      required this.imageAspect,
+      required this.title,
+      required this.subtitle,
+      this.corner,
+      this.badge});
+  final VoidCallback onTap;
+  final Widget image;
+  final double imageAspect;
+  final String title, subtitle;
+  final Widget? corner, badge;
+  static const labelHeight = 58.0;
+  @override
+  Widget build(BuildContext context) {
+    final t = Niche.of(context);
+    return Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Niche.radius * .75)),
+        child: InkWell(
+            onTap: onTap,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AspectRatio(
+                  aspectRatio: imageAspect,
+                  child: Stack(fit: StackFit.expand, children: [
+                    image,
+                    if (badge != null)
+                      Positioned(top: 8, left: 8, child: badge!),
+                    if (corner != null)
+                      Positioned(top: 6, right: 6, child: corner!),
+                  ])),
+              SizedBox(
+                  height: labelHeight,
+                  child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                                child: Stack(fit: StackFit.expand, children: [
-                              NichePhoto(
-                                  url: api.imageProxyUrl(o.photoUrl),
-                                  label: 'Your outfit'),
-                              if (o.posted)
-                                Positioned(
-                                    top: 8,
-                                    left: 8,
-                                    child: NicheGlass(
-                                        radius: 999,
-                                        opacity: .8,
-                                        child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 4),
-                                            child: Text('In Inspo',
-                                                style: Niche.ui(11, 14,
-                                                    FontWeight.w700, t.ink))))),
-                            ])),
-                            Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Text('$n piece${n == 1 ? '' : 's'}',
-                                    style: Niche.ui(
-                                        13, 18, FontWeight.w600, t.ink)))
-                          ])));
-            });
-      });
+                            Text(title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Niche.ui(
+                                    13, 18, FontWeight.w600, t.ink)),
+                            const SizedBox(height: 2),
+                            Text(subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Niche.ui(
+                                    11, 14, FontWeight.w600, t.muted)),
+                          ]))),
+            ])));
+  }
 }
 
 /// One of your outfits: the photo, its pieces, and its Fit Score (your own outfits only).
@@ -491,8 +512,47 @@ class _ClosetOutfitScreen extends StatefulWidget {
 class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
   FitScore? score;
   bool busy = false;
+  bool renamed = false;
   String? error;
-  ClosetOutfit get outfit => widget.outfit;
+  late ClosetOutfit outfit = widget.outfit;
+
+  /// Tap the title (or the pencil) to give the outfit a nickname; blank goes back to the automatic one.
+  Future<void> rename() async {
+    final controller = TextEditingController(text: outfit.name);
+    final name = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+                title: const Text('Name this outfit'),
+                content: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    maxLength: 24,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                        hintText: 'e.g. Date night, Gallery day'),
+                    onSubmitted: (v) => Navigator.pop(context, v)),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(context, controller.text),
+                      child: const Text('Save'))
+                ]));
+    controller.dispose();
+    if (name == null || !mounted) return;
+    try {
+      final updated = await widget.api.renameClosetOutfit(outfit.id, name.trim());
+      if (mounted) {
+        setState(() {
+          outfit = updated;
+          renamed = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = featureError(e));
+    }
+  }
 
   Future<void> scoreIt() async {
     setState(() {
@@ -538,9 +598,18 @@ class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Niche.of(context);
-    return FeaturePage(
-        title: 'Your outfit',
+    return PopScope(
+      canPop: !renamed,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.pop(context, true);
+      },
+      child: FeaturePage(
+        title: outfit.name.isEmpty ? 'Your outfit' : outfit.name,
         actions: [
+          IconButton(
+              tooltip: 'Rename outfit',
+              onPressed: rename,
+              icon: const Icon(NicheIcons.editOutlined)),
           IconButton(
               tooltip: 'Remove outfit',
               onPressed: remove,
@@ -549,6 +618,20 @@ class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
         child: ListView(
             padding: EdgeInsets.fromLTRB(20, 8, 20, Niche.bottomSpace(context)),
             children: [
+              InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: rename,
+                  child: Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                      child: Row(children: [
+                        Expanded(
+                            child: Text(
+                                outfit.name.isEmpty ? 'Name this outfit' : outfit.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Niche.ui(22, 28, FontWeight.w700, t.ink))),
+                        Icon(NicheIcons.editOutlined, size: 18, color: t.muted),
+                      ]))),
               ClipRRect(
                   borderRadius: BorderRadius.circular(Niche.radius),
                   child: AspectRatio(
@@ -613,7 +696,7 @@ class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
                                               12, 16, FontWeight.w600, t.ink)),
                                     ])));
                       })),
-            ]));
+            ])));
   }
 }
 

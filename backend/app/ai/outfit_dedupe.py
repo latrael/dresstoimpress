@@ -138,6 +138,8 @@ def dedupe_user(user_id: str, dry_run: bool = False) -> list[dict]:
             store.put("closet_items", pid, item)
         if o.get("source") == "fitcheck" or keeper.get("source") == "fitcheck":
             keeper["posted"] = True
+        if not (keeper.get("name") or "").strip() and (o.get("name") or "").strip():
+            keeper["name"] = o["name"]  # a nickname on the dropped copy moves to the keeper
         store.put(OUTFITS, keeper["id"], keeper)
         store.delete(OUTFITS, o["id"])
     return merges

@@ -445,10 +445,56 @@ def create_outfit(user_id: str, photo_url: str, pieces: list[dict], source: str,
     return outfit
 
 
+OUTFIT_NAME_MAX = 24
+
+# Which pieces name an outfit: the statement layer first, then the base, then shoes.
+_NAME_ORDER = ("outerwear", "dress", "top", "bottom", "shoes", "accessory")
+
+
+def _short_label(piece: dict) -> str:
+    """'camel wool overcoat' -> 'camel overcoat': colour + the last word, so two pieces fit in 24 chars."""
+    words = [w for w in (piece.get("label") or piece.get("category") or "").lower().split() if w]
+    if not words:
+        return piece.get("category") or "piece"
+    if len(words) == 1:
+        return words[0]
+    colour = (piece.get("color") or "").lower().split()
+    first = words[0] if words[0] in colour or len(words) == 2 else None
+    return f"{first} {words[-1]}" if first else words[-1]
+
+
+def auto_outfit_name(pieces: list[dict]) -> str:
+    """A short nickname from the pieces, rules only: 'Camel overcoat & loafers' (≤ OUTFIT_NAME_MAX chars).
+    Picks the two most defining pieces by category, falls back to one, then to 'Outfit'."""
+    ranked = sorted((p for p in pieces if p), key=lambda p: (_NAME_ORDER.index(p["category"])
+                                                             if p.get("category") in _NAME_ORDER else 99))
+    picks = [_short_label(p) for p in ranked[:2]]
+    name = " & ".join(picks) if picks else "Outfit"
+    if len(name) > OUTFIT_NAME_MAX and len(picks) == 2:
+        name = f"{picks[0]} & {picks[1].split()[-1]}"
+    if len(name) > OUTFIT_NAME_MAX:
+        name = picks[0] if picks else "Outfit"
+    name = name[:OUTFIT_NAME_MAX].rstrip(" &")
+    return name[:1].upper() + name[1:]
+
+
 def outfit_view(outfit: dict) -> dict:
-    """The record with its pieces embedded (`pieces`: the ClosetItems that still exist, in order)."""
+    """The record with its pieces embedded (`pieces`: the ClosetItems that still exist, in order) and a
+    `name` (the user's nickname, else one made from the pieces)."""
     pieces = [store.get("closet_items", pid) for pid in outfit.get("piece_ids") or []]
-    return {**outfit, "pieces": [p for p in pieces if p]}
+    pieces = [p for p in pieces if p]
+    name = (outfit.get("name") or "").strip() or auto_outfit_name(pieces)
+    return {**outfit, "pieces": pieces, "name": name}
+
+
+def rename_outfit(user_id: str, outfit_id: str, name: str) -> dict | None:
+    """Set the outfit's nickname (blank = back to the automatic one). None if it isn't that user's."""
+    outfit = store.get(OUTFITS, outfit_id)
+    if not outfit or outfit.get("user_id") != user_id:
+        return None
+    outfit["name"] = " ".join(name.split())[:OUTFIT_NAME_MAX * 2].strip()
+    store.put(OUTFITS, outfit_id, outfit)
+    return outfit_view(outfit)
 
 
 def list_outfits(user_id: str) -> list[dict]:

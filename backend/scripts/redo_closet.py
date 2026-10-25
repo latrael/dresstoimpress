@@ -38,9 +38,18 @@ def main() -> None:
         return
     for c in items:
         store.delete("closet_items", c["id"])
+    names = {}  # nicknames survive the redo, keyed by photo
     for o in store.list("outfits", user_id=a.user_id):
+        if (o.get("name") or "").strip():
+            names[o.get("photo_url")] = o["name"]
         store.delete("outfits", o["id"])
     out = closet.add_photos(a.user_id, [(u, p if p.exists() else None) for u, p in local], kind="outfit")
+    for o in out.get("outfits", []):
+        if names.get(o.get("photo_url")):
+            rec = store.get("outfits", o["id"])
+            if rec:
+                rec["name"] = names[o["photo_url"]]
+                store.put("outfits", o["id"], rec)
     added = out.get("added", [])
     print(f"re-added {len(added)} pieces, merged {len(out.get('merged', []))}, "
           f"skipped {out.get('skipped', 0)}, outfits {len(out.get('outfits', []))}")

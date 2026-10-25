@@ -320,6 +320,10 @@ class Api {
   Future<List<ClosetOutfit>> closetOutfits() async =>
       _listOf(await _send('GET', '/closet/${_seg(_user)}/outfits'), ClosetOutfit.fromJson);
 
+  /// PATCH /closet/{user}/outfits/{id} {name}: the outfit's nickname; blank restores the automatic one.
+  Future<ClosetOutfit> renameClosetOutfit(String outfitId, String name) async =>
+      ClosetOutfit.fromJson(await _send('PATCH', '/closet/${_seg(_user)}/outfits/${_seg(outfitId)}', body: {'name': name}));
+
   /// DELETE /closet/{user}/outfits/{id}: removes the outfit only; its pieces stay in the closet.
   Future<ClosetDeleteResult> deleteClosetOutfit(String outfitId) async =>
       ClosetDeleteResult.fromJson(await _send('DELETE', '/closet/${_seg(_user)}/outfits/${_seg(outfitId)}'));

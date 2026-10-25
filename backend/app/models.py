@@ -126,6 +126,7 @@ class TryOnResponse(BaseModel):
     image_url: str
     cached: bool
     mode: Literal["ai", "collage"] = "ai"  # collage = outfit board when AI images are unavailable
+    source_photo_url: Optional[str] = None  # the user's own photo that was edited (body photo or an outfit photo)
 
 
 class PairRequest(BaseModel):
@@ -176,6 +177,7 @@ class ShopFitRequest(BaseModel):
     viewer_id: str
     tagged: list[FitTag] = []
     photo_url: Optional[str] = None  # if set and tagged is empty, items are auto-tagged from the photo
+    grouped: bool = False  # true: one {tag, products} group per tagged piece (up to 6 each) instead of a flat list
 
 
 class SizeRequest(BaseModel):

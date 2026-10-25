@@ -450,15 +450,23 @@ class SizeAdvice {
 }
 
 class TryOnResponse {
-  const TryOnResponse({required this.imageUrl, required this.cached, this.mode});
+  const TryOnResponse({required this.imageUrl, required this.cached, this.mode, this.sourcePhotoUrl});
   final String imageUrl;
   final bool cached;
   final String? mode; // "ai" = real try-on, "collage" = outfit board
 
+  /// The user's own photo the try-on was edited from (their body photo or one of their outfit photos
+  /// that shows the garment being replaced); null on older servers or when the user has no photo.
+  /// Handy for a before/after toggle.
+  final String? sourcePhotoUrl;
+
   bool get isOutfitBoard => mode == 'collage';
 
-  factory TryOnResponse.fromJson(Json j) =>
-      TryOnResponse(imageUrl: _str(j['image_url']), cached: j['cached'] == true, mode: _strN(j['mode']));
+  factory TryOnResponse.fromJson(Json j) => TryOnResponse(
+      imageUrl: _str(j['image_url']),
+      cached: j['cached'] == true,
+      mode: _strN(j['mode']),
+      sourcePhotoUrl: _strN(j['source_photo_url']));
 }
 
 class LookItem {
@@ -1038,6 +1046,20 @@ class FitTag {
       };
 }
 
+/// One tagged piece of a Fit Check post with its own similar items (`GET /fitcheck/{id}/shop?grouped=true`).
+/// Groups come back in post (tag) order; a piece with no match yet has an empty [products] so its chip /
+/// pin can still be shown. [tag] carries only label, category, color, box and productId.
+class ShopTagGroup {
+  const ShopTagGroup({required this.tag, this.products = const []});
+  final FitTag tag;
+  final List<RankedProduct> products; // up to 6, closest match first
+
+  bool get isEmpty => products.isEmpty;
+
+  factory ShopTagGroup.fromJson(Json j) =>
+      ShopTagGroup(tag: FitTag.fromJson(_obj(j['tag'])), products: _list(j['products'], RankedProduct.fromJson));
+}
+
 class FitCheckComment {
   const FitCheckComment(
       {required this.id, required this.userId, required this.text, this.createdAt, this.commentCount, String? authorName})
@@ -1237,6 +1259,7 @@ class OutfitFit {
     this.occasion,
     this.tryOnUrl,
     this.tryOnMode,
+    this.tryOnSourcePhotoUrl,
   });
   final String id;
   final String name;
@@ -1247,6 +1270,7 @@ class OutfitFit {
   final int closetCount;
   final String? tryOnUrl;
   final String? tryOnMode; // "ai" | "collage"
+  final String? tryOnSourcePhotoUrl; // the user's photo the try-on was edited from (see TryOnResponse.sourcePhotoUrl)
 
   List<FitPiece> get newPieces => pieces.where((p) => !p.fromCloset).toList();
 
@@ -1262,6 +1286,7 @@ class OutfitFit {
       closetCount: _int(j['closet_count']),
       tryOnUrl: t == null ? null : _strN(t['image_url']),
       tryOnMode: t == null ? null : _strN(t['mode']),
+      tryOnSourcePhotoUrl: t == null ? null : _strN(t['source_photo_url']),
     );
   }
 }

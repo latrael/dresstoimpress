@@ -33,7 +33,7 @@ def main():
         closet_ids = r.pairs_with[:1] or bottoms[:1]
         t = time.time()
         try:
-            url, cached, mode = service.try_on(args.user, [r.product_id], closet_ids)
+            url, cached, mode, _src = service.try_on(args.user, [r.product_id], closet_ids)
             ok += 1
             print(f"  {'hit ' if cached else 'made'} {mode:<7} {r.product_id:<20} {time.time() - t:5.1f}s  {url}")
         except Exception as e:  # noqa: BLE001

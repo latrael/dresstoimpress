@@ -65,7 +65,7 @@ def warm(user_id: str, limit: int = 20, tryons: int = 10, out=print) -> dict:
             closet_ids = (c.get("pairs_with") or [])[:1] or ([] if c.get("category") == "bottom" else bottoms[:1])
             t = time.time()
             try:
-                _, cached, mode = service.try_on(user_id, [c["id"]], closet_ids)
+                _, cached, mode, _src = service.try_on(user_id, [c["id"]], closet_ids)
                 ok += 1
                 out(f"  try-on {'hit ' if cached else 'made'} {mode:<7} {c['id']:<28} {_secs(t)}")
             except Exception as e:  # noqa: BLE001

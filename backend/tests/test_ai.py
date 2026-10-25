@@ -399,7 +399,7 @@ def test_tryon_collage_when_ai_unavailable(client, monkeypatch, tmp_path):
     def no_images(*a, **k):
         raise service.BadModelOutput("429 quota")
     monkeypatch.setattr(service, "gemini_image", no_images)
-    url, cached, mode = service.try_on("u_board", ["board-tee"], [])
+    url, cached, mode, _src = service.try_on("u_board", ["board-tee"], [])
     assert mode == "collage" and not cached and url.endswith("-board.png")
     img = Image.open(io.BytesIO((service.TRYON_DIR / url.rsplit("/", 1)[1]).read_bytes()))
     assert img.size == (1024, 1280)

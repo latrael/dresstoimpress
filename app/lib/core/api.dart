@@ -445,6 +445,13 @@ class Api {
   Future<List<RankedProduct>> shopFitCheck(String postId) async => _listOf(
       await _send('GET', '/fitcheck/${_seg(postId)}/shop', query: {'user_id': _user}), RankedProduct.fromJson);
 
+  /// GET /fitcheck/{id}/shop?grouped=true: shop the look, one [ShopTagGroup] per tagged piece in post order,
+  /// each with up to 6 similar items (closest match first, the viewer's shop_for respected). A piece with no
+  /// match comes back with an empty `products` list so its chip / pin is still shown.
+  Future<List<ShopTagGroup>> shopFitCheckGrouped(String postId) async => _listOf(
+      await _send('GET', '/fitcheck/${_seg(postId)}/shop', query: {'user_id': _user, 'grouped': 'true'}),
+      ShopTagGroup.fromJson);
+
   Future<LikeResult> likeFitCheck(String postId) async =>
       LikeResult.fromJson(await _send('POST', '/fitcheck/${_seg(postId)}/like', body: {'user_id': _user}));
 

@@ -24,37 +24,48 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
-TRYON_VERSION = "v4"  # bump to invalidate cached try-ons when the prompt changes
+TRYON_VERSION = "v5"  # bump to invalidate cached try-ons when the prompt changes (v5: in-place edit, keep background)
 
 _FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic": "an athletic build",
               "curvy": "a curvy figure", "broad": "a broad build"}
 
 
 def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | None = None,
-                 size: str | None = None) -> str:
+                 size: str | None = None, boxes: list | None = None) -> str:
     """slots[i] = category of garment image i+2 (image 1 is the person), e.g. ["top", "shoes"].
     names: the garments' catalog names (same order), build: body-scan build, size: the size we'd pick,
-    so the garment drapes like that size on that body instead of a generic model fit."""
+    so the garment drapes like that size on that body instead of a generic model fit.
+    boxes[i]: where the garment being replaced sits in image 1 ([x0, y0, x1, y1], 0-1 fractions) or None,
+    so the edit stays local."""
     names = names or [""] * len(slots)
+    boxes = boxes or [None] * len(slots)
     lines = []
     for i, cat in enumerate(slots):
         what = f"{cat} ({names[i]})" if names[i] else cat
-        lines.append(f"Image {i + 2} shows a {what}: put it on the person, replacing only their current {cat}.")
-    body_line = ""
+        where = ""
+        b = boxes[i] if i < len(boxes) else None
+        if b:
+            where = (f" (the {cat} in image 1 at roughly {round(b[0] * 100)}%-{round(b[2] * 100)}% across, "
+                     f"{round(b[1] * 100)}%-{round(b[3] * 100)}% down)")
+        lines.append(f"Image {i + 2} shows a {what}: segment the person's current {cat} in image 1{where} and "
+                     f"replace just that region with this garment.")
+    regions = (" and ".join(f"the {c}" for c in slots) or "the garment") + (" are" if len(slots) > 1 else " is")
+    body_line = " The new garment follows the body's existing pose, folds and shadows"
     if build in _FIT_WORDS:
-        body_line = f" The person has {_FIT_WORDS[build]}; the clothes must drape and fit on that body"
-        body_line += f", as a size {size} would" if size else ""
-        body_line += ", with natural wrinkles, weight and shadows, not painted on."
+        body_line += f", at the size that fits this body: the person has {_FIT_WORDS[build]}"
+        body_line += f", so it drapes as a size {size} would" if size else ""
+    body_line += ", with natural wrinkles, weight and shadows, not painted on."
     return (
-        "Image 1 is the person. This is the SAME person in the output: identical face, skin tone, hair, "
-        "body shape, height, proportions, pose and hands. " + " ".join(lines) + body_line + " "
-        "Keep everything else they wear from image 1 exactly the same: their other clothing, shoes and accessories. "
+        "This is an in-place EDIT of image 1, not a new picture. Edit image 1 only where " + regions + ". "
+        + " ".join(lines) + " "
+        "Every other pixel stays identical to image 1: the SAME person with the same face, hair, skin, hands, "
+        "pose, body shape, other clothing, shoes, accessories, lighting and the ORIGINAL background (do NOT "
+        "change or whiten the background, do not re-pose, re-light, re-frame or crop)."
+        + body_line + " "
         "The garment images are references only: if they show a model, a logo, a size label, text or a watermark, "
         "ignore all of it and use only the garment's color, fabric, cut, length and details. Match the garment's "
         "real length and silhouette (cropped stays cropped, baggy stays baggy, oversized stays oversized). "
-        "Replace the background with a clean, plain white studio backdrop with soft even lighting and a faint "
-        "floor shadow, like a lookbook photo; remove any mirror, phone, furniture or room from image 1. "
-        "Output one photorealistic full-body photo of the person from image 1, head to feet, sharp, "
+        "Output one photorealistic photo at image 1's exact framing and size, sharp, "
         "with no text, logos, borders, collage panels or duplicate people."
     )
 

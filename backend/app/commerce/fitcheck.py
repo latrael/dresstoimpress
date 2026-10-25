@@ -1,7 +1,9 @@
 """Fit Check (OOTD feed): /fitcheck posts, feed, tags, likes, comments, shop-this-fit (Nabil).
 
 Collection fitcheck_posts: {id, user_id, photo_url, caption, tagged: [FitTag], created_at, likes: [user_id],
-comments: [{id, user_id, text, created_at}], visibility: "friends" | "public"}.
+comments: [{id, user_id, text, created_at}], visibility: "friends" | "public", photo_w, photo_h}.
+photo_w/photo_h: pixel size of an uploaded photo (read from our saved file); for an external URL, the size the
+app sends with the JSON post (else null); null for posts made before the fields existed (the app lays photos out at their own aspect ratio, sprint-3 3.1).
 Inspo is one feed for everyone (council D4): every user sees every post, so friends lists don't filter
 anything here. `visibility` is still stored (the guest /fit wall only shows "public" posts).
 """
@@ -19,7 +21,8 @@ from pydantic import BaseModel, Field, ValidationError
 from ..ai import service
 from ..ai.router import _save_upload
 from ..models import FitTag
-from ..store import store
+from ..static_urls import local_static_path
+from ..store import DATA_DIR, store
 from .router import _dept_ok
 
 log = logging.getLogger(__name__)
@@ -33,6 +36,8 @@ class PostCreate(BaseModel):
     caption: str = Field("", max_length=500)
     tagged: list[FitTag] = []
     visibility: Literal["friends", "public"] = "friends"
+    photo_w: Optional[int] = Field(None, ge=1, le=20000)  # JSON posts only: the size the app knows; uploads are measured
+    photo_h: Optional[int] = Field(None, ge=1, le=20000)
 
 
 class TagsEdit(BaseModel):
@@ -42,6 +47,11 @@ class TagsEdit(BaseModel):
 
 class UserRef(BaseModel):
     user_id: str
+
+
+class LikeSet(BaseModel):
+    user_id: str
+    liked: bool
 
 
 class CommentCreate(BaseModel):
@@ -57,10 +67,14 @@ def _user(uid: str) -> dict:
     return store.get("users", uid) or {"id": uid, "display_name": uid}
 
 
+def _author(uid: str) -> dict:
+    u = _user(uid)
+    return {"id": u.get("id", uid), "display_name": u.get("display_name") or uid}
+
+
 def _view(post: dict, viewer_id: str) -> dict:
-    author = _user(post["user_id"])
     likes = post.get("likes") or []
-    return {**post, "author": {"id": author["id"], "display_name": author.get("display_name", author["id"])},
+    return {"photo_w": None, "photo_h": None, **post, "author": _author(post["user_id"]),
             "like_count": len(likes), "liked_by_me": viewer_id in likes,
             "comment_count": len(post.get("comments") or [])}
 
@@ -70,6 +84,26 @@ def _post(post_id: str, viewer_id: str) -> dict:
     if not post:
         raise HTTPException(404, "unknown post")
     return post
+
+
+def _photo_size(photo_url: str) -> tuple[Optional[int], Optional[int]]:
+    """(width, height) in pixels of one of our saved /static images, as it displays; (None, None) for
+    external URLs (never downloaded) or anything Pillow can't read. _save_upload already applied the EXIF
+    rotation; a file it kept as-is (couldn't re-encode) may still carry it, so 90-degree tags swap w/h."""
+    path = local_static_path(photo_url, DATA_DIR)
+    if not path:
+        return None, None
+    try:
+        from PIL import Image
+
+        with Image.open(path) as im:
+            w, h = im.size
+            if im.getexif().get(0x0112) in (5, 6, 7, 8):
+                w, h = h, w
+        return w, h
+    except Exception as e:  # noqa: BLE001
+        log.warning("photo size unreadable for %s: %s", photo_url, e)
+        return None, None
 
 
 def _auto_tags(photo_url: str) -> list[dict]:
@@ -109,9 +143,12 @@ async def create_post(request: Request):
         raise HTTPException(422, json.loads(e.json()))
     photo_url = await _save_upload(file) if file else req.photo_url
     tagged = [t.model_dump() for t in req.tagged] or _auto_tags(photo_url)
+    w, h = _photo_size(photo_url)
+    if (w, h) == (None, None) and not file and req.photo_w and req.photo_h:
+        w, h = req.photo_w, req.photo_h  # external URL: trust the app's size (both or neither)
     post = {"id": "fc_" + uuid.uuid4().hex[:12], "user_id": req.user_id, "photo_url": photo_url,
             "caption": req.caption, "tagged": tagged, "created_at": _now(), "likes": [], "comments": [],
-            "visibility": req.visibility}
+            "visibility": req.visibility, "photo_w": w, "photo_h": h}
     store.put(COL, post["id"], post)
     _closet_hook(req.user_id, photo_url, tagged)  # Adam: the fit's pieces join the poster's closet (best effort)
     return _view(post, req.user_id)
@@ -172,6 +209,7 @@ def shop(post_id: str, user_id: str):
 
 @router.post("/fitcheck/{post_id}/like")
 def like(post_id: str, req: UserRef):
+    """Toggle (kept for old builds). New clients use PUT: it's safe to retry."""
     post = _post(post_id, req.user_id)
     likes = post.setdefault("likes", [])
     liked = req.user_id not in likes
@@ -183,6 +221,44 @@ def like(post_id: str, req: UserRef):
     return {"post_id": post_id, "liked": liked, "like_count": len(likes)}
 
 
+@router.put("/fitcheck/{post_id}/like")
+def set_like(post_id: str, req: LikeSet):
+    """Idempotent like: set {liked: true|false} for user_id. Sending the same state again changes nothing,
+    so an optimistic UI can retry or queue it (sprint-3 3.3)."""
+    post = _post(post_id, req.user_id)
+    likes = post.get("likes") or []
+    if req.liked != (req.user_id in likes):
+        post["likes"] = likes + [req.user_id] if req.liked else [u for u in likes if u != req.user_id]
+        store.put(COL, post_id, post)
+    return {"post_id": post_id, "liked": req.liked, "like_count": len(post.get("likes") or [])}
+
+
+def _comment_view(c: dict, authors: dict) -> dict:
+    uid = c.get("user_id") or ""
+    if uid not in authors:
+        authors[uid] = _author(uid)
+    return {"id": c.get("id"), "user_id": uid, "author": authors[uid], "text": c.get("text", ""),
+            "created_at": c.get("created_at")}
+
+
+@router.get("/fitcheck/{post_id}/comments")
+def list_comments(post_id: str, user_id: str, limit: int = 20, before: Optional[str] = None):
+    """One page of comments, oldest -> newest (a chat-style sheet shows the newest at the bottom).
+    No `before`: the newest `limit` comments. `before=<comment id>`: the `limit` comments just older than it.
+    `next_before` is the cursor for the next (older) page, null when there are no older comments."""
+    comments = _post(post_id, user_id).get("comments") or []
+    end = len(comments)
+    if before is not None:
+        end = next((i for i, c in enumerate(comments) if c.get("id") == before), -1)
+        if end < 0:
+            raise HTTPException(422, "unknown comment id in before")
+    start = max(0, end - max(1, min(limit, 100)))
+    authors: dict = {}
+    page = [_comment_view(c, authors) for c in comments[start:end]]
+    return {"post_id": post_id, "comments": page, "next_before": page[0]["id"] if start > 0 and page else None,
+            "comment_count": len(comments)}
+
+
 @router.post("/fitcheck/{post_id}/comments")
 def comment(post_id: str, req: CommentCreate):
     post = _post(post_id, req.user_id)
@@ -192,4 +268,4 @@ def comment(post_id: str, req: CommentCreate):
     c = {"id": "c_" + uuid.uuid4().hex[:10], "user_id": req.user_id, "text": text, "created_at": _now()}
     post.setdefault("comments", []).append(c)
     store.put(COL, post_id, post)
-    return {**c, "comment_count": len(post["comments"])}
+    return {**c, "author": _author(req.user_id), "comment_count": len(post["comments"])}

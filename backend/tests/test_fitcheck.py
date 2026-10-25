@@ -163,3 +163,113 @@ def test_seed_tags_carry_product_fields(tmp_path):
             jeans["brand"]) == ("hm:1:blue", "bottom", "light blue", "solid", ["y2k"], "H&M")
     assert all(t["category"] for t in post["tagged"])
     assert post["tagged"][1]["color"] is None  # seed products have no colours
+
+
+def _img(w, h, fmt="PNG", orientation=None):
+    import io
+
+    from PIL import Image
+    buf, im = io.BytesIO(), Image.new("RGB", (w, h), (200, 80, 120))
+    if orientation:
+        exif = im.getexif()
+        exif[0x0112] = orientation
+        im.save(buf, fmt, exif=exif)
+    else:
+        im.save(buf, fmt)
+    return buf.getvalue()
+
+
+def test_put_like_is_idempotent(client):
+    p = _post(client, "u_a")
+    url = f"/fitcheck/{p['id']}/like"
+    on = {"post_id": p["id"], "liked": True, "like_count": 1}
+    assert client.put(url, json={"user_id": "u_b", "liked": True}).json() == on
+    assert client.put(url, json={"user_id": "u_b", "liked": True}).json() == on  # retry: no double like
+    assert client.put(url, json={"user_id": "u_c", "liked": True}).json()["like_count"] == 2
+    got = client.get(f"/fitcheck/{p['id']}", params={"user_id": "u_b"}).json()
+    assert got["liked_by_me"] and got["like_count"] == 2 and got["likes"] == ["u_b", "u_c"]
+    off = {"post_id": p["id"], "liked": False, "like_count": 1}
+    assert client.put(url, json={"user_id": "u_b", "liked": False}).json() == off
+    assert client.put(url, json={"user_id": "u_b", "liked": False}).json() == off  # retry: no double unlike
+    assert client.put(url, json={"user_id": "u_a", "liked": False}).json()["like_count"] == 1  # never liked
+    assert client.post(url, json={"user_id": "u_b"}).json()["liked"] is True  # old toggle still works
+    assert client.put(url, json={"user_id": "u_b"}).status_code == 422
+    assert client.put("/fitcheck/fc_missing/like", json={"user_id": "u_b", "liked": True}).status_code == 404
+
+
+def test_comments_paged(client):
+    p = _post(client, "u_a")
+    url = f"/fitcheck/{p['id']}/comments"
+    ids = []
+    for i in range(5):
+        r = client.post(url, json={"user_id": "u_b" if i % 2 else "u_c", "text": f"c{i}"}).json()
+        assert r["author"] == ({"id": "u_b", "display_name": "Ben"} if i % 2 else {"id": "u_c", "display_name": "Cy"})
+        ids.append(r["id"])
+    page = client.get(url, params={"user_id": "u_a", "limit": 2}).json()
+    assert [c["text"] for c in page["comments"]] == ["c3", "c4"]  # newest page, oldest -> newest
+    assert page["next_before"] == ids[3] and page["comment_count"] == 5 and page["post_id"] == p["id"]
+    c = page["comments"][0]
+    assert set(c) == {"id", "user_id", "author", "text", "created_at"}
+    assert c["author"] == {"id": "u_b", "display_name": "Ben"} and c["id"] == ids[3]
+    page = client.get(url, params={"user_id": "u_a", "limit": 2, "before": page["next_before"]}).json()
+    assert [c["text"] for c in page["comments"]] == ["c1", "c2"] and page["next_before"] == ids[1]
+    page = client.get(url, params={"user_id": "u_a", "limit": 2, "before": page["next_before"]}).json()
+    assert [c["text"] for c in page["comments"]] == ["c0"] and page["next_before"] is None  # the end
+    full = client.get(url, params={"user_id": "u_a"}).json()  # default 20: all 5, nothing older
+    assert [c["id"] for c in full["comments"]] == ids and full["next_before"] is None
+    assert client.get(url, params={"user_id": "u_a", "before": ids[0]}).json()["comments"] == []
+    # limit is kept to 1..100
+    assert len(client.get(url, params={"user_id": "u_a", "limit": 0}).json()["comments"]) == 1
+    assert len(client.get(url, params={"user_id": "u_a", "limit": 500}).json()["comments"]) == 5
+    assert client.get(url, params={"user_id": "u_a", "before": "c_nope"}).status_code == 422
+    assert client.get("/fitcheck/fc_missing/comments", params={"user_id": "u_a"}).status_code == 404
+
+
+def test_comments_page_over_100(client):
+    from app.store import store
+    p = _post(client, "u_a")
+    post = store.get("fitcheck_posts", p["id"])
+    post["comments"] = [{"id": f"c{i}", "user_id": "u_gone", "text": str(i), "created_at": f"t{i:03d}"}
+                        for i in range(150)]
+    store.put("fitcheck_posts", p["id"], post)
+    page = client.get(f"/fitcheck/{p['id']}/comments", params={"user_id": "u_a", "limit": 1000}).json()
+    assert len(page["comments"]) == 100 and page["comments"][0]["id"] == "c50" and page["next_before"] == "c50"
+    assert page["comments"][0]["author"] == {"id": "u_gone", "display_name": "u_gone"}  # unknown user: id as name
+
+
+def test_photo_size_on_upload(client):
+    r = client.post("/fitcheck", data={"user_id": "u_b"}, files={"file": ("fit.png", _img(300, 500), "image/png")})
+    assert r.status_code == 200, r.text
+    p = r.json()
+    assert (p["photo_w"], p["photo_h"]) == (300, 500)
+    got = client.get(f"/fitcheck/{p['id']}", params={"user_id": "u_a"}).json()
+    assert (got["photo_w"], got["photo_h"]) == (300, 500)
+    feed = client.get("/fitcheck/feed", params={"user_id": "u_a"}).json()
+    assert (feed[0]["id"], feed[0]["photo_w"], feed[0]["photo_h"]) == (p["id"], 300, 500)
+    # a phone JPEG stored sideways with EXIF "rotate 90": sized as it displays (upright)
+    r = client.post("/fitcheck", data={"user_id": "u_b"},
+                    files={"file": ("fit.jpg", _img(500, 300, "JPEG", orientation=6), "image/jpeg")})
+    assert (r.json()["photo_w"], r.json()["photo_h"]) == (300, 500)
+
+
+def test_photo_size_null_for_urls_and_old_posts(client):
+    from app.store import store
+    p = _post(client, "u_a")
+    assert (p["photo_w"], p["photo_h"]) == (None, None)  # external URL: never downloaded
+    bad = client.post("/fitcheck", data={"user_id": "u_b"}, files={"file": ("fit.png", b"\x89PNG fake", "image/png")})
+    assert (bad.json()["photo_w"], bad.json()["photo_h"]) == (None, None)  # unreadable upload still posts
+    old = {"id": "fc_old", "user_id": "u_a", "photo_url": PHOTO, "caption": "", "tagged": [],
+           "created_at": "2026-01-01T00:00:00", "likes": [], "comments": [], "visibility": "friends"}
+    store.put("fitcheck_posts", "fc_old", old)
+    got = client.get("/fitcheck/fc_old", params={"user_id": "u_a"}).json()
+    assert (got["photo_w"], got["photo_h"]) == (None, None)
+    store.delete("fitcheck_posts", "fc_old")
+
+
+def test_json_post_can_send_its_photo_size(client):
+    body = {"user_id": "u_a", "photo_url": PHOTO, "caption": "", "tagged": [{"label": "tee"}]}
+    p = client.post("/fitcheck", json={**body, "photo_w": 1080, "photo_h": 1350}).json()
+    assert (p["photo_w"], p["photo_h"]) == (1080, 1350)
+    half = client.post("/fitcheck", json={**body, "photo_w": 1080}).json()
+    assert (half["photo_w"], half["photo_h"]) == (None, None)  # both or neither
+    assert client.post("/fitcheck", json={**body, "photo_w": 0, "photo_h": 10}).status_code == 422

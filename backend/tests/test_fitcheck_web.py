@@ -118,7 +118,7 @@ def test_wall_lists_public_without_ids(client):
     posts = r.json()
     ids = [p["id"] for p in posts]
     assert ids[0] == pid and "fc_app" in ids and "fc_priv" not in ids
-    assert set(posts[0]) == {"id", "photo_url", "caption", "author_name", "tags", "created_at"}
+    assert set(posts[0]) == {"id", "photo_url", "caption", "author_name", "tags", "created_at", "photo_w", "photo_h"}
     assert posts[0]["author_name"] == "Sam" and posts[0]["tags"][1] == {"label": "baby tee", "color": "white"}
     assert next(p for p in posts if p["id"] == "fc_app")["author_name"] == "Ana"
     assert "u_secret" not in r.text and "g_" not in r.text
@@ -140,3 +140,20 @@ def test_open_fit_paths_do_not_open_fitcheck():
     from app.main import _is_open
     assert _is_open("/fit") and _is_open("/fit/post") and _is_open("/fit/wall")
     assert not _is_open("/fitcheck/feed") and not _is_open("/fitcheck") and not _is_open("/fitness")
+
+
+def test_upload_records_photo_size(client):
+    import io
+
+    from PIL import Image
+
+    from app.store import store
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 500), (10, 20, 30)).save(buf, "JPEG")
+    j = _up(client, data=buf.getvalue()).json()
+    assert (j["photo_w"], j["photo_h"]) == (300, 500)
+    post = store.get("fitcheck_posts", j["post_id"])
+    assert (post["photo_w"], post["photo_h"]) == (300, 500)
+    wall = client.get(f"/fit/wall?code={CODE}").json()
+    assert (wall[0]["photo_w"], wall[0]["photo_h"]) == (300, 500)
+    assert next(p for p in wall if p["id"] == "fc_app")["photo_w"] is None  # old post: null

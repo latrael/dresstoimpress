@@ -6,7 +6,7 @@ Served WITHOUT X-DTI-Key (main.py adds "/fit" to OPEN_PREFIXES), so everything h
 - per-IP rate limit (FITCHECK_RATE posts per FITCHECK_RATE_WINDOW s) and a total guest-post cap
 - guests get a g_<8 hex> id in a cookie and a minimal user doc; posts are public
 - the wall returns display names only, never user ids
-Creation reuses fitcheck.py (_save_upload, _auto_tags, COL); fitcheck.py is unchanged.
+Creation reuses fitcheck.py (_save_upload, _auto_tags, _photo_size, COL).
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from starlette.datastructures import Headers, UploadFile
 
 from ..ai.router import _save_upload
 from ..store import store
-from .fitcheck import COL, _auto_tags, _now
+from .fitcheck import COL, _auto_tags, _now, _photo_size
 
 router = APIRouter(tags=["fitcheck-web"])
 
@@ -151,11 +151,13 @@ async def post(request: Request, code: str = ""):
         gid = "g_" + secrets.token_hex(4)
     store.put("users", gid, {**(store.get("users", gid) or {"friends": []}), "id": gid, "display_name": name})
     tagged = await run_in_threadpool(_auto_tags, photo_url)  # [] on any failure; Claude budget cap lives in llm
+    w, h = _photo_size(photo_url)
     p = {"id": "fc_" + uuid.uuid4().hex[:12], "user_id": gid, "photo_url": photo_url, "caption": caption,
-         "tagged": tagged, "created_at": _now(), "likes": [], "comments": [], "visibility": "public"}
+         "tagged": tagged, "created_at": _now(), "likes": [], "comments": [], "visibility": "public",
+         "photo_w": w, "photo_h": h}
     store.put(COL, p["id"], p)
     r = JSONResponse({"post_id": p["id"], "photo_url": photo_url, "caption": caption, "author_name": name,
-                      "tagged": _tags(p)}, headers=SEC_HEADERS)
+                      "tagged": _tags(p), "photo_w": w, "photo_h": h}, headers=SEC_HEADERS)
     r.set_cookie(COOKIE, gid, max_age=30 * 86400, httponly=True, samesite="lax", path="/fit",
                  secure=request.headers.get("x-forwarded-proto", request.url.scheme) == "https")
     return r
@@ -168,7 +170,8 @@ def wall(code: str = "", limit: int = 12):
              and str(p.get("photo_url", "")).startswith(("http://", "https://"))]
     posts.sort(key=lambda p: p.get("created_at", ""), reverse=True)
     out = [{"id": p["id"], "photo_url": p["photo_url"], "caption": p.get("caption", ""),
-            "author_name": _name(p.get("user_id", "")), "tags": _tags(p), "created_at": p.get("created_at")}
+            "author_name": _name(p.get("user_id", "")), "tags": _tags(p), "created_at": p.get("created_at"),
+            "photo_w": p.get("photo_w"), "photo_h": p.get("photo_h")}
            for p in posts[:max(1, min(limit, 50))]]
     return JSONResponse(out, headers=SEC_HEADERS)
 

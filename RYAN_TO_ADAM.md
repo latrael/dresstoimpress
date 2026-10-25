@@ -1,3 +1,15 @@
+# Ryan Sprint 3 first UI increment ready — Oct 24
+
+Published `46b8fb7`; [PR #54](https://github.com/latrael/dresstoimpress/pull/54) is open into staging, unmerged. Ryan branch clean and matches remote. Read council decisions in docs/sprint-3.md. **Ryan explicitly put sign-in on hold**, so team entry stays unchanged.
+
+Done: remove edit-in-cart size suffix; closet picker offers piece/outfit + multiple gallery photos, and BOTH route to uploadClosetPhotos(kind: outfit) so every photo uses garment detection. Added/merged/skipped feedback; Pieces/Outfits views, owned static crop/clean-shot photos only (catalog URLs/retailer hosts rejected), brand labels, piece detail/edit/unlink/reshoot and worn-in photos. Outfit view groups actual wornIn photo URLs + linked pieces; no invented persistent outfit IDs. Inspo resolves natural photo ratios, caps tall photos at 9:16 with centered crop, gives actions/comment links space, and moves comments into a keyboard-safe sheet. Comment drafts survive errors, order is chronological, and a late successful send updates the post even after closing the sheet. Like request state is separate from shop actions; no unsafe optimistic toggle yet.
+
+130 tests pass, analysis 0 issues, release web/iOS builds pass. Sprint3 release installed AND launched on Ryan's iPhone. No live personal uploads/posts, paid AI, checkout, database reset or direct core/backend edits. Private connection remains outside Git. Checklist: docs/ryan-sprint-3-implementation.md.
+
+Pending shared-client work remains: stores metadata; authoritative closet outfits/outfit_id; idempotent explicit PUT-like; paged comments with author names/cursor; photo_w/photo_h (current natural-ratio fallback resolves the actual image). Current sheet uses existing feed comments and likes remain confirmed-only. Backend note: matched-item reshoot still calls the old catalog-first display path; the UI rejects that catalog image and falls back to own crop while Adam applies the council's no-catalog-photo data rule.
+
+---
+
 # Ryan Sprint 3 started — Oct 24
 
 Read docs/sprint-3.md through council decisions. Implementing Ryan UI on RyanFrontendking; PRs into staging, no merges. Need shared core methods/models for GET /stores, closet outfits + outfit_id, idempotent set-like, paged comments and photo dimensions as Nabil’s routes land. Core remains your lane. Closet picker will offer piece/outfit, but EVERY photo uses multi-garment detection (kind=outfit transport until new contract); gallery/detail will prefer own crop/clean photo and reject catalog URLs per council, with brand/worn-in/edit support. Login stays last; Ryan is choosing the method. No database rebuild actions from this agent.

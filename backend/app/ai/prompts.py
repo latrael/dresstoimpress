@@ -31,16 +31,24 @@ _FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic":
 
 
 def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | None = None,
-                 size: str | None = None) -> str:
+                 size: str | None = None, boxes: list | None = None) -> str:
     """slots[i] = category of garment image i+2 (image 1 is the person), e.g. ["top", "shoes"].
     names: the garments' catalog names (same order), build: body-scan build, size: the size we'd pick,
-    so the garment drapes like that size on that body instead of a generic model fit."""
+    so the garment drapes like that size on that body instead of a generic model fit.
+    boxes[i]: where the garment being replaced sits in image 1 ([x0, y0, x1, y1], 0-1 fractions) or None,
+    so the edit stays local."""
     names = names or [""] * len(slots)
+    boxes = boxes or [None] * len(slots)
     lines = []
     for i, cat in enumerate(slots):
         what = f"{cat} ({names[i]})" if names[i] else cat
-        lines.append(f"Image {i + 2} shows a {what}: segment the person's current {cat} in image 1 and replace "
-                     f"just that region with this garment.")
+        where = ""
+        b = boxes[i] if i < len(boxes) else None
+        if b:
+            where = (f" (the {cat} in image 1 at roughly {round(b[0] * 100)}%-{round(b[2] * 100)}% across, "
+                     f"{round(b[1] * 100)}%-{round(b[3] * 100)}% down)")
+        lines.append(f"Image {i + 2} shows a {what}: segment the person's current {cat} in image 1{where} and "
+                     f"replace just that region with this garment.")
     regions = (" and ".join(f"the {c}" for c in slots) or "the garment") + (" are" if len(slots) > 1 else " is")
     body_line = " The new garment follows the body's existing pose, folds and shadows"
     if build in _FIT_WORDS:

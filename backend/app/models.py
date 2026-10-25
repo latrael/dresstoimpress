@@ -126,6 +126,7 @@ class TryOnResponse(BaseModel):
     image_url: str
     cached: bool
     mode: Literal["ai", "collage"] = "ai"  # collage = outfit board when AI images are unavailable
+    source_photo_url: Optional[str] = None  # the user's own photo that was edited (body photo or an outfit photo)
 
 
 class PairRequest(BaseModel):

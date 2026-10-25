@@ -8,7 +8,7 @@ import re
 import uuid
 from pathlib import Path
 
-from typing import get_args
+from typing import NamedTuple, get_args
 
 from ..models import ClosetItem, PairResult, Product, StyleTag
 from .colors import find_duplicate
@@ -119,17 +119,22 @@ def _tryon_key(user_id: str, product_ids: list[str], closet_ids: list[str], body
 COLLAGE_RETRY_SECONDS = int(os.getenv("COLLAGE_RETRY_SECONDS", "600"))
 
 
-def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> tuple[str, bool, str]:
-    """Returns (image_url, cached, mode). mode "ai" = Gemini try-on; "collage" = outfit board
-    fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS)."""
-    user = store.get("users", user_id) or {}
-    body = user.get("body_photo_url")
-    key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
-    hit = store.get("tryon_cache", key)
-    if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
-                or mock_mode("GEMINI_API_KEY")):
-        return hit["image_url"], True, hit.get("mode", "ai")
+class TryOnResult(NamedTuple):
+    image_url: str
+    cached: bool
+    mode: str                    # "ai" = Gemini try-on; "collage" = outfit board fallback
+    source_photo_url: str | None  # the user's photo that was edited (image 1), None without any photo
 
+
+def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> TryOnResult:
+    """Returns TryOnResult(image_url, cached, mode, source_photo_url). mode "ai" = Gemini try-on; "collage" =
+    outfit board fallback when AI images are unavailable (retried every COLLAGE_RETRY_SECONDS).
+    Image 1 is the user's best photo for these garments (tryon_source.pick_source_photo: the body photo or one
+    of their own outfit photos that shows a garment of the same category, full body, not cut off), so the v5
+    in-place edit has a real region to replace; its url is part of the cache key."""
+    from .tryon_source import pick_source_photo
+
+    user = store.get("users", user_id) or {}
     pieces = [p for pid in product_ids if (p := get_product(pid))]
     pieces += [c for cid in closet_item_ids if (c := store.get("closet_items", cid))]
     garments = [g["image_url"] for g in pieces]
@@ -137,10 +142,19 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     if not garments:
         raise ValueError("no garment images found for given ids")
 
+    src = pick_source_photo(user_id, pieces, user)
+    body = src["url"] if src else None
+    boxes = src["boxes"] if src else [None] * len(pieces)
+    key = _tryon_key(user_id, product_ids, closet_item_ids, body or "")
+    hit = store.get("tryon_cache", key)
+    if hit and (hit.get("mode", "ai") == "ai" or time.time() - hit.get("at", 0) < COLLAGE_RETRY_SECONDS
+                or mock_mode("GEMINI_API_KEY")):
+        return TryOnResult(hit["image_url"], True, hit.get("mode", "ai"), hit.get("source_photo_url", body))
+
     if os.getenv("MOCK_AI") == "1":  # UI development: instant placeholder, no downloads
         store.put("tryon_cache", key, {"image_url": garments[0], "user_id": user_id, "mode": "collage",
-                                       "at": time.time()})
-        return garments[0], False, "collage"
+                                       "at": time.time(), "source_photo_url": body})
+        return TryOnResult(garments[0], False, "collage", body)
 
     TRYON_DIR.mkdir(parents=True, exist_ok=True)
     mode = "ai"
@@ -159,7 +173,7 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
                                           shoe_us=bp.get("shoe_us"), waist_in=bp.get("waist_in")).get("size")
             except Exception:  # sizing is a nicety here, never a reason to skip the try-on
                 size = None
-            img = gemini_image(prompts.tryon_prompt(slots, names, bp.get("build"), size), [body, *garments])
+            img = gemini_image(prompts.tryon_prompt(slots, names, bp.get("build"), size, boxes), [body, *garments])
         except BadModelOutput:
             img = None  # quota, billing, budget cap, no image returned
     if img is None:
@@ -170,8 +184,9 @@ def try_on(user_id: str, product_ids: list[str], closet_item_ids: list[str]) -> 
     name = f"{key}.png" if mode == "ai" else f"{key}-board.png"
     (TRYON_DIR / name).write_bytes(img)
     url = f"{PUBLIC_BASE}/static/tryon/{name}"
-    store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": mode, "at": time.time()})
-    return url, False, mode
+    store.put("tryon_cache", key, {"image_url": url, "user_id": user_id, "mode": mode, "at": time.time(),
+                                   "source_photo_url": body})
+    return TryOnResult(url, False, mode, body)
 
 
 # ---------- /pair ----------

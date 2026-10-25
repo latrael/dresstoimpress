@@ -12,7 +12,13 @@
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/LcWr5wsJTwA"><img alt="Watch the demo on YouTube" src="https://img.shields.io/badge/%E2%96%B6%20Watch%20the%20demo-YouTube-FF0000?logo=youtube&logoColor=white"></a>
+  <img alt="Flutter" src="https://img.shields.io/badge/Flutter-iOS%20%C2%B7%20Android%20%C2%B7%20web-02569B?logo=flutter&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white">
+  <img alt="Claude" src="https://img.shields.io/badge/Claude-Haiku-D97757?logo=anthropic&logoColor=white">
+  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-image-8E75B2?logo=googlegemini&logoColor=white">
+  <img alt="Apify" src="https://img.shields.io/badge/Apify-catalog%20%2B%20pins-97D700">
+  <img alt="Capital One Nessie" src="https://img.shields.io/badge/Capital%20One-Nessie-D03027">
+  <img alt="Cal Hacks 13.0" src="https://img.shields.io/badge/Cal%20Hacks-13.0-5B1F33">
 </p>
 
 <table align="center">
@@ -64,16 +70,47 @@ Built at **Cal Hacks 13.0** (Oct 2026).
 ## Architecture
 
 ```mermaid
-flowchart LR
-  A[Flutter app<br/>iOS · Android · web] -->|HTTPS + X-DTI-Key| B[FastAPI backend]
-  B --> C[(JSON store<br/>products · closet · posts · try-on cache)]
-  B --> D[Apify<br/>H&M · Uniqlo · Shopify brands · Pinterest pins]
-  B --> E[Claude Haiku<br/>tagging · ranking · Fit Score · fits · vision checks]
-  B --> F[Gemini image<br/>try-on · clean shots]
-  B --> G[Capital One Nessie<br/>customers · merchants · purchases]
+flowchart TB
+  subgraph APP["Flutter app · iOS · Android · web"]
+    H["Home reels"]
+    D["Discover board"]
+    I["Inspo"]
+    C["Closet"]
+    K["Cart · Niche Card"]
+  end
+
+  subgraph BE["FastAPI backend · every key stays on the server"]
+    RANK["Ranking<br/>rules shortlist → Claude Haiku re-rank + reason"]
+    TRY["Try-on<br/>your best photo → Gemini in-place edit → guard"]
+    CLO["Closet AI<br/>Claude vision split → Gemini clean shot"]
+    PAY["Checkout<br/>one payment per store, retry-safe"]
+    DB[("JSON store<br/>products · pins · closets · posts · caches")]
+  end
+
+  NES["Capital One Nessie<br/>purchases · live wallet"]
+
+  subgraph OFF["Offline catalog build"]
+    direction LR
+    AP["Apify scrapers<br/>8 stores + Pinterest"] --> NO["Normalize<br/>sizes · stock · dedupe"] --> TAG["Claude Haiku<br/>tags + photo labels"] --> SNAP[("Snapshot<br/>3,476 products · 793 pins")]
+  end
+
+  H -->|"/feed"| RANK
+  H -->|"/feed/tryons"| TRY
+  D -->|"/discover/board"| DB
+  D -->|"Similar"| RANK
+  I -->|"/fitcheck · Similar"| RANK
+  C -->|"/closet/upload"| CLO
+  K -->|"/checkout · /wallet"| PAY
+  PAY --> NES
+  RANK --> DB
+  TRY --> DB
+  CLO --> DB
+  SNAP -->|"load_products"| DB
 ```
 
-The app never calls outside services directly. Every key stays on the server, and clients authenticate with a shared `X-DTI-Key` header. Google sign-in is optional.
+- **Offline:** the catalog is scraped, cleaned and AI-tagged once, then committed as a snapshot. A server loads it in seconds with no AI cost.
+- **Live:** each screen calls one group of routes on the FastAPI backend, which owns all data and keys. The app never calls an outside service directly; it sends a shared `X-DTI-Key` and, when signed in with Google, a session token.
+- **Engines:** cheap rules run first (sizing, colour, clashes, budgets), and AI only where it adds something: Claude ranks and explains, Gemini renders. Every AI step has a cache and a fallback, so a screen never shows an error.
 
 ## How the AI works
 

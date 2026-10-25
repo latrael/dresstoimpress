@@ -311,16 +311,22 @@ class _ReelPostState extends State<_ReelPost>
     super.dispose();
   }
 
-  Future<void> like() async {
+  /// Double-tap on the photo: like (never un-likes, like Instagram).
+  Future<void> like() => _setLiked(true, burst: true);
+
+  /// The heart button bottom-left of the photo: toggles.
+  Future<void> toggleLike() => _setLiked(!widget.saved, burst: !widget.saved);
+
+  Future<void> _setLiked(bool value, {required bool burst}) async {
     HapticFeedback.lightImpact();
-    if (!Niche.reduced(context)) heart.forward(from: 0);
-    if (saving || widget.saved) return;
+    if (burst && !Niche.reduced(context)) heart.forward(from: 0);
+    if (saving || widget.saved == value) return;
     setState(() {
       saving = true;
       error = null;
     });
     try {
-      await widget.onSave(id, true);
+      await widget.onSave(id, value);
     } catch (_) {
       if (mounted) {
         setState(() => error = 'Could not save. Double-tap to retry.');
@@ -661,6 +667,14 @@ class _ReelPostState extends State<_ReelPost>
                                             child: Icon(NicheIcons.favorite,
                                                 size: 88,
                                                 color: Niche.paper)))))),
+                        Positioned(
+                            left: 14,
+                            bottom: 14,
+                            child: _HeartButton(
+                                key: ValueKey('heart-$id'),
+                                liked: widget.saved,
+                                busy: saving,
+                                onTap: toggleLike)),
                       ]))),
               Positioned(
                   left: 0,
@@ -818,4 +832,64 @@ class _ReelPostState extends State<_ReelPost>
                               ]))))
             ]));
       });
+}
+
+/// The physical heart, bottom-left of the photo: a glass circle that fills
+/// merlot when liked, with a small bounce on each tap.
+class _HeartButton extends StatefulWidget {
+  const _HeartButton(
+      {super.key,
+      required this.liked,
+      required this.busy,
+      required this.onTap});
+  final bool liked, busy;
+  final VoidCallback onTap;
+  @override
+  State<_HeartButton> createState() => _HeartButtonState();
+}
+
+class _HeartButtonState extends State<_HeartButton>
+    with SingleTickerProviderStateMixin {
+  late final bounce = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 260));
+  @override
+  void dispose() {
+    bounce.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+      button: true,
+      label: widget.liked ? 'Unlike' : 'Like',
+      child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.busy
+              ? null
+              : () {
+                  if (!Niche.reduced(context)) bounce.forward(from: 0);
+                  widget.onTap();
+                },
+          child: AnimatedBuilder(
+              animation: bounce,
+              builder: (context, child) => Transform.scale(
+                  scale: 1 + .22 * math.sin(bounce.value * math.pi),
+                  child: child),
+              child: NicheGlass(
+                  radius: 999,
+                  opacity: .82,
+                  child: SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: Icon(
+                              widget.liked
+                                  ? NicheIcons.favorite
+                                  : NicheIcons.favoriteBorder,
+                              key: ValueKey(widget.liked),
+                              size: 24,
+                              color: widget.liked
+                                  ? Niche.wine
+                                  : Niche.of(context).ink)))))));
 }

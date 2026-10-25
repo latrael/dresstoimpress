@@ -179,6 +179,25 @@ void main() {
     await t.tap(find.byKey(const ValueKey('suggested-outside')));
     expect(opened, 'outside');
   });
+  testWidgets('the × on a Liked tile removes it from the wishlist', (t) async {
+    final deleted = <String>[];
+    final client = api((r) async {
+      if (r.method == 'DELETE') {
+        deleted.add(r.url.path);
+        return json({'user_id': 'u_demo', 'product_id': 'one', 'saved': false});
+      }
+      return json([product('one'), product('two')]);
+    });
+    final store = StoreController(api: client, demo: false);
+    await mount(t, LikedScreen(store: store, onOpen: (_) {}));
+    expect(find.text('Piece one'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('remove-liked-one')));
+    await t.pumpAndSettle();
+    expect(deleted, ['/wishlist/u_demo/items/one']);
+    expect(find.text('Piece one'), findsNothing);
+    expect(find.text('Piece two'), findsOneWidget);
+    expect(deleted, ['/wishlist/u_demo/items/one']);
+  });
   testWidgets(
       'four header icons persist across Home, cart and User; logout returns to Login',
       (t) async {

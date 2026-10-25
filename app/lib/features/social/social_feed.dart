@@ -14,6 +14,7 @@ import '../store/cart_screen.dart';
 import '../shared/natural_photo_frame.dart';
 import 'comments_sheet.dart';
 import 'inspo_bindings.dart';
+import '../profile/friends_card.dart';
 
 class SocialFeed extends StatefulWidget {
   const SocialFeed(
@@ -38,27 +39,27 @@ class SocialFeed extends StatefulWidget {
 enum InspoScope { friends, everyone }
 
 class _SocialFeedState extends State<SocialFeed> {
-  /// null until the friends list has loaded once (then Friends when I have any, else Everyone).
-  InspoScope? scope;
+  /// Everyone by default: the Friends tab is only different once you've added friends.
+  InspoScope scope = InspoScope.everyone;
   Set<String> friendIds = {};
   late Future<List<FitCheckPost>> posts = load();
 
   Future<List<FitCheckPost>> load() async {
     if (widget.store.demo) return [];
     final api = widget.store.api;
-    // Friends | Everyone is filtered here: /fitcheck/feed is Nabil's and has no scope yet.
-    if (widget.authorId == null && scope == null) {
+    if (widget.authorId == null && scope == InspoScope.friends) {
       try {
         friendIds = (await api.friends()).map((f) => f.id).toSet();
       } catch (_) {
         friendIds = {};
       }
-      scope = friendIds.isEmpty ? InspoScope.everyone : InspoScope.friends;
+      if (friendIds.isEmpty) return [];
     }
-    final all = await api.fitCheckFeed(limit: 100, author: widget.authorId);
-    if (widget.authorId != null || scope != InspoScope.friends) return all;
-    final me = api.settings.userId;
-    return [for (final p in all) if (p.userId == me || friendIds.contains(p.userId)) p];
+    // The server scopes the feed (friends' + own posts; friends-only posts stay in their circle).
+    return api.fitCheckFeed(
+        limit: 100,
+        author: widget.authorId,
+        scope: widget.authorId == null && scope == InspoScope.friends ? 'friends' : null);
   }
 
   void setScope(InspoScope s) {
@@ -104,6 +105,19 @@ class _SocialFeedState extends State<SocialFeed> {
   void refresh() => setState(() {
         posts = load();
       });
+
+  Future<void> addFriends() async {
+    await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => Padding(
+            padding: EdgeInsets.fromLTRB(
+                16, 16, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+            child: SingleChildScrollView(
+                child: FriendsCard(api: widget.store.api))));
+    refresh();
+  }
   Future<void> create() async {
     final posted = await Navigator.push<bool>(
         context,
@@ -126,6 +140,11 @@ class _SocialFeedState extends State<SocialFeed> {
                             style: Niche.ui(
                                 14, 20, FontWeight.w600, Niche.of(context).muted))),
                 const SizedBox(width: 6),
+                if (widget.authorId == null)
+                  IconButton(
+                      tooltip: 'Add friends',
+                      onPressed: addFriends,
+                      icon: const Icon(NicheIcons.personOutline)),
                 IconButton(
                     tooltip: 'Refresh fits',
                     onPressed: refresh,
@@ -149,12 +168,31 @@ class _SocialFeedState extends State<SocialFeed> {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (snapshot.data!.isEmpty) {
+                    if (!widget.store.demo &&
+                        widget.authorId == null &&
+                        scope == InspoScope.friends) {
+                      final t = Niche.of(context);
+                      return Center(
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text(
+                            friendIds.isEmpty
+                                ? 'No friends yet'
+                                : 'No fits from friends yet',
+                            style: Niche.ui(16, 22, FontWeight.w600, t.ink)),
+                        const SizedBox(height: 6),
+                        Text('Add friends by @handle or friend code.',
+                            style: Niche.ui(13, 18, FontWeight.w500, t.muted)),
+                        const SizedBox(height: 14),
+                        FilledButton.icon(
+                            onPressed: addFriends,
+                            icon: const Icon(NicheIcons.personOutline),
+                            label: const Text('Add friends')),
+                      ]));
+                    }
                     return Center(
                         child: Text(widget.store.demo
                             ? 'Connect to explore Inspo.'
-                            : scope == InspoScope.friends
-                                ? 'No fits from friends yet. Add friends from your profile.'
-                                : 'No fits yet. Your next look could be the first.'));
+                            : 'No fits yet. Your next look could be the first.'));
                   }
                   return RefreshIndicator(
                       onRefresh: () async {
@@ -206,6 +244,8 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
   final caption = TextEditingController();
   String? error;
   bool busy = false;
+  /// Who sees this fit: 'public' (Everyone) or 'friends'.
+  String visibility = 'public';
   @override
   void dispose() {
     caption.dispose();
@@ -234,7 +274,9 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
     });
     try {
       await widget.api.createFitCheckUpload(photo!.bytes,
-          mimeType: photo!.mimeType, caption: caption.text.trim());
+          mimeType: photo!.mimeType,
+          caption: caption.text.trim(),
+          visibility: visibility);
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
@@ -251,7 +293,7 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
       title: 'Post a fit',
       child: ListView(padding: const EdgeInsets.all(24), children: [
         const Text(
-            'Share an outfit with everyone in Inspo. Your photo and caption are uploaded to your connected server; the outfit is tagged automatically.'),
+            'Share an outfit in Inspo. Your photo and caption are uploaded to your connected server; the outfit is tagged automatically.'),
         const SizedBox(height: 16),
         if (photo != null)
           SizedBox(
@@ -268,6 +310,19 @@ class _CreateFitCheckScreenState extends State<CreateFitCheckScreen> {
             maxLines: 3,
             maxLength: 280,
             decoration: const InputDecoration(labelText: 'Caption')),
+        const SizedBox(height: 16),
+        Semantics(
+            label: 'Who can see this fit',
+            child: SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'friends', label: Text('Friends')),
+                  ButtonSegment(value: 'public', label: Text('Everyone')),
+                ],
+                selected: {visibility},
+                showSelectedIcon: false,
+                onSelectionChanged: busy
+                    ? null
+                    : (v) => setState(() => visibility = v.first))),
         const SizedBox(height: 16),
         FilledButton(
             onPressed: busy || photo == null ? null : post,

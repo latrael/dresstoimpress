@@ -35,7 +35,7 @@ def _post(client, uid, **kw):
 
 def test_create_with_tags(client):
     p = _post(client, "u_a", caption="fit", tagged=[{"label": "baggy jeans", "product_id": "hm-demo-1"}])
-    assert p["id"].startswith("fc_") and p["visibility"] == "friends"
+    assert p["id"].startswith("fc_") and p["visibility"] == "public"  # Everyone is the default
     assert p["tagged"] == [{"label": "baggy jeans", "retailer": None, "product_id": "hm-demo-1",
                             "closet_item_id": None, "category": None, "color": None, "pattern": None,
                             "style_tags": [], "brand": None, "box": None}]
@@ -73,13 +73,13 @@ def test_create_multipart(client):
 def test_feed_is_everyone_newest_first(client):
     a = _post(client, "u_a", caption="a-latest")
     b = _post(client, "u_b", caption="b-latest")
-    c = _post(client, "u_c", caption="c-friends-only")  # u_c isn't a friend of u_a: still shown (D4)
+    c = _post(client, "u_c", caption="c-public")  # public posts show for everyone
     for viewer in ("u_a", "u_c", "u_nobody"):
         ids = [p["id"] for p in client.get("/fitcheck/feed", params={"user_id": viewer}).json()]
         assert ids[:3] == [c["id"], b["id"], a["id"]]
     two = client.get("/fitcheck/feed", params={"user_id": "u_a", "limit": 2}).json()
     assert [p["id"] for p in two] == [c["id"], b["id"]]
-    assert two[0]["visibility"] == "friends" and two[0]["author"] == {"id": "u_c", "display_name": "Cy"}
+    assert two[0]["visibility"] == "public" and two[0]["author"] == {"id": "u_c", "display_name": "Cy"}
 
 
 def test_feed_author_filter(client):

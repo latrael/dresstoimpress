@@ -359,7 +359,7 @@ void main() {
             onSaved: () async {
               refreshed = true;
             }));
-    await tester.enterText(find.widgetWithText(TextField, 'Style and budget'),
+    await tester.enterText(find.widgetWithText(TextField, 'Type your own (optional)'),
         r'Y2K tops under $40');
     await tester.scrollUntilVisible(find.text('Save preferences'), 500,
         scrollable: find.byType(Scrollable).first);

@@ -1,3 +1,8 @@
+> Sprint 2 supersedes the thick separator below: use a 1 px solid line with 24 px
+> spacing on each side. Keep dots, remove the numeric counter, preload nearby photos,
+> animate a heart on double tap, and reveal full retailer text behind More.
+> See docs/ryan-sprint-2-implementation.md.
+
 > Council update: the product feed is now **Home**. Discover is a separate two-section
 > search grid and Social is **Inspo**. The persistent header and floating island follow
 > docs/council-final-sprint.md and docs/ryan-council-implementation.md. The photo layout,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:dress_to_impress/features/profile/measurement_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -119,7 +120,7 @@ void main() {
             body: DiscoverScreen(
                 store: StoreController(api: client, demo: false),
                 onOpen: (p) => opened = p.id)));
-    expect(find.text('y2k · 42'), findsOneWidget);
+    expect(find.text('y2k'), findsOneWidget);
     await t.enterText(find.byType(TextField), 'jeans');
     await t.tap(find.byTooltip('Search catalog'));
     await t.pumpAndSettle();
@@ -269,19 +270,31 @@ void main() {
               saved = true;
             },
             picker: () async => PickedPhoto(photo(), 'image/png')));
-    await t.enterText(find.widgetWithText(TextField, 'Height (cm)'), '180');
-    await t.enterText(find.widgetWithText(TextField, 'Weight (kg)'), '75');
+    t
+        .widget<MeasurementPicker>(find.byWidgetPredicate(
+            (w) => w is MeasurementPicker && w.kind == 'Height (cm)'))
+        .onChanged(180);
+    await t.pumpAndSettle();
+    t
+        .widget<MeasurementPicker>(find.byWidgetPredicate(
+            (w) => w is MeasurementPicker && w.kind == 'Weight (kg)'))
+        .onChanged(75);
+    await t.pumpAndSettle();
     await tap(t, 'Choose a full-body photo');
     expect(saved, false);
     expect(confirmed, isNull);
     await tap(t, 'Review measurements');
     expect(
         t
-            .widget<TextField>(find.widgetWithText(TextField, 'Chest (cm)'))
-            .controller!
-            .text,
-        '101.6');
-    await t.enterText(find.widgetWithText(TextField, 'Waist (cm)'), '80');
+            .widget<MeasurementPicker>(find.byWidgetPredicate(
+                (w) => w is MeasurementPicker && w.kind == 'Chest (cm)'))
+            .value,
+        closeTo(101.6, .01));
+    t
+        .widget<MeasurementPicker>(find.byWidgetPredicate(
+            (w) => w is MeasurementPicker && w.kind == 'Waist (cm)'))
+        .onChanged(80);
+    await t.pumpAndSettle();
     await t.scrollUntilVisible(find.text('Save preferences'), 300,
         scrollable: find.byType(Scrollable).first);
     await tap(t, 'Save preferences');

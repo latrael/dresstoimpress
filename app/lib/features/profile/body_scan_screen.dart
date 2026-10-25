@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
+import 'measurement_picker.dart';
 import '../../core/models.dart';
 import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
@@ -43,11 +44,12 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
     final w =
         weight.text.trim().isEmpty ? null : double.tryParse(weight.text.trim());
     if (h == null || h < 120 || h > 230) {
-      setState(() => error = 'Enter your height in cm (120–230).');
+      setState(() => error = 'Choose your height first.');
       return;
     }
     if (weight.text.trim().isNotEmpty && (w == null || w < 30 || w > 250)) {
-      setState(() => error = 'Enter weight in kg (30–250), or leave it blank.');
+      setState(
+          () => error = 'Choose a weight from 66–550 lb, or leave it blank.');
       return;
     }
     setState(() {
@@ -82,20 +84,18 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
           const Text(
               'Enter your height, then choose a full-body photo: standing, head to feet, fitted clothes if you can. We estimate your measurements from it. They are a starting point: check them and edit any that look off.'),
           const SizedBox(height: 16),
-          TextField(
-              controller: height,
+          MeasurementPicker(
+              kind: 'Height (cm)',
+              value: double.tryParse(height.text),
               enabled: !busy,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Height (cm)')),
-          const SizedBox(height: 12),
-          TextField(
-              controller: weight,
+              onChanged: (v) =>
+                  setState(() => height.text = v?.toString() ?? '')),
+          MeasurementPicker(
+              kind: 'Weight (kg)',
+              value: double.tryParse(weight.text),
               enabled: !busy,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration:
-                  const InputDecoration(labelText: 'Weight (kg, optional)')),
+              onChanged: (v) =>
+                  setState(() => weight.text = v?.toString() ?? '')),
           const SizedBox(height: 16),
           FilledButton.icon(
               onPressed: busy ? null : scan,
@@ -138,8 +138,10 @@ class _BodyScanScreenState extends State<BodyScanScreen> {
 List<String> bodyProfileLines(BodyProfile p) {
   String inch(double? v) => v == null ? '' : '${v.toStringAsFixed(1)} in';
   return [
-    if (p.heightCm > 0) 'Height · ${p.heightCm.toStringAsFixed(0)} cm',
-    if (p.weightKg != null) 'Weight · ${p.weightKg!.toStringAsFixed(0)} kg',
+    if (p.heightCm > 0)
+      'Height · ${(p.heightCm / 2.54).round() ~/ 12} ft ${(p.heightCm / 2.54).round() % 12} in',
+    if (p.weightKg != null)
+      'Weight · ${(p.weightKg! / .45359237).toStringAsFixed(0)} lb',
     if (p.chestIn != null) 'Chest · ${inch(p.chestIn)}',
     if (p.waistIn != null) 'Waist · ${inch(p.waistIn)}',
     if (p.hipIn != null) 'Hips · ${inch(p.hipIn)}',

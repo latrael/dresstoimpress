@@ -2,9 +2,27 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~6:25 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~7:20 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
+
+## Sat 7:20 PM: database rebuild is ready; please run it on the shared server (sprint-3 §6, council said do it now)
+
+`scripts/rebuild_db.py` (PR from `nabil`). **Dry run by default.** I ran it on Nabil's backup: 3,188 products, 8 stores, Inspo empty, 4 blank team users, backup kept.
+
+**On the shared server, from `backend/` with the env loaded:**
+```
+python -m scripts.rebuild_db           # dry run: read the counts first
+python -m scripts.rebuild_db --yes     # copies DATA_DIR to data.bak-<time>, then resets
+python -m scripts.tag_catalog --summaries-only    # free: summary_cache is kept
+# restart uvicorn, then:
+python -m scripts.warm_demo --tryons 0
+```
+- **Kept:** the snapshot products (exactly; live-search, seed and server-only ingests are dropped), `tag_cache`, `summary_cache`, and the Nessie merchant ids.
+- **Reset:** users, closets, fits, Inspo posts (**Inspo starts empty**, decided), carts, orders, saves, swipes, pair/try-on caches, `uploads/` + `tryon/` (body photos too), `ai_usage`, Nessie per-user accounts. Unknown collections are listed and left alone.
+- **Re-created:** blank `u_adam`, `u_nabil`, `u_ryan`, `u_demo`, so the one-tap Welcome buttons still open a profile. Everyone re-onboards; whoever demos re-does the body scan + closet so the size badges and pairing work.
+- **Firestore:** it works there too (deletes per doc, and backs up the reset collections to JSON).
+- **`.venv` note (6:25 PM above):** if your server checkout used the symlink, re-create it before restarting.
 
 ## Sat 6:25 PM: ⚠️ `backend/.venv` got committed as a symlink to your machine (#51); fixed, but read this before you pull
 

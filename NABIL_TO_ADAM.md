@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~12:30 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~1:45 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,48 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 1:45 AM: sprint-4 §10 is wired end to end (your #66 + mine). **What's next for you**, in order
+
+**Thanks for #66.** I wired `/feed` and the two routes to your real functions, with your signatures:
+- `closet_picks(u, card, k=4)`;
+- `tryon_status(u, card, picks)`, with the card's own picks, so slide 2 is the try-on of exactly the pieces on slide 3;
+- `prefetch_tryons(u, [products])`.
+
+**On `staging` from me (merged):**
+- **`app/commerce/reels.py`:**
+  - Every `/feed` card (plain and `?seed=`) has `hero_image_url`, `closet_picks` and `tryon`. A failing helper degrades to `[]` / `{"status": "none"}` and never fails the feed.
+  - `POST /feed/{u}/tryons` (≤ 5 ids, de-duped, 404 unknown, 422 for 0 or more than 5) and `GET /feed/{u}/tryons?ids=`.
+- **`/feed` timing:** 41 ms median for 20 cards, with your real functions, a 16-piece closet and a body photo.
+- **Catalog photos labelled:**
+  - `scripts/classify_images.py` used Haiku on a contact sheet per product to label 10,809 photos (product / model / detail / other), for ~$0.21.
+  - The labels are cached in `seed/image_kinds.json`; `ingest.save` re-applies them. `ProductImage.kind` gains `detail` / `other`; `Product.hero_image_url` is new.
+  - **Coverage: 941 / 3,188 products have a real product-only hero photo:** Kith 164/164, Stüssy 94/94, True Classic 179/180, H&M 430/1,255, Uniqlo 67/798, Princess Polly 7/345, Brandy Melville 0/178, Edikted 0/174 (those stores only shoot on models; cards fall back to `image_url`). Princess Polly's `…-modelinfo-…` filenames are forced to `model`: tight crops fooled the AI on 4 of 11.
+- **Tests:** `tests/test_reels.py` covers the routes and the card fields: stubbed, plus one test on your real functions. 691 pass with yours.
+
+**Your next steps:**
+1. **Deploy, now (Ryan needs it live for slides 1–3).** On the shared server, `git pull` staging, then `python -m scripts.load_products` (no `--replace`; this brings in `hero_image_url` + the photo labels), then restart.
+   - **Check:** `GET /feed?user_id=u_nabil` cards have `hero_image_url`, `closet_picks` and `tryon`, and `POST /feed/u_nabil/tryons {"product_ids": [<first card id>]}` returns `pending`.
+2. **A real end-to-end try-on check on the shared server** (a team account with a body photo and a few closet pieces):
+   - prefetch the first 3 posts;
+   - poll until `ready`;
+   - **post in `ADAM_TO_NABIL.md`:** seconds per render and dollars per render, plus whether the result really shows slide 3's pieces.
+   - **If the render takes over ~10 s:** prefetch on feed load for posts 1–5, not 1–3, and tell Ryan.
+3. **Budget sanity (§13.5):**
+   - `MAX_TRYONS` is still 150 **server-wide**, and `PREFETCH_PER_USER_DAY` is 20. Four of us testing Home can use ~80 a day, plus Fit Creator / manual try-ons.
+   - **Check `GET /ai/usage`** (`gemini_images`) after step 2 and tell the team how many are left before the demo. If it's tight, raise `MAX_TRYONS` on the server's `.env` (no code change), or drop prefetch to posts 1–2.
+4. **Warm the demo account before the demo.** Prefetch (or `scripts.warm_demo`) the first ~6 Home posts of the account we demo with, so slide 2 is instant on stage. Do it after its closet and body photo are final, because the picks are part of the cache key.
+5. **Closet quality for slide 3.** `closet_picks` is only as good as the closet's `category` / `colors` / style tags.
+   - Run `scripts/redo_closet.py` for any team account whose closet predates #59.
+   - Spot-check that a bottom gets top / shoes / outer / accessory and that **no catalog photo** shows (sprint-3 §1.2).
+6. **Support Ryan's Home (§6):** Ryan asked you for "exact feed core adapters" (`RYAN_TO_ADAM.md`, a4f96e5).
+   - The fields and methods are in your #66 core.
+   - Make sure `prefetchTryOns` / `tryOnStatus` are what his Home calls, and that the mocks cover `ready`, `pending` → `ready`, `needs_photo` and `unavailable` + collage, plus 4 and 2 picks.
+7. **Later / held:** login stays held until the team OKs it (sprint-3 §4); I'll ask before touching core for it.
+
+**What I need back:** one line when step 1 is live, and the step 2 + 3 numbers (render time, cost per render, images left).
 
 ---
 

@@ -2,7 +2,7 @@
 
 What Adam and Ryan need from my layer: Apify ingest, the products DB, `/feed`, `/swipe`, `/cart`, `/checkout` and Fit Check storage. I update this file whenever something changes, and the newest changes go at the top of the changelog.
 
-**Last updated:** Sat Oct 24, 2026, ~11:30 PM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
+**Last updated:** Sun Oct 25, 2026, ~1:30 AM PT. Handoffs: [`NABIL_TO_ADAM.md`](NABIL_TO_ADAM.md) · [`NABIL_TO_RYAN.md`](NABIL_TO_RYAN.md) (full route list with shapes)
 
 ---
 
@@ -121,6 +121,12 @@ A paid Apify plan or hackathon credits would unlock Zara at full volume and real
 
 ## Changelog
 
+- **Oct 25, ~1:30 AM:** Sprint #4 (Home reels data):
+  - `scripts/classify_images.py` labels every catalog photo (product/model/detail/other, ~$0.21 of Haiku, cached in `seed/image_kinds.json`, re-applied on ingest).
+  - `hero_image_url` for 941/3,188 products.
+  - `/feed` cards carry `hero_image_url`, `closet_picks` and `tryon` (`commerce/reels.py`).
+  - `POST`/`GET /feed/{user}/tryons` prefetch routes, wired to Adam's `closet_picks` / `tryon_status` / `prefetch_tryons` (#66).
+  - `/feed` 41 ms. 691 tests.
 - **Oct 24, ~11:30 PM:** Sprint #3 follow-ups:
   - Post views carry only the 2 newest comments (with `author`) plus `comment_count`.
   - The `shop_for` filter now runs before matching in shop the look (flat + grouped) and `/search/photo`, e.g. 2/6 → 6/6 per piece.

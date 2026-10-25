@@ -338,7 +338,15 @@ def add_garment(user_id: str, raw: dict, photo_url: str, local_path: Path | None
 
 def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, source: str = "closet") -> dict:
     """One photo -> {"added": [...], "merged": [...], "skipped": int}.
-    kind "piece": the photo is one garment (tagger). kind "outfit": every garment with its box (digitize)."""
+    kind "piece": the photo is one garment (tagger). kind "outfit": every garment with its box (digitize).
+    An outfit photo the user already has (same file or a near-identical copy, e.g. also posted to Inspo)
+    returns that outfit with `duplicate: True` and no AI call."""
+    if kind == "outfit":
+        from .outfit_dedupe import duplicate_result, find_same
+
+        same = find_same(user_id, photo_url, local_path)
+        if same:
+            return duplicate_result(same)
     if kind == "piece":
         try:
             found = [service.tag_image(photo_url)]
@@ -370,7 +378,7 @@ def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, 
             out["added"].append(item)
             existing.append(item)
     if kind == "outfit" and (out["added"] or out["merged"]):
-        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], source)
+        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], source, local_path)
     return out
 
 
@@ -379,11 +387,15 @@ def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, 
 OUTFITS = "outfits"
 
 
-def create_outfit(user_id: str, photo_url: str, pieces: list[dict], source: str) -> dict:
+def create_outfit(user_id: str, photo_url: str, pieces: list[dict], source: str,
+                  local_path: Path | None = None) -> dict:
     """One `outfits` record for a whole-fit photo and its pieces; each piece gets `outfit_id` (a piece
-    that already belongs to an older outfit keeps that one: it was merged, not re-made)."""
+    that already belongs to an older outfit keeps that one: it was merged, not re-made). `phash` is the
+    photo's difference hash, so a later copy of the same photo is recognised (outfit_dedupe)."""
+    from .outfit_dedupe import photo_hash
+
     outfit = {"id": f"of_{uuid.uuid4().hex[:8]}", "user_id": user_id, "photo_url": photo_url, "created_at": _now(),
-              "piece_ids": [], "source": source}
+              "piece_ids": [], "source": source, "phash": photo_hash(photo_url, local_path)}
     for p in pieces:
         if p["id"] in outfit["piece_ids"]:
             continue
@@ -445,7 +457,16 @@ def add_photos(user_id: str, photos: list[tuple[str, Path | None]], kind: str) -
 
 def add_from_fit(user_id: str, photo_url: str, local_path: Path | None, tags: list[dict]) -> dict:
     """Pieces of a posted Fit Check -> the poster's closet (worn_in source "fitcheck"). Uses the post's
-    tags (already from tag_fit) so no extra AI call; crops by box when the tag has one."""
+    tags (already from tag_fit) so no extra AI call; crops by box when the tag has one. A photo already in
+    the closet as an outfit (uploaded there first) is not added twice: that outfit is marked `posted`."""
+    from .outfit_dedupe import duplicate_result, find_same
+
+    same = find_same(user_id, photo_url, local_path)
+    if same:
+        if not same.get("posted"):
+            same["posted"] = True
+            store.put(OUTFITS, same["id"], same)
+        return duplicate_result(same)
     existing = store.list("closet_items", user_id=user_id)
     out = {"added": [], "merged": [], "skipped": 0}
     for t in tags or []:
@@ -458,7 +479,7 @@ def add_from_fit(user_id: str, photo_url: str, local_path: Path | None, tags: li
         if not merged:
             existing.append(item)
     if out["added"] or out["merged"]:
-        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], "fitcheck")
+        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], "fitcheck", local_path)
     return out
 
 

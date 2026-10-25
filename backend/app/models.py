@@ -96,6 +96,7 @@ class ClosetOutfit(BaseModel):
     piece_ids: list[str] = []
     source: Literal["closet", "fitcheck"] = "closet"
     pieces: list[ClosetItem] = []             # embedded by GET /closet/{user}/outfits (pieces that still exist)
+    posted: bool = False                       # the same photo is also a Fit Check post (one outfit, not two)
 
 
 class User(BaseModel):

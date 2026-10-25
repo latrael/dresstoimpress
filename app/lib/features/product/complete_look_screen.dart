@@ -1,4 +1,3 @@
-import '../shared/niche_theme.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -181,25 +180,29 @@ Widget fitScoreCard(FitScore score) {
   final verdict = score.verdict.startsWith(prefix)
       ? score.verdict.substring(prefix.length)
       : score.verdict;
-  return Card(
-      child: Padding(
-          padding: const EdgeInsets.all(16),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Fit Score · ${score.score}/100',
-                style: Niche.theme.textTheme.titleLarge),
-            if (score.primaryStyle != null) Text('As ${score.primaryStyle}'),
-            Text(verdict),
-            const SizedBox(height: 12),
-            for (final criterion in score.criteria)
-              Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            '${criterion.name[0].toUpperCase()}${criterion.name.substring(1)} · ${criterion.score10}/10'),
-                        if (criterion.note != null) Text(criterion.note!),
-                      ])),
-          ])));
+  return Builder(
+      builder: (context) => Card(
+          child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Fit Score · ${score.score}/100',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    if (score.primaryStyle != null)
+                      Text('As ${score.primaryStyle}'),
+                    Text(verdict),
+                    const SizedBox(height: 12),
+                    for (final criterion in score.criteria)
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                    '${criterion.name[0].toUpperCase()}${criterion.name.substring(1)} · ${criterion.score10}/10'),
+                                if (criterion.note != null)
+                                  Text(criterion.note!),
+                              ])),
+                  ]))));
 }

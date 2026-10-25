@@ -2,8 +2,12 @@ import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
+import '../fits/fits_screen.dart';
+import '../product/complete_look_screen.dart' show fitScoreCard;
 import '../shared/feature_ui.dart';
+import '../shared/niche_theme.dart';
 import '../shared/pick_photo.dart';
+import '../store/store_controller.dart';
 
 /// Catalog images never stand in for something the user owns.
 String ownedClosetPhoto(ClosetItem item) {
@@ -22,22 +26,44 @@ String ownedClosetPhoto(ClosetItem item) {
 
 class ClosetScreen extends StatefulWidget {
   const ClosetScreen(
-      {super.key, required this.api, this.picker, this.photosPicker});
+      {super.key,
+      required this.api,
+      this.picker,
+      this.photosPicker,
+      this.store,
+      this.onProduct});
   final Api api;
   final PhotoPicker? picker;
   final PhotosPicker? photosPicker;
+
+  /// With a store, Closet offers "Create 3 fits" (the AI Fit Creator) from your own pieces.
+  final StoreController? store;
+  final void Function(RankedProduct)? onProduct;
   @override
   State<ClosetScreen> createState() => _ClosetScreenState();
 }
 
 class _ClosetScreenState extends State<ClosetScreen> {
   late Future<List<ClosetItem>> items = widget.api.closet();
+  Future<List<ClosetOutfit>>? outfits;
   bool busy = false;
   String view = 'pieces';
   String? message;
   void refresh() => setState(() {
         items = widget.api.closet();
+        outfits = null;
       });
+
+  void openFits() {
+    final store = widget.store;
+    if (store == null) return;
+    Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+            builder: (_) => FitsScreen(
+                store: store, onProduct: widget.onProduct ?? (_) {})));
+  }
+
   Future<void> chooseUpload() async {
     final kind = await showModalBottomSheet<String>(
         context: context,
@@ -84,6 +110,7 @@ class _ClosetScreenState extends State<ClosetScreen> {
           mimeTypes: photos.map((p) => p.mimeType).toList());
       if (mounted) {
         setState(() {
+          outfits = null;
           message =
               '${result.added.length} new piece${result.added.length == 1 ? '' : 's'} added.${result.merged.isEmpty ? '' : ' ${result.merged.length} already in your closet — added these photos to them.'}${result.skipped == 0 ? '' : ' ${result.skipped} photo${result.skipped == 1 ? '' : 's'} could not be tagged.'}';
           items = widget.api.closet();
@@ -149,13 +176,22 @@ class _ClosetScreenState extends State<ClosetScreen> {
             padding: const EdgeInsets.all(20),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text(
-                  'Your own clothes and the outfits you wore them in. Choose up to eight photos; we find each garment.'),
+              Text('Your clothes and the outfits you wore them in.',
+                  style: Niche.ui(
+                      14, 20, FontWeight.w500, Niche.of(context).muted)),
               const SizedBox(height: 12),
-              FilledButton.icon(
-                  onPressed: busy ? null : chooseUpload,
-                  icon: const Icon(NicheIcons.addAPhotoOutlined),
-                  label: Text(busy ? 'Finding your pieces…' : 'Add to closet')),
+              Wrap(spacing: 10, runSpacing: 10, children: [
+                FilledButton.icon(
+                    onPressed: busy ? null : chooseUpload,
+                    icon: const Icon(NicheIcons.addAPhotoOutlined),
+                    label:
+                        Text(busy ? 'Finding your pieces…' : 'Add to closet')),
+                if (widget.store != null && !widget.store!.demo)
+                  FilledButton.tonalIcon(
+                      onPressed: openFits,
+                      icon: const Icon(NicheIcons.autoAwesome),
+                      label: const Text('Create 3 fits')),
+              ]),
               const SizedBox(height: 12),
               SegmentedButton<String>(segments: const [
                 ButtonSegment(
@@ -194,55 +230,10 @@ class _ClosetScreenState extends State<ClosetScreen> {
                             Text('Your closet is ready for its first piece.'));
                   }
                   if (view == 'outfits') {
-                    final photos = <String, List<ClosetItem>>{};
-                    for (final item in pieces) {
-                      for (final worn in item.wornIn) {
-                        if (worn.photoUrl.isNotEmpty &&
-                            worn.photoUrl != item.catalogImageUrl) {
-                          final group =
-                              photos.putIfAbsent(worn.photoUrl, () => []);
-                          if (!group.any((p) => p.id == item.id)) {
-                            group.add(item);
-                          }
-                        }
-                      }
-                    }
-                    if (photos.isEmpty) {
-                      return const Center(
-                          child: Text(
-                              'Add an outfit photo to see what you wore together.'));
-                    }
-                    final entries = photos.entries.toList();
-                    return GridView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: .68),
-                        itemCount: entries.length,
-                        itemBuilder: (context, i) => Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                                onTap: () => Navigator.push<void>(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => _ClosetOutfitScreen(
-                                            api: widget.api,
-                                            photo: entries[i].key,
-                                            pieces: entries[i].value))),
-                                child: Column(children: [
-                                  Expanded(
-                                      child: PiecePhoto(
-                                          url: widget.api
-                                              .imageProxyUrl(entries[i].key),
-                                          label: 'Your outfit')),
-                                  Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Text(
-                                          '${entries[i].value.length} pieces'))
-                                ]))));
+                    return _OutfitGrid(
+                        api: widget.api,
+                        outfits: outfits ??= widget.api.closetOutfits(),
+                        onChanged: refresh);
                   }
                   return GridView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -380,32 +371,195 @@ class _ClosetPieceScreenState extends State<ClosetPieceScreen> {
       ]));
 }
 
-class _ClosetOutfitScreen extends StatelessWidget {
-  const _ClosetOutfitScreen(
-      {required this.api, required this.photo, required this.pieces});
+/// Closet → Outfits: one card per outfit photo (de-duplicated on the server: a photo uploaded to Closet
+/// and posted to Inspo is one outfit).
+class _OutfitGrid extends StatelessWidget {
+  const _OutfitGrid(
+      {required this.api, required this.outfits, required this.onChanged});
   final Api api;
-  final String photo;
-  final List<ClosetItem> pieces;
+  final Future<List<ClosetOutfit>> outfits;
+  final VoidCallback onChanged;
   @override
-  Widget build(BuildContext context) => FeaturePage(
-      title: 'Your outfit',
-      child: ListView(padding: const EdgeInsets.all(20), children: [
-        SizedBox(
-            height: 420,
-            child: PiecePhoto(
-                url: api.imageProxyUrl(photo), label: 'Your outfit')),
-        const SizedBox(height: 12),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final p in pieces)
-            ActionChip(
-                label: Text(p.label ?? p.category),
-                onPressed: () => Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            ClosetPieceScreen(api: api, initial: p))))
-        ])
-      ]));
+  Widget build(BuildContext context) => FutureBuilder<List<ClosetOutfit>>(
+      future: outfits,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+              child: TextButton(
+                  onPressed: onChanged,
+                  child: const Text('Could not load outfits. Retry')));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final list =
+            snapshot.data!.where((o) => o.photoUrl.isNotEmpty).toList();
+        if (list.isEmpty) {
+          return const Center(
+              child:
+                  Text('Add an outfit photo to see what you wore together.'));
+        }
+        final t = Niche.of(context);
+        return GridView.builder(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, Niche.bottomSpace(context)),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: .66),
+            itemCount: list.length,
+            itemBuilder: (context, i) {
+              final o = list[i];
+              final n = o.pieces.length;
+              return Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                      onTap: () async {
+                        final changed = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    _ClosetOutfitScreen(api: api, outfit: o)));
+                        if (changed == true) onChanged();
+                      },
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                                child: Stack(fit: StackFit.expand, children: [
+                              PiecePhoto(
+                                  url: api.imageProxyUrl(o.photoUrl),
+                                  label: 'Your outfit'),
+                              if (o.posted)
+                                Positioned(
+                                    top: 8,
+                                    left: 8,
+                                    child: NicheGlass(
+                                        radius: 999,
+                                        opacity: .8,
+                                        child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 4),
+                                            child: Text('In Inspo',
+                                                style: Niche.ui(11, 14,
+                                                    FontWeight.w700, t.ink))))),
+                            ])),
+                            Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text('$n piece${n == 1 ? '' : 's'}',
+                                    style: Niche.ui(
+                                        13, 18, FontWeight.w600, t.ink)))
+                          ])));
+            });
+      });
+}
+
+/// One of your outfits: the photo, its pieces, and its Fit Score (your own outfits only).
+class _ClosetOutfitScreen extends StatefulWidget {
+  const _ClosetOutfitScreen({required this.api, required this.outfit});
+  final Api api;
+  final ClosetOutfit outfit;
+  @override
+  State<_ClosetOutfitScreen> createState() => _ClosetOutfitScreenState();
+}
+
+class _ClosetOutfitScreenState extends State<_ClosetOutfitScreen> {
+  FitScore? score;
+  bool busy = false;
+  String? error;
+  ClosetOutfit get outfit => widget.outfit;
+
+  Future<void> scoreIt() async {
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final result = await widget.api.fitScore(
+          closetItemIds: [for (final p in outfit.pieces) p.id],
+          photoUrl: outfit.photoUrl.isEmpty ? null : outfit.photoUrl);
+      if (mounted) setState(() => score = result);
+    } catch (e) {
+      if (mounted) setState(() => error = featureError(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> remove() async {
+    final yes = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+                title: const Text('Remove this outfit?'),
+                content: const Text(
+                    'The photo leaves your outfits; its pieces stay in your closet.'),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Keep')),
+                  FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Remove'))
+                ]));
+    if (yes != true || !mounted) return;
+    try {
+      await widget.api.deleteClosetOutfit(outfit.id);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) setState(() => error = featureError(e));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Niche.of(context);
+    return FeaturePage(
+        title: 'Your outfit',
+        actions: [
+          IconButton(
+              tooltip: 'Remove outfit',
+              onPressed: remove,
+              icon: const Icon(NicheIcons.deleteOutline))
+        ],
+        child: ListView(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, Niche.bottomSpace(context)),
+            children: [
+              ClipRRect(
+                  borderRadius: BorderRadius.circular(Niche.radius),
+                  child: AspectRatio(
+                      aspectRatio: 3 / 4,
+                      child: PiecePhoto(
+                          url: widget.api.imageProxyUrl(outfit.photoUrl),
+                          label: 'Your outfit'))),
+              const SizedBox(height: 16),
+              if (score != null)
+                fitScoreCard(score!)
+              else
+                FilledButton.tonalIcon(
+                    onPressed: busy || outfit.pieces.isEmpty ? null : scoreIt,
+                    icon: const Icon(NicheIcons.autoAwesome),
+                    label: Text(busy ? 'Scoring…' : 'Fit Score')),
+              if (busy) const LinearProgressIndicator(),
+              if (error != null) Text(error!),
+              const SizedBox(height: 20),
+              Text('In this outfit',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 10),
+              if (outfit.pieces.isEmpty)
+                Text('No pieces left from this photo.',
+                    style: Niche.ui(14, 20, FontWeight.w500, t.muted)),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final p in outfit.pieces)
+                  ActionChip(
+                      label: Text(p.label ?? p.category),
+                      onPressed: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ClosetPieceScreen(
+                                  api: widget.api, initial: p))))
+              ])
+            ]));
+  }
 }
 
 class _EditPieceDialog extends StatefulWidget {

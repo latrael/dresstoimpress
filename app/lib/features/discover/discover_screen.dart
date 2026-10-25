@@ -3,7 +3,6 @@ import '../shared/niche_photo.dart';
 import '../shared/natural_photo_frame.dart';
 import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
-import '../fits/fits_screen.dart';
 import '../../core/models.dart';
 import '../store/store_controller.dart';
 import '../store/cart_screen.dart';
@@ -346,20 +345,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       },
                       child: const Text('Clear search'))),
             const SizedBox(height: 20),
-            if (query.isEmpty)
-              Card(
-                  child: ListTile(
-                      leading: const Icon(NicheIcons.autoAwesome),
-                      title: const Text('Fits for you'),
-                      subtitle: const Text(
-                          'Create outfits from your closet and new pieces'),
-                      trailing: const Icon(NicheIcons.chevronRight),
-                      onTap: () => Navigator.push<void>(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => FitsScreen(
-                                  store: widget.store,
-                                  onProduct: widget.onOpen))))),
             if (query.isEmpty && !loading)
               FutureBuilder<StyleChips>(
                   future: idle,
@@ -432,8 +417,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     onTap: () => Navigator.push<void>(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>
-                                ClosetScreen(api: widget.store.api)))),
+                            builder: (_) => ClosetScreen(
+                                api: widget.store.api,
+                                store: widget.store,
+                                onProduct: widget.onOpen)))),
               if (goesWith.isEmpty && owned.isEmpty)
                 const Text('No matching pieces to show yet.')
               else

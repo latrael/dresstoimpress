@@ -298,3 +298,7 @@ What landed in `adam/closet-social` (no change to your existing routes' shapes):
 ## Sun ~3:45 AM (Adam): closet clean shots v3 + piece dedupe
 - Root cause of wrong white-background shots (earbuds rendered as the overcoat): the clean-shot prompt never named the piece, and the crop of a small accessory is mostly the garment around it. Now the prompt names label + colour + category, a Haiku vision check rejects a wrong item (retry from the photo, then a render from the label alone with no photo, else the crop), `CLEAN_SHOT_VERSION` v3. No API change.
 - New scripts: `scripts/dedupe_pieces.py <user> [--dry-run]` (same piece across outfits → one item, synonyms like earbuds/earphones) and `scripts/redo_clean_shots.py <user> [--only ids] [--dry-run]` (re-render clean shots only, ~$0.06/item).
+
+## Sun ~4:45 AM (Adam): Google login server side done
+- `GOOGLE_CLIENT_IDS` set on the shared server, uvicorn restarted; `POST /auth/google` with a bad token → 401 (was 503). `AUTH_REQUIRED` left unset.
+- Android debug signing: `	 SHA1: 46:A8:5D:D9:31:14:69:7E:EC:2B:93:9B:BA:FB:42:25:94:4C:C1:85` (package `com.dresstoimpress.dress_to_impress`). Please create the Android OAuth client and add my Gmail to the test users.

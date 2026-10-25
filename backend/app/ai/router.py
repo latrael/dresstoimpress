@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from ..models import (BodyProfileUpdate, ClosetItem, CompleteLookRequest, FitCreateRequest, FitScoreRequest, PairRequest,
                       PairResult, ShopFitRequest,
@@ -143,9 +144,14 @@ async def closet_digitize(user_id: str = Form(...), file: UploadFile = File(...)
 
 @router.post("/users/{user_id}/body-scan")
 async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm: float = Form(...),
-                          weight_kg: Optional[float] = Form(None)):
+                          weight_kg: Optional[float] = Form(None), commit: bool = True):
     """Body scan: full-body photo + height (weight optional) -> estimated measurements saved as
-    body_profile (used by /size) and the photo saved as the try-on photo."""
+    body_profile (used by /size) and the photo saved as the try-on photo.
+
+    `?commit=false` (draft, for a review screen): runs the scan and saves the photo file, but changes
+    nothing on the user (no body_photo_url, no body_profile). The response has the same shape with
+    `committed: false`; the app then calls POST /users/{id}/body-scan/confirm with the (edited) profile
+    and the returned body_photo_url to save it. Default `commit=true` saves right away (`committed: true`)."""
     from .body_scan import HEIGHT_CM, WEIGHT_KG, merge_scan, scan
 
     if not HEIGHT_CM[0] <= height_cm <= HEIGHT_CM[1]:
@@ -155,10 +161,73 @@ async def body_scan_route(user_id: str, file: UploadFile = File(...), height_cm:
     url = await _save_upload(file)
     profile = scan(url, height_cm, weight_kg)
     user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    merged = merge_scan(user.get("body_profile"), profile)
+    if not commit:
+        return {"body_photo_url": url, "body_profile": merged, "committed": False}
     user["body_photo_url"] = url
-    user["body_profile"] = merge_scan(user.get("body_profile"), profile)
+    user["body_profile"] = merged
     store.put("users", user_id, user)
-    return {"body_photo_url": url, "body_profile": user["body_profile"]}
+    return {"body_photo_url": url, "body_profile": user["body_profile"], "committed": True}
+
+
+class BodyScanConfirm(BaseModel):
+    """POST /users/{id}/body-scan/confirm (after a `?commit=false` draft).
+    `body_photo_url`: the draft's url (must be one of this server's /static/uploads/ photos).
+    `profile`: the draft's body_profile as reviewed, edits applied (height_cm, weight_kg, chest_in, waist_in,
+    hip_in, inseam_in, build, fit, shoe_us, usual_sizes; source/full_body/note/scanned_at pass through).
+    `edited`: the profile fields the user changed; they are saved as `manual` (typed) and win over later
+    scans. Fields not listed are scan values, so earlier typed values keep winning over them."""
+    body_photo_url: str
+    profile: dict = {}
+    edited: list[str] = []
+
+
+_SCAN_PASS = {"source", "full_body", "note", "scanned_at", "build", "fit", "shoe_us", "usual_sizes"}
+_SCAN_NUMS = {"height_cm": (120.0, 230.0), "weight_kg": (30.0, 250.0), "shoe_us": (3.0, 18.0)}
+
+
+@router.post("/users/{user_id}/body-scan/confirm")
+def body_scan_confirm(user_id: str, req: BodyScanConfirm):
+    """Saves a reviewed draft scan: sets body_photo_url (try-on photo) and merges `profile` into the user's
+    body_profile. Fields in `edited` are stored as typed (`manual`, they win); the rest merge like a scan
+    (earlier typed values stay). 422 for a photo URL that isn't one of ours or an impossible number.
+    Returns {body_photo_url, body_profile, committed: true}."""
+    from ..static_urls import local_static_path
+    from .body_scan import BUILDS, RANGES, apply_manual, merge_scan
+
+    path = local_static_path(req.body_photo_url, DATA_DIR)
+    if not path or path.parent.name != "uploads":
+        raise HTTPException(422, "body_photo_url must be a photo uploaded to this server (/static/uploads/)")
+    limits = {**RANGES, **_SCAN_NUMS}
+    scanned: dict = {}
+    for key, value in req.profile.items():
+        if key in limits:
+            if value is None:
+                scanned[key] = None
+                continue
+            try:
+                num = float(value)
+            except (TypeError, ValueError):
+                raise HTTPException(422, f"{key} must be a number")
+            lo, hi = limits[key]
+            if not lo <= num <= hi:
+                raise HTTPException(422, f"{key} must be between {lo:g} and {hi:g}")
+            scanned[key] = num
+        elif key in _SCAN_PASS:
+            scanned[key] = value
+    if scanned.get("build") is not None and scanned["build"] not in BUILDS:
+        raise HTTPException(422, "build must be one of " + ", ".join(sorted(BUILDS)))
+    if scanned.get("fit") is not None and scanned["fit"] not in {"slim", "regular", "oversized"}:
+        raise HTTPException(422, "fit must be slim, regular or oversized")
+    edited = [f for f in req.edited if f in scanned]
+    user = store.get("users", user_id) or {"id": user_id, "display_name": user_id}
+    profile = merge_scan(user.get("body_profile"), {k: v for k, v in scanned.items() if k not in edited})
+    if edited:
+        profile = apply_manual(profile, {f: scanned[f] for f in edited})
+    user["body_photo_url"] = req.body_photo_url
+    user["body_profile"] = profile
+    store.put("users", user_id, user)
+    return {"body_photo_url": req.body_photo_url, "body_profile": profile, "committed": True}
 
 
 @router.patch("/users/{user_id}/body-profile")

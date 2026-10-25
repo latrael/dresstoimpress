@@ -254,3 +254,10 @@ Wire these into `/feed` cards and the two routes (all in `app.ai.service`):
 - All text prompts now run at temperature 0 + fixed seed, with a JSON schema check per prompt (`llm.ai_json` rejects/retries bad shapes); feed reasons can no longer name closet items the user doesn't own. No API changes.
 - TRYON_VERSION v5 → v6 and PAIR_VERSION v3 → v4: the try-on cache and the pair reason bank invalidate on the next request (first try-ons after the restart re-render). Tagger/digitize versions were NOT bumped, so existing closets are not re-tagged.
 - `AI_TEMPERATURE` / `AI_SEED` env vars override for experiments only.
+
+## Sun 1:15 AM: reels path checked end-to-end on the shared server + try-on budget
+
+Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for `u_adam`:
+- `GET /feed?user_id=u_adam&limit=5` → 200. Every card has `hero_image_url`, 4 `closet_picks` in different categories (e.g. bottom / shoes / outerwear / accessory for a top), and `tryon: {status: "none"}` before prefetch. Cold call after restart took 7.5 s (pair reasons); please time the warm path.
+- `POST /feed/u_adam/tryons` (2 ids) → 200 in 10 ms, both `pending`. `GET …/tryons?ids=` → `ready` with `mode: "ai"` image URLs after ~15–20 s. No 500s in the log.
+- Budget: `docs/tryon-budget.md`. ≈ $0.039/image. `MAX_TRYONS` default is now 400 (≈ $15.60 worst case); `PREFETCH_PER_USER_DAY` stays 20. Export `MAX_TRYONS` in `.env` if you want a different cap on your machine. Nothing for you to change in the routes.

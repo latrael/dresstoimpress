@@ -52,7 +52,7 @@ PRICES = {
 # endpoint uses its non-AI fallback instead. Set 0 to disable.
 AI_BUDGET_USD = float(os.getenv("AI_BUDGET_USD", "5"))
 # Gemini try-ons are the expensive part; cap how many fresh ones we generate.
-MAX_TRYONS = int(os.getenv("MAX_TRYONS", "150"))
+MAX_TRYONS = int(os.getenv("MAX_TRYONS", "400"))  # see docs/tryon-budget.md
 
 
 class BudgetExceeded(Exception):

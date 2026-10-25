@@ -174,7 +174,7 @@ def test_no_match_generates_a_clean_shot_when_image_ai_is_on(client, monkeypatch
     monkeypatch.setattr(closet, "gemini_image", fake_gemini)
     body = client.post("/closet/upload", data={"user_id": "u_c", "kind": "outfit"}, files=_files(1)).json()
     assert len(calls) == 2  # one clean shot per garment
-    assert "only this garment" in calls[0][0] and "white background" in calls[0][0] and "no person" in calls[0][0]
+    assert "render ONLY the" in calls[0][0] and "white background" in calls[0][0] and "no person" in calls[0][0]
     for item, (_, urls) in zip(body["added"], calls):
         assert urls == [item["crop_image_url"]]  # generated from the crop
         assert item["display_image_url"].endswith("-clean.png") and item["display_image_url"] != item["crop_image_url"]

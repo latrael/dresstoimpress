@@ -116,16 +116,59 @@ def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | 
 
 # Standalone white-background shot of one garment (closet.clean_shot).
 CLEAN_SHOT = (
-    "TASK: studio product photo of only this garment, as worn in the photo.\n"
-    "GARMENT FIDELITY: same colour, fabric, print, logo and fit as worn in the photo, identical cut and length; "
-    "nothing added, nothing removed.\n"
-    "SPEC: ghost-mannequin (or flat-lay for accessories/shoes), front view, centred, filling ~80% of the frame, "
-    "pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond a faint "
-    "contact shadow, square 1:1 frame, sharp focus.\n"
-    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments, no text, no logos other than the "
-    "garment's own, no watermark, no border, no props, no background objects, no colour grading."
+    "TASK: studio product photo of ONE item from the photo: the {label} ({color} {category}). "
+    "The photo may show other garments, a person or a background: ignore every one of them and render ONLY the "
+    "{label}. If the {label} is an accessory (earbuds, watch, bag, belt, glasses, jewelry) render just that "
+    "accessory on its own, small as it is, not the clothes around it.\n"
+    "ITEM FIDELITY: same colour, fabric, print, logo, shape and fit as the {label} in the photo, identical cut and "
+    "length; nothing added, nothing removed.\n"
+    "SPEC: ghost-mannequin for clothes, flat-lay for accessories/shoes, front view, centred, filling ~80% of the "
+    "frame, pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond "
+    "a faint contact shadow, square 1:1 frame, sharp focus.\n"
+    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments or items, no text, no logos other than "
+    "the item's own, no watermark, no border, no props, no background objects, no colour grading."
 )
-CLEAN_SHOT_VERSION = "v2"
+CLEAN_SHOT_RETRY = (
+    "You rendered the wrong item last time. "
+    + CLEAN_SHOT
+    + "\nCHECK BEFORE ANSWERING: the output must contain the {label} and NOTHING else. A coat, shirt, trousers or "
+    "any other garment that is not the {label} is a failure."
+)
+CLEAN_SHOT_VERSION = "v3"  # the prompt names the piece; the result is checked (CLEAN_SHOT_CHECK)
+
+# No source photo: a generic-but-correct item from its label alone (used when both photo-based renders
+# failed the check; a plain "white wired earbuds" beats a picture of the wrong garment).
+CLEAN_SHOT_TEXT = (
+    "TASK: studio product photo of a {label} ({color} {category}) on pure white, nothing else.\n"
+    "SPEC: ghost-mannequin for clothes, flat-lay for accessories/shoes, front view, centred, filling ~80% of the "
+    "frame, pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond "
+    "a faint contact shadow, square 1:1 frame, sharp focus, plain and generic (no distinctive print or branding).\n"
+    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments or items, no text, no logos, no watermark, "
+    "no border, no props, no background objects, no colour grading."
+)
+
+
+def clean_shot_prompt(piece: dict | None, retry: bool = False, text_only: bool = False) -> str:
+    """CLEAN_SHOT filled with the piece's label / colour / category (falls back to generic words).
+    text_only: the no-photo variant (CLEAN_SHOT_TEXT)."""
+    piece = piece or {}
+    label = " ".join(str(piece.get("label") or "garment").split()) or "garment"
+    tmpl = CLEAN_SHOT_TEXT if text_only else (CLEAN_SHOT_RETRY if retry else CLEAN_SHOT)
+    return tmpl.format(
+        label=label, color=str(piece.get("color") or "").strip() or "same-coloured",
+        category=str(piece.get("category") or "item").strip() or "item")
+
+
+CLEAN_SHOT_CHECK = """ROLE: QA for a product-photo generator.
+INPUT: one generated image. It was supposed to show ONLY this item: "{label}" ({color} {category}), alone on a
+white background.
+HARD RULES:
+1. match = true only if the main object in the image is the {label} (same type of item, same colour family).
+2. match = false if the image shows a different kind of item (e.g. a coat instead of earbuds), a person, or
+   several items.
+3. seen: at most 6 words naming what the image actually shows.
+OUTPUT (JSON only): {{"match": true|false, "seen": "<what it shows>"}}
+EXAMPLE: {{"match": false, "seen": "camel wool overcoat"}}"""
 
 PAIR = f"""ROLE: stylist picking feed items for one shopper.
 INPUT:
@@ -351,6 +394,8 @@ SCHEMAS: dict[str, dict] = {
     "summary": {"type": "object", "required": ["summary"], "properties": {"summary": {"type": "string"}}},
     "fit_critic": {"type": "object", "required": ["criteria"], "properties": {
         "criteria": {"type": "object", "properties": {c: _CRIT for c in _CRITERIA}}, "style": {"type": "string"}}},
+    "clean_shot_check": {"type": "object", "required": ["match"], "properties": {
+        "match": {"type": "boolean"}, "seen": {"type": "string"}}},
 }
 
 _FIRST_LINES: dict[str, str] = {
@@ -358,7 +403,7 @@ _FIRST_LINES: dict[str, str] = {
     VIBE.splitlines()[0]: "vibe", DIGITIZE.splitlines()[0]: "digitize",
     STYLE_FROM_CLOSET.splitlines()[0]: "style_from_closet", BODY_SCAN.splitlines()[0]: "body_scan",
     FIT_CREATOR.splitlines()[0]: "fit_creator", SUMMARY.splitlines()[0]: "summary",
-    FIT_CRITIC.splitlines()[0]: "fit_critic",
+    FIT_CRITIC.splitlines()[0]: "fit_critic", CLEAN_SHOT_CHECK.splitlines()[0]: "clean_shot_check",
 }
 
 

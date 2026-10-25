@@ -263,7 +263,7 @@ def test_merge_keeps_the_new_photos_box_and_regenerates_when_it_shows_the_piece_
     monkeypatch.setattr(service, "_spawn", lambda fn: spawned.append(fn))
     first = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"}, files=_files(1)).json()["added"][0]
     assert len(shots) == 1 and shots[0][1] == [first["crop_image_url"]]
-    assert "as worn in the photo" in shots[0][0] and "same colour, fabric, print, logo and fit" in shots[0][0]
+    assert "ONE item from the photo" in shots[0][0] and "same colour, fabric, print, logo" in shots[0][0]
     assert first["clean_source_box"] == [0.3, 0.3, 0.6, 0.6]
     # the same garment, bigger in a second photo
     _detect(monkeypatch, [_garment("black cargo pants", "bottom", "black", [0.1, 0.1, 0.9, 0.9])])

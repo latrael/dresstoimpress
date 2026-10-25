@@ -78,7 +78,7 @@ def test_tryon_v7_and_clean_shot_are_fixed_spec():
     p = prompts.tryon_prompt(["top"], ["white tee"], build="slim", size="M", boxes=[[0.2, 0.2, 0.8, 0.6]])
     for word in ("PRESERVE EXACTLY", "ORIGINAL", "NEGATIVE", "size M", "20%-80%"):
         assert word in p
-    for word in ("#FFFFFF", "NEGATIVE", "no person", "GARMENT FIDELITY"):
+    for word in ("#FFFFFF", "NEGATIVE", "no person", "ITEM FIDELITY"):
         assert word in prompts.CLEAN_SHOT
     from app.ai import closet
     assert closet.CLEAN_SHOT is prompts.CLEAN_SHOT

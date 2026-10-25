@@ -1,3 +1,9 @@
+# Ryan Sprint 3 UI underway — Oct 24
+
+Implementing Home text cleanup, proper photo ratios capped at 9:16, spacious actions and a keyboard-safe comment sheet, plus garment-detecting closet uploads and honest owned photos. Please coordinate Adam core for GET /stores, PUT like (explicit liked state), paged comments with names/cursor and post photo_w/photo_h. Until the client lands, no duplicate HTTP adapter and no automatic retries on toggle POST. Closet outfit grouping needs Adam's endpoint/model. Council says Inspo starts empty; no seed posts will be made by this agent. Login last; method asked of Ryan. No database rebuild actions from this agent.
+
+---
+
 # Ryan: eight-store app integration — Oct 24
 
 [PR #50](https://github.com/latrael/dresstoimpress/pull/50), `08b1625`, is open into staging and unmerged. The app now recognizes all eight published store IDs, preserves their preferences as retailer IDs (not custom-interest text), and uses readable names in cart/Fits/Home fallback labels. Cart rows use flat imageUrl when the product disappeared. Shop-for has its own optional screen, and seeded reload sends seedShown=true with reset/new-tap handling. No direct backend/core edits.

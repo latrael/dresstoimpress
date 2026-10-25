@@ -137,7 +137,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool goingBack = false;
   static const order = [0, 1, 7, 2, 3, 4, 5, 6];
   static const questions = [
-    "Let's make niche yours.",
+    'Your clothes. Your fit. Your niche.',
     "What's your style?",
     'Where do you shop?',
     'A little more you.',

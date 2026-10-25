@@ -7,6 +7,8 @@ import '../shared/feature_ui.dart';
 import '../shared/pick_photo.dart';
 import '../product/complete_look_screen.dart';
 import '../store/cart_screen.dart';
+import '../shared/natural_photo_frame.dart';
+import 'comments_sheet.dart';
 
 class SocialFeed extends StatefulWidget {
   const SocialFeed(
@@ -30,7 +32,9 @@ class _SocialFeedState extends State<SocialFeed> {
   Future<List<FitCheckPost>> load() => widget.store.demo
       ? Future.value([])
       : widget.store.api.fitCheckFeed(limit: 100, author: widget.authorId);
-  void refresh() => setState(() => posts = load());
+  void refresh() => setState(() {
+        posts = load();
+      });
   Future<void> create() async {
     final posted = await Navigator.push<bool>(
         context,
@@ -206,10 +210,10 @@ class _FitPostCardState extends State<FitPostCard> {
   late bool liked = post.likedByMe ?? false;
   late int count = post.likeCount ?? post.likes.length;
   late List<FitCheckComment> comments = [...post.comments];
-  final comment = TextEditingController();
   String? busy;
   String? error;
   bool showTags = false;
+  bool liking = false;
   Future<void> deletePost() async {
     final yes = await showDialog<bool>(
         context: context,
@@ -246,7 +250,6 @@ class _FitPostCardState extends State<FitPostCard> {
 
   @override
   void dispose() {
-    comment.dispose();
     super.dispose();
   }
 
@@ -265,26 +268,40 @@ class _FitPostCardState extends State<FitPostCard> {
     }
   }
 
-  Future<void> like() => action('update like', () async {
-        final result = await widget.api.likeFitCheck(post.id);
-        if (mounted) {
-          setState(() {
-            liked = result.liked;
-            count = result.likeCount;
-          });
-        }
-      });
-  Future<void> sendComment() => action('send comment', () async {
-        final text = comment.text.trim();
-        if (text.isEmpty || text.length > 280) return;
-        final result = await widget.api.commentFitCheck(post.id, text);
-        if (mounted) {
-          setState(() {
-            comments = [...comments, result];
-            comment.clear();
-          });
-        }
-      });
+  Future<void> like() async {
+    if (liking) return;
+    setState(() {
+      liking = true;
+      error = null;
+    });
+    try {
+      final result = await widget.api.likeFitCheck(post.id);
+      if (mounted) {
+        setState(() {
+          liked = result.liked;
+          count = result.likeCount;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => error = 'Could not update like. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => liking = false);
+    }
+  }
+
+  Future<void> openComments() => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => CommentsSheet(
+          api: widget.api,
+          postId: post.id,
+          initial: comments,
+          onAdded: (added) {
+            if (mounted) setState(() => comments.add(added));
+          }));
   Future<void> editTags() async {
     final result = await showDialog<List<FitTag>>(
         context: context, builder: (_) => EditTagsDialog(tags: post.tagged));
@@ -302,7 +319,7 @@ class _FitPostCardState extends State<FitPostCard> {
 
   @override
   Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.only(bottom: 40),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         ListTile(
             contentPadding: EdgeInsets.zero,
@@ -318,9 +335,11 @@ class _FitPostCardState extends State<FitPostCard> {
                     onPressed: busy == null ? deletePost : null,
                     icon: const Icon(Icons.delete_outline))
                 : null),
-        AspectRatio(
-            aspectRatio: .85,
+        NaturalPhotoFrame(
+            url: widget.api.imageProxyUrl(post.photoUrl),
             child: Semantics(
+                container: true,
+                explicitChildNodes: true,
                 button: true,
                 label: showTags ? 'Hide outfit tags' : 'Show outfit tags',
                 child: GestureDetector(
@@ -328,10 +347,16 @@ class _FitPostCardState extends State<FitPostCard> {
                     child: Stack(fit: StackFit.expand, children: [
                       ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: PiecePhoto(
-                              url: widget.api.imageProxyUrl(post.photoUrl),
-                              label:
-                                  'Outfit by ${post.authorName ?? post.userId}')),
+                          child: Image.network(
+                              widget.api.imageProxyUrl(post.photoUrl),
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              semanticLabel:
+                                  'Outfit by ${post.authorName ?? post.userId}',
+                              webHtmlElementStrategy:
+                                  WebHtmlElementStrategy.prefer,
+                              errorBuilder: (_, __, ___) => const Center(
+                                  child: Text('Photo unavailable')))),
                       Positioned(
                           left: 12,
                           bottom: 12,
@@ -371,7 +396,7 @@ class _FitPostCardState extends State<FitPostCard> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TextButton.icon(
-                  onPressed: busy == null ? like : null,
+                  onPressed: liking ? null : like,
                   icon: Icon(liked ? Icons.favorite : Icons.favorite_border),
                   label: Text('$count')),
               FilledButton.tonal(
@@ -398,26 +423,16 @@ class _FitPostCardState extends State<FitPostCard> {
                     child: const Text('Edit tags')),
             ]),
         if (score != null) fitScoreCard(score!),
-        if (comments.isNotEmpty) ...[
-          const Text('Comments', style: TextStyle(fontWeight: FontWeight.w600)),
-          for (final c in comments)
-            Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text('${c.userId} · ${c.text}'))
-        ],
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-              child: TextField(
-                  controller: comment,
-                  enabled: busy == null,
-                  maxLength: 280,
-                  decoration:
-                      const InputDecoration(labelText: 'Add a comment'))),
-          IconButton(
-              tooltip: 'Send comment',
-              onPressed: busy == null ? sendComment : null,
-              icon: const Icon(Icons.send_outlined))
-        ]),
+        const SizedBox(height: 12),
+        TextButton.icon(
+            onPressed: openComments,
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: Text('Comments (${comments.length})')),
+        Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+                onPressed: openComments, child: const Text('Add a comment…'))),
+        const SizedBox(height: 16),
         if (busy != null) const LinearProgressIndicator(),
         if (error != null) Text(error!),
       ]));

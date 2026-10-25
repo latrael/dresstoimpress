@@ -1,3 +1,5 @@
+> Sprint 3: size labels omit “edit in cart”; size editing remains in the cart.
+
 > Sprint 2 supersedes the thick separator below: use a 1 px solid line with 24 px
 > spacing on each side. Keep dots, remove the numeric counter, preload nearby photos,
 > animate a heart on double tap, and reveal full retailer text behind More.

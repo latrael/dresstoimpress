@@ -1,3 +1,6 @@
+> Sprint 3 UI increment: 130 tests pass, analysis clean. See docs/ryan-sprint-3-implementation.md
+> for closet, Inspo and pending shared-client integration.
+
 > Sprint 2: Home uses thin spaced separators, photo dots/preloading and heart feedback.
 > US wheel inputs and Fits for you are documented in docs/ryan-sprint-2-implementation.md.
 > Current validation: 102 tests pass, Flutter analysis clean. Older checkpoints below

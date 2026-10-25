@@ -601,8 +601,8 @@ class _ProductPageState extends State<_ProductPage>
                     ? 'Finding your size…'
                     : size != null
                         ? alternativeSize
-                            ? 'Size $size · alternative fit · edit in cart'
-                            : 'In your size · $size · edit in cart'
+                            ? 'Size $size · alternative fit'
+                            : 'In your size · $size'
                         : (widget.hasSizingProfile ||
                                 p['in_your_size'] == false)
                             ? p['your_size'] == null

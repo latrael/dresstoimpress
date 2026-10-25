@@ -1,3 +1,7 @@
+> Updated integration: docs/ryan-sprint-2-integration.md supersedes the pending
+> shopFor, seedShown, flat cart-image and draft-scan items below. Photo onboarding
+> and live store-metadata client support are still pending.
+
 # Ryan Sprint 2 implementation
 
 Based on docs/sprint-2.md and docs/handoff-ryan-ios.md. Work stays on

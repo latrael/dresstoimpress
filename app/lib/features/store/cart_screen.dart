@@ -3,12 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
 import 'store_controller.dart';
+import '../shared/store_names.dart';
 
-String retailerName(String retailer) => retailer == 'hm'
-    ? 'H&M'
-    : retailer == 'uniqlo'
-        ? 'Uniqlo'
-        : retailer;
+String retailerName(String retailer) => storeName(retailer);
 String dollars(num value) => '\$${value.toStringAsFixed(2)}';
 
 class CartScreen extends StatefulWidget {
@@ -289,7 +286,8 @@ class _CartScreenState extends State<CartScreen> {
                               style: TextStyle(fontWeight: FontWeight.w700)),
                           for (final item in cart.unavailable)
                             ListTile(
-                                leading: thumbnail(item.product?.imageUrl),
+                                leading: thumbnail(
+                                    item.product?.imageUrl ?? item.imageUrl),
                                 title: Text(item.name),
                                 subtitle: Text(
                                     'Size ${item.size} · Qty ${item.qty} · ${item.reason}'),
@@ -313,7 +311,8 @@ class _CartScreenState extends State<CartScreen> {
                           for (final item in group.items)
                             ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                leading: thumbnail(item.product?.imageUrl),
+                                leading: thumbnail(
+                                    item.product?.imageUrl ?? item.imageUrl),
                                 title:
                                     Text(item.product?.name ?? item.productId),
                                 subtitle: Text(

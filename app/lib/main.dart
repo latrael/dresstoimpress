@@ -70,6 +70,7 @@ class _NicheAppState extends State<NicheApp> {
           child: ListView(padding: const EdgeInsets.all(20), children: [
             for (final section in [
               ('Your style', 1),
+              ('Shop for', 7),
               ('Stores you like', 2),
               ('Body scan', 3),
               ('Measurements & size', 4),
@@ -432,8 +433,35 @@ class _ShopShellState extends State<ShopShell> {
   List<RankedProduct>? seeded;
   String? seedError;
   int seedGeneration = 0;
+  bool seedWasShown = false;
+  Future<void> refreshHome() async {
+    if (seed == null || store.demo) {
+      await store.load();
+      return;
+    }
+    final selected = seed!;
+    final request = ++seedGeneration;
+    try {
+      final cards =
+          await store.api.feed(seed: selected.id, seedShown: seedWasShown);
+      if (mounted && request == seedGeneration) {
+        setState(() {
+          seeded = cards;
+          seedWasShown = true;
+          seedError = null;
+          feedRevision++;
+        });
+      }
+    } catch (_) {
+      if (mounted && request == seedGeneration) {
+        setState(() => seedError = 'Could not load similar items. Retry.');
+      }
+    }
+  }
+
   void clearSeed() => setState(() {
         seed = null;
+        seedWasShown = false;
         seeded = null;
         seedError = null;
         seedGeneration++;
@@ -454,6 +482,7 @@ class _ShopShellState extends State<ShopShell> {
     final request = ++seedGeneration;
     setState(() {
       seed = products.first;
+      seedWasShown = true;
       seeded = null;
       seedError = null;
       tab = 0;
@@ -464,6 +493,7 @@ class _ShopShellState extends State<ShopShell> {
         if (mounted && request == seedGeneration) {
           setState(() {
             seeded = cards;
+            seedWasShown = true;
           });
         }
       }).catchError((Object e) {
@@ -561,8 +591,7 @@ class _ShopShellState extends State<ShopShell> {
                                               onDeleted: clearSeed)),
                                     if (seedError != null && seed != null)
                                       TextButton(
-                                          onPressed: () =>
-                                              openProducts([seed!]),
+                                          onPressed: () => refreshHome(),
                                           child: Text(seedError!)),
                                     Expanded(
                                         child: store.loading
@@ -575,33 +604,39 @@ class _ShopShellState extends State<ShopShell> {
                                                         onPressed: store.load,
                                                         child:
                                                             Text(store.error!)))
-                                                : QuickBrowse(
-                                                    key: ValueKey(
-                                                        'home-$feedRevision'),
-                                                    products: home
-                                                        .map(browseMap)
-                                                        .toList(),
-                                                    savedIds: store.saved,
-                                                    onSave: store.save,
-                                                    onAddToCart: store.add,
-                                                    imageUrl: store.imageUrl,
-                                                    automaticSizing: true,
-                                                    hasSizingProfile:
-                                                        store.hasSizingData,
-                                                    sizingRevision:
-                                                        store.sizingRevision,
-                                                    onSizeAdvice:
-                                                        store.automaticSize,
-                                                    onSizingSetup: editSizing,
-                                                    onTryOn: store.demo
-                                                        ? null
-                                                        : (id) => requestTryOn(
-                                                            context,
-                                                            store.api,
-                                                            id),
-                                                    onCompleteLook: store.demo
-                                                        ? null
-                                                        : completeLook)),
+                                                : RefreshIndicator(
+                                                    onRefresh: refreshHome,
+                                                    child: QuickBrowse(
+                                                        key: ValueKey(
+                                                            'home-$feedRevision'),
+                                                        products: home
+                                                            .map(browseMap)
+                                                            .toList(),
+                                                        savedIds: store.saved,
+                                                        onSave: store.save,
+                                                        onAddToCart: store.add,
+                                                        imageUrl:
+                                                            store.imageUrl,
+                                                        automaticSizing: true,
+                                                        hasSizingProfile:
+                                                            store.hasSizingData,
+                                                        sizingRevision: store
+                                                            .sizingRevision,
+                                                        onSizeAdvice:
+                                                            store.automaticSize,
+                                                        onSizingSetup:
+                                                            editSizing,
+                                                        onTryOn: store.demo
+                                                            ? null
+                                                            : (id) =>
+                                                                requestTryOn(
+                                                                    context,
+                                                                    store.api,
+                                                                    id),
+                                                        onCompleteLook: store
+                                                                .demo
+                                                            ? null
+                                                            : completeLook))),
                                   ])))),
           ]),
           bottomNavigationBar: SafeArea(

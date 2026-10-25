@@ -222,7 +222,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       await tester.scrollUntilVisible(find.text('Skip for now'), 250,
           scrollable: find.byType(Scrollable).first);
       await tester.pumpAndSettle();

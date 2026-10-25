@@ -240,7 +240,9 @@ void main() {
         return json({'id': 'u_demo', 'display_name': 'Demo'});
       }
       if (r.url.path.endsWith('/body-scan')) {
+        expect(r.url.queryParameters['commit'], 'false');
         return json({
+          'committed': false,
           'body_photo_url': '/static/body.png',
           'body_profile': {
             'height_cm': 180,
@@ -255,8 +257,17 @@ void main() {
           }
         });
       }
-      if (r.url.path.endsWith('/body-profile')) {
+      if (r.url.path.endsWith('/body-scan/confirm')) {
         confirmed = jsonDecode(r.body) as Map<String, dynamic>;
+        return json({
+          'committed': true,
+          'body_photo_url': '/static/body.png',
+          'body_profile': confirmed!['profile']
+        });
+      }
+      if (r.url.path.endsWith('/body-profile')) {
+        expect(jsonDecode(r.body), isNot(contains('chest_cm')));
+        expect(jsonDecode(r.body), isNot(contains('waist_cm')));
         return json({'height_cm': 180, 'weight_kg': 75});
       }
       return json({'id': 'u_demo', 'display_name': 'Demo'});
@@ -299,8 +310,10 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     await tap(t, 'Save preferences');
     expect(saved, true);
-    expect(confirmed!['waist_cm'], 80);
-    expect(confirmed!['chest_cm'], closeTo(101.6, .01));
+    expect((confirmed!['profile'] as Map)['waist_in'], closeTo(80 / 2.54, .01));
+    expect((confirmed!['profile'] as Map)['chest_in'], 40);
+    expect(confirmed!['edited'], contains('waist_in'));
+    expect(confirmed!['edited'], isNot(contains('chest_in')));
   });
   test('saved-profile sizing never fills missing measurements with defaults',
       () async {

@@ -1,3 +1,13 @@
+# Sprint 4 published: PR #71 ready for review — October 25
+
+[PR #71](https://github.com/latrael/dresstoimpress/pull/71) is OPEN into staging, ready for review; RyanFrontendking 98aa5f2. Your #68 reels fields/routes and Adam’s #66/#69 core are wired. No commerce/core/backend edits in this app increment. First3/next3 prefetch, visible pending status polling and background pause; hero image, real closet IDs/photos, no-photo and honest outfit-board modes. Existing search/seed/cart/like/comment routes stay shared-client based.
+
+Delivered the new type system, glass shell/swipe tabs, one-product-per-screen Home and bounded 3-slide carousel, arch/mosaic onboarding, full-width natural-ratio Discover and shared visual restyle. Ryan chose double-tap-only Home likes, cream glass nav, full-width Discover. Deep-merlot glass is a documented alternate; sign-in held. 185 tests, clean analysis, web/native simulator builds pass. Actual iPhone16/iOS27 simulator review confirmed no black band and that Add to cart clears the nav; capture and full checklist are in docs/sprint-4/after-home-iphone16-simulator.png and docs/ryan-sprint-4-implementation.md.
+
+Please handle the Pixel9Pro hardware screenshot/edge-back/haptic pass and physical-device acceptance; the included after capture is explicitly SIMULATOR. Also review real photo-owning-account ready/AI/collage and preloaded post2+ behavior; no paid render or personal upload was performed by this agent. PR is published for the team now, not held for those checks. No merge performed.
+
+---
+
 # READY: paged comments shipped in merged PR #56 — October 24
 
 PR #56 is merged into staging at 343d6b5, activated on Adam’s #58 core. The app now fetches newest and older comments with the real GET helper, before cursor and total count, with authorName. **You may now trim feed/detail to the two newest comments + comment_count.** This is the explicit ready signal, superseding older NOT ready notes below. Idempotent PUT likes and photo dimensions are active too. 167 tests passed at merge; live browser opened the paged sheet successfully. Single Comments entry, composer only inside it; no live comments or likes written by the agent.

@@ -38,7 +38,7 @@ def crit(r):
 def test_plain_everyday_outfit_is_solid_not_certified():
     r = score_outfit([TEE, JEANS, SNEAKERS])
     check_shape(r)
-    assert 65 <= r["score"] <= 80, r  # v1 gave this 96
+    assert 80 <= r["score"] <= 89, r  # v1 gave this 96
     assert r["primary_style"] == "streetwear" and r["source"] == "rules"
     assert crit(r)["completeness"] == 9 and crit(r)["style"] == 9 and crit(r)["color"] == 7
     assert "Your pieces all lean streetwear." in r["notes"]
@@ -87,7 +87,7 @@ def test_clashing_patterns_and_colors():
     check_shape(r)
     c = crit(r)
     assert c["pattern"] == 4 and c["color"] == 5 and c["completeness"] == 5
-    assert r["score"] < 50 and "add shoes" in r["verdict"] and "Add shoes to finish it." in r["notes"]
+    assert r["score"] < 60 and "add shoes" in r["verdict"] and "Add shoes to finish it." in r["notes"]
 
 
 def test_stripes_plus_one_print_is_classic():
@@ -98,7 +98,8 @@ def test_stripes_plus_one_print_is_classic():
 def test_formality_clash_names_both_pieces_and_tanks_the_score():
     blazer = {"category": "outerwear", "color": "navy", "formality": 5, "label": "navy blazer"}
     r = score_outfit([TEE, JEANS, SNEAKERS, blazer])
-    assert crit(r)["formality"] == 2 and "mixed dress codes" in r["verdict"] and r["score"] < 50
+    assert crit(r)["formality"] == 2 and "mixed dress codes" in r["verdict"] and r["score"] < 65
+    assert r["score"] + 20 <= score_outfit([TEE, JEANS, SNEAKERS])["score"]
     assert any("navy blazer" in n and "black tee" in n for n in r["notes"])
 
 
@@ -133,7 +134,7 @@ def test_calibration_curve_is_monotone_and_anchored():
     xs = list(range(0, 101))
     ys = [calibrate(x) for x in xs]
     assert ys == sorted(ys) and ys[0] == 0 and ys[-1] == 100
-    assert 45 <= calibrate(68) <= 55 and calibrate(80) >= 75
+    assert 65 <= calibrate(68) <= 70 and calibrate(80) >= 75
 
 
 @pytest.mark.parametrize("bad", [[], None, "x", [None, 3, {}], [{"category": 5, "formality": True}]])
@@ -207,3 +208,33 @@ def test_fit_score_endpoint(tmp_path, monkeypatch):
     assert any(cr["name"] == "occasion" for cr in r2.json()["criteria"]) and r2.json()["source"] == "rules"  # MOCK_AI
     assert c.post("/ai/fit-score", json={"product_ids": ["nope"]}).status_code == 404
     assert c.post("/ai/fit-score", json={}).json()["verdict"] == "Nothing to score yet"
+
+
+def test_missing_metadata_is_not_a_style_mismatch():
+    items = [
+        {"category": "top", "label": "white tee", "color": "white"},
+        {"category": "bottom", "label": "jeans", "color": "blue"},
+        {"category": "shoes", "label": "sneakers", "color": "white"},
+    ]
+    r = score_outfit(items, use_ai=False)
+    assert 70 <= r["score"] <= 89, r
+    c = crit(r)
+    assert c["style"] >= 7 and c["formality"] >= 7 and c["silhouette"] >= 7
+    assert c["layering"] == 7
+    assert "shapeless" not in r["verdict"] and "finishing piece" not in r["verdict"]
+
+
+def test_matching_volumes_are_valid_style_choices():
+    for volume in ("slim", "oversized"):
+        items = [{**TEE, "label": f"{volume} tee"},
+                 {**JEANS, "label": f"{volume} jeans"}, SNEAKERS]
+        r = score_outfit(items, use_ai=False)
+        assert crit(r)["silhouette"] >= 7
+        assert r["score"] >= 80
+
+
+def test_photo_critic_does_not_require_layers_or_volume_contrast():
+    from app.ai import prompts
+    assert "A jacket or accessories are optional" in prompts.FIT_CRITIC
+    assert "can both work" in prompts.FIT_CRITIC
+    assert prompts.FIT_CRITIC_VERSION != "v1"

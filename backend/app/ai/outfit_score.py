@@ -4,8 +4,8 @@ palette too busy").
 v1 (Gemini draft) was additive: clean neutrals + solids + one dress code = 96, so everything scored 80+.
 v2 is a calibrated rubric:
   * eight criteria, each 0-10 with explicit anchors (5 = fine, nothing special; 8+ needs a reason),
-  * a weighted sum -> raw 0-100, then a calibration curve fitted on 300 random catalog outfits
-    (scripts/score_calibration.py): random plausible outfit ~50, solid everyday ~70, strong 80-89,
+  * a weighted sum -> raw 0-100, then an everyday-wear calibration curve
+    (scripts/score_calibration.py): coherent outfits 70-89, clear clashes lower,
     90+ only when every criterion is >= 8,
   * per-style execution scores (streetwear, minimalist, ...): the headline is the outfit's score AS its
     best style (or `target_style`), blended 60/40 with the general rubric,
@@ -41,10 +41,10 @@ WEIGHTS = {"color": 20, "silhouette": 12, "pattern": 10, "formality": 14, "style
            "completeness": 18, "layering": 7, "occasion": 10}
 CRITERIA = tuple(WEIGHTS)
 
-# (raw, score) anchors of the calibration curve; monotone piecewise-linear. Fitted with
-# scripts/score_calibration.py on seed/products.json (seed 7): random raw p50 68 -> 49, p90 79 -> 76;
-# curated raw p50 79 -> 77. Random: 5% >= 80, 0% >= 90.
-CALIBRATION = ((0, 0), (45, 25), (60, 40), (68, 50), (75, 66), (80, 78), (85, 86), (90, 92), (100, 100))
+# Coherent everyday outfits should read as wearable, not fail a percentile exam.
+# Missing metadata is neutral evidence, never a style mismatch. Clear clashes
+# still score lower and 90+ still requires every criterion to be at least 8.
+CALIBRATION = ((0, 0), (45, 35), (60, 58), (68, 68), (75, 78), (80, 83), (85, 89), (90, 94), (100, 100))
 
 # fit words in labels -> silhouette volume
 _OVERSIZED = {"oversized", "oversize", "baggy", "boxy", "wide", "wideleg", "relaxed", "loose", "puffer",
@@ -225,7 +225,7 @@ def _score_color(items: list[dict[str, Any]]) -> tuple[int, str | None]:
 
 def _score_silhouette(items: list[dict[str, Any]]) -> tuple[int, str | None]:
     """9: volume contrast (oversized top / slim bottom or the reverse). 7: dress with a clear length, or one
-    stated volume with the other unknown. 6: nothing stated. 5: oversized on oversized. 4: slim on slim."""
+    stated volume with the other unknown. 7: unspecified or matching volumes; labels cannot establish poor fit."""
     tops = [it for it in items if it["category"] in ("top", "outerwear")]
     bottoms = [it for it in items if it["category"] == "bottom"]
     dresses = [it for it in items if it["category"] == "dress"]
@@ -240,11 +240,11 @@ def _score_silhouette(items: list[dict[str, Any]]) -> tuple[int, str | None]:
         if tv == {"oversized"} and bv == {"slim"} or tv == {"slim"} and bv == {"oversized"}:
             return 9, f"Your {tops[0]['label']} balances your {bottoms[0]['label']}."
         if "oversized" in tv and "oversized" in bv:
-            return 5, "Oversized on oversized loses your shape."
+            return 7, None
         if tv == {"slim"} and bv == {"slim"}:
-            return 4, "Slim on slim reads flat; add some volume."
+            return 7, None
         return 6, None
-    score = 6 if (tv or bv) else 5
+    score = 7  # labels cannot establish how a garment actually fits the wearer
     if any(t["cropped"] for t in tops) and bottoms and (bottoms[0]["volume"] == "oversized" or "rise" in bottoms[0]["words"]):
         score += 2
         return score, f"Cropped {tops[0]['label']} over {bottoms[0]['label']} lengthens your line."
@@ -275,10 +275,10 @@ def _score_pattern(items: list[dict[str, Any]]) -> tuple[int, str | None]:
 
 
 def _score_formality(items: list[dict[str, Any]]) -> tuple[int, str | None]:
-    """9: every piece within one step. 5: two steps apart. 2: three or more. 5 when fewer than two pieces say."""
+    """9: every piece within one step. 5: two steps apart. 2: three or more. 7 when fewer than two pieces say (unknown, not a clash)."""
     known = [it for it in items if it["formality"] is not None]
     if len(known) < 2:
-        return 5, None
+        return 7, None
     hi = max(known, key=lambda x: x["formality"])
     lo = min(known, key=lambda x: x["formality"])
     spread = hi["formality"] - lo["formality"]
@@ -298,10 +298,10 @@ def _style_share(items: list[dict[str, Any]]) -> tuple[Counter[str], int]:
 
 def _score_style(items: list[dict[str, Any]]) -> tuple[int, str | None]:
     """9: every piece shares the dominant style. 7: three quarters. 5: half. 3: less. -2 when the pieces span
-    three unrelated style families, -1 for five or more different tags. 5 when nothing is tagged."""
+    three unrelated style families, -1 for five or more different tags. 7 when nothing is tagged (unknown, not a clash)."""
     counts, n = _style_share(items)
     if not counts or n < 2:
-        return 5, None
+        return 7, None
     top_tag, count = counts.most_common(1)[0]
     share = count / n
     if share >= 0.999 and len(counts) <= 4:
@@ -347,7 +347,7 @@ def _score_completeness(items: list[dict[str, Any]]) -> tuple[int, list[str]]:
 
 
 def _score_layering(items: list[dict[str, Any]]) -> tuple[int, str | None]:
-    """8: one considered extra (outerwear or an accessory). 9: outerwear plus one accessory. 5: none.
+    """8: one considered extra (outerwear or an accessory). 9: outerwear plus one accessory. 7: none needed.
     4: three or more accessories."""
     outer = [it for it in items if it["category"] == "outerwear"]
     acc = [it for it in items if it["category"] == "accessory"]
@@ -357,7 +357,7 @@ def _score_layering(items: list[dict[str, Any]]) -> tuple[int, str | None]:
         return 5, "Two outer layers is one too many."
     extras = len(outer) + len(acc)
     if extras == 0:
-        return 5, None
+        return 7, None  # a simple outfit needs no accessories or jacket
     if extras == 1:
         piece = (outer or acc)[0]
         return 8, f"Your {piece['label']} finishes the look."
@@ -391,7 +391,8 @@ def _style_score(style: str, items: list[dict[str, Any]], crit: dict[str, int]) 
     prof = STYLE_PROFILES[style]
     n = len(items)
     tagged = sum(1 for it in items if style in it["style_tags"])
-    share = tagged / n
+    tagged_items = sum(bool(it["style_tags"]) for it in items)
+    share = tagged / tagged_items if tagged_items else 0.5
     hits = sum(1 for it in items if it["words"] & prof["keywords"])
     keyword = min(1.0, hits / max(2, n - 1))
     known = [it["formality"] for it in items if it["formality"] is not None]
@@ -401,7 +402,7 @@ def _style_score(style: str, items: list[dict[str, Any]], crit: dict[str, int]) 
         off = lo - avg if avg < lo else avg - hi if avg > hi else 0.0
         form = 1.0 if off <= 0.25 else 0.6 if off <= 1.0 else 0.2 if off <= 2.0 else 0.0
     else:
-        form = 0.5
+        form = 0.7  # unknown is not evidence of a dress-code clash
     p = _palette(items)
     over = p["units"] - prof["accents"]
     palette = 1.0 if over <= 0 else 0.6 if over <= 1 else 0.2
@@ -479,7 +480,7 @@ def _verdict(score: int, style: str, crit: dict[str, int], cats: set) -> str:
     strong_phrase = _PHRASES[strong[0]][0] if strong else None
     parts = [p for p in (strong_phrase, weak_phrase) if p]
     if not parts:
-        parts = ["fine, nothing stands out"]
+        parts = ["a balanced everyday look"]
     return f"{score} as {style}: {', '.join(parts)}"
 
 

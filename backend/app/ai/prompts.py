@@ -204,17 +204,19 @@ Occasion: {occasion}
 Grade each criterion 0-10 with these anchors (5 = fine, nothing special):
 - color: 10 one accent colour on neutrals; 7 all neutral or two tones of one family; 5 warm vs cool accents;
   3 three competing colours; 1 four or more / two multicolour pieces.
-- silhouette: 9 volume contrast (oversized top with slim bottom or the reverse); 6 nothing notable;
-  5 oversized on oversized; 4 slim on slim, shapeless, or badly proportioned.
+- silhouette: 9 intentional, well-balanced proportions; 7 balanced matching or contrasting volumes.
+  Slim-on-slim and oversized-on-oversized can both work; deduct only for a visible proportion problem.
+  When the framing hides fit, use 7 rather than guessing a flaw.
 - pattern: 9 one print, rest solid; 7 all solid or stripes plus one print; 4 two loud prints; 1 three or more.
 - formality: 9 every piece in the same dress code; 5 two steps apart; 2 clashing (blazer with gym shorts).
 - style: 9 every piece clearly one style; 7 most; 5 half; 3 pieces that don't agree.
 - completeness: 9 top + bottom (or dress) + shoes visible; 5 base without shoes; 2 not a full outfit.
-- layering: 9 outer layer plus one accessory, considered; 8 one considered extra; 5 none; 4 too many accessories.
+- layering: 9 considered layers/accessories; 8 one considered extra; 7 a simple outfit needing none;
+  4 visibly competing extras. A jacket or accessories are optional, never a requirement.
 - occasion: 9 right for the occasion; 6 a touch off or no occasion given; 3 wrong for it.
 Also name the single style the outfit executes best, one of: {styles}.
 Return only JSON:
 {{"criteria": {{"color": {{"score": int, "note": "<= 12 words, second person, names the piece"}},
 "silhouette": {{...}}, "pattern": {{...}}, "formality": {{...}}, "style": {{...}}, "completeness": {{...}},
 "layering": {{...}}, "occasion": {{...}}}}, "style": "streetwear"}}"""
-FIT_CRITIC_VERSION = "v1"  # bump when FIT_CRITIC changes so cached critiques are redone
+FIT_CRITIC_VERSION = "v2"  # bump when FIT_CRITIC changes so cached critiques are redone

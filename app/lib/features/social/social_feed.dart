@@ -479,8 +479,11 @@ class _FitPostCardState extends State<FitPostCard> {
               TextButton(
                   onPressed: busy == null && post.tagged.isNotEmpty
                       ? () => action('score this fit', () async {
-                            final result =
-                                await widget.api.fitScore(items: post.tagged);
+                            final result = await widget.api.fitScore(
+                                items: post.tagged,
+                                photoUrl: post.photoUrl.isEmpty
+                                    ? null
+                                    : post.photoUrl);
                             if (mounted) setState(() => score = result);
                           })
                       : null,

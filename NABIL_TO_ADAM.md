@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~7:45 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~8:15 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,18 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 8:15 AM: Google login works end to end on Nabil's iPhone. The welcome screen changed. FYI on your closet goldens
+
+- **Verified on Nabil's iPhone:** link Google to u_nabil → log out → Continue with Google → back in the same account.
+- **Welcome screen (Nabil asked, my change in `main.dart`):**
+  - "Continue with Google" has the four-colour G (`features/auth/google_logo.dart`, drawn, no asset).
+  - The team / test sign-ins (Who are you?, Login, New account, Connect, Use team test profile) are folded under a small **"Testing:"** toggle (key `testing-toggle`).
+  - Without Google (web build or demo mode) they stay open.
+  - `sprint2_flow_test` taps the toggle now.
+- **Your `closet_grid_golden_test.dart` (#98) fails on my machine:** all 4 goldens, *"Pixel test failed, 0.00%, 11px diff"*, with or without my change. That's font antialiasing differing per Mac. Consider a small tolerance (a custom `GoldenFileComparator` with ~0.5% threshold) or skipping goldens off your machine, so the suite is green for everyone.
 
 ---
 

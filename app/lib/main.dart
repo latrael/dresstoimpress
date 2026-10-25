@@ -11,6 +11,7 @@ import 'features/profile/body_photo_card.dart';
 
 import 'core/api.dart';
 import 'features/auth/google_auth.dart';
+import 'features/auth/google_logo.dart';
 import 'core/config.dart';
 import 'core/models.dart';
 import 'features/feed/reels_browse.dart';
@@ -82,15 +83,21 @@ class _NicheAppState extends State<NicheApp> {
     try {
       final idToken = await GoogleAuth.idToken();
       if (idToken == null) return;
-      final session = await store.api.signInWithGoogle(idToken, linkUserId: store.api.settings.userId);
-      await Config.save(store.api.settings.copyWith(userId: session.user.id, sessionToken: session.token));
-      messenger.showSnackBar(const SnackBar(content: Text('Google account linked')));
+      final session = await store.api
+          .signInWithGoogle(idToken, linkUserId: store.api.settings.userId);
+      await Config.save(store.api.settings
+          .copyWith(userId: session.user.id, sessionToken: session.token));
+      messenger
+          .showSnackBar(const SnackBar(content: Text('Google account linked')));
       if (mounted) setState(() {});
     } on ApiError catch (e) {
       messenger.showSnackBar(SnackBar(
-          content: Text(e.status == 409 ? 'That Google account or profile is already linked.' : e.message)));
+          content: Text(e.status == 409
+              ? 'That Google account or profile is already linked.'
+              : e.message)));
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(content: Text('Could not link Google. Try again.')));
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Could not link Google. Try again.')));
     }
   }
 
@@ -145,11 +152,14 @@ class _NicheAppState extends State<NicheApp> {
                   title: const Text('Private scan & try-on photo'),
                   leading: const Icon(NicheIcons.lockOutline),
                   onTap: () => open(BodyPhotoCard(api: store.api))),
-            if (GoogleAuth.available && !store.demo && store.api.settings.sessionToken.isEmpty)
+            if (GoogleAuth.available &&
+                !store.demo &&
+                store.api.settings.sessionToken.isEmpty)
               ListTile(
                   key: const ValueKey('link-google'),
                   title: const Text('Link Google account'),
-                  subtitle: const Text('Sign in to this profile with Google from now on'),
+                  subtitle: const Text(
+                      'Sign in to this profile with Google from now on'),
                   leading: const Icon(NicheIcons.personOutline),
                   onTap: () => linkGoogle(navigation.currentContext!)),
             ListTile(
@@ -158,9 +168,11 @@ class _NicheAppState extends State<NicheApp> {
                 onTap: () async {
                   if (store.api.settings.sessionToken.isNotEmpty) {
                     try {
-                      await store.api.logout(); // the token stops working on the server too
+                      await store.api
+                          .logout(); // the token stops working on the server too
                     } catch (_) {/* offline: forgetting it locally is enough */}
-                    await Config.save(store.api.settings.copyWith(sessionToken: ''));
+                    await Config.save(
+                        store.api.settings.copyWith(sessionToken: ''));
                     await GoogleAuth.signOut();
                   }
                   final p = await SharedPreferences.getInstance();
@@ -278,6 +290,11 @@ class _FirstVisitState extends State<FirstVisit> {
   void logOut() => setState(() => active = false);
   void restart() => setState(() => active = true);
   bool busy = false;
+  bool showTesting = false;
+
+  /// The team / test sign-ins: folded under "Testing:" when Google sign-in is offered, always open without it.
+  bool get testingOpen =>
+      showTesting || !GoogleAuth.available || widget.store.demo;
   String? error;
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
@@ -331,7 +348,8 @@ class _FirstVisitState extends State<FirstVisit> {
             ? 'local_${DateTime.now().microsecondsSinceEpoch}'
             : (await widget.store.api.createUser(displayName: displayName!)).id;
       }
-      final settings = widget.store.api.settings.copyWith(userId: id, sessionToken: '');
+      final settings =
+          widget.store.api.settings.copyWith(userId: id, sessionToken: '');
       await Config.save(settings);
       widget.store.api.settings = settings;
       await widget.store.loadProfile(fromServer: !widget.store.demo);
@@ -370,8 +388,8 @@ class _FirstVisitState extends State<FirstVisit> {
       final idToken = await GoogleAuth.idToken();
       if (idToken == null) return; // cancelled in Google's sheet
       final session = await widget.store.api.signInWithGoogle(idToken);
-      final settings =
-          widget.store.api.settings.copyWith(userId: session.user.id, sessionToken: session.token);
+      final settings = widget.store.api.settings
+          .copyWith(userId: session.user.id, sessionToken: session.token);
       await Config.save(settings);
       widget.store.api.settings = settings;
       await widget.store.loadProfile(fromServer: true);
@@ -381,9 +399,14 @@ class _FirstVisitState extends State<FirstVisit> {
       hasReturning = true;
       if (mounted) setState(() => active = true);
     } on ApiError catch (e) {
-      if (mounted) setState(() => error = 'Google sign-in failed: ${e.message}');
+      if (mounted) {
+        setState(() => error = 'Google sign-in failed: ${e.message}');
+      }
     } catch (_) {
-      if (mounted) setState(() => error = 'Google sign-in failed. Check your connection and retry.');
+      if (mounted) {
+        setState(() =>
+            error = 'Google sign-in failed. Check your connection and retry.');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -420,42 +443,81 @@ class _FirstVisitState extends State<FirstVisit> {
                   FilledButton.icon(
                       key: const ValueKey('google-sign-in'),
                       onPressed: busy ? null : google,
-                      icon: const Icon(NicheIcons.personOutline),
+                      icon: const GoogleLogo(),
                       label: const Text('Continue with Google')),
-                  const SizedBox(height: 24),
-                ],
-                if (!widget.store.demo) ...[
-                  Text('Who are you?',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
-                    for (final (name, id) in teamAccounts)
-                      FilledButton.tonal(
-                          key: ValueKey('team-$id'),
-                          onPressed: busy ? null : () => enter(asUser: id),
-                          child: Text(name)),
-                  ]),
                   const SizedBox(height: 16),
+                  // team / test sign-ins stay reachable, folded away under "Testing:"
+                  Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                          key: const ValueKey('testing-toggle'),
+                          onPressed: () =>
+                              setState(() => showTesting = !showTesting),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('Testing:',
+                                style: Theme.of(context).textTheme.labelSmall),
+                            const SizedBox(width: 4),
+                            AnimatedRotation(
+                                turns: showTesting
+                                    ? -0.25
+                                    : 0.25, // the chevron points down closed, up open
+                                duration: const Duration(milliseconds: 200),
+                                child: const Icon(NicheIcons.chevronRight,
+                                    size: 14)),
+                          ]))),
                 ],
-                FilledButton(
-                    onPressed: busy || !hasReturning ? null : () => enter(),
-                    child: const Text('Login')),
-                OutlinedButton(
-                    onPressed: busy ? null : () => enter(create: true),
-                    child: const Text('New account')),
-                TextButton.icon(
-                    onPressed: () async {
-                      await connectForSetup(context, widget.store);
-                      if (mounted) reload();
-                    },
-                    icon: const Icon(NicheIcons.link),
-                    label: const Text('Connect to the live app')),
-                TextButton(
-                    onPressed: busy ? null : () => enter(test: true),
-                    child: const Text('Use team test profile')),
-                if (widget.store.demo)
-                  const Text(
-                      'Sample mode: new profiles stay on this device until you connect.'),
+                AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: !testingOpen
+                        ? const SizedBox(width: double.infinity)
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                                if (!widget.store.demo) ...[
+                                  Text('Who are you?',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium),
+                                  const SizedBox(height: 8),
+                                  Wrap(spacing: 8, runSpacing: 8, children: [
+                                    for (final (name, id) in teamAccounts)
+                                      FilledButton.tonal(
+                                          key: ValueKey('team-$id'),
+                                          onPressed: busy
+                                              ? null
+                                              : () => enter(asUser: id),
+                                          child: Text(name)),
+                                  ]),
+                                  const SizedBox(height: 16),
+                                ],
+                                FilledButton(
+                                    onPressed: busy || !hasReturning
+                                        ? null
+                                        : () => enter(),
+                                    child: const Text('Login')),
+                                OutlinedButton(
+                                    onPressed:
+                                        busy ? null : () => enter(create: true),
+                                    child: const Text('New account')),
+                                TextButton.icon(
+                                    onPressed: () async {
+                                      await connectForSetup(
+                                          context, widget.store);
+                                      if (mounted) reload();
+                                    },
+                                    icon: const Icon(NicheIcons.link),
+                                    label:
+                                        const Text('Connect to the live app')),
+                                TextButton(
+                                    onPressed:
+                                        busy ? null : () => enter(test: true),
+                                    child: const Text('Use team test profile')),
+                                if (widget.store.demo)
+                                  const Text(
+                                      'Sample mode: new profiles stay on this device until you connect.'),
+                              ])),
                 if (error != null) Text(error!),
               ]));
         }

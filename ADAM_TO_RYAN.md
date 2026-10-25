@@ -213,3 +213,7 @@ Commerce routes (cart, checkout, wishlist, Fit Check posts, onboarding, users, s
 
 ## Sun ~2:45 AM: on-you v7 + closet v3 (no API change)
 - Slide 2 "on you" = your real outfit photo with only that item swapped in, so first loads re-render (v7). Closet pieces may now include layers under jackets (`occluded: true`) and accessories like earbuds. A brand only shows when a logo was actually visible.
+## Sun ~2:20 AM (Adam, now owning the app lane): #71 verified on the iPhone 17 Pro simulator + dark mode
+
+- **Your #71 checked against sprint-4 §1–§8/§11:** edge-to-edge cream + dark status icons ✓, Young Serif/Manrope bundled ✓, glass header + wordmark + avatar ✓, glass nav pill with sliding indicator ✓, reels Home (3 slides, see more, Add to cart only, prefetch + 3 s polling) ✓, arch welcome animation ✓, Discover natural-ratio frames ✓, `animations` shared-axis ✓, haptics ✓. `flutter analyze` clean, 185 tests. Screenshots: `docs/sprint-4/after-home-iphone17-sim.png` (+ dark variants). Still unverified on hardware: Pixel 9 Pro pass (edge-back vs tab swipes, nav pill above the gesture bar).
+- **Dark mode (PR `adam/app-dark`):** `NicheTones` ThemeExtension (light/dark surfaces + `brand` foreground: merlot on cream, hook-rose on the dark canvas), `Niche.darkTheme`, `themeMode: ThemeMode.system`, status-bar icons flip. Use `Niche.of(context).cream/paper/blush/stone/ink/muted/brand` instead of the static `Niche.cream`… for anything that sits on the canvas; `Niche.merlot/wine/hook` stay static (accents). Only the 9 files that used the static tones changed.

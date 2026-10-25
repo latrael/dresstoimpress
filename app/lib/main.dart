@@ -177,17 +177,14 @@ class _NicheAppState extends State<NicheApp> {
       title: 'Niche',
       debugShowCheckedModeBanner: false,
       theme: Niche.theme,
+      darkTheme: Niche.darkTheme,
+      themeMode: ThemeMode.system,
       builder: (context, child) => NicheInsets(
           bottom: MediaQuery.viewPaddingOf(context).bottom,
           child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.dark,
-                  statusBarBrightness: Brightness.light,
-                  systemNavigationBarColor: Colors.transparent,
-                  systemNavigationBarIconBrightness: Brightness.dark),
+              value: Niche.overlay(context),
               child: ColoredBox(
-                  color: Niche.cream,
+                  color: Niche.of(context).cream,
                   child: Overlay.wrap(
                       child: Stack(children: [
                     Positioned.fill(
@@ -601,7 +598,7 @@ class _ShopShellState extends State<ShopShell> {
           body: Column(children: [
             if (store.demo)
               Material(
-                  color: const Color(0xFFF0E5E5),
+                  color: Niche.of(context).blush,
                   child: ListTile(
                       dense: true,
                       title: const Text(
@@ -689,7 +686,7 @@ class ProductPhoto extends StatelessWidget {
   final String name;
   @override
   Widget build(BuildContext context) => ColoredBox(
-      color: const Color(0xFFEDEAE4),
+      color: Niche.of(context).stone,
       child: url.isEmpty
           ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,

@@ -705,7 +705,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               decoration: BoxDecoration(
                                   color: i <= position
                                       ? Niche.merlot
-                                      : Niche.blush,
+                                      : Niche.of(context).blush,
                                   borderRadius: BorderRadius.circular(8))))
                   ])),
               Expanded(
@@ -722,7 +722,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   secondaryAnimation: secondary,
                                   transitionType:
                                       SharedAxisTransitionType.horizontal,
-                                  fillColor: Niche.cream,
+                                  fillColor: Niche.of(context).cream,
                                   child: child),
                       child: SingleChildScrollView(
                           key: ValueKey('onboarding-$step'),

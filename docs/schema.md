@@ -39,7 +39,9 @@ Source of truth: `backend/app/models.py` → `Product`. Use these exact names.
 | `scraped_at` | ISO string or null | `2026-10-24T02:16:01Z` | |
 | `source` | enum | `ingest` | `ingest` (Nabil), `live_search` (Fit Check lookups), `seed` (demo) |
 | `images` | `{url, kind}[]` | `[{"url": "...", "kind": "product"}, {"url": "...", "kind": "retailer_model"}]` | gallery for Ryan's carousel; same product + colour only; `image_url` stays primary; `kind` = `product` (garment only) or `retailer_model` |
-| `description` | string or null | `"Soft cotton tee with a relaxed fit."` | real retailer text as plain text, else null; never a pairing `reason` |
+| `description` | string or null | `"Soft cotton tee with a relaxed fit."` | real retailer text as plain text, else null; never a pairing `reason`; the app shows it behind "More" |
+| `summary` | string or null | `"A light-wash baggy jean with a relaxed, streetwear fit."` | card text: ≤ 2 sentences, ≤ 160 chars, plain. Stage 2 (`scripts.tag_catalog`) fills it: Haiku condenses `description`, or writes a one-liner from name + colour + category + style tags when there is none (all H&M). Never invents fabric or fit. Cached per id + `SUMMARY_VERSION`; rules template when AI is off. The app's `Product.blurb()` prefers it and falls back to the first sentence of `description`. Null until stage 2 has run |
+| `department` | enum or null | `women` | `men`, `women`, `unisex`; null = unknown (shown to everyone). Set by the ingest normalizer (H&M `ladies_`/`men_` category code, Uniqlo `genderCategory`). **Fallback in stage 2** for nulls only, never overwriting a value: rules from the name / URL (`women's`, `ladies`, `dress`, `skirt`, `blouse`… → women; `men's`, `mens`, `/men/` → men), then the tagger's `department` answer. `tag_catalog --departments-only` backfills just this |
 
 ### Where this came from
 

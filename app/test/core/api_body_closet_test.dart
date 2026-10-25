@@ -41,7 +41,7 @@ void main() {
     expect((r.method, r.url.path), ('POST', '/closet/upload'));
     expect(r.body, contains('name="user_id"\r\n\r\nu_demo'));
     expect(r.body, contains('name="kind"\r\n\r\noutfit'));
-    expect(r.body, contains('name="files"; filename="photo0.jpeg"'));
+    expect(r.body, contains('name="files"; filename="photo1.jpeg"'));
     expect(r.body, contains('Content-Type: image/jpeg'));
     expect(items.map((i) => i.label), ['black cargo pants', 'white baby tee']);
   });

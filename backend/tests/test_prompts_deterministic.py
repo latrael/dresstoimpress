@@ -73,12 +73,12 @@ def test_unknown_prompt_has_no_schema_and_passes():
     llm.validate_schema({"anything": 1}, None)
 
 
-def test_tryon_v6_and_clean_shot_are_fixed_spec():
-    assert prompts.TRYON_VERSION == "v6"
+def test_tryon_v7_and_clean_shot_are_fixed_spec():
+    assert prompts.TRYON_VERSION == "v8"
     p = prompts.tryon_prompt(["top"], ["white tee"], build="slim", size="M", boxes=[[0.2, 0.2, 0.8, 0.6]])
     for word in ("PRESERVE EXACTLY", "ORIGINAL", "NEGATIVE", "size M", "20%-80%"):
         assert word in p
-    for word in ("#FFFFFF", "NEGATIVE", "no person", "GARMENT FIDELITY"):
+    for word in ("#FFFFFF", "NEGATIVE", "no person", "ITEM FIDELITY"):
         assert word in prompts.CLEAN_SHOT
     from app.ai import closet
     assert closet.CLEAN_SHOT is prompts.CLEAN_SHOT
@@ -157,4 +157,4 @@ def test_pair_reason_naming_unknown_closet_item_is_replaced():
     assert "black tee" not in fixed.reason and fixed.pairs_with and fixed.pairs_with[0] in {"c1", "c2"}
     good = PairResult(product_id="p1", id="p1", score=0.9, reason="layer it over your white baby tee", pairs_with=["c1"])
     assert service._safe_reason(good, product, closet) is good
-    assert "ONLY items they own" in prompts.PAIR and prompts.PAIR_VERSION == "v4"
+    assert "ONLY items they own" in prompts.PAIR and prompts.PAIR_VERSION == "v5"

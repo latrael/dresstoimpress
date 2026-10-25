@@ -198,6 +198,7 @@ def extract_json(text: str) -> Any:
     return obj
 
 
+
 def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
                 model: str | None = None, schema: dict | None = None) -> Any:
     """Call Claude and return parsed JSON. Retries once on unparseable output.
@@ -345,18 +346,34 @@ def fetch_image(url: str) -> tuple[bytes, str]:
         return path.read_bytes(), _guess_mime(path.name)
     if url.startswith(marker):
         path = safe(url[len(marker):])
-        return path.read_bytes(), _guess_mime(path.name)
+        b = path.read_bytes()
+        return b, _sniff_mime(b, _guess_mime(path.name))
     from ..static_urls import local_static_path
 
     # our own uploads / try-ons, whatever host the URL names (old tunnel, localhost, current tunnel)
     path = local_static_path(url, DATA_DIR)
     if path is not None:
-        return path.read_bytes(), _guess_mime(path.name)
+        b = path.read_bytes()
+        return b, _sniff_mime(b, _guess_mime(path.name))
 
     r = httpx.get(url, timeout=20, follow_redirects=True, headers=_UA)
     r.raise_for_status()
     mime = r.headers.get("content-type", "").split(";")[0] or _guess_mime(url)
-    return r.content, mime
+    return r.content, _sniff_mime(r.content, mime)
+
+
+def _sniff_mime(data: bytes, fallback: str) -> str:
+    """The real type from the bytes: Gemini hands back JPEG bytes that we store under .png names, and
+    Claude rejects a mislabelled image outright."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    return fallback
 
 
 def _guess_mime(name: str) -> str:
@@ -395,8 +412,11 @@ def gemini_image(prompt: str, image_urls: list[str]) -> bytes:
         raise BadModelOutput(str(e)) from e
     client = genai.Client()
     parts: list[Any] = []
-    for url in image_urls:
+    for i, url in enumerate(image_urls, start=1):
         data, mime = fetch_image(url)
+        # Label every image in-line so "image 1" in the prompt is unambiguous (without this the model
+        # sometimes answers with a reference photo instead of editing the first one).
+        parts.append(f"IMAGE {i}:" if i == 1 else f"IMAGE {i} (reference only, do not output it):")
         parts.append(types.Part.from_bytes(data=data, mime_type=mime))
     parts.append(prompt)
 

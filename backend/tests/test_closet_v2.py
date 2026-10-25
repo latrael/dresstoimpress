@@ -8,12 +8,21 @@ import pytest
 os.environ["MOCK_AI"] = "1"
 
 
+_SHOT = iter(range(10**6))
+
+
 def _jpeg(w=400, h=200) -> bytes:
-    """Left half black, right half white: two 'garments' for the mock detector's two boxes."""
+    """Left half dark, right half light: two 'garments' for the mock detector's two boxes. Every call is a
+    different photo (block texture), so closet de-duplication of the same photo doesn't merge them."""
+    import random
+
     from PIL import Image
 
-    im = Image.new("RGB", (w, h), "white")
-    im.paste((0, 0, 0), (0, 0, w // 2, h))
+    rnd = random.Random(next(_SHOT))
+    small = Image.new("RGB", (16, 8))
+    small.putdata([(rnd.randint(0, 70) if x < 8 else rnd.randint(185, 255),) * 3
+                   for y in range(8) for x in range(16)])
+    im = small.resize((w, h), Image.NEAREST)
     buf = io.BytesIO()
     im.save(buf, "JPEG")
     return buf.getvalue()
@@ -136,7 +145,7 @@ def test_catalog_match_sets_product_but_never_the_display_image(client, monkeypa
     _tagger(monkeypatch, {"label": "black baby tee", "category": "top", "color": "black", "pattern": "solid",
                           "formality": 2, "brand": None})
     item = client.post("/closet/upload", data={"user_id": "u_c", "kind": "piece"}, files=_files(1)).json()["added"][0]
-    assert item["product_id"] == PRODUCT["id"] and item["brand"] == "H&M"
+    assert item["product_id"] == PRODUCT["id"] and item["brand"] is None  # catalog match never sets the brand
     assert item["catalog_image_url"] == PRODUCT["image_url"]  # kept for "shop similar", never shown
     assert item["display_image_url"] == item["crop_image_url"] == item["image_url"]  # sprint-3 §1.2
     assert 0.7 <= item["match_confidence"] <= 1.0
@@ -165,7 +174,7 @@ def test_no_match_generates_a_clean_shot_when_image_ai_is_on(client, monkeypatch
     monkeypatch.setattr(closet, "gemini_image", fake_gemini)
     body = client.post("/closet/upload", data={"user_id": "u_c", "kind": "outfit"}, files=_files(1)).json()
     assert len(calls) == 2  # one clean shot per garment
-    assert "only this garment" in calls[0][0] and "white background" in calls[0][0] and "no person" in calls[0][0]
+    assert "render ONLY the" in calls[0][0] and "white background" in calls[0][0] and "no person" in calls[0][0]
     for item, (_, urls) in zip(body["added"], calls):
         assert urls == [item["crop_image_url"]]  # generated from the crop
         assert item["display_image_url"].endswith("-clean.png") and item["display_image_url"] != item["crop_image_url"]
@@ -228,22 +237,24 @@ def test_posting_a_fit_check_adds_its_pieces_to_the_closet(client, monkeypatch):
 
     ran = []
     monkeypatch.setattr(service, "_spawn", lambda fn: ran.append(fn))  # call the hook synchronously below
-    r = client.post("/fitcheck", data={"user_id": "u_c", "caption": "fit"}, files={"file": ("f.jpg", _jpeg(), "image/jpeg")})
+    # its own user: a closet thread left running by an earlier test can still write u_c pieces into this store
+    store.put("users", "u_hook", {"id": "u_hook", "display_name": "H", "price_ranges": {}, "friends": []})
+    r = client.post("/fitcheck", data={"user_id": "u_hook", "caption": "fit"}, files={"file": ("f.jpg", _jpeg(), "image/jpeg")})
     assert r.status_code == 200, r.text
     post = r.json()
-    assert len(post["tagged"]) == 2 and store.list("closet_items", user_id="u_c") == []  # not yet: background
+    assert len(post["tagged"]) == 2 and store.list("closet_items", user_id="u_hook") == []  # not yet: background
     assert len(ran) == 1
     ran[0]()
-    items = store.list("closet_items", user_id="u_c")
+    items = store.list("closet_items", user_id="u_hook")
     assert {i["label"] for i in items} == {t["label"] for t in post["tagged"]}
     for i in items:
         assert i["worn_in"] == [{"photo_url": post["photo_url"], "at": i["worn_in"][0]["at"], "source": "fitcheck",
                                  "box": i["worn_in"][0]["box"]}] and i["worn_in"][0]["box"] is not None
         assert "/static/uploads/" in i["crop_image_url"] and i["crop_image_url"] != post["photo_url"]  # cropped by box
     # posting the same fit again merges (worn twice), never duplicates
-    out = closet.add_from_fit("u_c", "http://localhost:8000/static/uploads/again.jpg", None, post["tagged"])
+    out = closet.add_from_fit("u_hook", "http://localhost:8000/static/uploads/again.jpg", None, post["tagged"])
     assert out["added"] == [] and len(out["merged"]) == 2
-    assert all(len(m["worn_in"]) == 2 for m in out["merged"]) and len(store.list("closet_items", user_id="u_c")) == 2
+    assert all(len(m["worn_in"]) == 2 for m in out["merged"]) and len(store.list("closet_items", user_id="u_hook")) == 2
 
 
 def test_fit_check_hook_never_fails_the_post(client, monkeypatch):
@@ -338,10 +349,10 @@ def test_prompts_ask_for_every_garment_and_brand():
     from app.ai import prompts
 
     assert '"brand"' in prompts.TAGGER and prompts.TAGGER_VERSION == "v3"
-    assert '"brand"' in prompts.DIGITIZE and "accessory" in prompts.DIGITIZE and prompts.DIGITIZE_VERSION == "v2"
+    assert '"brand"' in prompts.DIGITIZE and "accessory" in prompts.DIGITIZE and prompts.DIGITIZE_VERSION == "v3"
     for word in ("mirror selfie", "shoes", "watch", "bag", "cap", "Never collapse"):
         assert word in prompts.DIGITIZE
-    assert prompts.PAIR_VERSION == "v4" and "brand" in prompts.PAIR
+    assert prompts.PAIR_VERSION == "v5" and "brand" in prompts.PAIR
 
 
 def test_pair_closet_json_includes_brand(client, monkeypatch):
@@ -349,15 +360,16 @@ def test_pair_closet_json_includes_brand(client, monkeypatch):
     from app.store import store
 
     monkeypatch.setattr(service, "text_mock", lambda: False)
-    store.put("closet_items", "ci_b", {"id": "ci_b", "user_id": "u_c", "image_url": "https://x/t.jpg", "category": "top",
+    # a bottom: a top can't "pair with" another top any more (same-category pairs are dropped by the validator)
+    store.put("closet_items", "ci_b", {"id": "ci_b", "user_id": "u_c", "image_url": "https://x/t.jpg", "category": "bottom",
                                        "color": "black", "pattern": "solid", "style_tags": [], "formality": 2,
-                                       "label": "black tee", "brand": "Stüssy"})
+                                       "label": "black cargos", "brand": "Stüssy"})
     store.put("products", PRODUCT["id"], PRODUCT)
     seen = {}
 
     def fake_ai(prompt, **kw):
         seen["prompt"] = prompt
-        return [{"product_id": PRODUCT["id"], "score": 0.9, "reason": "goes with your Stüssy tee", "pairs_with": ["ci_b"]}]
+        return [{"product_id": PRODUCT["id"], "score": 0.9, "reason": "goes with your Stüssy cargos", "pairs_with": ["ci_b"]}]
 
     monkeypatch.setattr(service, "ai_json", fake_ai)
     out = service.pair("u_c", [PRODUCT["id"]], k=1)

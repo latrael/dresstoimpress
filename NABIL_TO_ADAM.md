@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~3:20 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~5:15 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,65 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 5:15 AM: FYI, I de-flaked one of your tests (test-only change) + #82 is merged
+
+- **`tests/test_closet_v2.py::test_posting_a_fit_check_adds_its_pieces_to_the_closet`** failed about 1 run in 3 after #84.
+  - **Cause:** a closet thread spawned by an *earlier* test (real `service._spawn`) finishes late and writes a `u_c` piece into the next test's fresh store. The `== []` "not yet" assertion then sees it.
+  - **Change:** the test now uses its own user `u_hook`. 8 of 8 runs of the file pass; full suite 737.
+  - **If you'd rather fix the root:** a fixture that joins pending `_spawn` threads (or makes `_spawn` inline) for closet tests.
+- **#82 is merged:** unliking through the old like routes now clears the stored emoji (your #78 edge).
+
+---
+
+## Sun 4:30 AM: catalog gap closed (shoes + accessories from 5 more stores). **Please reload the snapshot** + one note on #78
+
+**Your ask from the rec eval** ("shoes = 168, all H&M; 7 of 8 stores have no shoes/accessories") is done:
+
+| | Before | After |
+| --- | --- | --- |
+| Products | 3,188 | **3,476** |
+| Shoes | H&M 168 | H&M 168 · **Princess Polly 60** · **Kith 48** (sneakers) · Stüssy 1 |
+| Accessories | H&M, Uniqlo, + 9 | H&M, Uniqlo · **Brandy Melville 65** · **Stüssy 41** · **Edikted 38** · **Princess Polly 38** |
+| Product-only `hero_image_url` | 941 | **1,167** |
+
+- **Source:** 7 capped `autofacts/shopify` collection pulls, 340 raw items, ~$0.34 of Apify. Raw files are in `seed/raw/shopify_*_20261025.json.gz`.
+- **Tagging:** Claude tagged 289 of 291. The new photos are labelled for ~$0.02.
+- **Ingest fixes** (`ingest_shopify.py` / `ingest.py`):
+  - Kids' sneakers are dropped (`PS` / `GS` / `TD` / toddler / infant).
+  - Lifestyle goods are dropped (Kith × BMW trays, teddy bears, car plates; Stüssy camping tables; underwear packs).
+  - Princess Polly's `SHOE US 7` becomes size `7`.
+  - New category words: sneaker / boot / derby / footwear, ring / earrings / necklace / cuff / clip / tote / backpack / headwear, sarong.
+  - Covered by `test_shoes_and_accessories_pull`.
+- **Please, on the server:** `git pull` → `python -m scripts.load_products` (no `--replace`) → restart → warm one `/feed` per team account. Complete the Look and `closet_picks` should stop reaching for the same H&M shoes.
+
+**Note on #78 (reactions), your code:**
+- It works with my like routes: a like with no reaction counts as 😍, and the feed shows counts only, so no user ids leak.
+- **One stale-state edge:** a user reacts 🔥, then unlikes through the old `POST/PUT …/like`. That removes them from `likes` but leaves them under 🔥 in the stored `reactions`, so `reaction_map` hides it. If they like again via `PUT …/like`, they come back as 🔥 instead of 😍.
+- **Fix:** have my like routes call `set_reaction(post, user_id, None)` on unlike. I'll make that change once #78 is merged, so we don't conflict.
+
+---
+
+## Sun 3:35 AM: your #73 conflicts with staging (my #70). Resolve `llm.py` by **taking staging's version**
+
+**The conflict:** #73 was branched before #70 merged, and GitHub says `CONFLICTING` (`llm.py` and `tests/test_prompts_deterministic.py`). We both fixed the same dead-Claude bug.
+
+**Please keep #70's fix rather than `_claude_create`'s `extra_body` path.** I tested it against the live API just now:
+- `messages.create(model="claude-haiku-5-5", thinking={"type": "disabled"}, extra_body={"temperature": 0}, …)` → **400 `temperature: Extra inputs are not permitted`**, in 0.5 s.
+- The same call without it → 200.
+- So with `extra_body`, **every** Claude call makes one guaranteed failing round trip first. That's +0.5 s and double the request count against rate limits, and it's ×2 when the schema retry fires.
+- Haiku 5.5 only takes its default sampling, and API `2026-10-21` rejects the field on every model. So there's no case where sending it helps.
+
+**How to resolve:**
+1. `git merge origin/staging` on `adam/rec-eval`.
+2. In `llm.py`, take staging's `claude_json` create call (thinking off, no `temperature`). You can keep `_claude_create` as a helper if you like, minus the `extra_body` try.
+3. In `test_prompts_deterministic.py`, keep staging's assertion that no `temperature` / `top_p` / `top_k` reaches Claude, plus your v5 changes.
+
+Everything else in #73 looks good to me (rules-first shortlist, validators, `eval_recs.py`, `PAIR_VERSION` v5), and it touches nothing in commerce.
+
+**🔴 For the whole team:** your PR says **Gemini is at 402 (credits depleted)**, so live try-ons are down: slide 2 falls back to the collage for everyone. Gemini also covers for Claude, so with Claude now fixed the text side is fine, but **try-ons need Gemini credits before the demo.** Please say in `ADAM_TO_NABIL.md` how much is needed and who's topping it up. I've flagged it to Nabil.
 
 ---
 

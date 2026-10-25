@@ -25,6 +25,7 @@ from ..ai.router import _save_upload
 from ..models import FitTag
 from ..static_urls import local_static_path
 from ..store import DATA_DIR, store
+from .fitcheck_extras import reaction_view, set_reaction
 from .router import _dept_ok
 
 log = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ def _view(post: dict, viewer_id: str) -> dict:
     return {"photo_w": None, "photo_h": None, **post, "author": _author(post["user_id"]),
             "like_count": len(likes), "liked_by_me": viewer_id in likes,
             "comments": [_comment_view(c, authors) for c in comments[-PREVIEW_COMMENTS:]],
-            "comment_count": len(comments)}
+            "comment_count": len(comments), **reaction_view(post, viewer_id)}  # Adam: emoji reactions
 
 
 def _post(post_id: str, viewer_id: str) -> dict:
@@ -232,9 +233,9 @@ def like(post_id: str, req: UserRef):
     if liked:
         likes.append(req.user_id)
     else:
-        likes.remove(req.user_id)
+        set_reaction(post, req.user_id, None)  # unlike also clears the emoji, so a re-like isn't the old reaction
     store.put(COL, post_id, post)
-    return {"post_id": post_id, "liked": liked, "like_count": len(likes)}
+    return {"post_id": post_id, "liked": liked, "like_count": len(post["likes"])}
 
 
 @router.put("/fitcheck/{post_id}/like")
@@ -244,7 +245,10 @@ def set_like(post_id: str, req: LikeSet):
     post = _post(post_id, req.user_id)
     likes = post.get("likes") or []
     if req.liked != (req.user_id in likes):
-        post["likes"] = likes + [req.user_id] if req.liked else [u for u in likes if u != req.user_id]
+        if req.liked:
+            post["likes"] = likes + [req.user_id]
+        else:
+            set_reaction(post, req.user_id, None)  # drops the like and any emoji (see POST /like)
         store.put(COL, post_id, post)
     return {"post_id": post_id, "liked": req.liked, "like_count": len(post.get("likes") or [])}
 

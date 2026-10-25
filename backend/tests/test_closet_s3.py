@@ -8,11 +8,21 @@ import pytest
 os.environ["MOCK_AI"] = "1"
 
 
+_SHOT = iter(range(10**6))
+
+
 def _jpeg(w=400, h=200) -> bytes:
+    """Left half dark, right half light: two 'garments' for the mock detector's two boxes. Every call is a
+    different photo (block texture), so closet de-duplication of the same photo doesn't merge them."""
+    import random
+
     from PIL import Image
 
-    im = Image.new("RGB", (w, h), "white")
-    im.paste((0, 0, 0), (0, 0, w // 2, h))
+    rnd = random.Random(next(_SHOT))
+    small = Image.new("RGB", (16, 8))
+    small.putdata([(rnd.randint(0, 70) if x < 8 else rnd.randint(185, 255),) * 3
+                   for y in range(8) for x in range(16)])
+    im = small.resize((w, h), Image.NEAREST)
     buf = io.BytesIO()
     im.save(buf, "JPEG")
     return buf.getvalue()
@@ -84,7 +94,7 @@ def test_owned_pieces_never_show_a_catalog_photo(client, monkeypatch):
     store.put("products", PRODUCT["id"], PRODUCT)
     _detect(monkeypatch, [_garment("black baby tee", "top", "black", [0, 0, 1, 1])])
     item = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"}, files=_files(1)).json()["added"][0]
-    assert item["product_id"] == PRODUCT["id"] and item["brand"] == "H&M"
+    assert item["product_id"] == PRODUCT["id"] and item["brand"] is None  # catalog match never sets the brand
     assert item["display_image_url"] == item["crop_image_url"] == item["image_url"] != PRODUCT["image_url"]
     # with image AI on: a clean shot generated from the user's crop, still never the catalog photo
     monkeypatch.setattr(closet, "mock_mode", lambda key: False)
@@ -155,7 +165,9 @@ def test_outfits_list_newest_first_and_merged_pieces_keep_their_first_outfit(cli
     _detect(monkeypatch, FOUR)
     first = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"}, files=_files(1)).json()
     monkeypatch.setattr(closet, "_now", lambda: "2099-01-01T00:00:00+00:00")
-    second = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"}, files=_files(1)).json()
+    # a different photo of the same four pieces (the identical photo is one outfit: test_closet_social_s4)
+    second = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"},
+                         files=[("files", ("q.jpg", _jpeg(401, 200), "image/jpeg"))]).json()
     assert second["added"] == [] and len(second["merged"]) == 4 and len(second["outfits"]) == 1
     got = client.get("/closet/u_s3/outfits").json()
     assert [o["id"] for o in got] == [second["outfits"][0]["id"], first["outfits"][0]["id"]]
@@ -251,7 +263,7 @@ def test_merge_keeps_the_new_photos_box_and_regenerates_when_it_shows_the_piece_
     monkeypatch.setattr(service, "_spawn", lambda fn: spawned.append(fn))
     first = client.post("/closet/upload", data={"user_id": "u_s3", "kind": "outfit"}, files=_files(1)).json()["added"][0]
     assert len(shots) == 1 and shots[0][1] == [first["crop_image_url"]]
-    assert "as worn in the photo" in shots[0][0] and "same colour, fabric, print, logo and fit" in shots[0][0]
+    assert "ONE item from the photo" in shots[0][0] and "same colour, fabric, print, logo" in shots[0][0]
     assert first["clean_source_box"] == [0.3, 0.3, 0.6, 0.6]
     # the same garment, bigger in a second photo
     _detect(monkeypatch, [_garment("black cargo pants", "bottom", "black", [0.1, 0.1, 0.9, 0.9])])

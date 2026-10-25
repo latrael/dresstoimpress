@@ -84,6 +84,7 @@ class ClosetItem(BaseModel):
     outfit_id: Optional[str] = None           # the `outfits` record this piece was first digitized from (None: single piece)
     clean_source_photo_url: Optional[str] = None  # the source photo the clean shot was generated from (best of worn_in)
     clean_source_box: Optional[list[float]] = None  # that garment's box in it, 0-1 fractions [x0, y0, x1, y1]
+    occluded: bool = False  # digitize v3: partly hidden in its photo (e.g. a sweater under a jacket)
 
 
 class ClosetOutfit(BaseModel):
@@ -95,6 +96,7 @@ class ClosetOutfit(BaseModel):
     piece_ids: list[str] = []
     source: Literal["closet", "fitcheck"] = "closet"
     pieces: list[ClosetItem] = []             # embedded by GET /closet/{user}/outfits (pieces that still exist)
+    posted: bool = False                       # the same photo is also a Fit Check post (one outfit, not two)
 
 
 class User(BaseModel):

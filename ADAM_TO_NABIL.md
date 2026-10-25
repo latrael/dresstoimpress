@@ -270,3 +270,31 @@ Server is on staging `a7b0640` (#66 #67 #68). Everything in §10 works live for 
 2. **Prefetch cap:** server `.env` now has `PREFETCH_PER_USER_DAY=60` for the demo (plenty of headroom under 400). u_demo's counter wasn't reset; with 60/day it has room. "Count only renders that actually start" and "pool of 3" are code changes in `app/ai/feed_tryon.py` — queued for the next AI PR, not done tonight.
 3. **Pixel 9 Pro pass:** the Pixel isn't on USB right now. As soon as it is: build #71 debug APK, install, screenshots of Home / Discover / Inspo + gesture/haptics/black-band checks go in `RYAN_TO_NABIL.md`.
 4. **Fresh photo-owning account scrolled at normal speed:** not done yet (needs the Pixel or a human on the simulator with a body photo).
+## Sun ~2:15 AM: recommendation robustness PR + two things you should know
+
+- **Claude calls were dead since #67** (anthropic 2.x dropped `temperature` from `create()`); every pair() call fell to
+  Gemini, and **Gemini is at 402 (prepaid credits depleted)**, so the live feed has been rules-only and try-ons fail.
+  The Claude side is fixed in this PR; Gemini needs credits (Adam). Until then `tryon.status` will be `unavailable`.
+- `pair()` is now rules-first: outfit rules score everything, Claude re-ranks a 20-item shortlist, scores blend 50/50,
+  and `pairs_with` can't clash with or duplicate the product's category. Same inputs → same order. `PAIR_VERSION` v5
+  (bank/cache keys change; no API change). Numbers and the market-readiness notes: `docs/rec-eval.md`.
+- Catalog gap the eval surfaced: shoes = 168, all H&M; 7 of 8 stores have no shoes/accessories → complete-the-look
+  keeps picking the same H&M shoes. Shoes + accessories from 2–3 more stores would help more than any ranking change.
+
+## Sun ~2:45 AM: on-you fix + closet tagging v3 (no API change)
+- Reels slide 2 was restyling the whole outfit: `feed_tryon` sent the closet picks into the render. Now **product only**, an in-place swap on the user's best real outfit photo. `TRYON_VERSION` v7, so old renders are dropped. The garment reference uses `hero_image_url` when set.
+- Closet: `DIGITIZE_VERSION` v3 detects occluded layers (shirt under a jacket) and accessories (earbuds, headphones), and fixes the category from the label noun. It drops props (keys, phone) and only keeps a brand with `brand_evidence`. Catalog matches **never** copy a brand any more.
+- `ClosetItem.occluded` (bool) is new; `scripts.redo_closet` now honours `DATA_DIR`.
+
+## Sun Oct 25, ~3 AM: please add more catalog items (shoes + accessories first); Closet/Inspo changes
+
+**Ask (top priority for you):** add more products, especially **shoes and accessories** (bags, hats, jewelry, belts, headphones/earbuds, sunglasses, watches) and **more stores**. Closet picks (reels slide 3), complete-the-look and the new "Find similar look" sheet all fall back to nothing when the catalog has no shoes/accessories for a department; today most shoes are H&M only.
+
+What landed in `adam/closet-social` (no change to your existing routes' shapes):
+- **One outfit per photo.** `closet.add_photo(kind="outfit")` and `add_from_fit` (your `/fitcheck` closet hook) now check `app/ai/outfit_dedupe.find_same` first (same URL or dHash ≤ 6 bits) and return the existing outfit (`duplicate: true`, no AI call). New outfits store `phash`; `ClosetOutfit.posted` = the same photo is also an Inspo post. One-off cleanup for old data: `python -m scripts.dedupe_closet <user> [--dry-run]`.
+- **Reactions** (new file `app/commerce/fitcheck_extras.py`, included in `main.py`): `PUT /fitcheck/{id}/reaction {user_id, emoji|null}`, emojis 🔥 😍 👀 💯, one per user. Stored as `reactions: {emoji: [user_id]}`; `likes` stays the list of who reacted, so `POST/PUT /like` keep working (a plain like shows as 😍; an unlike clears the reaction). **One-line change in your `fitcheck._view`:** it now adds `reactions` (counts) + `my_reaction`.
+- **Find similar look:** `GET /fitcheck/{id}/similar?user_id=` → `[{tag, closet: [ClosetItem], products: [card]}]` per tagged piece (closet = the viewer's own similar pieces, rules only; products = your `shop_fit_grouped` with the `_dept_ok` filter).
+
+## Sun ~3:45 AM (Adam): closet clean shots v3 + piece dedupe
+- Root cause of wrong white-background shots (earbuds rendered as the overcoat): the clean-shot prompt never named the piece, and the crop of a small accessory is mostly the garment around it. Now the prompt names label + colour + category, a Haiku vision check rejects a wrong item (retry from the photo, then a render from the label alone with no photo, else the crop), `CLEAN_SHOT_VERSION` v3. No API change.
+- New scripts: `scripts/dedupe_pieces.py <user> [--dry-run]` (same piece across outfits → one item, synonyms like earbuds/earphones) and `scripts/redo_clean_shots.py <user> [--only ids] [--dry-run]` (re-render clean shots only, ~$0.06/item).

@@ -116,7 +116,7 @@ def _ai_on(monkeypatch):
     return calls
 
 
-def test_prefetch_renders_once_with_wearable_picks_only(env, monkeypatch):
+def test_prefetch_renders_product_only(env, monkeypatch):
     from app.ai import feed_tryon
     from app.ai.service import prefetch_tryons, tryon_status
 
@@ -126,7 +126,7 @@ def test_prefetch_renders_once_with_wearable_picks_only(env, monkeypatch):
     assert tryon_status("u", "jeans")["status"] == "none"
     prefetch_tryons("u", ["jeans", "jeans"])
     feed_tryon.wait_prefetch()
-    assert calls == [(["jeans"], ["t1"])]  # de-duplicated, accessory left out of the render
+    assert calls == [(["jeans"], [])]  # de-duplicated, product only (closet picks never go into the render)
     st = tryon_status("u", "jeans")
     assert st["status"] == "ready" and st["mode"] == "ai"
     assert prefetch_tryons("u", ["jeans"])["jeans"]["status"] == "ready"

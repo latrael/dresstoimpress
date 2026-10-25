@@ -111,3 +111,23 @@ def test_uniqlo_and_hm_drop_non_apparel():
     assert normalize_hm([{"id": "1", "category": "ladies_accessories_keychains", "title": "Ballet Keychain",
                           "price": 5, "model_image": "https://image.hm.com/x.jpg"}], drops) == []
     assert drops == {"uniqlo_not_apparel": 1, "hm_not_apparel": 1}
+
+
+def test_shoes_and_accessories_pull():
+    """Sprint-4 catalog gap: kids' sneakers and lifestyle goods are dropped, shoe/jewellery words categorise,
+    Princess Polly's "SHOE US 7" is size "7"."""
+    from app.commerce.ingest import guess_category
+    from app.commerce.ingest_shopify import _US
+
+    drops = Counter()
+    out = normalize_shopify([_item(title="Jordan 5 Retro PS - Black"), _item(title="Air Max 1 TD - White"),
+                             _item(title="Kith for BMW Teddy Bear - Sunglow"), _item(title="HELINOX TABLE ONE HARD TOP"),
+                             _item(title="BOXER SHORTS 3 PACK")], drops)
+    assert out == [] and drops == {"shopify_kids": 2, "shopify_not_apparel": 3}
+    assert {t: guess_category(t) for t in ("Worth It Buckle Detail Sandals Black", "Collegium Pillar Moc-Toe Derby",
+                                           "Jordan 5 Retro Sneaker", "Hoop Earrings", "Dear London Ring Pack Gold",
+                                           "Rhinestone Pearl Claw Clip", "Sonique Sequin Crochet Sarong")} == {
+        "Worth It Buckle Detail Sandals Black": "shoes", "Collegium Pillar Moc-Toe Derby": "shoes",
+        "Jordan 5 Retro Sneaker": "shoes", "Hoop Earrings": "accessory", "Dear London Ring Pack Gold": "accessory",
+        "Rhinestone Pearl Claw Clip": "accessory", "Sonique Sequin Crochet Sarong": "bottom"}
+    assert [_US.sub("", s) for s in ("SHOE US 7", "US 8", "M")] == ["7", "8", "M"]

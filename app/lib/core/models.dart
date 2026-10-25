@@ -1046,9 +1046,12 @@ class ClosetOutfit {
     this.source,
     this.pieceIds = const [],
     this.pieces = const [],
+    this.posted = false,
   });
   final String id;
   final String photoUrl;
+  /// The same photo is also an Inspo post (one outfit either way).
+  final bool posted;
   final String? createdAt; // ISO-8601 UTC
   final String? source; // 'closet' | 'fitcheck'
   final List<String> pieceIds;
@@ -1062,6 +1065,7 @@ class ClosetOutfit {
         source: _strN(j['source']),
         pieceIds: _strs(j['piece_ids']),
         pieces: _list(j['pieces'], ClosetItem.fromJson),
+        posted: j['posted'] == true || j['source'] == 'fitcheck',
       );
 }
 
@@ -1223,11 +1227,19 @@ class FitCheckPost {
     this.commentCount,
     this.photoWidth,
     this.photoHeight,
+    this.reactions = const {},
+    this.myReaction,
   });
 
   final String id;
   final String userId;
   final String photoUrl;
+
+  /// Emoji reactions (Oct 25): count per emoji, only emojis with at least one ([fitCheckReactions] order),
+  /// and the viewer's own (null = none). An old-style like counts as 😍.
+  final Map<String, int> reactions;
+  final String? myReaction;
+  int get reactionTotal => reactions.values.fold(0, (a, b) => a + b);
   final String? caption;
   final List<FitTag> tagged;
   final String? createdAt;
@@ -1265,8 +1277,44 @@ class FitCheckPost {
       commentCount: _intN(j['comment_count']),
       photoWidth: _intN(j['photo_w']),
       photoHeight: _intN(j['photo_h']),
+      reactions: _reactionCounts(j['reactions']),
+      myReaction: _strN(j['my_reaction']),
     );
   }
+}
+
+/// The emoji set the server accepts for PUT /fitcheck/{id}/reaction, in display order.
+const fitCheckReactions = ['🔥', '😍', '👀', '💯'];
+
+Map<String, int> _reactionCounts(dynamic v) {
+  final m = _obj(v);
+  return {
+    for (final e in fitCheckReactions)
+      if (_int(m[e]) > 0) e: _int(m[e])
+  };
+}
+
+/// PUT /fitcheck/{id}/reaction result.
+class ReactionResult {
+  const ReactionResult({required this.postId, this.reactions = const {}, this.myReaction});
+  final String postId;
+  final Map<String, int> reactions;
+  final String? myReaction;
+  factory ReactionResult.fromJson(Json j) => ReactionResult(
+      postId: _str(j['post_id']), reactions: _reactionCounts(j['reactions']), myReaction: _strN(j['my_reaction']));
+}
+
+/// GET /fitcheck/{id}/similar: one tagged piece of a post, the viewer's own similar [closet] pieces first,
+/// then [products] to buy (up to 6, closest first).
+class SimilarLookGroup {
+  const SimilarLookGroup({required this.tag, this.closet = const [], this.products = const []});
+  final FitTag tag;
+  final List<ClosetItem> closet;
+  final List<RankedProduct> products;
+  factory SimilarLookGroup.fromJson(Json j) => SimilarLookGroup(
+      tag: FitTag.fromJson(_obj(j['tag'])),
+      closet: _list(j['closet'], ClosetItem.fromJson),
+      products: _list(j['products'], RankedProduct.fromJson));
 }
 
 /// One retailer we carry (`GET /stores`): [count] in-stock products, [departments] in-stock products per
@@ -1361,6 +1409,7 @@ class OutfitFit {
     this.tryOnUrl,
     this.tryOnMode,
     this.tryOnSourcePhotoUrl,
+    this.missing = const [],
   });
   final String id;
   final String name;
@@ -1369,6 +1418,10 @@ class OutfitFit {
   final List<FitPiece> pieces;
   final double newTotalUsd;
   final int closetCount;
+
+  /// Slots the closet couldn't fill (e.g. `["shoes"]`), so the app can say "add shoes to your closet".
+  /// Fits are closet-only since sprint 4: no shop pieces are ever substituted.
+  final List<String> missing;
   final String? tryOnUrl;
   final String? tryOnMode; // "ai" | "collage"
   final String? tryOnSourcePhotoUrl; // the user's photo the try-on was edited from (see TryOnResponse.sourcePhotoUrl)
@@ -1388,6 +1441,7 @@ class OutfitFit {
       tryOnUrl: t == null ? null : _strN(t['image_url']),
       tryOnMode: t == null ? null : _strN(t['mode']),
       tryOnSourcePhotoUrl: t == null ? null : _strN(t['source_photo_url']),
+      missing: _strs(j['missing']),
     );
   }
 }

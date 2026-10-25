@@ -41,6 +41,7 @@ const _fit = {
 };
 
 void main() {
+  _closetOnlyTests();
   test('createFits posts the request, defaults tryon off and parses fits', () async {
     final seen = <http.Request>[];
     final api = _api(seen, (_) => {'fits': [_fit], 'source': 'ai'});
@@ -163,5 +164,18 @@ void main() {
   test('expired fit surfaces as ApiError 404', () async {
     final api = _api([], (_) => {'detail': 'unknown or expired fit'}, status: 404);
     await expectLater(api.fit('fit_old'), throwsA(isA<ApiError>().having((e) => e.status, 'status', 404)));
+  });
+}
+
+void _closetOnlyTests() {
+  test('OutfitFit parses `missing` and tolerates its absence (closet-only fits)', () {
+    final f = OutfitFit.fromJson({
+      'id': 'fit_1', 'name': 'white top fit', 'reason': 'r', 'pieces': [], 'new_total_usd': 0,
+      'closet_count': 2, 'try_on': null, 'missing': ['shoes'],
+    });
+    expect(f.missing, ['shoes']);
+    expect(f.newPieces, isEmpty);
+    final old = OutfitFit.fromJson({'id': 'fit_2', 'name': 'n', 'reason': 'r', 'pieces': []});
+    expect(old.missing, isEmpty);
   });
 }

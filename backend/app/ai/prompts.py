@@ -52,7 +52,13 @@ TRYON = (
     "Change only the clothing. Full body, standing, plain light background, natural lighting."
 )
 
-TRYON_VERSION = "v6"  # bump to invalidate cached try-ons when the prompt changes (v6: fixed spec + negative list)
+TRYON_VERSION = "v8"  # bump to invalidate cached try-ons when the prompt changes (v8: true-to-size fit, reference-photo guard)
+
+TRYON_RETRY_PREFIX = (
+    "IMPORTANT: your previous answer was the reference photo itself (the store's model), which is WRONG. "
+    "The person in image 1 must remain the person in the output, in image 1's own scene and background. "
+    "Images 2+ are garment swatches only; never output them or their model.\n\n"
+)
 
 _FIT_WORDS = {"slim": "a slim frame", "average": "an average build", "athletic": "an athletic build",
               "curvy": "a curvy figure", "broad": "a broad build"}
@@ -79,22 +85,30 @@ def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | 
         if b:
             where = (f", located at roughly {round(b[0] * 100)}%-{round(b[2] * 100)}% across and "
                      f"{round(b[1] * 100)}%-{round(b[3] * 100)}% down image 1")
-        lines.append(f"{i + 1}. Image {i + 2} = the new {what}: segment the person's current {cat} in image 1{where} "
-                     f"and replace ONLY that region with this garment.")  # noqa: E501
+        if b:
+            lines.append(f"{i + 1}. Image {i + 2} = the new {what}. Find the garment the person wears in that spot in "
+                         f"image 1{where} and replace ONLY that garment with this one.")
+        else:
+            lines.append(f"{i + 1}. Image {i + 2} = the new {what}. Replace the person's current {cat} in image 1 "
+                         f"with it (if they wear none, put it on where a {cat} is worn); change nothing else.")
     fit = "The new garment follows the body's existing pose, folds and shadows"
     if build in _FIT_WORDS:
         fit += f"; the person has {_FIT_WORDS[build]}"
         fit += f", so it drapes as a size {size} would" if size else ""
     fit += ", with natural wrinkles, weight and shadows."
     return (
-        "TASK: in-place EDIT of image 1 (not a new picture).\n"
+        "TASK: in-place EDIT of image 1, a real photo of this person (not a new picture). Swap ONLY the "
+        f"garment{'s' if len(slots) > 1 else ''} listed below; the result must look like the same photo.\n"
         "EDITS:\n" + "\n".join(lines) + "\n"
         "PRESERVE EXACTLY (pixel-identical outside the edited regions): the SAME person — face, hair, skin, "
         "hands, pose, body shape — every other garment, shoes and accessory, the lighting, the ORIGINAL "
         "background, the framing and the image size.\n"
-        f"GARMENT FIDELITY: {fit} Copy the garment's real colour, fabric, print, cut, length and silhouette "
-        "(cropped stays cropped, baggy stays baggy, oversized stays oversized). The garment images are references "
-        "only: ignore any model, logo, size label, text or watermark in them.\n"
+        f"GARMENT FIDELITY: {fit} Copy the garment's real colour, fabric, print, cut, length and silhouette. "
+        "FIT: true to size on THIS person's body, the way their current garment fits them, using the garment's "
+        "named fit (e.g. 'Regular Fit' = regular, 'Slim' = slim). Do not inflate the garment: it is only "
+        "oversized or baggy if its name says so. Shoulder seams sit on the shoulders, hems at the garment's real "
+        "length. The garment images are references only: ignore the model, their body, pose and background, "
+        "and any logo, size label, text or watermark in them; never output a reference image.\n"
         "OUTPUT: one photorealistic photo, sharp, at image 1's exact framing and resolution.\n"
         f"NEGATIVE: {TRYON_NEGATIVE}."
     )
@@ -102,16 +116,59 @@ def tryon_prompt(slots: list[str], names: list[str] | None = None, build: str | 
 
 # Standalone white-background shot of one garment (closet.clean_shot).
 CLEAN_SHOT = (
-    "TASK: studio product photo of only this garment, as worn in the photo.\n"
-    "GARMENT FIDELITY: same colour, fabric, print, logo and fit as worn in the photo, identical cut and length; "
-    "nothing added, nothing removed.\n"
-    "SPEC: ghost-mannequin (or flat-lay for accessories/shoes), front view, centred, filling ~80% of the frame, "
-    "pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond a faint "
-    "contact shadow, square 1:1 frame, sharp focus.\n"
-    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments, no text, no logos other than the "
-    "garment's own, no watermark, no border, no props, no background objects, no colour grading."
+    "TASK: studio product photo of ONE item from the photo: the {label} ({color} {category}). "
+    "The photo may show other garments, a person or a background: ignore every one of them and render ONLY the "
+    "{label}. If the {label} is an accessory (earbuds, watch, bag, belt, glasses, jewelry) render just that "
+    "accessory on its own, small as it is, not the clothes around it.\n"
+    "ITEM FIDELITY: same colour, fabric, print, logo, shape and fit as the {label} in the photo, identical cut and "
+    "length; nothing added, nothing removed.\n"
+    "SPEC: ghost-mannequin for clothes, flat-lay for accessories/shoes, front view, centred, filling ~80% of the "
+    "frame, pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond "
+    "a faint contact shadow, square 1:1 frame, sharp focus.\n"
+    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments or items, no text, no logos other than "
+    "the item's own, no watermark, no border, no props, no background objects, no colour grading."
 )
-CLEAN_SHOT_VERSION = "v2"
+CLEAN_SHOT_RETRY = (
+    "You rendered the wrong item last time. "
+    + CLEAN_SHOT
+    + "\nCHECK BEFORE ANSWERING: the output must contain the {label} and NOTHING else. A coat, shirt, trousers or "
+    "any other garment that is not the {label} is a failure."
+)
+CLEAN_SHOT_VERSION = "v3"  # the prompt names the piece; the result is checked (CLEAN_SHOT_CHECK)
+
+# No source photo: a generic-but-correct item from its label alone (used when both photo-based renders
+# failed the check; a plain "white wired earbuds" beats a picture of the wrong garment).
+CLEAN_SHOT_TEXT = (
+    "TASK: studio product photo of a {label} ({color} {category}) on pure white, nothing else.\n"
+    "SPEC: ghost-mannequin for clothes, flat-lay for accessories/shoes, front view, centred, filling ~80% of the "
+    "frame, pure white background (seamless, #FFFFFF), soft even studio lighting from the front, no shadows beyond "
+    "a faint contact shadow, square 1:1 frame, sharp focus, plain and generic (no distinctive print or branding).\n"
+    "NEGATIVE: no person, no skin, no hair, no hanger, no other garments or items, no text, no logos, no watermark, "
+    "no border, no props, no background objects, no colour grading."
+)
+
+
+def clean_shot_prompt(piece: dict | None, retry: bool = False, text_only: bool = False) -> str:
+    """CLEAN_SHOT filled with the piece's label / colour / category (falls back to generic words).
+    text_only: the no-photo variant (CLEAN_SHOT_TEXT)."""
+    piece = piece or {}
+    label = " ".join(str(piece.get("label") or "garment").split()) or "garment"
+    tmpl = CLEAN_SHOT_TEXT if text_only else (CLEAN_SHOT_RETRY if retry else CLEAN_SHOT)
+    return tmpl.format(
+        label=label, color=str(piece.get("color") or "").strip() or "same-coloured",
+        category=str(piece.get("category") or "item").strip() or "item")
+
+
+CLEAN_SHOT_CHECK = """ROLE: QA for a product-photo generator.
+INPUT: one generated image. It was supposed to show ONLY this item: "{label}" ({color} {category}), alone on a
+white background.
+HARD RULES:
+1. match = true only if the main object in the image is the {label} (same type of item, same colour family).
+2. match = false if the image shows a different kind of item (e.g. a coat instead of earbuds), a person, or
+   several items.
+3. seen: at most 6 words naming what the image actually shows.
+OUTPUT (JSON only): {{"match": true|false, "seen": "<what it shows>"}}
+EXAMPLE: {{"match": false, "seen": "camel wool overcoat"}}"""
 
 PAIR = f"""ROLE: stylist picking feed items for one shopper.
 INPUT:
@@ -131,7 +188,7 @@ HARD RULES:
 6. {_ONLY_JSON}
 OUTPUT: array of {{k}} objects, best first:
 [{{{{"product_id": string, "score": number 0-1, "reason": string, "pairs_with": [string]}}}}]"""
-PAIR_VERSION = "v4"  # bump when PAIR changes so cached rankings and the reason bank start fresh (v4: strict closet refs)
+PAIR_VERSION = "v5"  # bump when PAIR changes so cached rankings and the reason bank start fresh (v5: rules-first shortlist)
 
 FIT_TAGGER = f"""ROLE: fashion cataloguer. The image is an outfit photo (mirror selfie, street photo or flat-lay).
 HARD RULES:
@@ -163,18 +220,31 @@ VIBE_VERSION = "v2"
 # ---- Digitize wardrobe: one photo of several clothes -> separate closet items (with crop boxes) ----
 DIGITIZE = f"""ROLE: you digitize a wardrobe from ONE photo (flat-lay, rack/chair, or worn by a person: mirror selfie, full-body or street photo).
 HARD RULES:
-1. List EVERY separate garment and accessory clearly visible, biggest first, max 8.
-2. Never collapse a worn outfit into one item: top, bottoms and shoes are three items, plus one per piece of
-   outerwear and per visible accessory (watch, necklace, bag, cap, belt, sunglasses).
-3. A pair of shoes is one item. Ignore faces, skin, phones, mirrors, furniture, hangers and background.
-4. Use only the listed vocabulary values; lowercase.
-5. {_ONLY_JSON} If there is no clothing, output [].
+1. List EVERY separate garment and accessory visible, biggest first, max 10, INCLUDING partly hidden layers: a
+   sweater, hoodie, shirt or tee under a jacket (visible collar, neckline, hem or cuffs) is its own item with
+   "occluded": true. Describe it from the visible part only.
+2. Never collapse a worn outfit into one item: top, bottoms and shoes are separate items, plus one per piece of
+   outerwear and per visible accessory (headphones, earbuds, watch, necklace, bracelet, ring, bag, cap, hat,
+   beanie, belt, scarf, sunglasses, glasses).
+3. A pair of shoes is one item. Ignore faces, skin, phones, keys, lanyards, wallets, mirrors, furniture, hangers
+   and background.
+4. "label" = the colour + the item type you actually SEE (e.g. "grey crewneck sweater", "black over-ear
+   headphones"). "category" must match that type: tee/shirt/sweater/hoodie/tank/blouse/polo = top;
+   jacket/coat/blazer/vest/cardigan worn open = outerwear; pants/jeans/shorts/skirt = bottom; dress/jumpsuit =
+   dress; sneakers/boots/shoes/sandals = shoes; headphones/bag/hat/jewelry/belt/glasses/scarf = accessory.
+5. "brand": ONLY when a logo, wordmark or printed text naming the brand is readable in THIS photo, and then
+   "brand_evidence" says what you saw (e.g. "Nike swoosh on chest"). Otherwise both null. Never guess a brand
+   from style, cut, colour or shape.
+6. Use only the listed vocabulary values; lowercase.
+7. {_ONLY_JSON} If there is no clothing, output [].
 OUTPUT: array of
 [{{{_ITEM_FIELDS.format(n=3)},
+  "brand_evidence": string or null,
+  "occluded": boolean,
   "formality": integer 1-5 (1 loungewear, 5 black tie),
-  "box": [x_min, y_min, x_max, y_max] as fractions 0-1 of width/height, tight around that one item}}]
-EXAMPLE: [{{"label":"black cargo pants","category":"bottom","color":"black","pattern":"solid","style_tags":["streetwear"],"formality":2,"brand":null,"box":[0.1,0.5,0.6,0.95]}}]"""
-DIGITIZE_VERSION = "v2"  # bump when DIGITIZE changes so cached detections are redone (v2: every worn garment, brand)
+  "box": [x_min, y_min, x_max, y_max] as fractions 0-1 of width/height, tight around the visible part of that one item}}]
+EXAMPLE: [{{"label":"black puffer jacket","category":"outerwear","color":"black","pattern":"solid","style_tags":["streetwear"],"brand":"the north face","brand_evidence":"logo on left chest","occluded":false,"formality":2,"box":[0.2,0.15,0.8,0.55]}},{{"label":"grey crewneck sweater","category":"top","color":"grey","pattern":"solid","style_tags":["minimalist"],"brand":null,"brand_evidence":null,"occluded":true,"formality":2,"box":[0.4,0.15,0.6,0.3]}},{{"label":"black over-ear headphones","category":"accessory","color":"black","pattern":"solid","style_tags":["streetwear"],"brand":null,"brand_evidence":null,"occluded":false,"formality":2,"box":[0.35,0.0,0.65,0.12]}}]"""
+DIGITIZE_VERSION = "v3"  # bump when DIGITIZE changes so cached detections are redone (v3: occluded layers, accessories, brand evidence)
 
 # ---- Photo onboarding: digitized garments -> one plain sentence describing the person's style ----
 STYLE_FROM_CLOSET = f"""ROLE: you summarise a shopper's style from the clothes they just photographed.
@@ -211,21 +281,20 @@ Body: {{body}}
 Fit preference: {{fit}}
 Style: {{style_text}}
 Occasion: {{occasion}}
-Budget for new pieces (USD, total per outfit): {{budget}}
-Must include (catalog ids): {{must_include}}
 Closet (what they already own): {{closet_json}}
-Catalog candidates (in stock; your_size = the size we would order): {{products_json}}
 HARD RULES:
-1. Build exactly {{count}} different complete outfits: top + bottom (or dress) + shoes; outerwear and one accessory optional.
-2. Every outfit MUST add 1-2 new pieces from the candidates; the rest may come from the closet. Build around at least
-   one closet piece when the closet has anything usable. Use every must-include id.
-3. Use only ids from Closet or Candidates, one piece per slot. Never invent ids, garments or brands.
+1. Build exactly {{count}} different complete outfits from the CLOSET ONLY: top + bottom (or dress); add shoes,
+   outerwear and one accessory when the closet has fitting ones. If the closet has no piece for a slot, leave the
+   slot out; never substitute or suggest something they don't own.
+2. The {{count}} outfits must differ in at least two pieces. Prefer pieces that match in colour, formality and style
+   (no athletic with formal, no clashing patterns).
+3. Use only ids from Closet, one piece per slot. Never invent ids, garments or brands.
 4. reason: 1-2 sentences, casual second person, naming the build or a measurement (e.g. "slim build, 30.5 in
    waist") and the closet piece the look is built around. {_NO_LOOKS}
 5. {_ONLY_JSON}
 OUTPUT: array of {{count}} objects:
 [{{{{"name": string 2-4 words, "reason": string, "pieces": [{{{{"slot": "{"|".join(SLOTS)}", "id": string}}}}]}}}}]"""
-FIT_CREATOR_VERSION = "v3"  # bump when FIT_CREATOR changes so cached fits are rebuilt
+FIT_CREATOR_VERSION = "v4"  # bump when FIT_CREATOR changes so cached fits are rebuilt (v4: closet only)
 
 
 # ---- Catalog summaries (sprint-2 A7 / B4): Product.summary, 1-2 plain sentences for the card ----
@@ -308,7 +377,9 @@ SCHEMAS: dict[str, dict] = {
         "categories": {"type": "array", "items": {"type": "string", "enum": CATEGORIES}, "maxItems": 3},
         "colors": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
         "keywords": {"type": "array", "items": {"type": "string"}, "maxItems": 5}}},
-    "digitize": {"type": "array", "maxItems": 8, "items": _item_props(3, {"formality": _FORMALITY, "box": _BOX})},
+    "digitize": {"type": "array", "maxItems": 10, "items": _item_props(3, {"formality": _FORMALITY, "box": _BOX,
+                                                                      "brand_evidence": {"type": ["string", "null"]},
+                                                                      "occluded": {"type": "boolean"}})},
     "style_from_closet": {"type": "object", "required": ["style_text"], "properties": {"style_text": {"type": "string"}}},
     "body_scan": {"type": "object", "required": ["full_body_visible"], "properties": {
         "full_body_visible": {"type": "boolean"}, "build": {"type": ["string", "null"], "enum": BUILDS + [None]},
@@ -322,6 +393,8 @@ SCHEMAS: dict[str, dict] = {
     "summary": {"type": "object", "required": ["summary"], "properties": {"summary": {"type": "string"}}},
     "fit_critic": {"type": "object", "required": ["criteria"], "properties": {
         "criteria": {"type": "object", "properties": {c: _CRIT for c in _CRITERIA}}, "style": {"type": "string"}}},
+    "clean_shot_check": {"type": "object", "required": ["match"], "properties": {
+        "match": {"type": "boolean"}, "seen": {"type": "string"}}},
 }
 
 _FIRST_LINES: dict[str, str] = {
@@ -329,7 +402,7 @@ _FIRST_LINES: dict[str, str] = {
     VIBE.splitlines()[0]: "vibe", DIGITIZE.splitlines()[0]: "digitize",
     STYLE_FROM_CLOSET.splitlines()[0]: "style_from_closet", BODY_SCAN.splitlines()[0]: "body_scan",
     FIT_CREATOR.splitlines()[0]: "fit_creator", SUMMARY.splitlines()[0]: "summary",
-    FIT_CRITIC.splitlines()[0]: "fit_critic",
+    FIT_CRITIC.splitlines()[0]: "fit_critic", CLEAN_SHOT_CHECK.splitlines()[0]: "clean_shot_check",
 }
 
 

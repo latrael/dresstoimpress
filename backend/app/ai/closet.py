@@ -51,6 +51,8 @@ def _public_url(name: str) -> str:
 
 
 def _brand(raw: dict) -> str | None:
+    if "brand_evidence" in raw and not str(raw.get("brand_evidence") or "").strip():
+        return None  # digitize v3: a brand with nothing readable in the photo is a guess
     b = raw.get("brand")
     if not isinstance(b, str):
         return None
@@ -121,8 +123,7 @@ def _apply_match(item: ClosetItem) -> None:
     item.product_id = product["id"]
     item.catalog_image_url = product.get("image_url")
     item.match_confidence = conf
-    if not item.brand and product.get("brand"):
-        item.brand = product["brand"]
+    # never copy the catalog's brand: a "similar" product is not proof of the brand (only a visible logo is)
 
 
 # ---------- clean shot ----------
@@ -191,24 +192,59 @@ def best_source(item: dict) -> tuple[str, list | None] | None:
     return max(cands, key=lambda c: source_key(*c))
 
 
-def clean_shot(source_url: str) -> str | None:
-    """Generated product photo of just this garment (from its crop). None when image AI is off or fails."""
+def clean_shot_matches(image_url: str, piece: dict | None) -> bool:
+    """Cheap vision check: does the generated shot show this piece (and only it)? A failed check call
+    counts as a pass (we'd rather keep a plausible shot than lose it to a network blip)."""
+    if not piece or not piece.get("label"):
+        return True
+    from .llm import ai_json
+
+    prompt = prompts.CLEAN_SHOT_CHECK.format(label=piece.get("label"), color=piece.get("color") or "",
+                                             category=piece.get("category") or "item")
+    try:
+        out = ai_json(prompt, image_url=image_url, max_tokens=120)
+    except Exception as e:  # noqa: BLE001
+        log.warning("clean shot check skipped: %s", e)
+        return True
+    ok = bool(isinstance(out, dict) and out.get("match"))
+    if not ok:
+        log.warning("clean shot rejected for %r: shows %r", piece.get("label"), (out or {}).get("seen") if isinstance(out, dict) else out)
+    return ok
+
+
+def clean_shot(source_url: str, piece: dict | None = None) -> str | None:
+    """Generated product photo of just this piece (from the crop of its best source photo), named in the prompt
+    by label / colour / category and checked afterwards (CLEAN_SHOT_CHECK). One retry with a stronger prompt;
+    None when image AI is off, it fails, or both renders show the wrong item (the caller then keeps the crop)."""
     if not clean_shots_on():
         return None
-    try:
-        img = gemini_image(CLEAN_SHOT, [source_url])
-    except BadModelOutput as e:
-        log.warning("clean shot skipped: %s", e)
-        return None
-    except Exception as e:  # noqa: BLE001 - never let a nicety break an upload
-        log.warning("clean shot failed: %s", e)
-        return None
-    if not img:
-        return None
-    name = f"{uuid.uuid4().hex}-clean.png"
-    (DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
-    (DATA_DIR / "uploads" / name).write_bytes(img)
-    return _public_url(name)
+    # 1. from the photo, 2. from the photo with a sterner prompt, 3. from the label alone (no photo): a generic
+    # but correct item beats a picture of the wrong one. Only when all three fail does the caller keep the crop.
+    attempts = [(source_url, dict(retry=False)), (source_url, dict(retry=True))]
+    if piece and piece.get("label"):
+        attempts.append((None, dict(text_only=True)))
+    for src, kw in attempts:
+        try:
+            img = gemini_image(prompts.clean_shot_prompt(piece, **kw), [src] if src else [])
+        except BadModelOutput as e:
+            log.warning("clean shot skipped: %s", e)
+            return None
+        except Exception as e:  # noqa: BLE001 - never let a nicety break an upload
+            log.warning("clean shot failed: %s", e)
+            return None
+        if not img:
+            return None
+        name = f"{uuid.uuid4().hex}-clean.png"
+        (DATA_DIR / "uploads").mkdir(parents=True, exist_ok=True)
+        (DATA_DIR / "uploads" / name).write_bytes(img)
+        url = _public_url(name)
+        if clean_shot_matches(url, piece):
+            return url
+        try:
+            (DATA_DIR / "uploads" / name).unlink()
+        except OSError:
+            pass
+    return None
 
 
 def _source_crop(item: ClosetItem) -> str | None:
@@ -233,7 +269,8 @@ def _set_display(item: ClosetItem) -> None:
     image_url mirrors it. Never the catalog photo: an owned piece always shows the user's own picture
     (sprint-3 §1.2)."""
     source = _source_crop(item) if clean_shots_on() else item.crop_image_url
-    item.display_image_url = clean_shot(source) or item.crop_image_url
+    item.display_image_url = clean_shot(source, {"label": item.label, "color": item.color,
+                                                 "category": item.category}) or item.crop_image_url
     item.image_url = item.display_image_url
 
 
@@ -282,6 +319,7 @@ def _tag_to_item(user_id: str, raw: dict, photo_url: str) -> ClosetItem:
         source="photo",
         label=" ".join(str(raw.get("label", "")).split()[:5]),
         brand=_brand(raw),
+        occluded=bool(raw.get("occluded")),
     )
 
 
@@ -336,7 +374,15 @@ def add_garment(user_id: str, raw: dict, photo_url: str, local_path: Path | None
 
 def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, source: str = "closet") -> dict:
     """One photo -> {"added": [...], "merged": [...], "skipped": int}.
-    kind "piece": the photo is one garment (tagger). kind "outfit": every garment with its box (digitize)."""
+    kind "piece": the photo is one garment (tagger). kind "outfit": every garment with its box (digitize).
+    An outfit photo the user already has (same file or a near-identical copy, e.g. also posted to Inspo)
+    returns that outfit with `duplicate: True` and no AI call."""
+    if kind == "outfit":
+        from .outfit_dedupe import duplicate_result, find_same
+
+        same = find_same(user_id, photo_url, local_path)
+        if same:
+            return duplicate_result(same)
     if kind == "piece":
         try:
             found = [service.tag_image(photo_url)]
@@ -368,7 +414,7 @@ def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, 
             out["added"].append(item)
             existing.append(item)
     if kind == "outfit" and (out["added"] or out["merged"]):
-        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], source)
+        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], source, local_path)
     return out
 
 
@@ -377,11 +423,15 @@ def add_photo(user_id: str, photo_url: str, local_path: Path | None, kind: str, 
 OUTFITS = "outfits"
 
 
-def create_outfit(user_id: str, photo_url: str, pieces: list[dict], source: str) -> dict:
+def create_outfit(user_id: str, photo_url: str, pieces: list[dict], source: str,
+                  local_path: Path | None = None) -> dict:
     """One `outfits` record for a whole-fit photo and its pieces; each piece gets `outfit_id` (a piece
-    that already belongs to an older outfit keeps that one: it was merged, not re-made)."""
+    that already belongs to an older outfit keeps that one: it was merged, not re-made). `phash` is the
+    photo's difference hash, so a later copy of the same photo is recognised (outfit_dedupe)."""
+    from .outfit_dedupe import photo_hash
+
     outfit = {"id": f"of_{uuid.uuid4().hex[:8]}", "user_id": user_id, "photo_url": photo_url, "created_at": _now(),
-              "piece_ids": [], "source": source}
+              "piece_ids": [], "source": source, "phash": photo_hash(photo_url, local_path)}
     for p in pieces:
         if p["id"] in outfit["piece_ids"]:
             continue
@@ -443,7 +493,16 @@ def add_photos(user_id: str, photos: list[tuple[str, Path | None]], kind: str) -
 
 def add_from_fit(user_id: str, photo_url: str, local_path: Path | None, tags: list[dict]) -> dict:
     """Pieces of a posted Fit Check -> the poster's closet (worn_in source "fitcheck"). Uses the post's
-    tags (already from tag_fit) so no extra AI call; crops by box when the tag has one."""
+    tags (already from tag_fit) so no extra AI call; crops by box when the tag has one. A photo already in
+    the closet as an outfit (uploaded there first) is not added twice: that outfit is marked `posted`."""
+    from .outfit_dedupe import duplicate_result, find_same
+
+    same = find_same(user_id, photo_url, local_path)
+    if same:
+        if not same.get("posted"):
+            same["posted"] = True
+            store.put(OUTFITS, same["id"], same)
+        return duplicate_result(same)
     existing = store.list("closet_items", user_id=user_id)
     out = {"added": [], "merged": [], "skipped": 0}
     for t in tags or []:
@@ -456,7 +515,7 @@ def add_from_fit(user_id: str, photo_url: str, local_path: Path | None, tags: li
         if not merged:
             existing.append(item)
     if out["added"] or out["merged"]:
-        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], "fitcheck")
+        out["outfit"] = create_outfit(user_id, photo_url, out["added"] + out["merged"], "fitcheck", local_path)
     return out
 
 

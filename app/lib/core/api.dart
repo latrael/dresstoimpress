@@ -478,6 +478,16 @@ class Api {
       await _send('GET', '/fitcheck/${_seg(postId)}/shop', query: {'user_id': _user, 'grouped': 'true'}),
       ShopTagGroup.fromJson);
 
+  /// PUT /fitcheck/{id}/reaction: **idempotent**. Sets the current user's one reaction to [emoji] (one of
+  /// [fitCheckReactions]) or clears it with null.
+  Future<ReactionResult> setFitCheckReaction(String postId, String? emoji) async => ReactionResult.fromJson(
+      await _send('PUT', '/fitcheck/${_seg(postId)}/reaction', body: {'user_id': _user, 'emoji': emoji}));
+
+  /// GET /fitcheck/{id}/similar: find similar look, one [SimilarLookGroup] per tagged piece in post order:
+  /// the viewer's own similar closet pieces, then products to buy.
+  Future<List<SimilarLookGroup>> similarLook(String postId) async => _listOf(
+      await _send('GET', '/fitcheck/${_seg(postId)}/similar', query: {'user_id': _user}), SimilarLookGroup.fromJson);
+
   Future<LikeResult> likeFitCheck(String postId) async =>
       LikeResult.fromJson(await _send('POST', '/fitcheck/${_seg(postId)}/like', body: {'user_id': _user}));
 

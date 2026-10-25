@@ -177,17 +177,14 @@ class _NicheAppState extends State<NicheApp> {
       title: 'Niche',
       debugShowCheckedModeBanner: false,
       theme: Niche.theme,
+      darkTheme: Niche.darkTheme,
+      themeMode: ThemeMode.system,
       builder: (context, child) => NicheInsets(
           bottom: MediaQuery.viewPaddingOf(context).bottom,
           child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.dark,
-                  statusBarBrightness: Brightness.light,
-                  systemNavigationBarColor: Colors.transparent,
-                  systemNavigationBarIconBrightness: Brightness.dark),
+              value: Niche.overlay(context),
               child: ColoredBox(
-                  color: Niche.cream,
+                  color: Niche.of(context).cream,
                   child: Overlay.wrap(
                       child: Stack(children: [
                     Positioned.fill(
@@ -217,7 +214,10 @@ class _NicheAppState extends State<NicheApp> {
                                             child: Center(
                                                 child: Text(
                                                     'Connect your account to digitize your closet.')))
-                                        : ClosetScreen(api: store.api)),
+                                        : ClosetScreen(
+                                            api: store.api,
+                                            store: store,
+                                            onProduct: seed)),
                                 onUser: user)))
                   ]))))),
       home: FirstVisit(key: entry, store: store, shellKey: shell));
@@ -552,7 +552,10 @@ class _ShopShellState extends State<ShopShell> {
                       child: Center(
                           child: Text(
                               'Connect your account to digitize your closet.')))
-                  : ClosetScreen(api: store.api)));
+                  : ClosetScreen(
+                      api: store.api,
+                      store: store,
+                      onProduct: (p) => openProducts([p]))));
       if (mounted && !store.demo) await refreshHome();
       return;
     }
@@ -564,7 +567,10 @@ class _ShopShellState extends State<ShopShell> {
           context,
           MaterialPageRoute(
               builder: (_) => matches.isEmpty
-                  ? ClosetScreen(api: store.api)
+                  ? ClosetScreen(
+                      api: store.api,
+                      store: store,
+                      onProduct: (p) => openProducts([p]))
                   : ClosetPieceScreen(api: store.api, initial: matches.first)));
       if (mounted) await refreshHome();
     } catch (_) {
@@ -601,7 +607,7 @@ class _ShopShellState extends State<ShopShell> {
           body: Column(children: [
             if (store.demo)
               Material(
-                  color: const Color(0xFFF0E5E5),
+                  color: Niche.of(context).blush,
                   child: ListTile(
                       dense: true,
                       title: const Text(
@@ -689,7 +695,7 @@ class ProductPhoto extends StatelessWidget {
   final String name;
   @override
   Widget build(BuildContext context) => ColoredBox(
-      color: const Color(0xFFEDEAE4),
+      color: Niche.of(context).stone,
       child: url.isEmpty
           ? const Center(child: Icon(NicheIcons.imageOutlined))
           : Image.network(url,

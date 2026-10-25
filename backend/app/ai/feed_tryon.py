@@ -121,12 +121,11 @@ def _render_args(user_id: str, p: dict, picks: list[dict] | None) -> tuple[list[
     """(product_ids, closet_ids, source photo url) exactly as service.try_on will compute its cache key."""
     from .tryon_source import pick_source_photo
 
+    # Product ONLY: slide 2 is the user's real outfit photo with this one garment swapped in (v5/v7 in-place
+    # edit). Closet picks belong on slide 3; sending them here made Gemini restyle the whole outfit.
     s = _svc()
-    picks = closet_picks(user_id, p) if picks is None else picks
-    cids = _wearable_ids(picks)
-    pieces = [p] + [c for cid in cids if (c := s.store.get("closet_items", cid))]
-    src = pick_source_photo(user_id, pieces, s.store.get("users", user_id) or {})
-    return [str(p["id"])], cids, (src["url"] if src else None)
+    src = pick_source_photo(user_id, [p], s.store.get("users", user_id) or {})
+    return [str(p["id"])], [], (src["url"] if src else None)
 
 
 def _ai_available() -> bool:

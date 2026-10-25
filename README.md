@@ -90,10 +90,6 @@ The app never calls outside services directly. Every key stays on the server, an
 
 **Plain rules (free, instant):** sizing, colour matching, warmth/season, duplicate detection.
 
-## Brand
-
-The logo is an arch (a niche: a small space that's yours) with a hanger-hook dot. Type is Young Serif and Manrope; colours are merlot `#5B1F33` on cream `#FFFBF0`.
-
 ## Design
 
 The original app wireframe: [WireframeSketch (made with Notability).pdf](<WireframeSketch (made with Notability).pdf>).

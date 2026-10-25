@@ -1039,19 +1039,48 @@ class FitTag {
 }
 
 class FitCheckComment {
-  const FitCheckComment({required this.id, required this.userId, required this.text, this.createdAt, this.commentCount});
+  const FitCheckComment(
+      {required this.id, required this.userId, required this.text, this.createdAt, this.commentCount, String? authorName})
+      : _authorName = authorName;
   final String id;
   final String userId;
   final String text;
   final String? createdAt;
   final int? commentCount; // only on the POST .../comments response
+  final String? _authorName;
 
-  factory FitCheckComment.fromJson(Json j) => FitCheckComment(
-      id: _str(j['id']),
-      userId: _str(j['user_id']),
-      text: _str(j['text']),
-      createdAt: _strN(j['created_at']),
-      commentCount: _intN(j['comment_count']));
+  /// The commenter's display name (`author.display_name`); the user id when the server sent no author
+  /// (comments embedded in a post from an older server).
+  String get authorName => _authorName ?? userId;
+
+  factory FitCheckComment.fromJson(Json j) {
+    final author = _obj(j['author']);
+    return FitCheckComment(
+        id: _str(j['id']),
+        userId: _str(j['user_id']),
+        text: _str(j['text']),
+        createdAt: _strN(j['created_at']),
+        commentCount: _intN(j['comment_count']),
+        authorName: _strN(author['display_name'] ?? author['id']));
+  }
+}
+
+/// One page of a post's comments (`GET /fitcheck/{id}/comments`), oldest -> newest. [nextBefore] is the
+/// cursor (a comment id) for the next, older page; null when there is nothing older.
+class FitCheckCommentsPage {
+  const FitCheckCommentsPage({required this.postId, this.commentCount, this.comments = const [], this.nextBefore});
+  final String postId;
+  final int? commentCount; // total on the post
+  final List<FitCheckComment> comments;
+  final String? nextBefore;
+
+  bool get hasMore => nextBefore != null;
+
+  factory FitCheckCommentsPage.fromJson(Json j) => FitCheckCommentsPage(
+      postId: _str(j['post_id']),
+      commentCount: _intN(j['comment_count']),
+      comments: _list(j['comments'], FitCheckComment.fromJson),
+      nextBefore: _strN(j['next_before']));
 }
 
 class FitCheckPost {
@@ -1069,6 +1098,8 @@ class FitCheckPost {
     this.likeCount,
     this.likedByMe,
     this.commentCount,
+    this.photoWidth,
+    this.photoHeight,
   });
 
   final String id;
@@ -1084,6 +1115,14 @@ class FitCheckPost {
   final int? likeCount;
   final bool? likedByMe;
   final int? commentCount;
+
+  /// Pixel size of the photo (`photo_w` / `photo_h`): measured by the server for uploads, the size the app
+  /// sent for external URLs. Both null on posts from before the fields existed (lay the photo out at its
+  /// own ratio, sprint-3 3.1). [photoAspectRatio] = width / height, null when unknown or invalid.
+  final int? photoWidth;
+  final int? photoHeight;
+  double? get photoAspectRatio =>
+      photoWidth != null && photoHeight != null && photoWidth! > 0 && photoHeight! > 0 ? photoWidth! / photoHeight! : null;
 
   factory FitCheckPost.fromJson(Json j) {
     final author = _obj(j['author']);
@@ -1101,7 +1140,44 @@ class FitCheckPost {
       likeCount: _intN(j['like_count']),
       likedByMe: _boolN(j['liked_by_me']),
       commentCount: _intN(j['comment_count']),
+      photoWidth: _intN(j['photo_w']),
+      photoHeight: _intN(j['photo_h']),
     );
+  }
+}
+
+/// One retailer we carry (`GET /stores`): [count] in-stock products, [departments] in-stock products per
+/// `men` / `women` / `unisex`. [Api.stores] fills the name cache behind [StoreInfo.nameFor].
+class StoreInfo {
+  const StoreInfo({required this.id, required this.name, this.count = 0, this.departments = const {}});
+  final String id;
+  final String name;
+  final int count;
+  final Map<String, int> departments;
+
+  factory StoreInfo.fromJson(Json j) {
+    final id = _str(j['id']);
+    return StoreInfo(
+        id: id,
+        name: _str(j['name'], id),
+        count: _int(j['count']),
+        departments: {for (final e in _obj(j['departments']).entries) e.key: _int(e.value)});
+  }
+
+  static final Map<String, String> _names = {};
+
+  /// Server names learned from the last [Api.stores] call (`[StoreInfo.remember]`); the id itself before
+  /// that or for a retailer the server never listed. Pure: no network, safe to call from `build`.
+  static String nameFor(String id) => _names[id] ?? id;
+
+  /// Whether [nameFor] knows a server name for [id].
+  static bool knows(String id) => _names.containsKey(id);
+
+  /// Replaces the name cache with [stores] (called by [Api.stores]).
+  static void remember(Iterable<StoreInfo> stores) {
+    _names
+      ..clear()
+      ..addEntries(stores.where((s) => s.id.isNotEmpty).map((s) => MapEntry(s.id, s.name)));
   }
 }
 

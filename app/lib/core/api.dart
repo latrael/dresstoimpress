@@ -96,6 +96,15 @@ class Api {
   Future<PhotoSearchResult> searchPhoto(List<int> bytes, {String mimeType = 'image/jpeg'}) async =>
       PhotoSearchResult.fromJson(await _upload('/search/photo', {'user_id': _user}, bytes, mimeType));
 
+  /// GET /stores: the retailers we carry, biggest first (`StoreInfo{id, name, count, departments}`), for
+  /// onboarding chips and cart headings. Also fills the pure name cache behind [StoreInfo.nameFor], so
+  /// `retailerName(id)` can show server names after one call per app start (fallback: the id).
+  Future<List<StoreInfo>> stores() async {
+    final list = _listOf(await _send('GET', '/stores'), StoreInfo.fromJson);
+    StoreInfo.remember(list);
+    return list;
+  }
+
   Future<Product> product(String id) async => Product.fromJson(await _send('GET', '/products/${_seg(id)}'));
 
   /// GET /products: catalog search + paging (Nabil). Every word of [q] must match; `nextOffset` is null
@@ -439,6 +448,21 @@ class Api {
   Future<LikeResult> likeFitCheck(String postId) async =>
       LikeResult.fromJson(await _send('POST', '/fitcheck/${_seg(postId)}/like', body: {'user_id': _user}));
 
+  /// PUT /fitcheck/{id}/like: **idempotent** like. Sets the current user's like to [liked]; sending the same
+  /// state again changes nothing (safe to retry / coalesce from an optimistic toggle). Returns the resulting
+  /// state and count. Prefer this over [likeFitCheck] (POST toggle) for a tap target.
+  Future<LikeResult> setFitCheckLike(String postId, {required bool liked}) async => LikeResult.fromJson(
+      await _send('PUT', '/fitcheck/${_seg(postId)}/like', body: {'user_id': _user, 'liked': liked}));
+
+  /// GET /fitcheck/{id}/comments: one page of comments, oldest -> newest, each with [FitCheckComment.authorName].
+  /// No [before]: the newest [limit]. [before] = a comment id (the page's `nextBefore`): the [limit] comments
+  /// just older than it. ApiError 422 for an unknown [before].
+  Future<FitCheckCommentsPage> fitCheckComments(String postId, {int limit = 20, String? before}) async =>
+      FitCheckCommentsPage.fromJson(await _send('GET', '/fitcheck/${_seg(postId)}/comments',
+          query: {'user_id': _user, 'limit': '$limit', 'before': before}));
+
+  /// POST .../comments: the new comment (with `author` -> [FitCheckComment.authorName] and the post's new
+  /// [FitCheckComment.commentCount]).
   Future<FitCheckComment> commentFitCheck(String postId, String text) async => FitCheckComment.fromJson(
       await _send('POST', '/fitcheck/${_seg(postId)}/comments', body: {'user_id': _user, 'text': text}));
 

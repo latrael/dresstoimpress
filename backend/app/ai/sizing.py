@@ -41,6 +41,26 @@ LETTER_ORDER: tuple[str, ...] = ("XS", "S", "M", "L", "XL", "XXL")
 LETTER_TO_IDX: dict[str, int] = {size: idx for idx, size in enumerate(LETTER_ORDER)}
 # real catalog sizes outside the estimate range (H&M has XXS and 3XL); only picked when nearest
 LETTER_TO_IDX.update({"XXS": -1, "2XS": -1, "2XL": 5, "3XL": 6, "XXXL": 6})
+# Combined sizes (Brandy Melville "XS/S", "S/M", ...) sit halfway between the two letters they cover, so
+# the nearest-letter search is 0.5 away from either letter: a computed S picks "XS/S" or "S/M".
+LETTER_TO_IDX.update({"XXS/XS": -0.5, "XS/S": 0.5, "S/M": 1.5, "M/L": 2.5, "L/XL": 3.5, "XL/XXL": 4.5,
+                      "XL/2XL": 4.5, "2XL/3XL": 5.5, "XXL/3XL": 5.5})
+_ONE_SIZE = {"one size", "onesize", "one-size", "os", "o/s", "one size fits all", "osfa"}
+
+
+def _letter_idx(size: str) -> float | None:
+    """Index of a letter size in LETTER_TO_IDX, accepting "xs / s", "XS-S" spellings of combined sizes."""
+    key = re.sub(r"\s*[/\-]\s*", "/", size.strip().upper())
+    return LETTER_TO_IDX.get(key)
+
+
+def _is_one_size(size: str) -> bool:
+    return size.strip().lower() in _ONE_SIZE
+
+
+# US women's numeric size -> bust inches (for numeric-sized tops and dresses: Princess Polly, H&M)
+WOMENS_US_BUST: dict[int, float] = {0: 32.0, 2: 33.0, 4: 34.0, 6: 35.0, 8: 36.0, 10: 37.5, 12: 39.0,
+                                    14: 40.5, 16: 42.5, 18: 44.5, 20: 46.5, 22: 48.5, 24: 50.5}
 
 # Bottoms: "28/32" or "W28 L32" (waist/inseam), "28inch", or US women's 0-24 (not inches).
 _WAIST_INSEAM = re.compile(r"^W?\s*(\d{2})\s*(?:/|x|\s)\s*L?\s*(\d{2})$", re.I)
@@ -100,8 +120,8 @@ def _size_rank(label: str, sizes: list[str]) -> int | None:
     """Position of `label` in the product's sizes sorted small -> large (letters, numbers, waist/inseam)."""
     def key(s: str):
         t = s.strip()
-        if t.upper() in LETTER_TO_IDX:
-            return (0, LETTER_TO_IDX[t.upper()], 0.0)
+        if (li := _letter_idx(t)) is not None:
+            return (0, li, 0.0)
         if m := _WAIST_INSEAM.match(t):
             return (1, float(m[1]), float(m[2]))
         if m := _WAIST_INCH.match(t):
@@ -282,10 +302,10 @@ def _measured_letter(
     fit_offset = FIT_OFFSET.get(fit_norm, 0)
     target_idx = max(0, min(len(LETTER_ORDER) - 1, idx + fit_offset))
     best_size, best_idx = min(available_letters, key=lambda item: (abs(item[1] - target_idx), -item[1]))
-    idx_diff = abs(best_idx - target_idx)
-    if idx_diff == 0:
+    idx_diff = abs(best_idx - target_idx)  # 0.5 = a combined size covering the target letter
+    if idx_diff < 1:
         conf: Confidence = "high" if direct else "medium"
-    elif idx_diff == 1:
+    elif idx_diff < 2:
         conf = "medium"
     else:
         conf = "low"
@@ -293,7 +313,7 @@ def _measured_letter(
     if fit_offset != 0:
         notes.append(f"{fit_norm} fit")
     reason = f"{', '.join(notes)} → {best_size}"
-    if idx_diff > 0:
+    if idx_diff >= 1:
         reason += f" (nearest to {LETTER_ORDER[target_idx]})"
     return _result(best_size, conf, reason)
 
@@ -363,6 +383,10 @@ def _recommend(
     if not sizes:
         return _result(None, "low", "no sizes in stock")
 
+    # 2b. "One Size" / "OS": the only size there is
+    if all(_is_one_size(s) for s in sizes):
+        return _result(sizes[0], "high", "one size")
+
     # 3. Shoes rule: use shoe_us nearest available half size; None + "low" if missing
     if category == "shoes":
         if not _is_valid_number(shoe_us) or float(shoe_us) <= 0:  # type: ignore[arg-type]
@@ -388,11 +412,10 @@ def _recommend(
     )
 
     # Identify available letter sizes vs numeric sizes in product["sizes"]
-    available_letters: list[tuple[str, int]] = []
+    available_letters: list[tuple[str, float]] = []
     for s in sizes:
-        upper = s.upper()
-        if upper in LETTER_TO_IDX:
-            available_letters.append((s, LETTER_TO_IDX[upper]))
+        if (li := _letter_idx(s)) is not None:
+            available_letters.append((s, li))
     numeric_candidates = _parse_numeric_sizes(sizes)
 
     # 4. Bottoms sized by waist: "32", "28/32" (waist/inseam), "28inch", US women's "0"-"24"
@@ -456,11 +479,11 @@ def _recommend(
             available_letters,
             key=lambda item: (abs(item[1] - target_idx), -item[1]),
         )
-        idx_diff = abs(best_idx - target_idx)
+        idx_diff = abs(best_idx - target_idx)  # 0.5 = a combined size covering the target letter
 
-        if idx_diff == 0:
+        if idx_diff < 1:
             conf = "high" if retailer in RETAILER_OFFSET else "medium"
-        elif idx_diff == 1:
+        elif idx_diff < 2:
             conf = "medium"
         else:
             conf = "low"
@@ -472,12 +495,43 @@ def _recommend(
             notes.append(f"{retailer} runs large")
         if fit_offset != 0:
             notes.append(f"{fit_norm} fit")
-        if idx_diff > 0:
+        if idx_diff >= 1:
             notes.append("clamped to stock")
 
         return _result(best_size, conf, ", ".join(notes))
 
-    # 6. Fallback if non-bottom item only has numeric sizes
+    # 6. Non-bottom item with US women's numeric sizes (Princess Polly tops 0-12, H&M numeric dresses):
+    #    bust chart for tops/dresses, plus hip for dresses (the larger of the two wins); waist chart
+    #    as a fallback. Never the raw size number against inches.
+    if numeric_candidates and _is_womens_numeric(sizes):
+        chest = _given(chest_in, "chest_in")
+        hip = _given(hip_in, "hip_in")
+        waist = _given(waist_in, "waist_in")
+        picks: list[tuple[str, float, str]] = []  # (label, chart value, "bust 34 in")
+
+        def nearest(chart: dict[int, float], target: float, what: str) -> None:
+            cands = [(label, chart[int(v)]) for label, v in numeric_candidates]
+            label, val = min(cands, key=lambda c: (round(abs(c[1] - target), 6), -c[1]))  # ties -> larger
+            picks.append((label, val, f"{what} {target:g} in"))
+
+        if chest is not None:
+            nearest(WOMENS_US_BUST, chest, "bust")
+        if hip is not None and category == "dress":
+            nearest(WOMENS_US_HIP, hip, "hip")
+        if not picks and waist is not None:
+            nearest(WOMENS_US_WAIST, waist, "waist")
+        if picks:
+            label = max(picks, key=lambda p: float(p[0]))[0]  # a dress has to fit the larger of bust/hip
+            exact = all(p[0] == label for p in picks)
+            diffs = [abs(p[1] - {"bust": chest, "hip": hip, "waist": waist}[p[2].split()[0]]) for p in picks]
+            conf = "high" if exact and max(diffs) <= 1.0 else "medium"
+            return _result(label, conf, f"{', '.join(p[2] for p in picks)} → size {label}")
+        if valid_metrics:
+            est = _estimate_womens_waist_inches(float(height_cm), float(weight_kg))
+            nearest(WOMENS_US_WAIST, est, "waist")
+            return _result(picks[0][0], "low", "size estimated from height and weight")
+
+    # 6b. Other numeric-only non-bottom sizes: nearest number to the waist
     if numeric_candidates and _is_valid_number(waist_in):
         chosen, _ = _nearest_numeric_size(float(waist_in), numeric_candidates)  # type: ignore[arg-type]
         return _result(chosen, "medium", "matched to nearest numeric size")

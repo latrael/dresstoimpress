@@ -1,3 +1,4 @@
+import '../shared/niche_theme.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -180,29 +181,57 @@ Widget fitScoreCard(FitScore score) {
   final verdict = score.verdict.startsWith(prefix)
       ? score.verdict.substring(prefix.length)
       : score.verdict;
-  return Builder(
-      builder: (context) => Card(
-          child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Fit Score · ${score.score}/100',
-                        style: Theme.of(context).textTheme.titleLarge),
-                    if (score.primaryStyle != null)
-                      Text('As ${score.primaryStyle}'),
-                    Text(verdict),
-                    const SizedBox(height: 12),
-                    for (final criterion in score.criteria)
-                      Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                    '${criterion.name[0].toUpperCase()}${criterion.name.substring(1)} · ${criterion.score10}/10'),
-                                if (criterion.note != null)
-                                  Text(criterion.note!),
-                              ])),
-                  ]))));
+  return Builder(builder: (context) {
+    final t = Niche.of(context);
+    return Card(
+        child: Padding(
+            padding: const EdgeInsets.all(18),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Fit Score · ${score.score}/100',
+                  style: Niche.display(24, 30, t.brand)),
+              if (score.primaryStyle != null)
+                Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: DecoratedBox(
+                        decoration: BoxDecoration(
+                            color: t.blush,
+                            borderRadius: BorderRadius.circular(999)),
+                        child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 5),
+                            child: Text('As ${score.primaryStyle}',
+                                style: Niche.ui(
+                                    12, 16, FontWeight.w700, t.ink))))),
+              const SizedBox(height: 10),
+              Text(verdict, style: Niche.ui(14, 20, FontWeight.w500, t.ink)),
+              const SizedBox(height: 14),
+              for (final criterion in score.criteria)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              '${criterion.name[0].toUpperCase()}${criterion.name.substring(1)} · ${criterion.score10}/10',
+                              style: Niche.ui(13, 18, FontWeight.w700, t.ink)),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                  value: (criterion.score10 / 10)
+                                      .clamp(0, 1)
+                                      .toDouble(),
+                                  minHeight: 6,
+                                  backgroundColor: t.stone,
+                                  color: t.brand)),
+                          if (criterion.note != null)
+                            Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(criterion.note!,
+                                    style: Niche.ui(
+                                        13, 18, FontWeight.w500, t.muted))),
+                        ])),
+            ])));
+  });
 }

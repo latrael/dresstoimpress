@@ -11,13 +11,15 @@ Sun Oct 25, 2026, ~12:30 AM PT. Written by Nabil for the team. `staging` is at `
 
 **[decide]** = a call for the team before that piece starts. Everything else is decided.
 
+**Decided:** font bank **C, Bubbly** (Young Serif + Manrope), §2.
+
 **Reference files (in this repo):**
 
 | File | What it is |
 | --- | --- |
 | `docs/sprint-4/current-home.png` | Today's Home on Nabil's iPhone 16: the black band at the top, the system font, the letterboxed photo, buttons hidden behind the nav bar |
 | `docs/sprint-4/logo-board.png` | **The logo board** (arch mark + "niche" wordmark). **Nabil: save the logo image here; it isn't in the repo yet.** |
-| `docs/sprint-4/font-banks.html` | **Five font pairings, rendered** on a Niche product card in our colours. Open it in a browser and pick one (§2). |
+| `docs/sprint-4/font-banks.html` | **Five font pairings, rendered** on a Niche product card in our colours. Bank C is the team's pick (§2). |
 
 ---
 
@@ -60,37 +62,46 @@ Sun Oct 25, 2026, ~12:30 AM PT. Written by Nabil for the team. `staging` is at `
 
 **What's wrong:** the app uses the platform default (San Francisco / Roboto) at Material's default sizes, everywhere. "Niche" in the header is just bold system text (`main.dart:197-201`), nothing like the logo's soft lowercase serif.
 
-### 2.1 Font banks: pick one **[decide]**
-Open **`docs/sprint-4/font-banks.html`**: each bank is shown on the same product card, header and chips. All are free (Google Fonts, OFL licence).
+### 2.1 Font bank: **C, Bubbly (decided)**
+The team picked **Bank C: Young Serif** (display) **+ Manrope** (UI). All five options are rendered in **`docs/sprint-4/font-banks.html`**, on the same product card, header and chips. All are free (Google Fonts, OFL licence).
 
 | Bank | Display (wordmark, titles, product names) | UI (everything else) | Feel |
 | --- | --- | --- | --- |
-| **A. Soft Editorial (recommended)** | **Fraunces** (variable; `SOFT` 100 rounds the serifs, `opsz` for size) | **Plus Jakarta Sans** | Closest to the logo's lowercase serif. Warm, modern editorial; the open UI sans gives the "bubblier" feel. |
+| A. Soft Editorial | **Fraunces** (variable; `SOFT` 100 rounds the serifs, `opsz` for size) | **Plus Jakarta Sans** | Closest to the logo's lowercase serif. Warm, modern editorial; the open UI sans gives the "bubblier" feel. |
 | B. Gallery | **Instrument Serif** (+ italic for accents) | **Inter Tight** | Fashion-magazine minimal: the most "let the photos talk". |
-| C. Bubbly | **Young Serif** | **Manrope** | Chunky, friendly, the most playful. |
+| **C. Bubbly ✓ chosen** | **Young Serif** | **Manrope** | Chunky, friendly, the most playful. |
 | D. Quiet Luxury | **Newsreader** | **Geist** | Refined and calm; the least bubbly. |
 | E. Street Gallery | **Bricolage Grotesque** (no serif) | **DM Sans** | The most eccentric, but it moves away from the serif logo. |
 
-**Recommendation: Bank A.** Fraunces with `SOFT` 100 at weight ~560 is the nearest free match to the wordmark on the logo board (lowercase, soft bracketed serifs, moderate contrast), and Plus Jakarta Sans reads cleanly at small sizes.
+**Why C:** a chunky, friendly serif reads as "bubbly" and confident, it's still a lowercase serif like the logo's "niche", and Manrope's geometric shapes keep the UI clean and modern at small sizes.
 
-### 2.2 Type scale (whichever bank wins; values for Bank A)
+**Rules that come with Bank C:**
+- **Young Serif has one weight (Regular 400).** Never set `fontWeight` on it: Flutter would fake a bold, and that looks smeared. Build hierarchy with **size, colour (merlot vs ink) and spacing** instead.
+- **Young Serif is for display only:** the wordmark, page and onboarding titles, product names. It's 20 px and up; never body text, buttons or labels.
+- **Manrope does everything else.** Its weights are 400 (body), 500 (secondary emphasis), 600 (titles, buttons) and 700 (prices, store caps).
+- **Avoid synthetic italics** on either font. Neither family ships italics, so emphasis = colour or weight in Manrope.
+
+### 2.2 Type scale (Bank C)
 Map these onto Flutter's `TextTheme` in one place, so no screen sets raw font sizes.
 
 | Role (`TextTheme`) | Font | Size / line height | Weight | Used for |
 | --- | --- | --- | --- | --- |
-| Wordmark (custom) | Display | 28 / 28 | 560, tracking −1% | "niche" in the header, lowercase, merlot |
-| `displaySmall` | Display | 36 / 40 | 600 | Onboarding hero lines ("Let's make niche yours") |
-| `headlineSmall` | Display | 26 / 30 | 600 | Product name on a Home post, page titles |
-| `titleMedium` | UI | 17 / 22 | 600 | Section titles, sheet titles |
-| `bodyLarge` | UI | 16 / 24 | 400 | Descriptions, captions |
-| `bodyMedium` | UI | 14 / 20 | 400 | Secondary text |
-| `labelLarge` | UI | 15 / 20 | 600 | Buttons |
-| `labelSmall` (caps) | UI | 11 / 14 | 600, tracking +12%, UPPERCASE | Store names ("BRANDY MELVILLE"), tiny labels |
-| Price (custom) | UI | 17 / 20 | 600, `FontFeature.tabularFigures()` | Prices, so digits don't jump |
+| Wordmark (custom) | Young Serif | 28 / 28 | 400, tracking −1% | "niche" in the header, lowercase, merlot |
+| `displaySmall` | Young Serif | 34 / 40 | 400 | Onboarding hero lines ("Let's make niche yours") |
+| `headlineSmall` | Young Serif | 24 / 30 | 400 | Product name on a Home post, page titles |
+| `titleMedium` | Manrope | 17 / 22 | 600 | Section titles, sheet titles |
+| `bodyLarge` | Manrope | 16 / 24 | 400 | Descriptions, captions |
+| `bodyMedium` | Manrope | 14 / 20 | 400 (or 500 for emphasis) | Secondary text |
+| `labelLarge` | Manrope | 15 / 20 | 700 | Buttons |
+| `labelSmall` (caps) | Manrope | 11 / 14 | 700, tracking +12%, UPPERCASE | Store names ("BRANDY MELVILLE"), tiny labels |
+| Price (custom) | Manrope | 17 / 20 | 700, `FontFeature.tabularFigures()` | Prices, so digits don't jump |
 
 ### 2.3 How to ship the fonts
 - **Bundle the `.ttf` files** in `app/assets/fonts/` and register them in `pubspec.yaml` under `flutter: fonts:`. Include each font's `OFL.txt`. Don't fetch fonts at runtime (no flash of the system font, works offline, nothing extra on the network during the demo).
-- Keep the variable fonts (Fraunces, Plus Jakarta Sans) and set axes with `FontVariation('SOFT', 100)`, `FontVariation('opsz', …)`, `FontVariation('wght', …)`, or bundle static weights if variable axes misbehave on a platform.
+- **The files:**
+  - `YoungSerif-Regular.ttf` (one file, registered as family `YoungSerif`, weight 400 only).
+  - Manrope as **static** weights `Manrope-Regular/Medium/SemiBold/Bold.ttf`, registered as family `Manrope` with `weight: 400/500/600/700`. Static files are the safest across iOS and Android. The variable `Manrope[wght].ttf` also works if you set `FontVariation('wght', …)`.
+- **Set it once, in the theme:** `ThemeData(fontFamily: 'Manrope', textTheme: …)`, with Young Serif only on the display roles above. Check that prices line up (tabular figures) on both phones.
 - The wordmark is **text in the display font**, not an image, so it stays crisp at any size. Use the arch-mark image only for the app icon and the welcome animation (§5.1).
 
 ---
@@ -356,13 +367,13 @@ For every section, Ryan posts **before/after screenshots from the iPhone 16 and 
 
 | Owner | Items | Depends on |
 | --- | --- | --- |
-| **Ryan** (all app screens + design) | **First:** §1 edge-to-edge, §3 tokens + motion, §2.3 bundle the chosen fonts. **Then:** §4 shell (header, glass nav, tab swiping), §6 Home reels (start on Adam's mock data), §5 onboarding, §7 Discover, §8 Inspo + other screens. Screenshots on both phones (§11). | The font bank decision (§2.1); Adam's core mocks for §6. |
+| **Ryan** (all app screens + design) | **First:** §1 edge-to-edge, §3 tokens + motion, §2.3 bundle the chosen fonts. **Then:** §4 shell (header, glass nav, tab swiping), §6 Home reels (start on Adam's mock data), §5 onboarding, §7 Discover, §8 Inspo + other screens. Screenshots on both phones (§11). | Adam's core mocks for §6. |
 | **Adam** (AI, hosting, core) | §10.1 `closet_picks` (rules, free) and the `tryon` status lookup; §10.2 the prefetch renderer + budget; core: parse the new card fields, `prefetchTryOns`, `tryOnStatus`, mocks for Ryan **early**; restart the shared server after each backend merge; the try-on budget decision with numbers. | Nabil's routes (§10.2) for the end-to-end path. |
 | **Nabil** (commerce backend, data) | §10.1 `hero_image_url`: classify catalog photos (heuristics, then a capped AI pass, budget check first) and put it into the snapshot; add `hero_image_url`, `closet_picks` and `tryon` to `/feed` cards; §10.2 the two `/feed/{user}/tryons` routes + tests; keep `/feed` fast with the new fields (time it); test on the shared server; update `docs/devpost.md` and `docs/demo-script.md` with new screenshots once Ryan's screens land; the Pixel 9 Pro check with the teammate who owns it. | Adam's `closet_picks` + `prefetch_tryons`. |
-| **Everyone** | Pick the font bank (§2.1) and settle the other **[decide]** items below **before** Ryan starts §2/§4/§6. | — |
+| **Everyone** | Settle the remaining **[decide]** items (§13) **before** Ryan starts §4/§6. The font bank is decided: C. | — |
 
 **Suggested order:**
-1. **Decisions** (10 min): font bank, heart vs double-tap, nav glass colour, Discover layout, try-on budget.
+1. **Decisions** (10 min; the font bank is done: C): heart vs double-tap, nav glass colour, Discover layout, try-on budget.
 2. **Ryan:** §1 + §3 + §2.3. **Adam:** core mocks. **Nabil:** hero-image heuristics.
 3. **Ryan:** §4 shell + §6 Home on mocks. **Adam:** `closet_picks` + prefetch. **Nabil:** the `/feed` fields + routes.
 4. **Ryan:** §5 onboarding, §7 Discover, §8 the rest. **Everyone:** wire up against the real backend and screenshot both phones.
@@ -370,7 +381,7 @@ For every section, Ryan posts **before/after screenshots from the iPhone 16 and 
 ---
 
 ## 13. Open decisions
-1. **Font bank:** A (recommended), B, C, D or E? See `docs/sprint-4/font-banks.html`.
+1. ~~**Font bank**~~ **Decided: Bank C (Young Serif + Manrope).**
 2. **The like heart on Home posts:** remove it and use double-tap-to-like (proposed), or keep a small heart?
 3. **Nav bar glass:** cream (default) or merlot?
 4. **Discover results:** a single full-width column, or a natural-ratio masonry in 2 columns?

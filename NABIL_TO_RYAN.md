@@ -15,7 +15,7 @@ The full spec, with file:line pointers, is in `docs/sprint-4.md`. Your items, in
 6. **Discover (§7):** width-fit photos, opened products use the Home post.
 7. **Inspo and the rest (§8):** the restyle.
 
-**Font banks:** open `docs/sprint-4/font-banks.html` (A is recommended). The new `/feed` fields (`hero_image_url`, `closet_picks`, `tryon`) are specified in §10; Adam ships core mocks first, so you can build Home before the backend lands. Please post before/after screenshots from both phones (§11).
+**Font bank: decided, C (Young Serif + Manrope).** Preview it in `docs/sprint-4/font-banks.html`. Young Serif has one weight, so never bold it; the rules are in §2. The new `/feed` fields (`hero_image_url`, `closet_picks`, `tryon`) are specified in §10; Adam ships core mocks first, so you can build Home before the backend lands. Please post before/after screenshots from both phones (§11).
 
 ---
 

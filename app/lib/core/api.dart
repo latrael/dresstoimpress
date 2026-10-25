@@ -61,6 +61,19 @@ class Api {
     return Uri.parse('${settings.base}/img').replace(queryParameters: {'url': url}).toString();
   }
 
+  // ------------------------------------------------------------ sign-in (docs/auth-google.md)
+
+  /// POST /auth/google: a Google ID token -> our session token + the user. `created` = a new user (onboard
+  /// them). [linkUserId] attaches this Google account once to an existing user (a team account).
+  Future<GoogleSession> signInWithGoogle(String idToken, {String? linkUserId}) async => GoogleSession.fromJson(
+      await _send('POST', '/auth/google', body: {'id_token': idToken, 'link_user_id': linkUserId}));
+
+  /// GET /auth/me: the signed-in user, or ApiError 401 if the saved token is missing, expired or revoked.
+  Future<AppUser> me() async => AppUser.fromJson(await _send('GET', '/auth/me'));
+
+  /// POST /auth/logout: the session token stops working on the server.
+  Future<void> logout() async => _send('POST', '/auth/logout');
+
   // ------------------------------------------------------------ health / browse
 
   Future<bool> health() async => (await _send('GET', '/health', auth: false))['ok'] == true;
@@ -586,6 +599,8 @@ class Api {
   static const uploadTimeout = Duration(seconds: 180);
 
   Future<dynamic> _perform(http.Request req, {Duration timeout = const Duration(seconds: 60)}) async {
+    // Signed in with Google: every call carries our session token (the server pins it to that user).
+    if (settings.sessionToken.isNotEmpty) req.headers['Authorization'] = 'Bearer ${settings.sessionToken}';
     // first feed load and fresh try-ons take a few seconds
     final streamed = await _client.send(req).timeout(timeout);
     final res = await http.Response.fromStream(streamed);

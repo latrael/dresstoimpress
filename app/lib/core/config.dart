@@ -13,6 +13,7 @@ class Config {
   static const _userKey = 'dti.userId';
   static const _heightKey = 'dti.heightCm';
   static const _weightKey = 'dti.weightKg';
+  static const _tokenKey = 'dti.sessionToken';
 
   static const _defaultBase = String.fromEnvironment('DTI_API_BASE', defaultValue: 'http://127.0.0.1:8000');
   static const _defaultKey = String.fromEnvironment('DTI_API_KEY');
@@ -32,6 +33,7 @@ class Config {
       userId: str(_userKey, 'u_demo'),
       heightCm: p.getDouble(_heightKey) ?? 170,
       weightKg: p.getDouble(_weightKey) ?? 65,
+      sessionToken: p.getString(_tokenKey) ?? '',
     );
   }
 
@@ -42,6 +44,7 @@ class Config {
     await p.setString(_userKey, s.userId.trim());
     await p.setDouble(_heightKey, s.heightCm);
     await p.setDouble(_weightKey, s.weightKg);
+    await p.setString(_tokenKey, s.sessionToken);
     Api.instance.settings = s;
   }
 }

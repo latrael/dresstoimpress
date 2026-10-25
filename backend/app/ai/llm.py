@@ -119,8 +119,10 @@ class BadModelOutput(Exception):
     pass
 
 
-# Determinism: every text call runs at temperature 0 and (where the SDK takes one) a fixed seed, so the same
-# prompt + image gives the same JSON. Override with AI_TEMPERATURE / AI_SEED for experiments only.
+# Determinism: Gemini text calls run at temperature 0 with a fixed seed, so the same prompt + image gives the same
+# JSON. Claude takes neither: Haiku 5.5 accepts only its default sampling (a non-default temperature is a 400, and
+# API version 2026-10-21 / SDK 2.x drop the parameter), so its determinism is the per-prompt schema check alone.
+# Override with AI_TEMPERATURE / AI_SEED for experiments only.
 TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0"))
 SEED = int(os.getenv("AI_SEED", "7"))
 
@@ -196,24 +198,6 @@ def extract_json(text: str) -> Any:
     return obj
 
 
-def _claude_create(client, **kw):
-    """messages.create with thinking off and temperature 0 where the SDK/model take it.
-    Haiku 5.5 thinks by default; that burned the token budget on pairing and cut the JSON off. These are
-    short structured tasks: no thinking = faster, cheaper, complete. anthropic>=2 dropped `temperature`
-    from create()'s signature (and some models reject it), so it goes through extra_body and is dropped
-    on a TypeError/400 rather than failing the call (that failure silently put the whole feed on rules)."""
-    if os.getenv("CLAUDE_THINKING") == "on":
-        return client.messages.create(**kw)
-    det = dict(kw, thinking={"type": "disabled"})
-    try:
-        return client.messages.create(**det, extra_body={"temperature": TEMPERATURE})
-    except TypeError:
-        pass
-    except Exception as e:  # noqa: BLE001 - only a parameter rejection falls through to the plain call
-        if "temperature" not in str(e).lower():
-            raise
-    return client.messages.create(**det)
-
 
 def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 1500,
                 model: str | None = None, schema: dict | None = None) -> Any:
@@ -234,8 +218,16 @@ def claude_json(prompt: str, image_url: str | None = None, max_tokens: int = 150
 
     last_err: Exception | None = None
     for _ in range(2):
-        msg = _claude_create(client, model=model, max_tokens=max_tokens,
-                             messages=[{"role": "user", "content": content}])
+        msg = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": content}],
+            # Haiku 5.5 thinks by default; that burned the whole token budget on pairing and cut the
+            # JSON off. These are short structured tasks: no thinking = faster, cheaper, complete.
+            # Never send temperature/top_p/top_k: Haiku 5.5 rejects non-default values (400), which made every
+            # Claude call fail over to Gemini.
+            **({} if os.getenv("CLAUDE_THINKING") == "on" else {"thinking": {"type": "disabled"}}),
+        )
         try:
             _record_claude(model, msg.usage.input_tokens, msg.usage.output_tokens)
         except Exception:  # noqa: BLE001 — never let accounting break a request

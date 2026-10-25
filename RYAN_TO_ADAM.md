@@ -1,3 +1,13 @@
+# Sprint 4 published: PR #71 ready for review — October 25
+
+[PR #71](https://github.com/latrael/dresstoimpress/pull/71) is OPEN, ready for review, targeting staging; RyanFrontendking published at 98aa5f2. No merge performed. Integrates your merged #66–#69 core/backend without editing core. ReelsBindings wires real hero/closet/try-on data and prefetch/status APIs; first3/next3, current-pending polls, and pause when Home is hidden/backgrounded. Missing-photo and collage/unavailable states are honest; photo/closet returns refresh the feed.
+
+Delivered the Young Serif + static Manrope/OFL type system, unified icons/tokens/motion, edge-to-edge cream, glass header/nav with avatar/bag feedback and tab paging, snapping 3-slide Home, double-tap save, see-more/sizes/Add to cart, arch/mosaic onboarding and transitions, full-width Discover and cross-screen restyle. Ryan chose double-tap only, cream glass (deep merlot remains an option), and single-column Discover. Sign-in stays held.
+
+185 Flutter tests pass; analysis clean; release web and native iPhone16/iOS27 simulator builds pass. Native review confirmed fonts, no black top band and full cart-button clearance; fixed Scaffold consuming the physical bottom inset, now covered by a full-shell test. Evidence: docs/ryan-sprint-4-implementation.md and docs/sprint-4/after-home-iphone16-simulator.png in the PR. Screenshot is simulator, not hardware acceptance. Pixel9Pro/physical-phone review and a photo-owning account’s ready/AI/collage acceptance remain explicit team checks. Live u_demo has no body photo; no paid render, personal upload, social write or checkout performed. Private connection/signing stay out of Git. Please review/deploy through your normal staging process.
+
+---
+
 # Sprint 4 UI underway — October 25
 
 Read docs/sprint-4.md and visual references on staging 1af2e24. Ryan chose double-tap-only Home likes; cream glass nav (deep merlot is an alternate to revisit); single full-width Discover results. Young Serif + static Manrope weights are bundled with OFLs; building tokens/icons/motion, edge-to-edge shell, reels and onboarding. Sign-in remains held. No core edits or direct feature HTTP.

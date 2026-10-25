@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -85,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         IconButton(
             tooltip: 'Style and budget',
             onPressed: preferences,
-            icon: const Icon(Icons.tune))
+            icon: const Icon(NicheIcons.tune))
       ],
       child: AsyncContent<({AppUser user, StyleProfile style})>(
           key: ValueKey(revision),
@@ -100,14 +101,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Wrap(spacing: 8, children: [
                 OutlinedButton.icon(
                     onPressed: preferences,
-                    icon: const Icon(Icons.tune),
+                    icon: const Icon(NicheIcons.tune),
                     label: const Text('Style and budget')),
                 OutlinedButton.icon(
                     onPressed: () => Navigator.push<void>(
                         context,
                         MaterialPageRoute(
                             builder: (_) => ClosetScreen(api: widget.api))),
-                    icon: const Icon(Icons.checkroom),
+                    icon: const Icon(NicheIcons.checkroom),
                     label: const Text('Your closet')),
               ]),
               const SizedBox(height: 20),
@@ -126,8 +127,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ]),
               if (style.palette.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                const Text('Your palette',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Your palette',
+                    style: Theme.of(context).textTheme.titleMedium),
                 Wrap(spacing: 10, runSpacing: 8, children: [
                   for (final color in style.palette)
                     Chip(
@@ -147,8 +148,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (style.avoid.isNotEmpty)
                 Text('Usually skip · ${style.avoid.join(', ')}'),
               const SizedBox(height: 16),
-              const Text('Learned budgets',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Learned budgets',
+                  style: Theme.of(context).textTheme.titleMedium),
               for (final e in style.priceRanges.entries)
                 if (e.value.length >= 2)
                   Text(
@@ -172,7 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 8),
               OutlinedButton.icon(
                   onPressed: () => bodyScan(data.user.bodyProfile),
-                  icon: const Icon(Icons.accessibility_new),
+                  icon: const Icon(NicheIcons.accessibilityNew),
                   label: const Text('Body scan')),
             ]);
           }));

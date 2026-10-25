@@ -30,6 +30,9 @@ void main() {
   testWidgets(
       'first visit opens onboarding; skip persists and next launch browses',
       (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     tester.view.physicalSize = const Size(430, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -44,8 +47,14 @@ void main() {
         find.widgetWithText(TextField, 'Your display name'), 'Test shopper');
     await tester.tap(find.text('Create profile'));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome to Niche'), findsOneWidget);
-    await tester.tap(find.text('Skip setup'));
+    expect(find.text("Let's make\nniche yours."), findsOneWidget);
+    await tester.tap(find.text("Let's go"));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.text('Skip'));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('Go to Home'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('product-stream')), findsOneWidget);
     final id = store.api.settings.userId;
@@ -105,6 +114,9 @@ void main() {
   });
   testWidgets('automatic browse adds recommended size with no size chooser',
       (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     String? added;
     await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -129,6 +141,9 @@ void main() {
   });
   testWidgets('cart pencil changes size and preserves quantity and total',
       (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     final store = StoreController(api: Api())
       ..feed = [const RankedProduct(product: garment)];
     await store.add('tee', 'S');
@@ -210,6 +225,9 @@ void main() {
   testWidgets(
       'onboarding accepts actual dimensions with all price fields skipped',
       (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     var finished = false;
     await tester.pumpWidget(MaterialApp(
         home: OnboardingScreen(
@@ -220,13 +238,10 @@ void main() {
               finished = true;
             })));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Start'));
+    await tester.tap(find.text("Let's go"));
     await tester.pumpAndSettle();
     for (var i = 0; i < 4; i++) {
-      await tester.scrollUntilVisible(find.text('Skip for now'), 250,
-          scrollable: find.byType(Scrollable).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Skip for now'));
+      await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
     }
     for (final e in {
@@ -242,13 +257,13 @@ void main() {
       await tester.pumpAndSettle();
     }
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Continue'), 300,
+    await tester.scrollUntilVisible(find.text('Next'), 300,
         scrollable: find.byType(Scrollable).first);
-    await tester.ensureVisible(find.text('Continue'));
+    await tester.ensureVisible(find.text('Next'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
+    await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Skip for now'));
+    await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Go to Home'));
     await tester.pumpAndSettle();

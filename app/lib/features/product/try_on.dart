@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../shared/pick_photo.dart';
@@ -79,7 +80,7 @@ class _BodyPhotoButtonState extends State<BodyPhotoButton> {
             'Your selected photo is uploaded to the connected server for personal try-on.'),
         OutlinedButton.icon(
             onPressed: busy ? null : upload,
-            icon: const Icon(Icons.add_a_photo_outlined),
+            icon: const Icon(NicheIcons.addAPhotoOutlined),
             label: Text(busy ? 'Uploading…' : 'Update try-on photo')),
         if (message != null) Text(message!),
       ]);

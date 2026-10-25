@@ -1,3 +1,9 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:animations/animations.dart';
+import '../shared/niche_theme.dart';
+import 'niche_welcome.dart';
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/api.dart';
 import '../../core/models.dart';
@@ -108,6 +114,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? error;
   BodyScanResult? scan;
   OnboardingResult? result;
+  late final Future<List<String>> welcomePhotos = loadWelcomePhotos();
+  Future<List<String>> loadWelcomePhotos() async {
+    try {
+      final cards = demo
+          ? (jsonDecode(
+                      await rootBundle.loadString('assets/demo-products.json'))
+                  as List)
+              .take(12)
+              .map((j) => (j as Map)['image_url'] as String)
+              .toList()
+          : (await widget.api.feed(limit: 12))
+              .map((p) => widget.api.imageProxyUrl(p.product.imageUrl))
+              .toList();
+      return cards;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  int renderedStep = 0;
+  bool goingBack = false;
+  static const order = [0, 1, 7, 2, 3, 4, 5, 6];
+  static const questions = [
+    "Let's make niche yours.",
+    "What's your style?",
+    'Where do you shop?',
+    'A little more you.',
+    'Find your fit.',
+    'Your kind of budget.',
+    'Your feed is ready.',
+    "Men's, women's or both?"
+  ];
   @override
   void initState() {
     super.initState();
@@ -491,8 +529,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 6, children: [
             for (final choice in styleChoices)
-              FilterChip(
-                  label: Text(choice),
+              NicheChip(
+                  label: choice,
                   selected: styles.contains(choice),
                   onSelected: busy
                       ? null
@@ -511,8 +549,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Wrap(spacing: 8, children: [
             for (final e
                 in {'men': 'Men', 'women': 'Women', 'both': 'Both'}.entries)
-              ChoiceChip(
-                  label: Text(e.value),
+              NicheChip(
+                  label: e.value,
                   selected: shopFor == e.key,
                   onSelected:
                       busy ? null : (_) => setState(() => shopFor = e.key))
@@ -524,8 +562,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           const SizedBox(height: 12),
           Wrap(spacing: 8, children: [
             for (final e in storeNames.entries)
-              FilterChip(
-                  label: Text(e.value),
+              NicheChip(
+                  label: e.value,
                   selected: stores.contains(e.key),
                   onSelected: busy
                       ? null
@@ -548,12 +586,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           if (demo && widget.onConnect != null)
             OutlinedButton.icon(
                 onPressed: connectInline,
-                icon: const Icon(Icons.link),
+                icon: const Icon(NicheIcons.link),
                 label: const Text('Connect for a private scan')),
-          FilledButton.tonalIcon(
-              onPressed: busy ? null : scanBody,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: Text(busy ? 'Estimating…' : 'Choose a full-body photo')),
+          NichePhotoDrop(
+              onTap: busy ? null : scanBody,
+              label: busy ? 'Estimating…' : 'Choose a full-body photo'),
           if (scan != null) ...[
             const SizedBox(height: 16),
             Text(scan!.profile.source == 'ai'
@@ -606,8 +643,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ];
       default:
         return [
-          Text('Your feed is ready',
-              style: Theme.of(context).textTheme.headlineMedium),
+          if (!widget.firstRun)
+            Text('Your feed is ready',
+                style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
           const Text(
               'Your style, stores, measurements and budgets can all be changed later under User.')
@@ -629,7 +667,108 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => FeaturePage(
+  Widget build(BuildContext context) {
+    if (!widget.firstRun || loading) return editor(context);
+    if (step == 0) {
+      return Scaffold(body: NicheWelcome(photos: welcomePhotos, onStart: next));
+    }
+    if (renderedStep != step) {
+      goingBack = order.indexOf(step) < order.indexOf(renderedStep);
+      renderedStep = step;
+    }
+    final position = order.indexOf(step);
+    return Scaffold(
+        appBar: AppBar(
+            leading: IconButton(
+                tooltip: 'Back',
+                icon: const Icon(NicheIcons.back),
+                onPressed: busy
+                    ? null
+                    : () => setState(() => step = order[position - 1])),
+            actions: [
+              if (step != 6)
+                TextButton(
+                    onPressed: busy ? null : skip, child: const Text('Skip'))
+            ]),
+        body: SafeArea(
+            top: false,
+            child: Column(children: [
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Row(children: [
+                    for (var i = 0; i < 8; i++)
+                      Expanded(
+                          child: AnimatedContainer(
+                              duration: Niche.duration,
+                              height: 4,
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              decoration: BoxDecoration(
+                                  color: i <= position
+                                      ? Niche.merlot
+                                      : Niche.blush,
+                                  borderRadius: BorderRadius.circular(8))))
+                  ])),
+              Expanded(
+                  child: PageTransitionSwitcher(
+                      duration: Niche.reduced(context)
+                          ? const Duration(milliseconds: 120)
+                          : const Duration(milliseconds: 320),
+                      reverse: goingBack,
+                      transitionBuilder: (child, primary, secondary) =>
+                          Niche.reduced(context)
+                              ? FadeTransition(opacity: primary, child: child)
+                              : SharedAxisTransition(
+                                  animation: primary,
+                                  secondaryAnimation: secondary,
+                                  transitionType:
+                                      SharedAxisTransitionType.horizontal,
+                                  fillColor: Niche.cream,
+                                  child: child),
+                      child: SingleChildScrollView(
+                          key: ValueKey('onboarding-$step'),
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (step == 6)
+                                  const Center(
+                                      child: NicheArch(
+                                          size: 140, celebrate: true)),
+                                Text(questions[step],
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .displaySmall),
+                                const SizedBox(height: 24),
+                                for (final entry in section().indexed)
+                                  NicheEntrance(
+                                      index: entry.$1, child: entry.$2),
+                                if (error != null)
+                                  Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 12),
+                                      child: Text(error!)),
+                                const SizedBox(height: 24)
+                              ])))),
+              Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+                  child: SizedBox(
+                      width: double.infinity,
+                      child: NichePress(
+                          child: FilledButton(
+                              onPressed: busy || restoreFailed
+                                  ? null
+                                  : step == 6
+                                      ? () => save()
+                                      : next,
+                              child: Text(busy
+                                  ? 'Saving…'
+                                  : step == 6
+                                      ? 'Go to Home'
+                                      : 'Next')))))
+            ])));
+  }
+
+  Widget editor(BuildContext context) => FeaturePage(
       title: titles[step],
       child: loading
           ? const Center(child: CircularProgressIndicator())

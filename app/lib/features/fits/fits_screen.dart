@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/material.dart';
 import '../../core/models.dart';
 import '../shared/feature_ui.dart';
@@ -102,7 +103,7 @@ class _FitsScreenState extends State<FitsScreen> {
                 onPressed: loading || working.isNotEmpty || widget.store.demo
                     ? null
                     : generate,
-                icon: const Icon(Icons.auto_awesome),
+                icon: const Icon(NicheIcons.autoAwesome),
                 label: Text(loading ? 'Creating your fits…' : 'Create 3 fits')),
             if (widget.store.demo)
               const Padding(
@@ -130,14 +131,14 @@ class _FitsScreenState extends State<FitsScreen> {
                               ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   leading: piece.imageUrl.isEmpty
-                                      ? const Icon(Icons.checkroom)
+                                      ? const Icon(NicheIcons.checkroom)
                                       : Image.network(
                                           widget.store.imageUrl(piece.imageUrl),
                                           width: 52,
                                           height: 64,
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
-                                              const Icon(Icons.checkroom)),
+                                              const Icon(NicheIcons.checkroom)),
                                   title: Text(piece.label),
                                   subtitle: Text(piece.fromCloset
                                       ? 'In your closet'
@@ -158,8 +159,7 @@ class _FitsScreenState extends State<FitsScreen> {
                                   }),
                             Text(
                                 '${fit.closetCount} from your closet · New pieces ${_dollars(fit.newTotalUsd)}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
+                                style: Theme.of(context).textTheme.titleMedium),
                             if (previews[fit.id] != null ||
                                 fit.tryOnUrl != null) ...[
                               const SizedBox(height: 12),

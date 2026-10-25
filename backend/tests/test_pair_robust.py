@@ -78,7 +78,7 @@ def test_pair_is_deterministic_and_shortlists_for_claude(tmp_path, monkeypatch):
     assert abs(top.score - (0.5 * llm + 0.5 * rules[top.product_id])) < 1e-3   # half Claude, half rules
 
 
-def test_claude_create_drops_temperature_when_sdk_rejects_it(monkeypatch):
+def test_claude_json_never_sends_temperature(monkeypatch):
     from app.ai import llm
 
     calls = []
@@ -86,8 +86,6 @@ def test_claude_create_drops_temperature_when_sdk_rejects_it(monkeypatch):
     class FakeMessages:
         def create(self, **kw):
             calls.append(kw)
-            if "extra_body" in kw:
-                raise TypeError("Messages.create() got an unexpected keyword argument 'extra_body'")
             return types.SimpleNamespace(content=[types.SimpleNamespace(type="text", text='{"summary": "A tee."}')],
                                          usage=types.SimpleNamespace(input_tokens=1, output_tokens=1))
 
@@ -99,4 +97,6 @@ def test_claude_create_drops_temperature_when_sdk_rejects_it(monkeypatch):
     monkeypatch.setattr(llm, "_record_claude", lambda *a: None)
     out = llm.claude_json("Return JSON {summary}", schema=None)
     assert out == {"summary": "A tee."}
-    assert len(calls) == 2 and "extra_body" not in calls[1] and calls[1]["thinking"] == {"type": "disabled"}
+    # Haiku 5.5 400s on any non-default temperature (#70): one plain call, thinking off, nothing else.
+    assert len(calls) == 1 and calls[0]["thinking"] == {"type": "disabled"}
+    assert not any(k in calls[0] for k in ("temperature", "top_p", "top_k", "extra_body"))

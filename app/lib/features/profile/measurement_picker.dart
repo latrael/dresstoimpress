@@ -1,3 +1,4 @@
+import '../shared/niche_icons.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -81,7 +82,7 @@ class MeasurementPicker extends StatelessWidget {
                 Expanded(child: Text(label)),
                 Text(value == null ? 'Optional' : display(value! / factor)),
                 const SizedBox(width: 8),
-                const Icon(Icons.unfold_more)
+                const Icon(NicheIcons.unfoldMore)
               ]))));
 }
 

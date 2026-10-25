@@ -2,7 +2,7 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sun Oct 25, 2026, ~1:45 AM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sun Oct 25, 2026, ~3:35 AM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
@@ -19,6 +19,103 @@ The new Home post is a 3-slide carousel: the item → **the try-on on you, alrea
 - **Core:** parse `heroImageUrl`, `closetPicks` and `tryOn`; add `prefetchTryOns` and `tryOnStatus`. **Ship mocks early**, so Ryan can build Home on them.
 
 **I'm doing:** `hero_image_url` (classifying catalog photos; only Uniqlo is labelled `product` today), the `/feed` fields, the routes and the tests.
+
+---
+
+## Sun 3:35 AM: your #73 conflicts with staging (my #70). Resolve `llm.py` by **taking staging's version**
+
+**The conflict:** #73 was branched before #70 merged, and GitHub says `CONFLICTING` (`llm.py` and `tests/test_prompts_deterministic.py`). We both fixed the same dead-Claude bug.
+
+**Please keep #70's fix rather than `_claude_create`'s `extra_body` path.** I tested it against the live API just now:
+- `messages.create(model="claude-haiku-5-5", thinking={"type": "disabled"}, extra_body={"temperature": 0}, …)` → **400 `temperature: Extra inputs are not permitted`**, in 0.5 s.
+- The same call without it → 200.
+- So with `extra_body`, **every** Claude call makes one guaranteed failing round trip first. That's +0.5 s and double the request count against rate limits, and it's ×2 when the schema retry fires.
+- Haiku 5.5 only takes its default sampling, and API `2026-10-21` rejects the field on every model. So there's no case where sending it helps.
+
+**How to resolve:**
+1. `git merge origin/staging` on `adam/rec-eval`.
+2. In `llm.py`, take staging's `claude_json` create call (thinking off, no `temperature`). You can keep `_claude_create` as a helper if you like, minus the `extra_body` try.
+3. In `test_prompts_deterministic.py`, keep staging's assertion that no `temperature` / `top_p` / `top_k` reaches Claude, plus your v5 changes.
+
+Everything else in #73 looks good to me (rules-first shortlist, validators, `eval_recs.py`, `PAIR_VERSION` v5), and it touches nothing in commerce.
+
+**🔴 For the whole team:** your PR says **Gemini is at 402 (credits depleted)**, so live try-ons are down: slide 2 falls back to the collage for everyone. Gemini also covers for Claude, so with Claude now fixed the text side is fine, but **try-ons need Gemini credits before the demo.** Please say in `ADAM_TO_NABIL.md` how much is needed and who's topping it up. I've flagged it to Nabil.
+
+---
+
+## Sun 3:20 AM: **Nabil: Adam now picks up all new tasks for Ryan.** Ryan's #71 is merged; here's what's open, in order
+
+**1. 🔴 The shared server is on old code (checked 3:05 AM through the tunnel).**
+- `/ai/usage` → `last_claude_error: "...unexpected keyword argument 'temperature'"` and `max_tryons: 150`. So it doesn't have #69 or #70: **Claude is still failing over to Gemini.** Feed reasons are the rule-based "Goes with your …".
+- `/feed?user_id=u_nabil`: **0 of 20 cards** have a product-only `hero_image_url`, so the #68 snapshot isn't loaded.
+- **Please, on the server:**
+  1. `git pull` (staging `47450e3`: #69 #70 #71).
+  2. `pip install -r requirements.txt`.
+  3. `python -m scripts.load_products` (no `--replace`).
+  4. Restart.
+  5. Warm the reason banks: one `GET /feed?user_id=` for u_adam / u_nabil / u_ryan / u_demo. The first is ~7 s, then ~40 ms.
+- **Check afterwards:** `/ai/usage` has no new `last_claude_error`, `max_tryons: 400`, and some cards have `hero_image_url != image_url`.
+
+**2. The per-user prefetch cap is already biting.**
+- At 3:08 AM I prefetched 2 of u_nabil's posts. Both came back at once as `unavailable` + collage (`gemini_images` stayed at 78), while u_adam's cards are `ready`/`ai`. **u_nabil has used his 20 pre-renders for today.**
+- Ryan's Home prefetches the next 3 on every post you land on, so **~20 posts of scrolling uses the whole day's budget**, even for posts the user never reaches.
+- **Before the demo:**
+  - Reset `prefetch_usage` for `u_demo` (or raise `PREFETCH_PER_USER_DAY` for the demo; there's plenty of headroom with `MAX_TRYONS=400`).
+  - Don't let anyone scroll `u_demo` the night before.
+  - Optional: count only renders that actually start, not cached hits.
+- **Speed:** with your measured 15–20 s per render and a pool of 2, the 3rd prefetched post is often still `pending` when reached. A pool of 3 (or prefetching posts 1–5 on load) would hide it. Your call on cost.
+- The collage itself looks right: the user's own photo + the product + their closet pieces, labelled as a board.
+
+**3. Ryan's open asks from #71 (now yours):**
+- **Pixel 9 Pro hardware pass:**
+  - Screenshots of Home / Discover / Inspo;
+  - edge-back gesture vs. tab swipes;
+  - haptics on likes, chips and Add to cart;
+  - no black band at the top;
+  - the nav pill above the gesture bar.
+  - Ryan's capture is **simulator only** (`docs/sprint-4/after-home-iphone16-simulator.png`).
+- **A real photo-owning account, ready / AI / collage + preloaded post 2 onward:**
+  - Partly done above: the collage path is verified on u_nabil; AI-ready is verified on u_adam by you.
+  - Still open: a fresh account with a body photo + closet, scrolled at normal speed after the deploy. Is slide 2 `ready` on posts 2–4?
+- **Physical iPhone 16:** I built Ryan's #71 for Nabil's iPhone. I'll install it as soon as the phone is connected, so Nabil can do the iPhone acceptance himself.
+
+**4. Done on my side tonight (for reference):**
+- #68: hero photos + `/feed` reel fields + prefetch routes.
+- #70: the Claude `temperature` fix + `/feed` timings.
+- Devpost + demo script updated for the reels Home: warming steps, the 20/day cap, the slide-by-slide script and fallbacks.
+
+---
+
+## Sun 2:45 AM: 🔴 since #67, **every Claude call fails** (silently, over to Gemini). Fixed in my PR; plus the warm `/feed` timing you asked for
+
+**The bug.**
+- #67 sends `temperature=0` on every Claude call (`llm.claude_json`). Claude Haiku 5.5 only accepts its **default** sampling, so a non-default `temperature` is a **400**, on any API version.
+  - On top of that, API version `2026-10-21` (four days ago) rejects `temperature` / `top_p` / `top_k` on every model, even at default values.
+  - SDK 2.x (what a fresh `pip install` gets, `anthropic>=0.40` is unpinned) doesn't even accept the argument: `TypeError: Messages.create() got an unexpected keyword argument 'temperature'`.
+- **Effect:** `ai_json` catches it and falls over to Gemini. So on the shared server, **tagging, feed reasons, vibe search, closet digitize and body scan have been running on Gemini, not Claude**, since #67. No error shows anywhere.
+- **Repro:** `ai_json('Reply with JSON only: {"ok": true}')` with `AI_TEXT_PROVIDER=claude` → `BadModelOutput: claude: ... unexpected keyword argument 'temperature'`.
+
+**The fix** (`app/ai/llm.py`, my PR):
+- The Claude call no longer sends `temperature`. Gemini keeps `temperature=0` + `seed`.
+- Claude's determinism is your per-prompt schema check, which stays.
+- `tests/test_prompts_deterministic.py` now asserts the Claude call sends **no** `temperature` / `top_p` / `top_k` (a regression guard). The comments in `llm.py` / `prompts.py` say why.
+- **Verified live:** a direct call returns `{"ok": true}` in 1.4 s, and `/feed` gets real Claude reasons ("White graphic tee pairs cleanly with your black bottom"). 713 tests pass.
+
+**Warm vs cold `/feed`** (local, real Claude, real 3,188-product snapshot, 12-piece closet, 20 cards):
+
+| Path | Time |
+| --- | --- |
+| Cold (no cache, no bank: a new user, or the first load after a closet / style change or a `PAIR_VERSION` bump) | **6.8 s** (Claude writes ~24 reasons) |
+| Warm (10-min exact cache) | **34–42 ms** |
+| Cache expired but the reason bank is fresh (< 1 h) | instant from the bank; Claude re-ranks in the background |
+
+Your 7.5 s after the restart was the cold path: #67 bumped `PAIR_VERSION` v3 → v4, which emptied every bank. (It was probably also slower because it was Gemini answering after Claude failed.)
+
+**Asks:**
+1. **Merge my PR, then restart the shared server.** Run `pip install -r requirements.txt` there; it's fine on either SDK major now.
+2. **After every restart or deploy that bumps `PAIR_VERSION`, warm the reason banks** for u_adam / u_nabil / u_ryan / u_demo: one `GET /feed?user_id=<u>` each (or `scripts.warm_demo --tryons 0`). The first Home load of the demo shouldn't be the 7 s one.
+3. **Optional, your call:** for stricter Claude JSON, structured outputs (`output_config.format` with a JSON schema) would replace the retry-on-bad-shape loop. Not needed for the demo.
+4. **Everything from my 1:45 AM list still stands** (deploy + `load_products`, live try-on numbers ✓ thanks, budget ✓ 400, warm the demo account, closet quality, Ryan's adapters).
 
 ---
 

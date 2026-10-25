@@ -24,7 +24,8 @@ const scan = BodyProfile(
     source: 'ai');
 
 void main() {
-  test('withBody: a fresh scan wins, converts inches to cm, keeps what it lacks',
+  test(
+      'withBody: a fresh scan wins, converts inches to cm, keeps what it lacks',
       () {
     const mine = ShopperProfile(
         completed: true,
@@ -64,7 +65,8 @@ void main() {
         isNull);
   });
 
-  testWidgets('receipt shows Paid X of Y and a Retry payment button per failed store',
+  testWidgets(
+      'receipt shows Paid X of Y and a Retry payment button per failed store',
       (tester) async {
     final calls = <String>[];
     final api = Api(client: MockClient((r) async {
@@ -86,10 +88,11 @@ void main() {
     final store = StoreController(api: api, demo: false);
     await tester.pumpWidget(MaterialApp(home: CartScreen(store: store)));
     await tester.pumpAndSettle();
-    expect(calls, ['GET /cart/u_demo']); // opening the cart re-reads the server copy
+    expect(calls,
+        ['GET /cart/u_demo']); // opening the cart re-reads the server copy
     expect(find.text('Total \$25.00'), findsOneWidget);
-    await tester.tap(
-        find.widgetWithText(FilledButton, 'Checkout in Nessie sandbox'));
+    await tester
+        .tap(find.widgetWithText(FilledButton, 'Checkout in Nessie sandbox'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Place order'));
     await tester.pumpAndSettle();
@@ -109,10 +112,20 @@ const _cart = {
   'count': 2,
   'total_usd': 25,
   'groups': [
-    {'retailer': 'hm', 'subtotal_usd': 15, 'items': [
-      {'product_id': 'hm:1', 'size': 'M', 'qty': 1}]},
-    {'retailer': 'uniqlo', 'subtotal_usd': 10, 'items': [
-      {'product_id': 'uniqlo:1', 'size': 'M', 'qty': 1}]},
+    {
+      'retailer': 'hm',
+      'subtotal_usd': 15,
+      'items': [
+        {'product_id': 'hm:1', 'size': 'M', 'qty': 1}
+      ]
+    },
+    {
+      'retailer': 'uniqlo',
+      'subtotal_usd': 10,
+      'items': [
+        {'product_id': 'uniqlo:1', 'size': 'M', 'qty': 1}
+      ]
+    },
   ],
 };
 
@@ -121,6 +134,11 @@ Map<String, Object> _receipt(String uniqloStatus) => {
       'total_usd': 25,
       'purchases': [
         {'retailer': 'hm', 'amount_usd': 15, 'status': 'paid', 'items': []},
-        {'retailer': 'uniqlo', 'amount_usd': 10, 'status': uniqloStatus, 'items': []},
+        {
+          'retailer': 'uniqlo',
+          'amount_usd': 10,
+          'status': uniqloStatus,
+          'items': []
+        },
       ],
     };

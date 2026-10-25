@@ -368,7 +368,7 @@ def _refresh_later(ckey: str, bkey: str, prompt: str, user_id: str) -> None:
 
     def run():
         try:
-            _remember(ckey, bkey, ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL), user_id)
+            _remember(ckey, bkey, ai_json(prompt, max_tokens=4096, model=CLAUDE_PAIR_MODEL), user_id)
         except Exception as e:  # noqa: BLE001 - a failed refresh just leaves the bank as it was
             log.warning("background pair refresh failed: %s", e)
         finally:
@@ -434,7 +434,7 @@ def pair(user_id: str, candidate_ids: list[str], k: int = 10) -> list[PairResult
         _refresh_later(ckey, bkey, prompt, user_id)
     else:
         try:
-            raw = ai_json(prompt, max_tokens=2000, model=CLAUDE_PAIR_MODEL)
+            raw = ai_json(prompt, max_tokens=4096, model=CLAUDE_PAIR_MODEL)
         except BadModelOutput:
             return _fallback(cands, ranges, k, closet, user.get("style_text", ""))
         _remember(ckey, bkey, raw, user_id)

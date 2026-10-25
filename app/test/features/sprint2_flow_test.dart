@@ -1,3 +1,4 @@
+import 'package:dress_to_impress/features/shared/niche_theme.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -75,9 +76,9 @@ void main() {
     await t.pumpWidget(MaterialApp(
         home: OnboardingScreen(api: Api(), demo: true, onSaved: () async {})));
     await t.pumpAndSettle();
-    await t.tap(find.widgetWithText(FilterChip, 'y2k'));
+    await t.tap(find.widgetWithText(NicheChip, 'y2k'));
     await t.pump();
-    await t.tap(find.widgetWithText(FilterChip, 'gorpcore'));
+    await t.tap(find.widgetWithText(NicheChip, 'gorpcore'));
     await t.pump();
     await t.ensureVisible(
         find.widgetWithText(TextField, 'Type your own (optional)'));

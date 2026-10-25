@@ -21,6 +21,10 @@
   <img alt="Cal Hacks 13.0" src="https://img.shields.io/badge/Cal%20Hacks-13.0-5B1F33">
 </p>
 
+<p align="center">
+  <a href="https://youtu.be/LcWr5wsJTwA"><img alt="Watch the demo on YouTube" src="https://img.shields.io/badge/%E2%96%B6%20Watch%20the%20demo-YouTube-FF0000?logo=youtube&logoColor=white"></a>
+</p>
+
 <table align="center">
   <tr>
     <td align="center"><img src="docs/readme/welcome.jpg" width="230" alt="The welcome screen: the niche arch, 'Let's make niche yours.' and a mosaic of real outfits"></td>
@@ -37,6 +41,13 @@
 Niche is a shopping and styling app built around the closet you already own. You swipe real, in-stock clothes from 8 stores and see each piece on your own photo next to the things you already own that go with it. Then you check out across every store in one cart. Your closet is built from your outfit photos, and you share fits with friends or everyone.
 
 Built at **Cal Hacks 13.0** (Oct 2026).
+
+## Demo
+
+<p align="center">
+  <a href="https://youtu.be/LcWr5wsJTwA"><img src="https://img.youtube.com/vi/LcWr5wsJTwA/maxresdefault.jpg" width="640" alt="Niche demo video on YouTube"></a>
+  <br><sub>▶ <a href="https://youtu.be/LcWr5wsJTwA">Watch the demo on YouTube</a></sub>
+</p>
 
 ---
 

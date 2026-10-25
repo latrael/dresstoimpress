@@ -126,7 +126,7 @@ Add `notability` / `figma` only if Ryan confirms we used them. Don't add `moss` 
 ## "Try it out" links
 
 - **Code:** https://github.com/latrael/dresstoimpress
-- **Demo video:** add after the 18:30 backup recording.
+- **Demo video:** https://youtu.be/LcWr5wsJTwA
 - Don't post the tunnel URL: it's private and needs the key.
 
 ---

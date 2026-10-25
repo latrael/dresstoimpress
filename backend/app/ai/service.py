@@ -211,19 +211,40 @@ def _unknown_closet_ref(reason: str, closet: list[dict]) -> bool:
     from .colors import _COLOR_WORDS
     from .finder import item_type
 
-    labels = [(c.get("label") or f'{c.get("color", "")} {c.get("category", "")}').lower() for c in closet]
-    label_words = {w for lbl in labels for w in re.findall(r"[a-z0-9-]+", lbl)}
-    label_types = {item_type(lbl) for lbl in labels} - {None}
+    # One token set per closet item: every word of "your <phrase>" (colour, brand and noun alike) must sit in
+    # the SAME item, so "your black tee" is unknown when the closet has a white tee and black pants.
+    items: list[tuple[set[str], str | None]] = []
+    for c in closet:
+        lbl = (c.get("label") or f'{c.get("color", "")} {c.get("category", "")}').lower()
+        text = " ".join(filter(None, [lbl, str(c.get("brand") or ""), str(c.get("color") or ""),
+                                      str(c.get("category") or "")])).lower()
+        words = set(re.findall(r"[a-z0-9-]+", text))
+        words |= {w.rstrip("s") for w in words}
+        items.append((words, item_type(lbl)))
     for m in re.finditer(r"\byour\s+([a-z0-9 -]+)", reason.lower()):
-        nouns = []
+        words = []
         for w in re.findall(r"[a-z0-9-]+", m.group(1))[:5]:
             if w in _REASON_STOP:
                 break
-            if w not in _COLOR_WORDS and w not in _REASON_GENERIC and len(w) > 2:
-                nouns.append(w)
-        if nouns and not any(w in label_words or w.rstrip("s") in label_words
-                             or item_type(w) in label_types or item_type(w.rstrip("s")) in label_types
-                             for w in nouns):
+            if w not in _REASON_GENERIC and len(w) > 2:
+                words.append(w)
+        nouns = [w for w in words if w not in _COLOR_WORDS]
+        if not nouns:
+            continue  # "your look", "your closet": not an item reference
+        # Known only when ONE closet item carries a colour word AND at least one of the nouns (as a word
+        # or by type), so "your black tee" is unknown when the closet has a white tee and black pants.
+        colours = [w for w in words if w in _COLOR_WORDS]
+
+        def has(w: str, toks: set[str]) -> bool:
+            return w in toks or w.rstrip("s") in toks
+
+        def known(toks: set[str], typ: str | None) -> bool:
+            if colours and not any(has(c, toks) for c in colours):  # any(): "denim blue" is one colour
+                return False
+            return any(has(n, toks) or (typ is not None and (item_type(n) == typ or item_type(n.rstrip("s")) == typ))
+                       for n in nouns)
+
+        if not any(known(toks, typ) for toks, typ in items):
             return True
     return False
 

@@ -249,3 +249,8 @@ Wire these into `/feed` cards and the two routes (all in `app.ai.service`):
 - `tryon_status(user_id, product, picks=None) -> {status, image_url?, mode?}`: the §10.1 `tryon` field. Pass the card's `closet_picks` as `picks` to skip recomputing.
 - `prefetch_tryons(user_id, items) -> {product_id: tryon}`: for `POST /feed/{u}/tryons` (≤5 items, returns at once, 2 workers, de-duped). `GET /feed/{u}/tryons?ids=` = `{pid: tryon_status(u, pid)}`.
 - Accessories show on slide 3 but never go into the render. Daily cap `PREFETCH_PER_USER_DAY` (default 20; past it → free collage, `unavailable`). `MAX_TRYONS` untouched (team decision §12.5).
+
+## 01:00 Sun — Deterministic prompts (PR: adam/prompts)
+- All text prompts now run at temperature 0 + fixed seed, with a JSON schema check per prompt (`llm.ai_json` rejects/retries bad shapes); feed reasons can no longer name closet items the user doesn't own. No API changes.
+- TRYON_VERSION v5 → v6 and PAIR_VERSION v3 → v4: the try-on cache and the pair reason bank invalidate on the next request (first try-ons after the restart re-render). Tagger/digitize versions were NOT bumped, so existing closets are not re-tagged.
+- `AI_TEMPERATURE` / `AI_SEED` env vars override for experiments only.

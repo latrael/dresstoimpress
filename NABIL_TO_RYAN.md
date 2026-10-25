@@ -2,13 +2,13 @@
 
 Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `staging`; reply in `RYAN_TO_NABIL.md`. It states **data facts only**: route shapes, errors, and what each field means. **How anything looks or behaves in the app is your call.** For AI routes (size, try-on, complete the look, closet, style, Fit Score), see `ADAM_TO_RYAN.md`.
 
-**Last updated:** Sat Oct 24, 2026, ~5:45 PM PT. New: ~3,200 products from 8 stores, and `GET /stores` for the onboarding chips and cart headings.
+**Last updated:** Sat Oct 24, 2026, ~5:55 PM PT. New: 3,188 products from 8 stores (PR #44), and `GET /stores` for the onboarding chips and cart headings.
 
 ## Oct 24, ~5:45 PM: way more clothes (sprint #2)
 
-- **Catalog:** 418 → ~3,200 products. Every one has `department` and sizes with stock.
-  - H&M ~1,250, Uniqlo ~800.
-  - **New:** Princess Polly ~345, Brandy Melville ~180, Edikted ~175 (women's); True Classic 180 (men's); Kith ~165 (mostly men's); Stüssy 94 (unisex).
+- **Catalog:** 418 → **3,188 products** (2,983 in stock). Every one has `department` (women 1,727 / men 1,170 / unisex 291) and sizes with stock. Live on the shared server once Adam loads it (before the 18:30 dry run).
+  - H&M 1,255, Uniqlo 798.
+  - **New:** Princess Polly 345, Brandy Melville 178, Edikted 174 (women's); True Classic 180 (men's); Kith 164 (mostly men's); Stüssy 94 (unisex).
   - Accessories are new too (bags, caps, beanies, belts, jewelry): `category: "accessory"`.
 - **`retailer` can now be** `princesspolly, edikted, brandymelville, trueclassic, kith, stussy` as well as `hm, uniqlo`. The app hard-codes H&M/Uniqlo in two places that will show raw ids otherwise:
   - `retailerName()` in `cart_screen.dart`.
@@ -20,7 +20,12 @@ Notes from Nabil (commerce backend) to Ryan (app owner). This file lives on `sta
   - True Classic jeans/chinos: `32x30` (waist×length).
 
   These are the exact strings to send back as `size`.
-- **Images for the new stores are on `cdn.shopify.com`.** The `/img` proxy allows it; Adam's core `imageProxyHosts` needs it too (asked).
+- **Images for the new stores are on `cdn.shopify.com`.** The `/img` proxy allows it; Adam's core `imageProxyHosts` needs it too (asked). Until then, web builds show no photos for 6 of the 8 stores; the phone builds load them directly.
+- **To do on your side:**
+  1. **Cart headings:** `retailerName()` in `cart_screen.dart` → use `name` from `GET /stores`. Otherwise new stores show as "princesspolly".
+  2. **Onboarding Stores step** (`onboarding_screen.dart`, `store_controller.dart`): build the chips from `GET /stores` instead of `['hm','uniqlo']`. Optionally hide stores with no items in the user's `shop_for` department.
+  3. The "We currently carry H&M and Uniqlo" line in onboarding is out of date: 8 stores now.
+- **Summaries:** Adam's #40 `summary` (1–2 sentences) is on products after he re-runs it post-load; `blurb()` already prefers it.
 
  (on `nabil`, PR into `staging`)
 
@@ -123,9 +128,9 @@ Every change only adds fields; nothing the app reads today was removed or rename
 
 ## Product (shared schema: `backend/app/models.py`)
 
-`id, retailer, name, brand, category, price_usd, sale_price_usd, currency, colors, sizes[{name, in_stock}], in_stock, image_url, product_url, images[{url, kind}], description, style_tags, pattern, formality, label, scraped_at, source`
+`id, retailer, name, brand, category, price_usd, sale_price_usd, currency, colors, sizes[{name, in_stock}], in_stock, image_url, product_url, images[{url, kind}], description, style_tags, pattern, formality, label, scraped_at, source, department, summary`
 
-- **Catalog:** 418 products. H&M 290, including 48 shoes; Uniqlo 128. By category: top 178, outerwear 89, bottom 82, shoes 48, dress 21.
+- **Catalog:** 3,188 products from 8 stores (see the 5:55 PM note at the top). By category: top 1,562, bottom 785, outerwear 296, accessory 226, shoes 168, dress 151.
 - **`sale_price_usd`:** the price charged at checkout when it's not null; `price_usd` is the regular price.
 - **`images`:** never empty for catalog products, and `images[0]` is always the same as `image_url`. Same product and colour only, with no duplicates.
   - **H&M:** 2–6 images, all `kind: "retailer_model"` (H&M's data doesn't mark which shots are garment-only).
@@ -216,7 +221,7 @@ A post is `{id, user_id, photo_url, caption, tagged: [{label, retailer, product_
 - **Demo data:** `python -m scripts.seed_fitcheck` creates 3 posts (from Adam, Nabil and Ryan) visible to `u_demo`. Their photos are placeholders.
 
 ## Known gaps
-- H&M has no descriptions.
+- H&M and some Shopify items have no retailer `description`. Adam's `summary` covers them.
 - Uniqlo has 1 image per product.
-- The catalog is H&M + Uniqlo only.
+- Shopify images are all `kind: "retailer_model"` (the stores don't mark garment-only shots).
 - Fit Check seed posts use placeholder photos.

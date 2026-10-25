@@ -2,13 +2,15 @@
 
 Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. Reply in `ADAM_TO_NABIL.md` on your branch; I read it every time I start work.
 
-**Last updated:** Sat Oct 24, 2026, ~5:45 PM PT. Lives on `staging` (via PRs from `nabil`).
+**Last updated:** Sat Oct 24, 2026, ~5:55 PM PT. Lives on `staging` (via PRs from `nabil`).
 
 ---
 
-## Sat 5:45 PM: sprint #2 catalog: 418 → ~3,200 products, 8 stores (PR from `nabil`)
+## Sat 5:55 PM: sprint #2 catalog: 418 → 3,188 products, 8 stores (PR #44): **please load before the 18:30 dry run**
 
-**Apify spent: ~$2.97 total for this sprint** (the 3 runs you thought were lost were recovered for $0). Raw pulls are in `seed/raw/`. Tagging uses your `tag_catalog` (Haiku, ~$0.00026/item, ~$0.72). Your files are unchanged except as noted.
+**3,188 products** (2,983 in stock): H&M 1,255, Uniqlo 798, Princess Polly 345, True Classic 180, Brandy Melville 178, Edikted 174, Kith 164, Stüssy 94. Every product has sizes with stock + a department (women 1,727 / men 1,170 / unisex 291), and all are AI-tagged.
+
+**Cost:** Apify ~$2.97 for the sprint (the 3 runs you thought were lost were recovered for $0); tagging $0.73 with your `tag_catalog`. Raw pulls are in `seed/raw/`. Your files are unchanged except as noted.
 
 - **New stores (Shopify, `autofacts/shopify`):** Princess Polly, Edikted, Brandy Melville (women), True Classic (men), Kith (men, plus women by product), Stüssy (unisex). The normalizer is `app/commerce/ingest_shopify.py`.
   - `Retailer` in `models.py` gains `princesspolly, edikted, brandymelville, trueclassic, kith, stussy` (the schema change Nabil OK'd).
@@ -25,11 +27,14 @@ Notes from Nabil (commerce lane) to Adam (AI lane). Newest notes go at the top. 
   - `run_actor` starts async, polls and pages, so a 502 never loses a paid run.
   - `--max-charge` is $2 per run by default (your `finder.py` live search gets the cap too).
   - `--from-dataset <id>` ingests a finished run.
-- **Shared server, after the PR merges** (no Apify):
-  1. Restart (new routes, new `Retailer`s).
-  2. `python -m scripts.load_products` **without `--replace`**: ~3,200 products. The JSON store rewrites its file on every put, so expect 30–60 s.
-  3. Your `tag_catalog --summaries-only` and `--departments-only` when #summary-dept lands. Every new product already has a department.
-  4. `warm_demo --tryons 0`.
+- **Shared server, after #44 merges, before the 18:30 dry run** (no Apify; in this order):
+  1. Pull `staging` and **restart** (new routes `GET /stores`, new `Retailer`s, the Shopify normalizer).
+  2. `python -m scripts.load_products` **without `--replace`**: it upserts the 3,188 and keeps your extra ingests. The JSON store rewrites its file on every put, so expect 30–60 s.
+  3. **`python -m scripts.tag_catalog --summaries-only` right after.** The snapshot has no `summary`, so the load replaces products and drops the summaries you wrote. They're cached per product id + `SUMMARY_VERSION`, so your 734 come back free; the ~2,500 new ones cost about $0.10 at your rate. `--departments-only` isn't needed: every snapshot product has a department.
+  4. `warm_demo --tryons 0`, so `u_demo` / `u_adam` feed reasons cover the new items. Not `reset_demo`.
+  5. Spot check: `GET /stores` lists 8 stores, and `GET /feed?user_id=u_adam` shows men's items from more than H&M/Uniqlo.
+- **Still yours in the app:** `imageProxyHosts` += `cdn.shopify.com` in `app/lib/core/api.dart` (or web builds show no photos for 6 of the 8 stores), and a core method for `GET /stores` so Ryan can drop the hard-coded H&M/Uniqlo lists.
+- **Sizing PR:** please include the new stores' size names above. Brandy Melville is mostly `XS/S` and `One Size` (no chart to match: treat as one size); True Classic uses `32x30` waist×length.
 
 ## Sat 4:30 PM: council-redesign backend, and what touches your code
 
